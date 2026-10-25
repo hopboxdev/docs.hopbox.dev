@@ -129,15 +129,15 @@
 </tr>
 <tr>
 <td>Open requests</td>
-<td>At most 16,384 at once on the HTTPS listener, streams and WebSockets included. A request past the bound gets <code dir="auto">503 Service Unavailable</code> with <code dir="auto">Retry-After: 1</code>.</td>
+<td>At most 16,384 at once on the HTTPS listener, streams and WebSockets included. A request past the bound gets <code dir="auto">503 Service Unavailable</code> with <code dir="auto">Retry-After: 1</code> and <code dir="auto">Hopbox-Not-Run: 1</code>.</td>
 </tr>
 <tr>
 <td>Open requests of one client</td>
-<td>At most 1,024 at once. A request past the bound gets <code dir="auto">429 Too Many Requests</code> with <code dir="auto">Retry-After: 1</code>, so one client cannot take every slot of the 16,384. A client is an IPv4 address or the /64 of an IPv6 address.</td>
+<td>At most 1,024 at once. A request past the bound gets <code dir="auto">429 Too Many Requests</code> with <code dir="auto">Retry-After: 1</code> and <code dir="auto">Hopbox-Not-Run: 1</code>, so one client cannot take every slot of the 16,384. A client is an IPv4 address or the /64 of an IPv6 address.</td>
 </tr>
 <tr>
 <td>Open requests of one IPv6 network</td>
-<td>At most 4,096 at once, for all /64s of one IPv6 /48 together. A request past the bound gets <code dir="auto">429 Too Many Requests</code> with <code dir="auto">Retry-After: 1</code>. The count of its /64 does not matter. So one /48 can take at most a quarter of the 16,384. Watch <code dir="auto">hopbox_edge_requests_total{to="refused"}</code> for the refusals of both bounds.</td>
+<td>At most 4,096 at once, for all /64s of one IPv6 /48 together. A request past the bound gets <code dir="auto">429 Too Many Requests</code> with <code dir="auto">Retry-After: 1</code> and <code dir="auto">Hopbox-Not-Run: 1</code>. The count of its /64 does not matter. So one /48 can take at most a quarter of the 16,384. Watch <code dir="auto">hopbox_edge_requests_total{to="refused"}</code> for the refusals of both bounds.</td>
 </tr>
 <tr>
 <td>HTTP/2 frames</td>
@@ -405,10 +405,11 @@
 </tr>
 <tr>
 <td>Failure</td>
-<td><code dir="auto">502 Bad Gateway</code> with a page that says that the control plane did not answer.</td>
+<td><code dir="auto">502 Bad Gateway</code> with a page that says that the control plane did not answer. If the request got no connection to the control role, because of a dial or TLS error, the answer also carries <code dir="auto">Hopbox-Not-Run: 1</code>. After a connection, the control role can have run the call, so the answer has no such header.</td>
 </tr>
 </tbody>
 </table>
+<p>The header <code dir="auto">Hopbox-Not-Run: 1</code> tells a client that the call changed nothing, so the client can retry it (<a href="/reference/api/#answers-of-calls-that-changed-nothing">api.md</a>). The refusals of the bounds of open requests carry it too (<a href="#listeners">Listeners</a>).</p>
 <p>The control role trusts <code dir="auto">Hopbox-Client-Addr</code> only on a connection whose certificate proves a server with the edge role. The rate limits of sign-in then count each client by its own address (<a href="/reference/sessions/#rate-limits">sessions.md</a>).</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="machine-urls">Machine URLs</h2><a class="sl-anchor-link" href="#machine-urls"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Machine URLs”</span></a></div>
 <p>The control role pushes the routes of the machine URLs over the control channel (<a href="/reference/control-channel/#edge-pushes">control-channel.md</a>). A route names a machine that holds its name and is not on its way out. A running machine has a target: the address of the machine on its node, its URL port, and its lease (<a href="/reference/control-store/#route_records">control-store.md</a>).</p>

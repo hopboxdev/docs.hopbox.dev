@@ -369,15 +369,15 @@
 <tbody>
 <tr>
 <td><code dir="auto">unavailable</code></td>
-<td>Yes.</td>
+<td>Only for a call that is safe to run again.</td>
 </tr>
 <tr>
 <td><code dir="auto">resource_exhausted</code></td>
-<td>Yes.</td>
+<td>Only for a call that is safe to run again.</td>
 </tr>
 <tr>
 <td><code dir="auto">deadline_exceeded</code></td>
-<td>Only for a call that is safe to run twice.</td>
+<td>Only for a call that is safe to run again.</td>
 </tr>
 <tr>
 <td>Any other code</td>
@@ -385,8 +385,31 @@
 </tr>
 </tbody>
 </table>
-<p>A call is safe to run twice in two cases. Its method has <code dir="auto">idempotency_level</code> <code dir="auto">NO_SIDE_EFFECTS</code> or <code dir="auto">IDEMPOTENT</code> in the API definitions, as <code dir="auto">GetInstallInfo</code> has. Or it carries an idempotency key. The read calls, such as <code dir="auto">ListOrgs</code>, have no <code dir="auto">idempotency_level</code> yet. So they get no retry after <code dir="auto">deadline_exceeded</code>.</p>
-<p>A call that did not reach the server fails with <code dir="auto">unavailable</code>, so it gets a retry too. In Node.js, an example is a refused connection. In a browser, <code dir="auto">fetch</code> then rejects with a <code dir="auto">TypeError</code>.</p>
+<p>A call is safe to run again in these cases, as for the Go client (<a href="/reference/go-client/#retries">go-client.md</a>):</p>
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>How the client knows it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The call only reads.</td>
+<td>Its method has the option <code dir="auto">(hopbox.v1.read_only)</code>, or <code dir="auto">idempotency_level</code> <code dir="auto">NO_SIDE_EFFECTS</code> or <code dir="auto">IDEMPOTENT</code> (<a href="/reference/api-definitions/#hopboxv1read_only">api-definitions.md</a>). Examples are <code dir="auto">listOrgs</code> and <code dir="auto">getMachine</code>.</td>
+</tr>
+<tr>
+<td>The call carries an idempotency key.</td>
+<td>Its method has the option <code dir="auto">(hopbox.v1.idempotent)</code>, such as <code dir="auto">createMachine</code> (<a href="#idempotency-keys">Idempotency keys</a>).</td>
+</tr>
+<tr>
+<td>The try surely did not reach the server.</td>
+<td>The answer of the try has the header <code dir="auto">NOT_RUN_HEADER</code>, <code dir="auto">Hopbox-Not-Run</code>, with the value <code dir="auto">1</code> (<a href="/reference/api/#answers-of-calls-that-changed-nothing">api.md</a>). In Node.js, the try also counts when it got no connection: the cause of its error has the code <code dir="auto">ECONNREFUSED</code>, <code dir="auto">ENOTFOUND</code>, or <code dir="auto">EAI_AGAIN</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Each other call changes state and has no key, such as <code dir="auto">createInvitation</code>. The client does not retry it after a lost answer, because the server can have run it. A second run can then act twice, for example with a second invitation. The check holds for each try. A refusal with <code dir="auto">Hopbox-Not-Run</code> on the first try, then a lost answer on the second try, ends the call with the error of the second try.</p>
+<p>A network error fails a call with <code dir="auto">unavailable</code>. In a browser, <code dir="auto">fetch</code> then rejects with a <code dir="auto">TypeError</code>, both for a connection that never opened and for a lost answer. So a browser client retries a change without a key only after an answer with <code dir="auto">Hopbox-Not-Run</code>. A read call and a call with a key get their retries in both runtimes. A timeout of the connection, <code dir="auto">ETIMEDOUT</code> in Node.js, can come after the request went out, so it does not count as a try that did not reach the server.</p>
 <p>The wait before a retry has full jitter: a random time from 0 up to 500 ms before the first retry, and up to 1 s before the second (<code dir="auto">BACKOFF_MS</code>). If the error has a <code dir="auto">Retry-After</code> header, the client waits that time instead. The client reads the header as the Go client does. It takes a count of seconds that fits in a signed 64-bit number, such as <code dir="auto">5</code> or <code dir="auto">+5</code>. It also takes an HTTP date in one of the three forms of RFC 9110: <code dir="auto">Wed, 21 Oct 2026 12:00:10 GMT</code>, <code dir="auto">Wednesday, 21-Oct-26 12:00:10 GMT</code>, or <code dir="auto">Wed Oct 21 12:00:10 2026</code>. Any other value counts as no header. The client reads at most <code dir="auto">MAX_RETRY_AFTER_HEADER_MS</code>, 24 hours, from either form. The client calls <code dir="auto">logger.debug("retrying a call", fields)</code> before each retry. A wait of <code dir="auto">LONG_WAIT_MS</code>, 10 s, or more calls <code dir="auto">logger.warn</code> instead. <code dir="auto">fields</code> has <code dir="auto">procedure</code>, <code dir="auto">code</code>, <code dir="auto">retry</code>, and <code dir="auto">waitMs</code>. <code dir="auto">code</code> is the name of the code, such as <code dir="auto">unavailable</code>.</p>
 <p>The client does not retry in these cases:</p>
 <ul>
@@ -830,6 +853,10 @@
 <td><code dir="auto">Retry-After</code></td>
 </tr>
 <tr>
+<td><code dir="auto">NOT_RUN_HEADER</code></td>
+<td><code dir="auto">Hopbox-Not-Run</code></td>
+</tr>
+<tr>
 <td><code dir="auto">WEBSOCKET_EXEC_PATH</code></td>
 <td><code dir="auto">/api/ws/exec</code></td>
 </tr>
@@ -877,7 +904,7 @@
 </table>
 <p><code dir="auto">make test-sdk</code> runs the type check, the build, and the unit tests. Then it runs <code dir="auto">TestTypeScriptSDK</code> of <code dir="auto">internal/control</code> with <code dir="auto">HOPBOX_TEST_SDK=1</code>. It needs <code dir="auto">corepack pnpm install</code> first.</p>
 <ul>
-<li>The unit tests in <code dir="auto">web/packages/sdk/test/*.test.ts</code> run the client against a fake Connect server over HTTP/2 and HTTP/1.1. They check the retries, the waits, <code dir="auto">Retry-After</code>, and the idempotency keys. They also check the typed errors, the credentials, and the user agent. Then they check exec over the stream and over a fake WebSocket, upload, download, and the browser client.</li>
+<li>The unit tests in <code dir="auto">web/packages/sdk/test/*.test.ts</code> run the client against a fake Connect server over HTTP/2 and HTTP/1.1. They check the retries, the waits, <code dir="auto">Retry-After</code>, and the idempotency keys. The table of retries covers a read call, a call with a key, and <code dir="auto">createInvitation</code>, after a lost answer, an error code, an answer with <code dir="auto">Hopbox-Not-Run</code>, and a refused connection, in Node.js and in the browser client. They also check the typed errors, the credentials, and the user agent. Then they check exec over the stream and over a fake WebSocket, upload, download, and the browser client.</li>
 <li><code dir="auto">TestTypeScriptSDK</code> serves the real public API of a control role. Its node runs a machine <code dir="auto">box1</code> with the real guest agent and the test VMM driver. The test makes an API key, then runs <code dir="auto">test/e2e/sdk.test.ts</code> with vitest. The suite checks exec over the stream and over the WebSocket, and a terminal with a resize. It also checks upload, download, and the log. Then it checks an idempotent replay, the details of a taken name, and a call with the session cookie of the console. It runs exec over the WebSocket with the session cookie and the <code dir="auto">Origin</code> of the console, and checks that another <code dir="auto">Origin</code> is refused.</li>
 </ul>
 <p>The test reads each file of the SDK and of its tests first. So <code dir="auto">go test</code> runs it again after a change of the SDK, instead of a result from its cache. Without <code dir="auto">web/packages/sdk/node_modules</code>, <code dir="auto">TestTypeScriptSDK</code> skips, so <code dir="auto">make test</code> passes without Node.js. With <code dir="auto">HOPBOX_TEST_SDK</code> set, it fails instead.</p>

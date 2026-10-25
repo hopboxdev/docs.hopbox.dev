@@ -156,15 +156,15 @@
 <tbody>
 <tr>
 <td><code dir="auto">unavailable</code></td>
-<td>Yes.</td>
+<td>Only for a call that is safe to run again.</td>
 </tr>
 <tr>
 <td><code dir="auto">resource_exhausted</code></td>
-<td>Yes.</td>
+<td>Only for a call that is safe to run again.</td>
 </tr>
 <tr>
 <td><code dir="auto">deadline_exceeded</code></td>
-<td>Only for a call that is safe to run twice.</td>
+<td>Only for a call that is safe to run again.</td>
 </tr>
 <tr>
 <td>Any other code</td>
@@ -172,12 +172,40 @@
 </tr>
 </tbody>
 </table>
-<p>A call is safe to run twice in two cases. Its method has <code dir="auto">idempotency_level</code> <code dir="auto">NO_SIDE_EFFECTS</code> or <code dir="auto">IDEMPOTENT</code> in the API definitions, as <code dir="auto">GetInstallInfo</code> has. Or it carries an idempotency key. The read calls, such as <code dir="auto">ListOrgs</code>, have no <code dir="auto">idempotency_level</code> yet. So they get no retry after <code dir="auto">deadline_exceeded</code>.</p>
+<p>A call is safe to run again in these cases:</p>
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>How the client knows it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The call only reads.</td>
+<td>Its method has the option <code dir="auto">(hopbox.v1.read_only)</code>, or <code dir="auto">idempotency_level</code> <code dir="auto">NO_SIDE_EFFECTS</code> or <code dir="auto">IDEMPOTENT</code> (<a href="/reference/api-definitions/#hopboxv1read_only">api-definitions.md</a>). Examples are <code dir="auto">ListOrgs</code> and <code dir="auto">GetMachine</code>.</td>
+</tr>
+<tr>
+<td>The call carries an idempotency key.</td>
+<td>Its method has the option <code dir="auto">(hopbox.v1.idempotent)</code>, such as <code dir="auto">CreateMachine</code> (<a href="#idempotency-keys">Idempotency keys</a>).</td>
+</tr>
+<tr>
+<td>The try surely did not reach the server.</td>
+<td>The try got no connection, because of a dial or TLS error, such as a refused connection. Or the answer of the try has the header <code dir="auto">NotRunHeader</code>, <code dir="auto">Hopbox-Not-Run</code>, with the value <code dir="auto">1</code> (<a href="/reference/api/#answers-of-calls-that-changed-nothing">api.md</a>).</td>
+</tr>
+</tbody>
+</table>
+<p>Each other call changes state and has no key, such as <code dir="auto">CreateInvitation</code>. The client does not retry it after a lost answer, because the server can have run it. A second run can then act twice, for example with a second invitation. The client retries such a call only after a try that surely did not reach the server. The check holds for each try. A refusal with <code dir="auto">Hopbox-Not-Run</code> on the first try, then a lost answer on the second try, ends the call with the error of the second try.</p>
+<p>A try that ends without an answer can have run. A reset of an HTTP/2 stream, such as a server that drops the call, fails with <code dir="auto">internal</code>, which never gets a retry. A try that waits for an answer until <code dir="auto">AttemptTimeout</code> fails with <code dir="auto">deadline_exceeded</code>. Only a call that is safe to run again then goes again.</p>
+<p><code dir="auto">RefreshCLIToken</code> from a <code dir="auto">TokenSource</code> is the one exception, as the owner decided on 2026-10-25. The refresh changes state and has no key. But the install takes a replaced refresh token once more within its <code dir="auto">RefreshGrace</code> of 10 s (<a href="/reference/credentials/#cli-tokens">credentials.md</a>). So after a lost answer, the client sends the refresh once more, if that retry starts within <code dir="auto">RefreshReplayWindow</code>, 10 s, of the start of the first try. The wait before the retry counts. The same bound holds for every later try of the refresh after the lost answer, also a retry after a refusal with <code dir="auto">Hopbox-Not-Run</code>, because each such try uses the one replay of the grace. The client gives up rather than start any of them later. Only <code dir="auto">RefreshCLIToken</code> gets this retry, whatever the context of another call holds. The window starts before the install replaces the token, so a retry that reaches the install soon after its start falls within the grace. A retry that the network holds back past the grace counts as a reuse, and ends the CLI sign-in. A second lost answer fails the call. The other rules of the table still apply, so a refusal with <code dir="auto">Hopbox-Not-Run</code> before the lost answer does not use up the one retry.</p>
+<p>The client reads <code dir="auto">Hopbox-Not-Run</code> from the HTTP answer, so it also sees the header on an answer that is not a Connect error, such as the <code dir="auto">502</code> page of an edge server. For this, <code dir="auto">New</code> wraps the transport of <code dir="auto">Options.HTTPClient</code> in a copy of that client. The wrapper looks at each HTTP request of a try, and only the last one counts. The credential step can send a call twice in one try: after <code dir="auto">unauthenticated</code>, it sends the call again with a new token. So a refusal with <code dir="auto">Hopbox-Not-Run</code> before a request that ran does not let the call go again.</p>
+<p>The client knows that a try got no connection from two signs. A <code dir="auto">ConnectDone</code> event of <code dir="auto">net/http/httptrace</code> reports a failed dial, before any <code dir="auto">GotConn</code> event. Or the error is one that only a dial or a TLS handshake returns: a dial <code dir="auto">*net.OpError</code>, a <code dir="auto">*net.DNSError</code>, a <code dir="auto">tls.RecordHeaderError</code>, or a <code dir="auto">*tls.CertificateVerificationError</code>. Any other error counts as a try that can have run. So a transport of your own that reports no such events never makes a lost answer look like a request that never left. The edge servers use the same check (<code dir="auto">internal/notrun</code>).</p>
 <p>The wait before a retry has full jitter: a random time from 0 up to 500 ms before the first retry, and up to 1 s before the second. If the error has a <code dir="auto">Retry-After</code> header, the client waits that time instead. The header holds seconds, or an HTTP date. The client reads at most <code dir="auto">MaxRetryAfterHeader</code>, 24 hours, from either form, so a date far ahead counts as 24 hours. A wait of <code dir="auto">LongWait</code>, 10 s, or more logs <code dir="auto">retrying a call</code> at level warn. A shorter one logs it at level debug. The client does not retry in these cases:</p>
 <ul>
 <li><code dir="auto">MaxRetryAfter</code> is set, and <code dir="auto">Retry-After</code> is longer.</li>
 <li>The wait ends after the deadline of the context of the call.</li>
 <li>The context of the call ends.</li>
+<li>The credential step failed, also for a read call. An example is a refresh of CLI tokens that failed after its own retries. One more refresh with the same token would end the CLI sign-in.</li>
 </ul>
 <p>Each try has its own deadline, <code dir="auto">AttemptTimeout</code>. A try that runs out of time fails with <code dir="auto">deadline_exceeded</code>, and the table above applies.</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="errors">Errors</h2><a class="sl-anchor-link" href="#errors"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Errors”</span></a></div>
@@ -327,7 +355,7 @@
 <li>If the tokens belong to another install, fail with <code dir="auto">ErrSignedOut</code>.</li>
 <li>If the stored access token lives for more than 1 minute, and the server did not refuse it, keep it and return it. Another process refreshed meanwhile.</li>
 <li>If the refresh token ended, fail with <code dir="auto">ErrSignedOut</code>.</li>
-<li>Call <code dir="auto">RefreshCLIToken</code> with the stored refresh token. The call waits at most <code dir="auto">RefreshMaxRetryAfter</code>, 30 s, for a <code dir="auto">Retry-After</code>. A shorter <code dir="auto">MaxRetryAfter</code> of the options wins. The refresh holds the lock of the store, and every other process of the CLI waits for that lock. If the server refuses it, call <code dir="auto">ClearIf</code> with that refresh token, and fail with <code dir="auto">ErrSignedOut</code>. If the store still holds that refresh token, <code dir="auto">ClearIf</code> deletes the stored tokens. Else it keeps them.</li>
+<li>Call <code dir="auto">RefreshCLIToken</code> with the stored refresh token. After a lost answer, the call goes once more within <code dir="auto">RefreshReplayWindow</code> (<a href="#retries">Retries</a>). If that answer gets lost too, fail, and keep the store as it is. The call waits at most <code dir="auto">RefreshMaxRetryAfter</code>, 30 s, for a <code dir="auto">Retry-After</code>. A shorter <code dir="auto">MaxRetryAfter</code> of the options wins. The refresh holds the lock of the store, and every other process of the CLI waits for that lock. If the server refuses it, call <code dir="auto">ClearIf</code> with that refresh token, and fail with <code dir="auto">ErrSignedOut</code>. If the store still holds that refresh token, <code dir="auto">ClearIf</code> deletes the stored tokens. Else it keeps them.</li>
 <li>Save the new tokens, and return the new access token. If the save fails, call <code dir="auto">ClearIf</code> with the old refresh token, log <code dir="auto">the refreshed CLI tokens could not be stored, so the next command must sign in again</code> at level warn, and still return the token.</li>
 </ol>
 <p>The install replaces the refresh token before step 7 saves the new one. Two cases leave the old refresh token in the store: the save and the <code dir="auto">ClearIf</code> both fail, or the process dies between steps 6 and 7. The next refresh sends it again, and the install ends the sign-in as a reuse. The steps make this unlikely, but they cannot rule it out.</p>
@@ -335,8 +363,8 @@
 <p>A replaced refresh token ends the sign-in, so these steps never send one. The store must have a real lock. The grace of 10 s of the install covers only one second refresh with the same token. So three processes that refresh at once without a lock end the sign-in. The store of the CLI refuses a dir without file locks (<a href="/reference/cli/#files">cli.md</a>). Two processes without a lock both get tokens through the grace, and the next refresh drops the second chain. Its process then reads the store again at the next refusal.</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="tests">Tests</h2><a class="sl-anchor-link" href="#tests"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Tests”</span></a></div>
 <ul>
-<li><code dir="auto">internal/client/client_test.go</code> checks the retries, the waits, <code dir="auto">Retry-After</code>, the idempotency keys, the typed errors, and the credentials against a fake API.</li>
+<li><code dir="auto">internal/client/client_test.go</code> checks the retries, the waits, <code dir="auto">Retry-After</code>, the idempotency keys, the typed errors, and the credentials against a fake API. Its table of retries covers a read call, a call with a key, and <code dir="auto">CreateInvitation</code>, after a lost answer, an error code, an answer with <code dir="auto">Hopbox-Not-Run</code>, and a refused connection. Other tests cover a reset stream, a hung answer, a resend with a new token after a refusal, a transport without connection events, and TLS with HTTP/2. <code dir="auto">TestARefreshReplaysOnceWithinTheWindow</code> checks the one retry of a refresh, with a clock of the test, before and after the window.</li>
 <li><code dir="auto">internal/client/tokens_test.go</code> checks <code dir="auto">TokenSource</code> with a store in memory.</li>
-<li><code dir="auto">internal/client/server_test.go</code> runs against a real install of <code dir="auto">internal/api/apitest</code>. Four processes with one store make one refresh. Two processes without a lock both refresh through the grace, and the sign-in goes on after the next refresh. This shows the most that the grace covers. A sign-in that the console ends clears the store.</li>
+<li><code dir="auto">internal/client/server_test.go</code> runs against a real install of <code dir="auto">internal/api/apitest</code>. Four processes with one store make one refresh. Two processes without a lock both refresh through the grace, and the sign-in goes on after the next refresh. This shows the most that the grace covers. A sign-in that the console ends clears the store. One lost answer of a refresh recovers with no reuse, and the sign-in goes on. Two lost answers fail the call and keep the store as it is.</li>
 </ul>
 </div><footer class="sl-flex astro-fzngq47q"><div class="meta sl-flex astro-fzngq47q"></div><div class="pagination-links print:hidden astro-7jhddma2" dir="ltr"><a href="/reference/console/" rel="prev" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-7jhddma2">Previous<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">Console</span></span></a><a href="/reference/ts-sdk/" rel="next" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-7jhddma2">Next<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">TypeScript SDK</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>
