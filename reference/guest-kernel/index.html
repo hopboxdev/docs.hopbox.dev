@@ -1,0 +1,613 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-toc data-has-sidebar class="astro-g6oqdoeg"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Guest kernel | hopbox docs</title><link rel="canonical" href="https://docs.hopbox.dev/reference/guest-kernel/"/><link rel="sitemap" href="/sitemap-index.xml"/><link rel="shortcut icon" href="/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.3.8"/><meta name="generator" content="Starlight v0.42.6"/><meta property="og:title" content="Guest kernel"/><meta property="og:type" content="article"/><meta property="og:url" content="https://docs.hopbox.dev/reference/guest-kernel/"/><meta property="og:locale" content="en"/><meta property="og:description" content="The source, config, fragment, builder, outputs, make targets, boot arguments, and security modules of the guest kernel."/><meta property="og:site_name" content="hopbox docs"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="The source, config, fragment, builder, outputs, make targets, boot arguments, and security modules of the guest kernel."/><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/_astro/print.ehPL0gv-.css" media="print"><link rel="stylesheet" href="/_astro/middleware.DkUYdNkX.css"><script type="module" src="/_astro/page.cNngjUgL.js"></script></head><body class="astro-g6oqdoeg"><a class="sl-skip-link astro-ktawktwe" href="#_top">Skip to content</a><div class="page sl-flex astro-vlwsw6sx"><header class="header astro-vlwsw6sx"><div class="header astro-qe7tu4yu"><div class="title-wrapper sl-flex astro-qe7tu4yu"><a href="/" class="site-title sl-flex astro-42muqipg"><span class="astro-42muqipg" translate="no">hopbox docs</span></a></div><div class="sl-flex print:hidden astro-qe7tu4yu"><site-search class="astro-qe7tu4yu astro-yp365hkw" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"><button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-yp365hkw"><svg aria-hidden="true" class="astro-yp365hkw astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg><span class="sl-hidden md:sl-block astro-yp365hkw" aria-hidden="true">Search</span><kbd class="sl-hidden md:sl-flex astro-yp365hkw" style="display: none;"><kbd class="astro-yp365hkw">Ctrl</kbd><kbd class="astro-yp365hkw">K</kbd></kbd></button><dialog style="padding:0" aria-label="Search" class="astro-yp365hkw"><div class="dialog-frame sl-flex astro-yp365hkw"><button data-close-modal class="sl-flex md:sl-hidden astro-yp365hkw">Cancel</button><div class="search-container astro-yp365hkw"><div id="starlight__search" class="astro-yp365hkw"></div></div></div></dialog></site-search><script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script><script type="module" src="/_astro/Search.astro_astro_type_script_index_0_lang.g9hoxVJg.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-qe7tu4yu"><div class="sl-flex social-icons astro-qe7tu4yu"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script><script type="module">var e=`starlight-theme`,t=e=>e===`auto`||e===`dark`||e===`light`?e:`auto`,n=()=>t(typeof localStorage<`u`&&localStorage.getItem(e));function r(t){typeof localStorage<`u`&&localStorage.setItem(e,t===`light`||t===`dark`?t:``)}var i=()=>matchMedia(`(prefers-color-scheme: light)`).matches?`light`:`dark`;function a(e){StarlightThemeProvider.updatePickers(e),document.documentElement.dataset.theme=e===`auto`?i():e,r(e)}matchMedia(`(prefers-color-scheme: light)`).addEventListener(`change`,()=>{n()===`auto`&&a(`auto`)});var o=class extends HTMLElement{constructor(){super(),a(n()),this.querySelector(`select`)?.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&a(t(e.currentTarget.value))})}};customElements.define(`starlight-theme-select`,o);</script><script type="module">var e=class extends HTMLElement{constructor(){super();let e=this.querySelector(`select`);e&&(e.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=e.currentTarget.value)}),window.addEventListener(`pageshow`,t=>{if(!t.persisted)return;let n=e.querySelector(`option[selected]`)?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}};customElements.define(`starlight-lang-select`,e);</script></div></div></header><nav class="sidebar print:hidden astro-vlwsw6sx" aria-label="Main"><button popovertarget="starlight__sidebar" class="sl-menu-button sl-flex md:sl-hidden print:hidden astro-ibd3qwco"><svg aria-hidden="true" class="open-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg><span class="sr-only astro-ibd3qwco">Menu</span></button><script type="module">var e=class extends HTMLElement{constructor(){super();let e=matchMedia(`(min-width: 50em)`),t=()=>{this.popover=e.matches?null:`auto`};t(),e.addEventListener(`change`,()=>t()),this.addEventListener(`toggle`,({newState:e})=>this.trapFocus(e===`open`))}trapFocus(e){document.querySelectorAll(`.main-frame, .sl-skip-link`).forEach(t=>{t.toggleAttribute(`inert`,e)})}};customElements.define(`sl-sidebar-pane`,e);</script><sl-sidebar-pane popover id="starlight__sidebar" class="sidebar-pane astro-vlwsw6sx"><div class="sidebar-content sl-flex astro-vlwsw6sx"><sl-sidebar-state-persist data-hash="0qsyok1" class="astro-oblzz35h"><script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script><ul class="top-level astro-twzrdani"><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Guides</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/guide/run-hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">Run the control role on a laptop</span></a></li><li class="astro-twzrdani"><a href="/guide/install-on-ovhcloud/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on an OVHcloud server with Terraform</span></a></li><li class="astro-twzrdani"><a href="/guide/enroll-node/" class="astro-twzrdani"><span class="astro-twzrdani">Enroll the node role on one server</span></a></li><li class="astro-twzrdani"><a href="/guide/dns-role/" class="astro-twzrdani"><span class="astro-twzrdani">Serve the domain of an install with the DNS role</span></a></li><li class="astro-twzrdani"><a href="/guide/acme-certificate/" class="astro-twzrdani"><span class="astro-twzrdani">Get the wildcard certificate of an install</span></a></li><li class="astro-twzrdani"><a href="/guide/machine-urls/" class="astro-twzrdani"><span class="astro-twzrdani">Run the edge role and open machine URLs</span></a></li><li class="astro-twzrdani"><a href="/guide/first-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">First sign-in on a new install</span></a></li><li class="astro-twzrdani"><a href="/guide/github-google-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/guide/orgs/" class="astro-twzrdani"><span class="astro-twzrdani">Work in a team org</span></a></li><li class="astro-twzrdani"><a href="/guide/env-vars/" class="astro-twzrdani"><span class="astro-twzrdani">Set env vars and secrets</span></a></li><li class="astro-twzrdani"><a href="/guide/machines/" class="astro-twzrdani"><span class="astro-twzrdani">Create and manage machines</span></a></li><li class="astro-twzrdani"><a href="/guide/firecracker-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Run machines with Firecracker</span></a></li><li class="astro-twzrdani"><a href="/guide/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">Check the network of a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/cli/" class="astro-twzrdani"><span class="astro-twzrdani">Use the hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Use machines from the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-prompt/" class="astro-twzrdani"><span class="astro-twzrdani">Work in the prompt of the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/ssh/" class="astro-twzrdani"><span class="astro-twzrdani">Reach a machine over SSH</span></a></li><li class="astro-twzrdani"><a href="/guide/exec-and-files/" class="astro-twzrdani"><span class="astro-twzrdani">Run commands and copy files in a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">Connect an AI agent to hopbox with MCP</span></a></li><li class="astro-twzrdani"><a href="/guide/console/" class="astro-twzrdani"><span class="astro-twzrdani">Use the console</span></a></li><li class="astro-twzrdani"><a href="/guide/typescript-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">Call the API from TypeScript</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-and-keys/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in the CLI, and make API keys and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/guide/install-debian/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on a Debian 13 server by hand</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Reference</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="1"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/reference/hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/release-bundle/" class="astro-twzrdani"><span class="astro-twzrdani">Release bundle</span></a></li><li class="astro-twzrdani"><a href="/reference/server-layout/" class="astro-twzrdani"><span class="astro-twzrdani">Server layout</span></a></li><li class="astro-twzrdani"><a href="/reference/hopboxd-config/" class="astro-twzrdani"><span class="astro-twzrdani">The bootstrap config of hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/api/" class="astro-twzrdani"><span class="astro-twzrdani">The API server</span></a></li><li class="astro-twzrdani"><a href="/reference/org-api/" class="astro-twzrdani"><span class="astro-twzrdani">The org API</span></a></li><li class="astro-twzrdani"><a href="/reference/vars-api/" class="astro-twzrdani"><span class="astro-twzrdani">The env var API</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-api/" class="astro-twzrdani"><span class="astro-twzrdani">The machine API</span></a></li><li class="astro-twzrdani"><a href="/reference/placement/" class="astro-twzrdani"><span class="astro-twzrdani">Placement</span></a></li><li class="astro-twzrdani"><a href="/reference/auth-api/" class="astro-twzrdani"><span class="astro-twzrdani">The sign-in, account, and audit API</span></a></li><li class="astro-twzrdani"><a href="/reference/credentials/" class="astro-twzrdani"><span class="astro-twzrdani">CLI tokens, API keys, admin API keys, and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/reference/sessions/" class="astro-twzrdani"><span class="astro-twzrdani">Sessions, cookies, and sign-in links</span></a></li><li class="astro-twzrdani"><a href="/reference/smtp/" class="astro-twzrdani"><span class="astro-twzrdani">SMTP config</span></a></li><li class="astro-twzrdani"><a href="/reference/mail/" class="astro-twzrdani"><span class="astro-twzrdani">Mail</span></a></li><li class="astro-twzrdani"><a href="/reference/oauth/" class="astro-twzrdani"><span class="astro-twzrdani">Sign-in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/reference/metrics/" class="astro-twzrdani"><span class="astro-twzrdani">Metrics</span></a></li><li class="astro-twzrdani"><a href="/reference/admin-api/" class="astro-twzrdani"><span class="astro-twzrdani">The admin API</span></a></li><li class="astro-twzrdani"><a href="/reference/internal-listener/" class="astro-twzrdani"><span class="astro-twzrdani">The internal listener</span></a></li><li class="astro-twzrdani"><a href="/reference/enrollment/" class="astro-twzrdani"><span class="astro-twzrdani">Enrollment and the install PKI</span></a></li><li class="astro-twzrdani"><a href="/reference/control-channel/" class="astro-twzrdani"><span class="astro-twzrdani">The control channel</span></a></li><li class="astro-twzrdani"><a href="/reference/dns/" class="astro-twzrdani"><span class="astro-twzrdani">The DNS role</span></a></li><li class="astro-twzrdani"><a href="/reference/edge/" class="astro-twzrdani"><span class="astro-twzrdani">The edge role</span></a></li><li class="astro-twzrdani"><a href="/reference/ssh-front-door/" class="astro-twzrdani"><span class="astro-twzrdani">The SSH front door</span></a></li><li class="astro-twzrdani"><a href="/reference/acme/" class="astro-twzrdani"><span class="astro-twzrdani">The certificate of the install</span></a></li><li class="astro-twzrdani"><a href="/reference/executor-protocol/" class="astro-twzrdani"><span class="astro-twzrdani">The executor protocol</span></a></li><li class="astro-twzrdani"><a href="/reference/executor/" class="astro-twzrdani"><span class="astro-twzrdani">The node executor</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-logs/" class="astro-twzrdani"><span class="astro-twzrdani">Machine logs</span></a></li><li class="astro-twzrdani"><a href="/reference/vmm/" class="astro-twzrdani"><span class="astro-twzrdani">The VMM driver interface</span></a></li><li class="astro-twzrdani"><a href="/reference/firecracker-driver/" class="astro-twzrdani"><span class="astro-twzrdani">The Firecracker driver</span></a></li><li class="astro-twzrdani"><a href="/reference/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">The node network</span></a></li><li class="astro-twzrdani"><a href="/reference/preflight/" class="astro-twzrdani"><span class="astro-twzrdani">The preflight check</span></a></li><li class="astro-twzrdani"><a href="/reference/cli/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/reference/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">The MCP server</span></a></li><li class="astro-twzrdani"><a href="/reference/console/" class="astro-twzrdani"><span class="astro-twzrdani">Console</span></a></li><li class="astro-twzrdani"><a href="/reference/go-client/" class="astro-twzrdani"><span class="astro-twzrdani">Go client</span></a></li><li class="astro-twzrdani"><a href="/reference/ts-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">TypeScript SDK</span></a></li><li class="astro-twzrdani"><a href="/reference/hopbox-guest/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox-guest</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-link/" class="astro-twzrdani"><span class="astro-twzrdani">Guest link</span></a></li><li class="astro-twzrdani"><a href="/reference/terraform-provider/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox Terraform provider</span></a></li><li class="astro-twzrdani"><a href="/reference/version/" class="astro-twzrdani"><span class="astro-twzrdani">The version command</span></a></li><li class="astro-twzrdani"><a href="/reference/api-definitions/" class="astro-twzrdani"><span class="astro-twzrdani">API definitions</span></a></li><li class="astro-twzrdani"><a href="/reference/postgres/" class="astro-twzrdani"><span class="astro-twzrdani">The bundled Postgres</span></a></li><li class="astro-twzrdani"><a href="/reference/domain-rules/" class="astro-twzrdani"><span class="astro-twzrdani">Domain rules</span></a></li><li class="astro-twzrdani"><a href="/reference/control-store/" class="astro-twzrdani"><span class="astro-twzrdani">Control store tables</span></a></li><li class="astro-twzrdani"><a href="/reference/sealing/" class="astro-twzrdani"><span class="astro-twzrdani">Sealing</span></a></li><li class="astro-twzrdani"><a href="/reference/host-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Host kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-kernel/" aria-current="page" class="astro-twzrdani"><span class="astro-twzrdani">Guest kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/default-image/" class="astro-twzrdani"><span class="astro-twzrdani">Default image</span></a></li><li class="astro-twzrdani"><a href="/reference/artifact-format/" class="astro-twzrdani"><span class="astro-twzrdani">Artifact format</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Releases</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="2"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/releases/v0.1.0/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox v0.1.0</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="3"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Public API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="4"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="5"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicecreatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">CreateMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicegetmachine/" class="astro-twzrdani"><span class="astro-twzrdani">GetMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachinesizes/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachineSizes</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerebootmachine/" class="astro-twzrdani"><span class="astro-twzrdani">RebootMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerenamemachine/" class="astro-twzrdani"><span class="astro-twzrdani">RenameMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlport/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLPort</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlvisibility/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLVisibility</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">ShareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestartmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StartMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceunsharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UnshareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceupdatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.InstallService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="6"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1installservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1installservicegetinstallinfo/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallInfo</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="7"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicedeleteaccount/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceendclisignin/" class="astro-twzrdani"><span class="astro-twzrdani">EndCLISignIn</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicegetaccount/" class="astro-twzrdani"><span class="astro-twzrdani">GetAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistclisignins/" class="astro-twzrdani"><span class="astro-twzrdani">ListCLISignIns</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceremovesigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSignInMethod</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceupdateaccount/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateAccount</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.APIKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="8"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1apikeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicecreateapikey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAPIKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicelistapikeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAPIKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicerevokeapikey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAPIKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuditService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="9"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1auditservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1auditservicelistauditentries/" class="astro-twzrdani"><span class="astro-twzrdani">ListAuditEntries</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuthService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="10"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1authservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceapprovedevice/" class="astro-twzrdani"><span class="astro-twzrdani">ApproveDevice</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicegetdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">GetDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicepolldeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">PollDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerefreshclitoken/" class="astro-twzrdani"><span class="astro-twzrdani">RefreshCLIToken</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerequestmagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">RequestMagicLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicesignout/" class="astro-twzrdani"><span class="astro-twzrdani">SignOut</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicestartdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">StartDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifyloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyLoginLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifymagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyMagicLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="11"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceacceptinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">AcceptInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">CreateInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateorg/" class="astro-twzrdani"><span class="astro-twzrdani">CreateOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicedeleteorg/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorg/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorgusage/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrgUsage</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceleaveorg/" class="astro-twzrdani"><span class="astro-twzrdani">LeaveOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistinvitations/" class="astro-twzrdani"><span class="astro-twzrdani">ListInvitations</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgmembers/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgMembers</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceremoveorgmember/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveOrgMember</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicerevokeinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicesetorgmemberrole/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgMemberRole</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceupdateorg/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.SSHKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="12"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1sshkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceaddsshkey/" class="astro-twzrdani"><span class="astro-twzrdani">AddSSHKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyservicelistsshkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListSSHKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceremovesshkey/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSSHKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.VarService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="13"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1varservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicedeletevar/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteVar</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicelistvars/" class="astro-twzrdani"><span class="astro-twzrdani">ListVars</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicesetvar/" class="astro-twzrdani"><span class="astro-twzrdani">SetVar</span></a></li></ul></details></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Admin API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="14"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="15"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountservicelistaccountsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListAccountSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountserviceremoveaccountsigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveAccountSignInMethod</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AdminKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="16"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1adminkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicecreateadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicelistadminkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAdminKeys</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyserviceregisteradminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicerevokeadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAdminKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.CertificateService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="17"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1certificateservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1certificateservicegetcertificate/" class="astro-twzrdani"><span class="astro-twzrdani">GetCertificate</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ImageService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="18"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1imageservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageservicelistimages/" class="astro-twzrdani"><span class="astro-twzrdani">ListImages</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageserviceregisterimage/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterImage</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstallConfigService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="19"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1installconfigservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">ClearOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">ClearSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetoauthconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetOAuthConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">SetOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">SetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceupdateinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateInstallConfig</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstanceAdminService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="20"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1instanceadminservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicegrantinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">GrantInstanceAdmin</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicelistinstanceadmins/" class="astro-twzrdani"><span class="astro-twzrdani">ListInstanceAdmins</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicerevokeinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInstanceAdmin</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.KeyringService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="21"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1keyringservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicelistkeks/" class="astro-twzrdani"><span class="astro-twzrdani">ListKEKs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerewrapsealedvalues/" class="astro-twzrdani"><span class="astro-twzrdani">RewrapSealedValues</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerotatekek/" class="astro-twzrdani"><span class="astro-twzrdani">RotateKEK</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.LoginLinkService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="22"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1loginlinkservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1loginlinkservicecreateloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">CreateLoginLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="23"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MailService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="24"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1mailservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicegetmailfile/" class="astro-twzrdani"><span class="astro-twzrdani">GetMailFile</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicelistmailfiles/" class="astro-twzrdani"><span class="astro-twzrdani">ListMailFiles</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="25"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicegetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">GetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">SuspendOrg</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgserviceunsuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">UnsuspendOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ServerService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="26"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1serverservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">CordonServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecreateenrollmenttoken/" class="astro-twzrdani"><span class="astro-twzrdani">CreateEnrollmentToken</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicedecommissionserver/" class="astro-twzrdani"><span class="astro-twzrdani">DecommissionServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicegetserver/" class="astro-twzrdani"><span class="astro-twzrdani">GetServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicelistservers/" class="astro-twzrdani"><span class="astro-twzrdani">ListServers</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicesetserverlabels/" class="astro-twzrdani"><span class="astro-twzrdani">SetServerLabels</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverserviceuncordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">UncordonServer</span></a></li></ul></details></li></ul></details></li></ul></details></li></ul><script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-jl756n3h"><div class="social-icons astro-jl756n3h"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script></div></div></div></sl-sidebar-pane></nav><div class="main-frame astro-vlwsw6sx"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-bfhpgjcp"><aside class="right-sidebar-container print:hidden astro-bfhpgjcp"><div class="right-sidebar astro-bfhpgjcp"><div class="lg:sl-hidden astro-6ky2bkwt"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-bwzeb267"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-bwzeb267"><details id="starlight__mobile-toc" class="astro-bwzeb267"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-bwzeb267"><span class="toggle sl-flex astro-bwzeb267">On this page<svg aria-hidden="true" class="caret astro-bwzeb267 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-bwzeb267"></span></summary><div class="dropdown astro-bwzeb267"><ul class="isMobile astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#files" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Files</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#source" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Source</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#base-config" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Base config</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#config-fragment" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Config fragment</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#boot-requirements" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Boot requirements</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#security-modules" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Security modules</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#builder-image" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Builder image</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#reproducible-build" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Reproducible build</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#outputs" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Outputs</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#make-targets" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Make targets</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#checks" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Checks</span></a></li></ul></div></details></nav></mobile-starlight-toc><script type="module" src="/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.C3fM4Kra.js"></script></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-6ky2bkwt"><div class="sl-container astro-6ky2bkwt"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#files" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Files</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#source" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Source</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#base-config" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Base config</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#config-fragment" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Config fragment</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#boot-requirements" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Boot requirements</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#security-modules" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Security modules</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#builder-image" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Builder image</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#reproducible-build" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Reproducible build</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#outputs" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Outputs</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#make-targets" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Make targets</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#checks" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Checks</span></a></li></ul></nav></starlight-toc><script type="module" src="/_astro/TableOfContents.astro_astro_type_script_index_0_lang.BpJaGz7G.js"></script></div></div></div></aside><div class="main-pane astro-bfhpgjcp"><main data-pagefind-body class="astro-g6oqdoeg" lang="en" dir="ltr"><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><h1 id="_top" class="astro-42k5req6">Guest kernel</h1></div></div><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><div class="sl-markdown-content"><p>The guest kernel boots every machine. It is the Amazon Linux 6.1 microVM kernel, with the Firecracker 6.1 config and a hopbox config fragment. The recipe lives in <code dir="auto">kernel/</code>. Two builds of the same recipe give the same <code dir="auto">vmlinux</code>, byte for byte. <code dir="auto">make kernel</code> builds it in Docker (the build guide of the repo has the steps, and how to change the kernel).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="files">Files</h2><a class="sl-anchor-link" href="#files"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Files”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>What it holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">kernel/kernel.env</code></td>
+<td>The pins: the source, the base config, and the build stamp.</td>
+</tr>
+<tr>
+<td><code dir="auto">kernel/hopbox.config</code></td>
+<td>The config fragment. It holds every option that hopbox needs.</td>
+</tr>
+<tr>
+<td><code dir="auto">kernel/Dockerfile</code></td>
+<td>The builder image.</td>
+</tr>
+<tr>
+<td><code dir="auto">kernel/build.sh</code></td>
+<td>Runs the build in the builder image. <code dir="auto">make kernel</code> calls it.</td>
+</tr>
+<tr>
+<td><code dir="auto">kernel/container.sh</code></td>
+<td>The build steps inside the builder image.</td>
+</tr>
+<tr>
+<td><code dir="auto">kernel/vmlinux.config</code></td>
+<td>The final <code dir="auto">.config</code>. <code dir="auto">make kernel</code> writes it. Do not edit it by hand.</td>
+</tr>
+<tr>
+<td><code dir="auto">kernel/vmlinux.sha256</code></td>
+<td>The sha256 of the last <code dir="auto">vmlinux</code> and of its config. <code dir="auto">make kernel</code> writes it. Do not edit it by hand.</td>
+</tr>
+<tr>
+<td><code dir="auto">tools/kconfigcheck</code></td>
+<td>Checks that a final config keeps every option of the fragment.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h2"><h2 id="source">Source</h2><a class="sl-anchor-link" href="#source"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Source”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Kernel version</td>
+<td>6.1.188</td>
+</tr>
+<tr>
+<td>Repository</td>
+<td><code dir="auto">https://github.com/amazonlinux/linux</code></td>
+</tr>
+<tr>
+<td>Tag</td>
+<td><code dir="auto">microvm-kernel-6.1.188-56.393.amzn2023</code> (tag object <code dir="auto">a9ea02bac2b0d3906e5ca32dd91fd0d406eb4951</code>)</td>
+</tr>
+<tr>
+<td>Commit</td>
+<td><code dir="auto">8785eb28815fdac7e6743bb6fad34ef67dc24b26</code></td>
+</tr>
+<tr>
+<td>Tarball</td>
+<td><code dir="auto">https://codeload.github.com/amazonlinux/linux/tar.gz/8785eb28815fdac7e6743bb6fad34ef67dc24b26</code>, 224,970,436 bytes</td>
+</tr>
+<tr>
+<td>Tarball sha256</td>
+<td><code dir="auto">11cd54507d034b43f41690045ab26d90c8143f38210e9633432bc8a7c3eded2a</code></td>
+</tr>
+</tbody>
+</table>
+<p>The build fetches the tarball by the commit, not by the tag, so a moved tag cannot change the source. If the tarball has another sha256, the build stops. If <code dir="auto">make kernelversion</code> of the source is not the version in <code dir="auto">kernel.env</code>, the build also stops.</p>
+<p>GitHub makes the tarball on request. If GitHub changes how it makes archives, the sha256 changes and the build stops. In that case, check the new tarball against a git checkout of the commit before you change the pin.</p>
+<p>Firecracker builds its 6.1 test kernels from the <code dir="auto">microvm-kernel-*</code> tags. The tag above is the newest 6.1 microVM tag on 2026-10-15. It is later than 6.1.167, so it has the VMClock generation counter.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="base-config">Base config</h2><a class="sl-anchor-link" href="#base-config"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Base config”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Firecracker version</td>
+<td>v1.17.0</td>
+</tr>
+<tr>
+<td>File</td>
+<td><code dir="auto">resources/guest_configs/microvm-kernel-ci-x86_64-6.1.config</code></td>
+</tr>
+<tr>
+<td>URL</td>
+<td><code dir="auto">https://raw.githubusercontent.com/firecracker-microvm/firecracker/v1.17.0/resources/guest_configs/microvm-kernel-ci-x86_64-6.1.config</code></td>
+</tr>
+<tr>
+<td>sha256</td>
+<td><code dir="auto">153ca1b40f3312bfb40b7587b471ea548a915f98f480f0d0892a1537957a2147</code></td>
+</tr>
+</tbody>
+</table>
+<p>Firecracker’s CI also merges <code dir="auto">ci.config</code> and <code dir="auto">nvme.config</code> into this file. hopbox does not use them. The fragment carries the options of <code dir="auto">ci.config</code> that hopbox needs: the i8042 keyboard controller and <code dir="auto">/proc/config.gz</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="config-fragment">Config fragment</h2><a class="sl-anchor-link" href="#config-fragment"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Config fragment”</span></a></div>
+<p><code dir="auto">kernel/hopbox.config</code> lists every option that hopbox needs, also the options that the base config already sets. If a new base config drops one of them, the build fails. Each option is built in, because the guest has no kernel modules. If Kconfig picks <code dir="auto">m</code> for any option, the build fails too.</p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Options</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Release name</td>
+<td><code dir="auto">LOCALVERSION="-hopbox1"</code>, <code dir="auto"># LOCALVERSION_AUTO is not set</code>, <code dir="auto">BUILD_SALT="6.1.188-hopbox1"</code></td>
+<td><code dir="auto">uname -r</code> prints <code dir="auto">6.1.188-hopbox1</code>, so a hopbox build differs from a stock kernel. The salt goes into the build ID of <code dir="auto">vmlinux</code>.</td>
+</tr>
+<tr>
+<td>Module support</td>
+<td><code dir="auto">MODULES</code>, <code dir="auto"># MODULE_SIG is not set</code>, <code dir="auto">MODPROBE_PATH=""</code></td>
+<td><code dir="auto">BPF_JIT</code> needs <code dir="auto">MODULES</code> in 6.1. The build makes no modules, and the guest has no module tree. The kernel never starts a module loader, and the boot argument <code dir="auto">sysctl.kernel.modules_disabled=1</code> turns module loading off before the first program runs (<a href="#boot-requirements">Boot requirements</a>). Module signing stays off, because a signing key made at build time breaks the reproducible build.</td>
+</tr>
+<tr>
+<td>No 32-bit system calls</td>
+<td><code dir="auto"># IA32_EMULATION is not set</code>, <code dir="auto"># X86_X32_ABI is not set</code></td>
+<td>Nothing in the default image is 32-bit. A 64-bit process can make i386 system calls through <code dir="auto">int 0x80</code>. Seccomp filters, such as <code dir="auto">RestrictAddressFamilies</code> of systemd, see them as calls of another architecture. Without 32-bit calls, no process can go around a filter that way. A 32-bit program does not run in the guest.</td>
+</tr>
+<tr>
+<td>Firecracker devices</td>
+<td><code dir="auto">VIRTIO_MMIO</code>, <code dir="auto">VIRTIO_BLK</code>, <code dir="auto">VIRTIO_NET</code>, <code dir="auto">HW_RANDOM_VIRTIO</code>, <code dir="auto">SERIAL_8250_CONSOLE</code>, <code dir="auto">KVM_GUEST</code>, <code dir="auto">PTP_1588_CLOCK_KVM</code></td>
+<td>The disks, the network, the entropy device, the serial console, and the clock of a microVM.</td>
+</tr>
+<tr>
+<td>Guest link</td>
+<td><code dir="auto">VSOCKETS</code>, <code dir="auto">VIRTIO_VSOCKETS</code></td>
+<td>The guest agent talks to the node over vsock.</td>
+</tr>
+<tr>
+<td>Copy detection</td>
+<td><code dir="auto">ACPI</code>, <code dir="auto">PTP_1588_CLOCK</code>, <code dir="auto">PTP_1588_CLOCK_VMCLOCK</code>, <code dir="auto">VMGENID</code></td>
+<td>VMClock and VMGenID tell the guest that it is a restored copy. VMClock is an ACPI device.</td>
+</tr>
+<tr>
+<td>Memory</td>
+<td><code dir="auto">MEMORY_HOTPLUG</code>, <code dir="auto">MEMORY_HOTREMOVE</code>, <code dir="auto">CONTIG_ALLOC</code>, <code dir="auto">VIRTIO_MEM</code>, <code dir="auto">MEMORY_BALLOON</code>, <code dir="auto">VIRTIO_BALLOON</code>, <code dir="auto">PAGE_REPORTING</code></td>
+<td>virtio-mem of Firecracker 1.17, and the balloon with free page reporting.</td>
+</tr>
+<tr>
+<td>Clean stop</td>
+<td><code dir="auto">SERIO</code>, <code dir="auto">SERIO_I8042</code>, <code dir="auto">SERIO_LIBPS2</code>, <code dir="auto">INPUT_KEYBOARD</code>, <code dir="auto">KEYBOARD_ATKBD</code></td>
+<td>Firecracker’s <code dir="auto">SendCtrlAltDel</code> action reaches the guest only through the i8042 keyboard controller. The base config has none of these.</td>
+</tr>
+<tr>
+<td>Config in the guest</td>
+<td><code dir="auto">IKCONFIG</code>, <code dir="auto">IKCONFIG_PROC</code></td>
+<td><code dir="auto">/proc/config.gz</code> holds the config, so tools in the guest can check it.</td>
+</tr>
+<tr>
+<td>systemd</td>
+<td><code dir="auto">DEVTMPFS</code>, <code dir="auto">FHANDLE</code>, <code dir="auto">INOTIFY_USER</code>, <code dir="auto">SIGNALFD</code>, <code dir="auto">TIMERFD</code>, <code dir="auto">EPOLL</code>, <code dir="auto">AUTOFS_FS</code>, <code dir="auto">TMPFS_POSIX_ACL</code>, <code dir="auto">TMPFS_XATTR</code></td>
+<td>systemd in the default image.</td>
+</tr>
+<tr>
+<td>Default image</td>
+<td><code dir="auto">PSI</code>, <code dir="auto">DMIID</code>, <code dir="auto">BINFMT_MISC</code>, <code dir="auto">EXT4_FS</code>, <code dir="auto">EXT4_FS_POSIX_ACL</code>, <code dir="auto">EXT4_FS_SECURITY</code>, <code dir="auto">FUSE_FS</code>, <code dir="auto">TUN</code></td>
+<td>systemd and the programs of the default image.</td>
+</tr>
+<tr>
+<td>Isolation</td>
+<td><code dir="auto">NAMESPACES</code>, <code dir="auto">UTS_NS</code>, <code dir="auto">IPC_NS</code>, <code dir="auto">PID_NS</code>, <code dir="auto">NET_NS</code>, <code dir="auto">USER_NS</code>, <code dir="auto">POSIX_MQUEUE</code>, <code dir="auto">KEYS</code>, <code dir="auto">SECCOMP</code>, <code dir="auto">SECCOMP_FILTER</code>, <code dir="auto">BPF_SYSCALL</code>, <code dir="auto">CHECKPOINT_RESTORE</code></td>
+<td>Containers, and the browser sandbox later.</td>
+</tr>
+<tr>
+<td>BPF compiler</td>
+<td><code dir="auto">BPF_JIT</code>, <code dir="auto">BPF_JIT_ALWAYS_ON</code></td>
+<td>BPF programs, for example the seccomp filters of systemd and Docker, run as native code. <code dir="auto">BPF_JIT_ALWAYS_ON</code> removes the BPF interpreter, which speculative execution attacks use.</td>
+</tr>
+<tr>
+<td>cgroup v2 controllers</td>
+<td><code dir="auto">CGROUPS</code>, <code dir="auto">MEMCG</code>, <code dir="auto">BLK_CGROUP</code>, <code dir="auto">BLK_DEV_THROTTLING</code>, <code dir="auto">CGROUP_SCHED</code>, <code dir="auto">FAIR_GROUP_SCHED</code>, <code dir="auto">CFS_BANDWIDTH</code>, <code dir="auto">CGROUP_PIDS</code>, <code dir="auto">CPUSETS</code></td>
+<td>The controllers <code dir="auto">cpu</code>, <code dir="auto">cpuset</code>, <code dir="auto">io</code>, <code dir="auto">memory</code>, and <code dir="auto">pids</code> for systemd and Docker.</td>
+</tr>
+<tr>
+<td>cgroup v2 features</td>
+<td><code dir="auto">CGROUP_BPF</code>, <code dir="auto">CGROUP_FREEZER</code>, <code dir="auto">CGROUP_HUGETLB</code>, <code dir="auto">CGROUP_DEVICE</code>, <code dir="auto">CGROUP_CPUACCT</code>, <code dir="auto">CGROUP_PERF</code>, <code dir="auto">CGROUP_NET_PRIO</code></td>
+<td>Device rules through BPF, freeze, the <code dir="auto">hugetlb</code> controller, and the other cgroup features of Docker.</td>
+</tr>
+<tr>
+<td>No RT group scheduling</td>
+<td><code dir="auto"># CONFIG_RT_GROUP_SCHED is not set</code></td>
+<td>The base config turns it on. systemd asks for it off, because it blocks the cgroup v2 <code dir="auto">cpu</code> controller while a real-time task runs outside the root cgroup.</td>
+</tr>
+<tr>
+<td>Docker storage</td>
+<td><code dir="auto">OVERLAY_FS</code></td>
+<td>The overlay storage of Docker.</td>
+</tr>
+<tr>
+<td>Docker networks</td>
+<td><code dir="auto">VETH</code>, <code dir="auto">BRIDGE</code>, <code dir="auto">BRIDGE_NETFILTER</code>, <code dir="auto">VLAN_8021Q</code>, <code dir="auto">BRIDGE_VLAN_FILTERING</code>, <code dir="auto">VXLAN</code>, <code dir="auto">MACVLAN</code>, <code dir="auto">IPVLAN</code>, <code dir="auto">DUMMY</code>, <code dir="auto">IP_ADVANCED_ROUTER</code>, <code dir="auto">IP_MULTIPLE_TABLES</code></td>
+<td>The bridge, overlay, macvlan, and ipvlan network drivers.</td>
+</tr>
+<tr>
+<td>Netfilter</td>
+<td><code dir="auto">NETFILTER</code>, <code dir="auto">NETFILTER_ADVANCED</code>, <code dir="auto">NETFILTER_NETLINK</code>, <code dir="auto">NF_CONNTRACK</code>, <code dir="auto">NF_CT_NETLINK</code>, <code dir="auto">NF_CONNTRACK_FTP</code>, <code dir="auto">NF_CONNTRACK_TFTP</code>, <code dir="auto">NF_NAT</code>, <code dir="auto">NF_NAT_FTP</code>, <code dir="auto">NF_NAT_TFTP</code></td>
+<td>Connection tracking and NAT. Docker clears conntrack entries over netlink.</td>
+</tr>
+<tr>
+<td>nf_tables families</td>
+<td><code dir="auto">NF_TABLES</code>, <code dir="auto">NF_TABLES_INET</code>, <code dir="auto">NF_TABLES_IPV4</code>, <code dir="auto">NF_TABLES_IPV6</code>, <code dir="auto">NF_TABLES_BRIDGE</code>, <code dir="auto">NFT_COMPAT</code></td>
+<td>Ubuntu’s <code dir="auto">iptables</code> is <code dir="auto">iptables-nft</code>. It turns each rule into nf_tables expressions, and it runs the other matches through the xtables compat layer.</td>
+</tr>
+<tr>
+<td>nf_tables expressions</td>
+<td><code dir="auto">NFT_CT</code>, <code dir="auto">NFT_NAT</code>, <code dir="auto">NFT_MASQ</code>, <code dir="auto">NFT_REDIR</code>, <code dir="auto">NFT_REJECT</code>, <code dir="auto">NFT_LIMIT</code>, <code dir="auto">NFT_LOG</code>, <code dir="auto">NFT_FIB_INET</code>, <code dir="auto">NFT_FIB_IPV4</code>, <code dir="auto">NFT_FIB_IPV6</code></td>
+<td><code dir="auto">iptables-nft</code> turns <code dir="auto">-j MASQUERADE</code> into <code dir="auto">NFT_MASQ</code>, for example. Docker’s nftables firewall backend needs the same options.</td>
+</tr>
+<tr>
+<td>xtables targets</td>
+<td><code dir="auto">NETFILTER_XTABLES</code>, <code dir="auto">NETFILTER_XT_MARK</code>, <code dir="auto">NETFILTER_XT_NAT</code>, <code dir="auto">NETFILTER_XT_TARGET_MASQUERADE</code>, <code dir="auto">NETFILTER_XT_TARGET_REDIRECT</code>, <code dir="auto">NETFILTER_XT_TARGET_LOG</code>, <code dir="auto">NETFILTER_XT_TARGET_TCPMSS</code>, <code dir="auto">NETFILTER_XT_TARGET_CHECKSUM</code></td>
+<td>The targets that <code dir="auto">iptables-nft</code> runs through the xtables compat layer. <code dir="auto">LOG</code>, <code dir="auto">TCPMSS</code>, and <code dir="auto">CHECKSUM</code> are common in the rules of firewalls, VPNs, and libvirt.</td>
+</tr>
+<tr>
+<td>xtables matches</td>
+<td><code dir="auto">NETFILTER_XT_MATCH_ADDRTYPE</code>, <code dir="auto">NETFILTER_XT_MATCH_BPF</code>, <code dir="auto">NETFILTER_XT_MATCH_COMMENT</code>, <code dir="auto">NETFILTER_XT_MATCH_CONNTRACK</code>, <code dir="auto">NETFILTER_XT_MATCH_IPVS</code>, <code dir="auto">NETFILTER_XT_MATCH_MARK</code>, <code dir="auto">NETFILTER_XT_MATCH_MULTIPORT</code>, <code dir="auto">NETFILTER_XT_MATCH_STATE</code></td>
+<td>The matches that <code dir="auto">iptables-nft</code> runs through the xtables compat layer for Docker.</td>
+</tr>
+<tr>
+<td>More xtables matches</td>
+<td><code dir="auto">NETFILTER_XT_MATCH_STATISTIC</code>, <code dir="auto">NETFILTER_XT_MATCH_PHYSDEV</code>, <code dir="auto">NETFILTER_XT_MATCH_PKTTYPE</code>, <code dir="auto">NETFILTER_XT_MATCH_LIMIT</code>, <code dir="auto">NETFILTER_XT_MATCH_RECENT</code>, <code dir="auto">NETFILTER_XT_MATCH_OWNER</code></td>
+<td>kube-proxy uses <code dir="auto">statistic</code>, bridge firewalls use <code dir="auto">physdev</code>, and rate limits use <code dir="auto">limit</code> and <code dir="auto">recent</code>.</td>
+</tr>
+<tr>
+<td>IP sets</td>
+<td><code dir="auto">NETFILTER_XT_SET</code>, <code dir="auto">IP_SET</code>, <code dir="auto">IP_SET_HASH_IP</code>, <code dir="auto">IP_SET_HASH_NET</code></td>
+<td>Rules that match a set of addresses.</td>
+</tr>
+<tr>
+<td>iptables tables</td>
+<td><code dir="auto">IP_NF_IPTABLES</code>, <code dir="auto">IP_NF_FILTER</code>, <code dir="auto">IP_NF_MANGLE</code>, <code dir="auto">IP_NF_NAT</code>, <code dir="auto">IP_NF_RAW</code>, <code dir="auto">IP_NF_TARGET_MASQUERADE</code>, <code dir="auto">IP_NF_TARGET_REDIRECT</code>, <code dir="auto">IP6_NF_IPTABLES</code>, <code dir="auto">IP6_NF_FILTER</code>, <code dir="auto">IP6_NF_MANGLE</code>, <code dir="auto">IP6_NF_NAT</code>, <code dir="auto">IP6_NF_RAW</code>, <code dir="auto">IP6_NF_TARGET_MASQUERADE</code></td>
+<td>The tables of Docker’s rules. Docker 28 and later write rules in the <code dir="auto">raw</code> table, which the base config does not have.</td>
+</tr>
+<tr>
+<td>IPVS</td>
+<td><code dir="auto">IP_VS</code>, <code dir="auto">IP_VS_NFCT</code>, <code dir="auto">IP_VS_PROTO_TCP</code>, <code dir="auto">IP_VS_PROTO_UDP</code>, <code dir="auto">IP_VS_RR</code></td>
+<td>The service load balancer of Docker swarm mode.</td>
+</tr>
+<tr>
+<td>Traffic control</td>
+<td><code dir="auto">NET_SCHED</code>, <code dir="auto">NET_CLS_ACT</code>, <code dir="auto">NET_SCH_FQ_CODEL</code>, <code dir="auto">NET_SCH_INGRESS</code>, <code dir="auto">NET_CLS_BPF</code></td>
+<td>systemd sets <code dir="auto">fq_codel</code> as the default queue discipline. The ingress queue discipline and BPF classifiers carry <code dir="auto">tc</code> programs.</td>
+</tr>
+<tr>
+<td>vsock sockets in <code dir="auto">ss</code></td>
+<td><code dir="auto">VSOCKETS_DIAG</code></td>
+<td><code dir="auto">ss --vsock</code> lists the guest link.</td>
+</tr>
+<tr>
+<td>Encrypted overlay</td>
+<td><code dir="auto">XFRM_USER</code>, <code dir="auto">INET_ESP</code>, <code dir="auto">CRYPTO_GCM</code>, <code dir="auto">CRYPTO_SEQIV</code>, <code dir="auto">CRYPTO_GHASH</code></td>
+<td>Encrypted overlay networks of Docker.</td>
+</tr>
+</tbody>
+</table>
+<p>These options are not in the kernel:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Why not</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">SECURITY_APPARMOR</code></td>
+<td>The base config has SELinux and no AppArmor. If the kernel has no AppArmor, Docker runs without an AppArmor profile.</td>
+</tr>
+<tr>
+<td><code dir="auto">NET_CLS_CGROUP</code></td>
+<td>Only cgroup v1 uses it.</td>
+</tr>
+<tr>
+<td><code dir="auto">BTRFS_FS</code></td>
+<td>Docker uses overlay storage.</td>
+</tr>
+<tr>
+<td><code dir="auto">IP_SCTP</code></td>
+<td>No part of hopbox uses SCTP.</td>
+</tr>
+<tr>
+<td><code dir="auto">CRYPTO_FIPS</code></td>
+<td>With <code dir="auto">MODULES</code>, it needs <code dir="auto">MODULE_SIG</code>, which stays off. The base config has it. hopbox does not boot guests with <code dir="auto">fips=1</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The moby script <code dir="auto">contrib/check-config.sh</code> (moby commit <code dir="auto">c5c09961ba9aa3db0aacae52b6a54fd7aee3dee4</code>) reports every “Generally Necessary” option of Docker as enabled in <code dir="auto">kernel/vmlinux.config</code>. Of the optional options, it reports only <code dir="auto">SECURITY_APPARMOR</code>, <code dir="auto">NET_CLS_CGROUP</code>, <code dir="auto">IP_SCTP</code>, and the Docker btrfs and zfs storage drivers as missing.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="boot-requirements">Boot requirements</h2><a class="sl-anchor-link" href="#boot-requirements"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Boot requirements”</span></a></div>
+<p>The kernel boots under Firecracker v1.17.0 as an uncompressed ELF <code dir="auto">vmlinux</code>. The VMM driver gives it these kernel command line arguments:</p>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">console=ttyS0</code></td>
+<td>The serial console.</td>
+</tr>
+<tr>
+<td><code dir="auto">reboot=k</code></td>
+<td>A reboot in the guest ends the Firecracker process. With it, <code dir="auto">SendCtrlAltDel</code> stops the microVM cleanly.</td>
+</tr>
+<tr>
+<td><code dir="auto">panic=1</code></td>
+<td>A kernel panic reboots, so the Firecracker process ends.</td>
+</tr>
+<tr>
+<td><code dir="auto">i8042.noaux i8042.nomux i8042.dumbkbd</code></td>
+<td>Firecracker emulates only a keyboard on its i8042 controller. With these arguments, the driver does not probe for a mouse port or a multiplexer, and does not test the keyboard. This saves tens of milliseconds at boot (<a href="https://github.com/firecracker-microvm/firecracker/blob/v1.17.0/docs/api_requests/actions.md">Firecracker actions</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">sysctl.kernel.modules_disabled=1</code></td>
+<td>The kernel turns module loading off at boot, before init runs. The default image sets the same value again with <code dir="auto">systemd-sysctl</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">memhp_default_state=online_movable</code></td>
+<td>The kernel puts memory that virtio-mem plugs online at once, in the movable zone, so the memory can be unplugged again. The 6.1 kernel has no Kconfig option for this.</td>
+</tr>
+</tbody>
+</table>
+<p>Firecracker adds <code dir="auto">pci=off</code>, <code dir="auto">root=/dev/vda rw</code> for the root disk, and the <code dir="auto">virtio_mmio.device</code> arguments itself.</p>
+<p>Do not pass <code dir="auto">i8042.nopnp</code>, although the Firecracker docs list it with the three arguments above. Firecracker 1.17 describes the controller in its ACPI tables, as the device <code dir="auto">PNP0303</code> with its interrupt. The driver finds the controller there. With <code dir="auto">i8042.nopnp</code>, the driver uses the legacy interrupt 1, which a Firecracker guest with ACPI does not have. The probe then fails with <code dir="auto">i8042: probe of i8042 failed with error -22</code>, and <code dir="auto">SendCtrlAltDel</code> does nothing. Without the argument, the kernel logs <code dir="auto">serio: i8042 KBD port at 0x60,0x64 irq 30</code>, and <code dir="auto">SendCtrlAltDel</code> stops the default image in about one second. The boot test of the default image checks both (<a href="/reference/default-image/#boot-test">default-image.md</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="security-modules">Security modules</h2><a class="sl-anchor-link" href="#security-modules"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Security modules”</span></a></div>
+<p>The base config builds in SELinux, Landlock, and the capability module. <code dir="auto">/sys/kernel/security/lsm</code> in the guest lists <code dir="auto">capability,landlock,selinux</code>. SELinux stays inactive:</p>
+<ul>
+<li>The default image has no SELinux policy and no tool that loads one.</li>
+<li>Without a policy, SELinux denies nothing. <code dir="auto">/sys/fs/selinux/enforce</code> reads <code dir="auto">0</code>.</li>
+<li>The kernel command line needs no <code dir="auto">selinux=0</code>.</li>
+</ul>
+<p>Docker and systemd work as on a kernel without SELinux. The kernel has no AppArmor (<a href="#config-fragment">Config fragment</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="builder-image">Builder image</h2><a class="sl-anchor-link" href="#builder-image"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Builder image”</span></a></div>
+<p><code dir="auto">kernel/Dockerfile</code> builds the image <code dir="auto">hopbox-kernel-builder:&lt;first 12 hex digits of the sha256 of kernel/Dockerfile&gt;</code> for <code dir="auto">linux/amd64</code>. A change to the Dockerfile gives a new tag.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base image</td>
+<td><code dir="auto">debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587</code></td>
+</tr>
+<tr>
+<td>Package source</td>
+<td><code dir="auto">snapshot.debian.org</code> at <code dir="auto">20261005T000000Z</code>, for <code dir="auto">bookworm</code>, <code dir="auto">bookworm-updates</code>, and <code dir="auto">bookworm-security</code>. This is the snapshot that the base image comes from.</td>
+</tr>
+<tr>
+<td>Packages</td>
+<td><code dir="auto">bc</code>, <code dir="auto">bison</code>, <code dir="auto">ca-certificates</code>, <code dir="auto">cpio</code>, <code dir="auto">curl</code>, <code dir="auto">flex</code>, <code dir="auto">gcc</code>, <code dir="auto">libc6-dev</code>, <code dir="auto">libelf-dev</code>, <code dir="auto">libssl-dev</code>, <code dir="auto">make</code>, <code dir="auto">perl</code></td>
+</tr>
+<tr>
+<td>Compiler</td>
+<td>gcc 12.2.0 (<code dir="auto">gcc-12 12.2.0-14+deb12u1</code>)</td>
+</tr>
+<tr>
+<td>Binutils</td>
+<td>2.40 (<code dir="auto">binutils 2.40-2</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>The image digest and the snapshot fix every package version. apt checks the signatures of the snapshot, so the snapshot uses plain HTTP.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="reproducible-build">Reproducible build</h2><a class="sl-anchor-link" href="#reproducible-build"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Reproducible build”</span></a></div>
+<p>The build runs in a new container each time, from a fresh copy of the source in <code dir="auto">/build/linux</code>. The build path ends up in the kernel image, so it is the same on every host. <code dir="auto">container.sh</code> sets these values:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Value</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">SOURCE_DATE_EPOCH</code></td>
+<td><code dir="auto">1791339570</code></td>
+<td>2026-10-07T02:19:30Z, the committer date of the source commit.</td>
+</tr>
+<tr>
+<td><code dir="auto">KBUILD_BUILD_TIMESTAMP</code></td>
+<td><code dir="auto">Wed Oct  7 02:19:30 UTC 2026</code></td>
+<td>The build date in <code dir="auto">uname -v</code>. <code dir="auto">container.sh</code> derives it from <code dir="auto">SOURCE_DATE_EPOCH</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">KBUILD_BUILD_USER</code></td>
+<td><code dir="auto">hopbox</code></td>
+<td>The user in <code dir="auto">/proc/version</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">KBUILD_BUILD_HOST</code></td>
+<td><code dir="auto">hopbox</code></td>
+<td>The host in <code dir="auto">/proc/version</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">KBUILD_BUILD_VERSION</code></td>
+<td><code dir="auto">1</code></td>
+<td>The build number <code dir="auto">#1</code> in <code dir="auto">uname -v</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">LC_ALL</code>, <code dir="auto">TZ</code></td>
+<td><code dir="auto">C</code>, <code dir="auto">UTC</code></td>
+<td>Tools sort and print dates the same way on every host.</td>
+</tr>
+</tbody>
+</table>
+<p>The guest sees:</p>
+<div class="expressive-code"><link rel="stylesheet" href="/_astro/ec.w36nc.css"><script type="module" src="/_astro/ec.0vx5m.js"></script><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="text"><code><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">$ uname -a</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">Linux localhost 6.1.188-hopbox1 #1 SMP PREEMPT_DYNAMIC Wed Oct  7 02:19:30 UTC 2026 x86_64 GNU/Linux</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="$ uname -aLinux localhost 6.1.188-hopbox1 #1 SMP PREEMPT_DYNAMIC Wed Oct  7 02:19:30 UTC 2026 x86_64 GNU/Linux"><div></div></button></div></figure></div>
+<div class="sl-heading-wrapper level-h2"><h2 id="outputs">Outputs</h2><a class="sl-anchor-link" href="#outputs"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Outputs”</span></a></div>
+<p><code dir="auto">make kernel</code> writes these files to <code dir="auto">bin/kernel/</code>, or to <code dir="auto">KERNEL_OUT</code>:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">vmlinux</code></td>
+<td>The kernel, an uncompressed x86_64 ELF image of about 45 MB.</td>
+</tr>
+<tr>
+<td><code dir="auto">vmlinux.sha256</code></td>
+<td>The sha256 of <code dir="auto">vmlinux</code> and of <code dir="auto">vmlinux.config</code>, in <code dir="auto">sha256sum</code> format.</td>
+</tr>
+<tr>
+<td><code dir="auto">vmlinux.config</code></td>
+<td>The final <code dir="auto">.config</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">toolchain.txt</code></td>
+<td>The versions of gcc, binutils, and the build packages.</td>
+</tr>
+<tr>
+<td><code dir="auto">dl/</code></td>
+<td>The downloaded tarball and base config. Later builds reuse them after a sha256 check.</td>
+</tr>
+</tbody>
+</table>
+<p>It also copies <code dir="auto">vmlinux.config</code> and <code dir="auto">vmlinux.sha256</code> to <code dir="auto">kernel/</code>, where git tracks them. <code dir="auto">make bundle</code> puts <code dir="auto">vmlinux</code> into the release bundle, and it refuses a <code dir="auto">vmlinux</code> with another sha256 than the one in <code dir="auto">kernel/vmlinux.sha256</code> (<a href="/reference/release-bundle/">release-bundle.md</a>). The current values are:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>sha256</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">vmlinux</code></td>
+<td><code dir="auto">dfb03703bab6d4b590964f2d9473fdc82994ae94384cc5ed1c1b4a0430118a91</code></td>
+</tr>
+<tr>
+<td><code dir="auto">vmlinux.config</code></td>
+<td><code dir="auto">99f0171775432d9239ed83f453811e09a496ffd88301feec3b9eb8924faf9ebc</code></td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h2"><h2 id="make-targets">Make targets</h2><a class="sl-anchor-link" href="#make-targets"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Make targets”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Target</th>
+<th>What it does</th>
+<th>Needs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">kernel</code></td>
+<td>Runs <code dir="auto">make kernel-config</code> first, so a dropped option fails before the compile. Then builds <code dir="auto">vmlinux</code> and writes the outputs.</td>
+<td>Docker</td>
+</tr>
+<tr>
+<td><code dir="auto">kernel-config</code></td>
+<td>Writes only the final config, without a compile. Then runs <code dir="auto">kconfigcheck</code>.</td>
+<td>Docker</td>
+</tr>
+<tr>
+<td><code dir="auto">check-kernel</code></td>
+<td>Runs <code dir="auto">make kernel</code>. If <code dir="auto">kernel/vmlinux.config</code> or <code dir="auto">kernel/vmlinux.sha256</code> then differs from git, it fails. This proves that the build is reproducible on your host.</td>
+<td>Docker</td>
+</tr>
+<tr>
+<td><code dir="auto">check-kernel-config</code></td>
+<td>Runs <code dir="auto">make kernel-config</code>. If <code dir="auto">kernel/vmlinux.config</code> then differs from git, it fails.</td>
+<td>Docker</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">KERNEL_OUT</code></td>
+<td><code dir="auto">bin/kernel</code></td>
+<td>The output folder.</td>
+</tr>
+<tr>
+<td><code dir="auto">JOBS</code></td>
+<td>the number of CPUs in the container</td>
+<td>The number of parallel compile jobs. Set it in the environment, for example <code dir="auto">JOBS=4 make kernel</code>. It does not change the output.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h2"><h2 id="checks">Checks</h2><a class="sl-anchor-link" href="#checks"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Checks”</span></a></div>
+<ul>
+<li><code dir="auto">kconfigcheck</code> reads the fragment and a final config. If the final config does not keep an option of the fragment, it fails and lists each such line. If a dependency is missing, Kconfig drops an option without an error, so this check is the only guard.</li>
+<li>If the final config has an option set to <code dir="auto">m</code>, <code dir="auto">container.sh</code> fails. With <code dir="auto">MODULES</code>, Kconfig can pick <code dir="auto">m</code>. The build makes no modules, so such an option is then missing from the guest.</li>
+<li><code dir="auto">make test</code> runs two tests in <code dir="auto">tools/kconfigcheck</code>. One checks that <code dir="auto">kernel/vmlinux.config</code> keeps the fragment. The other checks that <code dir="auto">kernel/vmlinux.sha256</code> names the sha256 of <code dir="auto">kernel/vmlinux.config</code>, so a config change without a new build fails.</li>
+<li>The CI job <code dir="auto">kernel</code> runs <code dir="auto">make check-kernel-config</code>. It catches a fragment or pin change without a new config. It keeps <code dir="auto">bin/kernel/dl</code> in the Actions cache. The cache key is the hash of <code dir="auto">kernel/kernel.env</code>. So a run downloads the source tarball only after a pin change. CI does not compile the kernel, because the compile takes many minutes. On two threads of the <a href="/reference/preflight/#the-tested-server">tested server</a>, it takes about 15 minutes. The workflow <code dir="auto">image.yml</code> compiles the kernel on request.</li>
+</ul>
+</div><footer class="sl-flex astro-fzngq47q"><div class="meta sl-flex astro-fzngq47q"></div><div class="pagination-links print:hidden astro-7jhddma2" dir="ltr"><a href="/reference/host-kernel/" rel="prev" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-7jhddma2">Previous<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">Host kernel</span></span></a><a href="/reference/default-image/" rel="next" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-7jhddma2">Next<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">Default image</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>

@@ -1,0 +1,1720 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-toc data-has-sidebar class="astro-g6oqdoeg"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>The control channel | hopbox docs</title><link rel="canonical" href="https://docs.hopbox.dev/reference/control-channel/"/><link rel="sitemap" href="/sitemap-index.xml"/><link rel="shortcut icon" href="/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.3.8"/><meta name="generator" content="Starlight v0.42.6"/><meta property="og:title" content="The control channel"/><meta property="og:type" content="article"/><meta property="og:url" content="https://docs.hopbox.dev/reference/control-channel/"/><meta property="og:locale" content="en"/><meta property="og:description" content="The control channel of a server: its messages, heartbeats, certificate renewal, the reverse-attach data streams and their windows, the machine streams of exec, file copy, and logs, server states, and logs."/><meta property="og:site_name" content="hopbox docs"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="The control channel of a server: its messages, heartbeats, certificate renewal, the reverse-attach data streams and their windows, the machine streams of exec, file copy, and logs, server states, and logs."/><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/_astro/print.ehPL0gv-.css" media="print"><link rel="stylesheet" href="/_astro/middleware.DkUYdNkX.css"><script type="module" src="/_astro/page.cNngjUgL.js"></script></head><body class="astro-g6oqdoeg"><a class="sl-skip-link astro-ktawktwe" href="#_top">Skip to content</a><div class="page sl-flex astro-vlwsw6sx"><header class="header astro-vlwsw6sx"><div class="header astro-qe7tu4yu"><div class="title-wrapper sl-flex astro-qe7tu4yu"><a href="/" class="site-title sl-flex astro-42muqipg"><span class="astro-42muqipg" translate="no">hopbox docs</span></a></div><div class="sl-flex print:hidden astro-qe7tu4yu"><site-search class="astro-qe7tu4yu astro-yp365hkw" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"><button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-yp365hkw"><svg aria-hidden="true" class="astro-yp365hkw astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg><span class="sl-hidden md:sl-block astro-yp365hkw" aria-hidden="true">Search</span><kbd class="sl-hidden md:sl-flex astro-yp365hkw" style="display: none;"><kbd class="astro-yp365hkw">Ctrl</kbd><kbd class="astro-yp365hkw">K</kbd></kbd></button><dialog style="padding:0" aria-label="Search" class="astro-yp365hkw"><div class="dialog-frame sl-flex astro-yp365hkw"><button data-close-modal class="sl-flex md:sl-hidden astro-yp365hkw">Cancel</button><div class="search-container astro-yp365hkw"><div id="starlight__search" class="astro-yp365hkw"></div></div></div></dialog></site-search><script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script><script type="module" src="/_astro/Search.astro_astro_type_script_index_0_lang.g9hoxVJg.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-qe7tu4yu"><div class="sl-flex social-icons astro-qe7tu4yu"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script><script type="module">var e=`starlight-theme`,t=e=>e===`auto`||e===`dark`||e===`light`?e:`auto`,n=()=>t(typeof localStorage<`u`&&localStorage.getItem(e));function r(t){typeof localStorage<`u`&&localStorage.setItem(e,t===`light`||t===`dark`?t:``)}var i=()=>matchMedia(`(prefers-color-scheme: light)`).matches?`light`:`dark`;function a(e){StarlightThemeProvider.updatePickers(e),document.documentElement.dataset.theme=e===`auto`?i():e,r(e)}matchMedia(`(prefers-color-scheme: light)`).addEventListener(`change`,()=>{n()===`auto`&&a(`auto`)});var o=class extends HTMLElement{constructor(){super(),a(n()),this.querySelector(`select`)?.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&a(t(e.currentTarget.value))})}};customElements.define(`starlight-theme-select`,o);</script><script type="module">var e=class extends HTMLElement{constructor(){super();let e=this.querySelector(`select`);e&&(e.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=e.currentTarget.value)}),window.addEventListener(`pageshow`,t=>{if(!t.persisted)return;let n=e.querySelector(`option[selected]`)?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}};customElements.define(`starlight-lang-select`,e);</script></div></div></header><nav class="sidebar print:hidden astro-vlwsw6sx" aria-label="Main"><button popovertarget="starlight__sidebar" class="sl-menu-button sl-flex md:sl-hidden print:hidden astro-ibd3qwco"><svg aria-hidden="true" class="open-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg><span class="sr-only astro-ibd3qwco">Menu</span></button><script type="module">var e=class extends HTMLElement{constructor(){super();let e=matchMedia(`(min-width: 50em)`),t=()=>{this.popover=e.matches?null:`auto`};t(),e.addEventListener(`change`,()=>t()),this.addEventListener(`toggle`,({newState:e})=>this.trapFocus(e===`open`))}trapFocus(e){document.querySelectorAll(`.main-frame, .sl-skip-link`).forEach(t=>{t.toggleAttribute(`inert`,e)})}};customElements.define(`sl-sidebar-pane`,e);</script><sl-sidebar-pane popover id="starlight__sidebar" class="sidebar-pane astro-vlwsw6sx"><div class="sidebar-content sl-flex astro-vlwsw6sx"><sl-sidebar-state-persist data-hash="0qsyok1" class="astro-oblzz35h"><script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script><ul class="top-level astro-twzrdani"><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Guides</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/guide/run-hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">Run the control role on a laptop</span></a></li><li class="astro-twzrdani"><a href="/guide/install-on-ovhcloud/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on an OVHcloud server with Terraform</span></a></li><li class="astro-twzrdani"><a href="/guide/enroll-node/" class="astro-twzrdani"><span class="astro-twzrdani">Enroll the node role on one server</span></a></li><li class="astro-twzrdani"><a href="/guide/dns-role/" class="astro-twzrdani"><span class="astro-twzrdani">Serve the domain of an install with the DNS role</span></a></li><li class="astro-twzrdani"><a href="/guide/acme-certificate/" class="astro-twzrdani"><span class="astro-twzrdani">Get the wildcard certificate of an install</span></a></li><li class="astro-twzrdani"><a href="/guide/machine-urls/" class="astro-twzrdani"><span class="astro-twzrdani">Run the edge role and open machine URLs</span></a></li><li class="astro-twzrdani"><a href="/guide/first-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">First sign-in on a new install</span></a></li><li class="astro-twzrdani"><a href="/guide/github-google-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/guide/orgs/" class="astro-twzrdani"><span class="astro-twzrdani">Work in a team org</span></a></li><li class="astro-twzrdani"><a href="/guide/env-vars/" class="astro-twzrdani"><span class="astro-twzrdani">Set env vars and secrets</span></a></li><li class="astro-twzrdani"><a href="/guide/machines/" class="astro-twzrdani"><span class="astro-twzrdani">Create and manage machines</span></a></li><li class="astro-twzrdani"><a href="/guide/firecracker-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Run machines with Firecracker</span></a></li><li class="astro-twzrdani"><a href="/guide/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">Check the network of a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/cli/" class="astro-twzrdani"><span class="astro-twzrdani">Use the hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Use machines from the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-prompt/" class="astro-twzrdani"><span class="astro-twzrdani">Work in the prompt of the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/ssh/" class="astro-twzrdani"><span class="astro-twzrdani">Reach a machine over SSH</span></a></li><li class="astro-twzrdani"><a href="/guide/exec-and-files/" class="astro-twzrdani"><span class="astro-twzrdani">Run commands and copy files in a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">Connect an AI agent to hopbox with MCP</span></a></li><li class="astro-twzrdani"><a href="/guide/console/" class="astro-twzrdani"><span class="astro-twzrdani">Use the console</span></a></li><li class="astro-twzrdani"><a href="/guide/typescript-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">Call the API from TypeScript</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-and-keys/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in the CLI, and make API keys and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/guide/install-debian/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on a Debian 13 server by hand</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Reference</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="1"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/reference/hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/release-bundle/" class="astro-twzrdani"><span class="astro-twzrdani">Release bundle</span></a></li><li class="astro-twzrdani"><a href="/reference/server-layout/" class="astro-twzrdani"><span class="astro-twzrdani">Server layout</span></a></li><li class="astro-twzrdani"><a href="/reference/hopboxd-config/" class="astro-twzrdani"><span class="astro-twzrdani">The bootstrap config of hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/api/" class="astro-twzrdani"><span class="astro-twzrdani">The API server</span></a></li><li class="astro-twzrdani"><a href="/reference/org-api/" class="astro-twzrdani"><span class="astro-twzrdani">The org API</span></a></li><li class="astro-twzrdani"><a href="/reference/vars-api/" class="astro-twzrdani"><span class="astro-twzrdani">The env var API</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-api/" class="astro-twzrdani"><span class="astro-twzrdani">The machine API</span></a></li><li class="astro-twzrdani"><a href="/reference/placement/" class="astro-twzrdani"><span class="astro-twzrdani">Placement</span></a></li><li class="astro-twzrdani"><a href="/reference/auth-api/" class="astro-twzrdani"><span class="astro-twzrdani">The sign-in, account, and audit API</span></a></li><li class="astro-twzrdani"><a href="/reference/credentials/" class="astro-twzrdani"><span class="astro-twzrdani">CLI tokens, API keys, admin API keys, and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/reference/sessions/" class="astro-twzrdani"><span class="astro-twzrdani">Sessions, cookies, and sign-in links</span></a></li><li class="astro-twzrdani"><a href="/reference/smtp/" class="astro-twzrdani"><span class="astro-twzrdani">SMTP config</span></a></li><li class="astro-twzrdani"><a href="/reference/mail/" class="astro-twzrdani"><span class="astro-twzrdani">Mail</span></a></li><li class="astro-twzrdani"><a href="/reference/oauth/" class="astro-twzrdani"><span class="astro-twzrdani">Sign-in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/reference/metrics/" class="astro-twzrdani"><span class="astro-twzrdani">Metrics</span></a></li><li class="astro-twzrdani"><a href="/reference/admin-api/" class="astro-twzrdani"><span class="astro-twzrdani">The admin API</span></a></li><li class="astro-twzrdani"><a href="/reference/internal-listener/" class="astro-twzrdani"><span class="astro-twzrdani">The internal listener</span></a></li><li class="astro-twzrdani"><a href="/reference/enrollment/" class="astro-twzrdani"><span class="astro-twzrdani">Enrollment and the install PKI</span></a></li><li class="astro-twzrdani"><a href="/reference/control-channel/" aria-current="page" class="astro-twzrdani"><span class="astro-twzrdani">The control channel</span></a></li><li class="astro-twzrdani"><a href="/reference/dns/" class="astro-twzrdani"><span class="astro-twzrdani">The DNS role</span></a></li><li class="astro-twzrdani"><a href="/reference/edge/" class="astro-twzrdani"><span class="astro-twzrdani">The edge role</span></a></li><li class="astro-twzrdani"><a href="/reference/ssh-front-door/" class="astro-twzrdani"><span class="astro-twzrdani">The SSH front door</span></a></li><li class="astro-twzrdani"><a href="/reference/acme/" class="astro-twzrdani"><span class="astro-twzrdani">The certificate of the install</span></a></li><li class="astro-twzrdani"><a href="/reference/executor-protocol/" class="astro-twzrdani"><span class="astro-twzrdani">The executor protocol</span></a></li><li class="astro-twzrdani"><a href="/reference/executor/" class="astro-twzrdani"><span class="astro-twzrdani">The node executor</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-logs/" class="astro-twzrdani"><span class="astro-twzrdani">Machine logs</span></a></li><li class="astro-twzrdani"><a href="/reference/vmm/" class="astro-twzrdani"><span class="astro-twzrdani">The VMM driver interface</span></a></li><li class="astro-twzrdani"><a href="/reference/firecracker-driver/" class="astro-twzrdani"><span class="astro-twzrdani">The Firecracker driver</span></a></li><li class="astro-twzrdani"><a href="/reference/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">The node network</span></a></li><li class="astro-twzrdani"><a href="/reference/preflight/" class="astro-twzrdani"><span class="astro-twzrdani">The preflight check</span></a></li><li class="astro-twzrdani"><a href="/reference/cli/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/reference/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">The MCP server</span></a></li><li class="astro-twzrdani"><a href="/reference/console/" class="astro-twzrdani"><span class="astro-twzrdani">Console</span></a></li><li class="astro-twzrdani"><a href="/reference/go-client/" class="astro-twzrdani"><span class="astro-twzrdani">Go client</span></a></li><li class="astro-twzrdani"><a href="/reference/ts-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">TypeScript SDK</span></a></li><li class="astro-twzrdani"><a href="/reference/hopbox-guest/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox-guest</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-link/" class="astro-twzrdani"><span class="astro-twzrdani">Guest link</span></a></li><li class="astro-twzrdani"><a href="/reference/terraform-provider/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox Terraform provider</span></a></li><li class="astro-twzrdani"><a href="/reference/version/" class="astro-twzrdani"><span class="astro-twzrdani">The version command</span></a></li><li class="astro-twzrdani"><a href="/reference/api-definitions/" class="astro-twzrdani"><span class="astro-twzrdani">API definitions</span></a></li><li class="astro-twzrdani"><a href="/reference/postgres/" class="astro-twzrdani"><span class="astro-twzrdani">The bundled Postgres</span></a></li><li class="astro-twzrdani"><a href="/reference/domain-rules/" class="astro-twzrdani"><span class="astro-twzrdani">Domain rules</span></a></li><li class="astro-twzrdani"><a href="/reference/control-store/" class="astro-twzrdani"><span class="astro-twzrdani">Control store tables</span></a></li><li class="astro-twzrdani"><a href="/reference/sealing/" class="astro-twzrdani"><span class="astro-twzrdani">Sealing</span></a></li><li class="astro-twzrdani"><a href="/reference/host-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Host kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Guest kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/default-image/" class="astro-twzrdani"><span class="astro-twzrdani">Default image</span></a></li><li class="astro-twzrdani"><a href="/reference/artifact-format/" class="astro-twzrdani"><span class="astro-twzrdani">Artifact format</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Releases</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="2"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/releases/v0.1.0/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox v0.1.0</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="3"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Public API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="4"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="5"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicecreatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">CreateMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicegetmachine/" class="astro-twzrdani"><span class="astro-twzrdani">GetMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachinesizes/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachineSizes</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerebootmachine/" class="astro-twzrdani"><span class="astro-twzrdani">RebootMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerenamemachine/" class="astro-twzrdani"><span class="astro-twzrdani">RenameMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlport/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLPort</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlvisibility/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLVisibility</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">ShareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestartmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StartMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceunsharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UnshareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceupdatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.InstallService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="6"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1installservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1installservicegetinstallinfo/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallInfo</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="7"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicedeleteaccount/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceendclisignin/" class="astro-twzrdani"><span class="astro-twzrdani">EndCLISignIn</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicegetaccount/" class="astro-twzrdani"><span class="astro-twzrdani">GetAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistclisignins/" class="astro-twzrdani"><span class="astro-twzrdani">ListCLISignIns</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceremovesigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSignInMethod</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceupdateaccount/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateAccount</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.APIKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="8"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1apikeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicecreateapikey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAPIKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicelistapikeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAPIKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicerevokeapikey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAPIKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuditService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="9"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1auditservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1auditservicelistauditentries/" class="astro-twzrdani"><span class="astro-twzrdani">ListAuditEntries</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuthService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="10"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1authservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceapprovedevice/" class="astro-twzrdani"><span class="astro-twzrdani">ApproveDevice</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicegetdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">GetDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicepolldeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">PollDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerefreshclitoken/" class="astro-twzrdani"><span class="astro-twzrdani">RefreshCLIToken</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerequestmagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">RequestMagicLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicesignout/" class="astro-twzrdani"><span class="astro-twzrdani">SignOut</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicestartdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">StartDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifyloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyLoginLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifymagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyMagicLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="11"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceacceptinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">AcceptInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">CreateInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateorg/" class="astro-twzrdani"><span class="astro-twzrdani">CreateOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicedeleteorg/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorg/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorgusage/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrgUsage</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceleaveorg/" class="astro-twzrdani"><span class="astro-twzrdani">LeaveOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistinvitations/" class="astro-twzrdani"><span class="astro-twzrdani">ListInvitations</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgmembers/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgMembers</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceremoveorgmember/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveOrgMember</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicerevokeinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicesetorgmemberrole/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgMemberRole</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceupdateorg/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.SSHKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="12"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1sshkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceaddsshkey/" class="astro-twzrdani"><span class="astro-twzrdani">AddSSHKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyservicelistsshkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListSSHKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceremovesshkey/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSSHKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.VarService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="13"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1varservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicedeletevar/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteVar</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicelistvars/" class="astro-twzrdani"><span class="astro-twzrdani">ListVars</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicesetvar/" class="astro-twzrdani"><span class="astro-twzrdani">SetVar</span></a></li></ul></details></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Admin API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="14"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="15"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountservicelistaccountsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListAccountSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountserviceremoveaccountsigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveAccountSignInMethod</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AdminKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="16"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1adminkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicecreateadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicelistadminkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAdminKeys</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyserviceregisteradminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicerevokeadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAdminKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.CertificateService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="17"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1certificateservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1certificateservicegetcertificate/" class="astro-twzrdani"><span class="astro-twzrdani">GetCertificate</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ImageService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="18"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1imageservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageservicelistimages/" class="astro-twzrdani"><span class="astro-twzrdani">ListImages</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageserviceregisterimage/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterImage</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstallConfigService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="19"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1installconfigservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">ClearOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">ClearSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetoauthconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetOAuthConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">SetOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">SetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceupdateinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateInstallConfig</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstanceAdminService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="20"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1instanceadminservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicegrantinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">GrantInstanceAdmin</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicelistinstanceadmins/" class="astro-twzrdani"><span class="astro-twzrdani">ListInstanceAdmins</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicerevokeinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInstanceAdmin</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.KeyringService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="21"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1keyringservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicelistkeks/" class="astro-twzrdani"><span class="astro-twzrdani">ListKEKs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerewrapsealedvalues/" class="astro-twzrdani"><span class="astro-twzrdani">RewrapSealedValues</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerotatekek/" class="astro-twzrdani"><span class="astro-twzrdani">RotateKEK</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.LoginLinkService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="22"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1loginlinkservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1loginlinkservicecreateloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">CreateLoginLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="23"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MailService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="24"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1mailservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicegetmailfile/" class="astro-twzrdani"><span class="astro-twzrdani">GetMailFile</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicelistmailfiles/" class="astro-twzrdani"><span class="astro-twzrdani">ListMailFiles</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="25"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicegetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">GetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">SuspendOrg</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgserviceunsuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">UnsuspendOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ServerService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="26"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1serverservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">CordonServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecreateenrollmenttoken/" class="astro-twzrdani"><span class="astro-twzrdani">CreateEnrollmentToken</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicedecommissionserver/" class="astro-twzrdani"><span class="astro-twzrdani">DecommissionServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicegetserver/" class="astro-twzrdani"><span class="astro-twzrdani">GetServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicelistservers/" class="astro-twzrdani"><span class="astro-twzrdani">ListServers</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicesetserverlabels/" class="astro-twzrdani"><span class="astro-twzrdani">SetServerLabels</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverserviceuncordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">UncordonServer</span></a></li></ul></details></li></ul></details></li></ul></details></li></ul><script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-jl756n3h"><div class="social-icons astro-jl756n3h"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script></div></div></div></sl-sidebar-pane></nav><div class="main-frame astro-vlwsw6sx"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-bfhpgjcp"><aside class="right-sidebar-container print:hidden astro-bfhpgjcp"><div class="right-sidebar astro-bfhpgjcp"><div class="lg:sl-hidden astro-6ky2bkwt"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-bwzeb267"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-bwzeb267"><details id="starlight__mobile-toc" class="astro-bwzeb267"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-bwzeb267"><span class="toggle sl-flex astro-bwzeb267">On this page<svg aria-hidden="true" class="caret astro-bwzeb267 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-bwzeb267"></span></summary><div class="dropdown astro-bwzeb267"><ul class="isMobile astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-server-always-dials" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The server always dials</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#controlservice" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">ControlService</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#channelrequest" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">ChannelRequest</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#channelresponse" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">ChannelResponse</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#heartbeat" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Heartbeat</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#heartbeatack" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">HeartbeatAck</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#certificaterenewal-and-certificateissued" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">CertificateRenewal and CertificateIssued</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#openstream-and-streamrefused" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">OpenStream and StreamRefused</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#dnszones-dnszone-and-dnsrecord" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">DNSZones, DNSZone, and DNSRecord</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#edgecertificate-edgeroutes-edgeroute-edgetarget-edgeleaserenewals-edgeaccesschanged-and-edgesshkeys" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">EdgeCertificate, EdgeRoutes, EdgeRoute, EdgeTarget, EdgeLeaseRenewals, EdgeAccessChanged, and EdgeSSHKeys</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#attachstreamrequest-and-attachstreamresponse" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">AttachStreamRequest and AttachStreamResponse</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-heartbeat" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The heartbeat</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#compatibility-class" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Compatibility class</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#silence" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Silence</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#server-states" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Server states</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#the-leader-job" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">The leader job</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#certificate-renewal" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Certificate renewal</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#dns-zones" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">DNS zones</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#edge-pushes" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Edge pushes</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#data-streams" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Data streams</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#limits-and-windows-of-the-data-streams" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Limits and windows of the data streams</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#machine-streams" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Machine streams</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#frames" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Frames</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#the-steps-of-a-machine-stream" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">The steps of a machine stream</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#go-api-of-the-hub" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Go API of the hub</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-agent" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The agent</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#logs" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Logs</span></a></li></ul></div></details></nav></mobile-starlight-toc><script type="module" src="/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.C3fM4Kra.js"></script></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-6ky2bkwt"><div class="sl-container astro-6ky2bkwt"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-server-always-dials" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The server always dials</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#controlservice" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">ControlService</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#channelrequest" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">ChannelRequest</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#channelresponse" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">ChannelResponse</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#heartbeat" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Heartbeat</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#heartbeatack" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">HeartbeatAck</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#certificaterenewal-and-certificateissued" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">CertificateRenewal and CertificateIssued</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#openstream-and-streamrefused" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">OpenStream and StreamRefused</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#dnszones-dnszone-and-dnsrecord" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">DNSZones, DNSZone, and DNSRecord</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#edgecertificate-edgeroutes-edgeroute-edgetarget-edgeleaserenewals-edgeaccesschanged-and-edgesshkeys" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">EdgeCertificate, EdgeRoutes, EdgeRoute, EdgeTarget, EdgeLeaseRenewals, EdgeAccessChanged, and EdgeSSHKeys</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#attachstreamrequest-and-attachstreamresponse" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">AttachStreamRequest and AttachStreamResponse</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-heartbeat" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The heartbeat</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#compatibility-class" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Compatibility class</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#silence" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Silence</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#server-states" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Server states</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#the-leader-job" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">The leader job</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#certificate-renewal" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Certificate renewal</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#dns-zones" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">DNS zones</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#edge-pushes" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Edge pushes</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#data-streams" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Data streams</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#limits-and-windows-of-the-data-streams" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Limits and windows of the data streams</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#machine-streams" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Machine streams</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#frames" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Frames</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#the-steps-of-a-machine-stream" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">The steps of a machine stream</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#go-api-of-the-hub" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Go API of the hub</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-agent" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The agent</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#logs" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Logs</span></a></li></ul></nav></starlight-toc><script type="module" src="/_astro/TableOfContents.astro_astro_type_script_index_0_lang.BpJaGz7G.js"></script></div></div></div></aside><div class="main-pane astro-bfhpgjcp"><main data-pagefind-body class="astro-g6oqdoeg" lang="en" dir="ltr"><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><h1 id="_top" class="astro-42k5req6">The control channel</h1></div></div><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><div class="sl-markdown-content"><p>The control channel is the stream that each enrolled server keeps open to the control role. It carries the heartbeats of the server and the commands of the control role. This page covers the protocol <code dir="auto">hopbox.cluster.v1.ControlService</code>, the heartbeat, the server states, the certificate renewal, the DNS zones, and the data streams. The code is in <code dir="auto">internal/control/channel</code> (the control side) and <code dir="auto">internal/node</code> (the server side).</p>
+<p>A server enrolls first (<a href="/reference/enrollment/">enrollment.md</a>). Both calls of the channel run on the internal listener, over TLS 1.3 and HTTP/2, with the certificate of the server (<a href="/reference/internal-listener/">internal-listener.md</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="the-server-always-dials">The server always dials</h2><a class="sl-anchor-link" href="#the-server-always-dials"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The server always dials”</span></a></div>
+<p>The server opens every connection. It opens <code dir="auto">Channel</code> and keeps it open. When the control role needs a data stream to the server, it sends <code dir="auto">OpenStream</code> on the channel, and the server opens <code dir="auto">AttachStream</code> for it. This is the reverse-attach pattern. HTTP/2 carries the channel and every data stream on one connection, so hopbox needs no other multiplexer.</p>
+<p>On a server with the control role and a role that enrolls, the control role runs in the same <code dir="auto">hopboxd</code> as the <code dir="auto">channel</code> unit. The <code dir="auto">channel</code> unit still connects over mutual TLS.</p>
+<p>Each server keeps one channel, whatever its roles. The node role, the DNS role, and the edge role use the same channel of their server. The DNS role gets its zones on it (<a href="#dns-zones">DNS zones</a>). The edge role gets its certificate, its routes, and the access changes on it (<a href="#edge-pushes">Edge pushes</a>). Today, <code dir="auto">node</code>, <code dir="auto">dns</code>, and <code dir="auto">edge</code> are the roles that enroll.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="controlservice">ControlService</h2><a class="sl-anchor-link" href="#controlservice"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “ControlService”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Procedure</th>
+<th>Kind</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">/hopbox.cluster.v1.ControlService/Channel</code></td>
+<td>bidi stream</td>
+<td>The control channel.</td>
+</tr>
+<tr>
+<td><code dir="auto">/hopbox.cluster.v1.ControlService/AttachStream</code></td>
+<td>bidi stream</td>
+<td>One data stream that the control role asked for.</td>
+</tr>
+</tbody>
+</table>
+<p>Both calls need the certificate of a server. The policy lets a server act only for itself (<a href="/reference/api/#callers-and-policy">api.md</a>):</p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Operation</th>
+<th>Allowed caller</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">server.channel</code></td>
+<td>open <code dir="auto">Channel</code></td>
+<td>the server that the certificate names</td>
+</tr>
+<tr>
+<td><code dir="auto">server.heartbeat</code></td>
+<td>record a heartbeat</td>
+<td>the same server</td>
+</tr>
+<tr>
+<td><code dir="auto">server.renew_certificate</code></td>
+<td>sign a new certificate</td>
+<td>the same server</td>
+</tr>
+<tr>
+<td><code dir="auto">server.attach_stream</code></td>
+<td>open <code dir="auto">AttachStream</code></td>
+<td>the server of which the control role asked the stream</td>
+</tr>
+<tr>
+<td><code dir="auto">server.read_dns_zones</code></td>
+<td>read the zones that the server serves, before a push of <code dir="auto">dns_zones</code></td>
+<td>the same server, with a certificate that carries the role <code dir="auto">dns</code></td>
+</tr>
+<tr>
+<td><code dir="auto">server.read_edge_certificate</code></td>
+<td>read the certificate of the install with its key, before a push of <code dir="auto">edge_certificate</code></td>
+<td>the same server, with a certificate that carries the role <code dir="auto">edge</code></td>
+</tr>
+<tr>
+<td><code dir="auto">server.read_edge_routes</code></td>
+<td>read the routes of the machine URLs, before a push of <code dir="auto">edge_routes</code></td>
+<td>the same server, with a certificate that carries the role <code dir="auto">edge</code></td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="channelrequest">ChannelRequest</h3><a class="sl-anchor-link" href="#channelrequest"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “ChannelRequest”</span></a></div>
+<p>Each message from the server holds one of these fields:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">heartbeat</code></td>
+<td><code dir="auto">Heartbeat</code></td>
+<td>The first message of each channel, then one every 5 seconds.</td>
+</tr>
+<tr>
+<td><code dir="auto">certificate_renewal</code></td>
+<td><code dir="auto">CertificateRenewal</code></td>
+<td>Once the certificate is 20 days old.</td>
+</tr>
+<tr>
+<td><code dir="auto">stream_refused</code></td>
+<td><code dir="auto">StreamRefused</code></td>
+<td>The answer to an <code dir="auto">OpenStream</code> that the server does not serve.</td>
+</tr>
+<tr>
+<td><code dir="auto">machine_report</code></td>
+<td><code dir="auto">MachineReport</code></td>
+<td>A step of the current state of a machine, from its executor (<a href="/reference/executor-protocol/#machinereport">executor-protocol.md</a>).</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="channelresponse">ChannelResponse</h3><a class="sl-anchor-link" href="#channelresponse"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “ChannelResponse”</span></a></div>
+<p>Each message from the control role holds one of these fields:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">heartbeat_ack</code></td>
+<td><code dir="auto">HeartbeatAck</code></td>
+<td>The answer to each heartbeat.</td>
+</tr>
+<tr>
+<td><code dir="auto">certificate_issued</code></td>
+<td><code dir="auto">CertificateIssued</code></td>
+<td>The answer to a <code dir="auto">CertificateRenewal</code> that the control role grants.</td>
+</tr>
+<tr>
+<td><code dir="auto">open_stream</code></td>
+<td><code dir="auto">OpenStream</code></td>
+<td>A request for a data stream.</td>
+</tr>
+<tr>
+<td><code dir="auto">certificate_refused</code></td>
+<td><code dir="auto">CertificateRefused</code></td>
+<td>The answer to a <code dir="auto">CertificateRenewal</code> that the control role does not grant now.</td>
+</tr>
+<tr>
+<td><code dir="auto">dns_zones</code></td>
+<td><code dir="auto">DNSZones</code></td>
+<td>Every zone that the DNS role of the server serves. Only a server with the DNS role gets it (<a href="#dns-zones">DNS zones</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">reconcile_machine</code></td>
+<td><code dir="auto">ReconcileMachine</code></td>
+<td>What a machine of the server must become, with the lease of its executor (<a href="/reference/executor-protocol/#reconcilemachine">executor-protocol.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">machine_report_result</code></td>
+<td><code dir="auto">MachineReportResult</code></td>
+<td>The answer to each <code dir="auto">MachineReport</code> (<a href="/reference/executor-protocol/#machinereportresult">executor-protocol.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">edge_certificate</code></td>
+<td><code dir="auto">EdgeCertificate</code></td>
+<td>The certificate of the install with its key. Only a server with the edge role gets it (<a href="#edge-pushes">Edge pushes</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">edge_routes</code></td>
+<td><code dir="auto">EdgeRoutes</code></td>
+<td>Every machine that a machine URL can name, with the target of each running one. Only a server with the edge role gets it.</td>
+</tr>
+<tr>
+<td><code dir="auto">edge_lease_renewals</code></td>
+<td><code dir="auto">EdgeLeaseRenewals</code></td>
+<td>The rest of the lease of each target, in place of routes that stay the same. Only a server with the edge role gets it.</td>
+</tr>
+<tr>
+<td><code dir="auto">edge_access_changed</code></td>
+<td><code dir="auto">EdgeAccessChanged</code></td>
+<td>A change of the access to machines. Only a server with the edge role gets it.</td>
+</tr>
+</tbody>
+</table>
+<p>A message without a known field ends the channel with <code dir="auto">invalid_argument</code>. A server that gets a message that it does not know logs <code dir="auto">the control plane sent a message that this hopboxd does not know. Upgrade hopboxd</code> and goes on.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="heartbeat">Heartbeat</h3><a class="sl-anchor-link" href="#heartbeat"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Heartbeat”</span></a></div>
+<p>The heartbeat holds these values.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+<th>Limit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">status</code></td>
+<td><code dir="auto">ServerStatus</code></td>
+<td><code dir="auto">SERVER_STATUS_OK</code> or <code dir="auto">SERVER_STATUS_DEGRADED</code>.</td>
+<td><code dir="auto">SERVER_STATUS_UNSPECIFIED</code> is refused.</td>
+</tr>
+<tr>
+<td><code dir="auto">problems</code></td>
+<td>repeated string</td>
+<td>The failed checks of the server, one line each, in the form <code dir="auto">&lt;check&gt;: &lt;error&gt;</code>.</td>
+<td>at most 32, each at most 1024 bytes of UTF-8</td>
+</tr>
+<tr>
+<td><code dir="auto">cpu</code></td>
+<td><code dir="auto">CPUFingerprint</code></td>
+<td>The CPU fingerprint.</td>
+<td>each string at most 256 bytes</td>
+</tr>
+<tr>
+<td><code dir="auto">compatibility_class</code></td>
+<td>string</td>
+<td>The compatibility class.</td>
+<td>at most 256 bytes</td>
+</tr>
+<tr>
+<td><code dir="auto">labels</code></td>
+<td>map of string to string</td>
+<td>The labels of the server.</td>
+<td>the label rules below</td>
+</tr>
+<tr>
+<td><code dir="auto">hopboxd_version</code></td>
+<td>string</td>
+<td>The version of <code dir="auto">hopboxd</code>, such as <code dir="auto">v0.1.0</code>.</td>
+<td>at most 256 bytes</td>
+</tr>
+<tr>
+<td><code dir="auto">kernel_release</code></td>
+<td>string</td>
+<td>The release of the host kernel, as <code dir="auto">uname -r</code> prints it.</td>
+<td>at most 256 bytes</td>
+</tr>
+<tr>
+<td><code dir="auto">capacity</code></td>
+<td><code dir="auto">Capacity</code></td>
+<td>What the server has for machines.</td>
+<td>each value fits a signed 64-bit number. <code dir="auto">cpu_threads</code> fits a signed 32-bit number.</td>
+</tr>
+<tr>
+<td><code dir="auto">allocations</code></td>
+<td>repeated <code dir="auto">Allocation</code></td>
+<td>The resources that the running machines of the server hold, from its executors.</td>
+<td>at most 4096</td>
+</tr>
+<tr>
+<td><code dir="auto">actions</code></td>
+<td>repeated <code dir="auto">ActionInProgress</code></td>
+<td>The actions that the executors of the server run now, such as <code dir="auto">boot</code> (<a href="/reference/executor/#metrics">executor.md</a>).</td>
+<td>at most 4096, each name at most 256 bytes</td>
+</tr>
+<tr>
+<td><code dir="auto">sequence</code></td>
+<td>uint64</td>
+<td>Numbers the heartbeats of one channel, from 1.</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">executor</code></td>
+<td>bool</td>
+<td>Tells that the server runs machine executors.</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">leases</code></td>
+<td>repeated <code dir="auto">MachineLease</code></td>
+<td>The machine leases that the executors hold. The control role renews them (<a href="/reference/executor-protocol/#renewals">executor-protocol.md</a>).</td>
+<td>at most 4096</td>
+</tr>
+<tr>
+<td><code dir="auto">inbound_machines</code></td>
+<td>repeated string</td>
+<td>The IDs of the machines of the server with inbound traffic since the last heartbeat. The control role sets <code dir="auto">last_activity_at</code> of each machine of the server in this list, at most once a minute for each machine (<a href="/reference/node-network/#inbound-traffic-as-a-use">node-network.md</a>). The IDs of other servers change nothing.</td>
+<td>at most 4096, each a UUID</td>
+</tr>
+</tbody>
+</table>
+<p><code dir="auto">CPUFingerprint</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">arch</code></td>
+<td>string</td>
+<td>The CPU architecture, as Go names it, such as <code dir="auto">amd64</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">vendor</code></td>
+<td>string</td>
+<td><code dir="auto">vendor_id</code> of <code dir="auto">/proc/cpuinfo</code>, such as <code dir="auto">GenuineIntel</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">family</code></td>
+<td>uint32</td>
+<td><code dir="auto">cpu family</code> of <code dir="auto">/proc/cpuinfo</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">model</code></td>
+<td>uint32</td>
+<td><code dir="auto">model</code> of <code dir="auto">/proc/cpuinfo</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">stepping</code></td>
+<td>uint32</td>
+<td><code dir="auto">stepping</code> of <code dir="auto">/proc/cpuinfo</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">model_name</code></td>
+<td>string</td>
+<td><code dir="auto">model name</code> of <code dir="auto">/proc/cpuinfo</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">microcode</code></td>
+<td>string</td>
+<td><code dir="auto">microcode</code> of <code dir="auto">/proc/cpuinfo</code>, such as <code dir="auto">0xb000040</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">flags_hash</code></td>
+<td>string</td>
+<td>The SHA-256, in lowercase hex, of the CPU flags, sorted and joined by spaces.</td>
+</tr>
+<tr>
+<td><code dir="auto">cpu_template</code></td>
+<td>string</td>
+<td>The Firecracker CPU template. Always <code dir="auto">none</code> in phase 1.</td>
+</tr>
+</tbody>
+</table>
+<p><code dir="auto">Capacity</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">cpu_threads</code></td>
+<td>uint32</td>
+<td>The CPU threads that <code dir="auto">hopboxd</code> can use.</td>
+</tr>
+<tr>
+<td><code dir="auto">memory_bytes</code></td>
+<td>uint64</td>
+<td><code dir="auto">MemTotal</code> of <code dir="auto">/proc/meminfo</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">disk_bytes</code></td>
+<td>uint64</td>
+<td>The size of the file system of <code dir="auto">data_dir</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">disk_free_bytes</code></td>
+<td>uint64</td>
+<td>The space on the file system of <code dir="auto">data_dir</code> that a user without root can use.</td>
+</tr>
+</tbody>
+</table>
+<p><code dir="auto">Allocation</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">machine_id</code></td>
+<td>string</td>
+<td>The ID of the machine. It must be a UUID.</td>
+</tr>
+<tr>
+<td><code dir="auto">vcpus</code></td>
+<td>uint32</td>
+<td>Its vCPUs.</td>
+</tr>
+<tr>
+<td><code dir="auto">memory_bytes</code></td>
+<td>uint64</td>
+<td>Its memory.</td>
+</tr>
+<tr>
+<td><code dir="auto">disk_bytes</code></td>
+<td>uint64</td>
+<td>Its disk.</td>
+</tr>
+</tbody>
+</table>
+<p><code dir="auto">ActionInProgress</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">machine_id</code></td>
+<td>string</td>
+<td>The ID of the machine. It must be a UUID.</td>
+</tr>
+<tr>
+<td><code dir="auto">action</code></td>
+<td>string</td>
+<td>The name of the action, such as <code dir="auto">start</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">start_time</code></td>
+<td>timestamp</td>
+<td>The start of the action.</td>
+</tr>
+</tbody>
+</table>
+<p>A label key has 1 to 63 characters of <code dir="auto">a-z</code>, <code dir="auto">0-9</code>, <code dir="auto">.</code>, <code dir="auto">_</code>, and <code dir="auto">-</code>, and starts with a letter. A label value is UTF-8 of at most 255 bytes without control characters. A server has at most 64 labels.</p>
+<p>A heartbeat that breaks a limit ends the channel with <code dir="auto">invalid_argument</code> and a message such as <code dir="auto">invalid argument: the heartbeat: 33 problems, more than 32</code>. The registry keeps the last valid heartbeat.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="heartbeatack">HeartbeatAck</h3><a class="sl-anchor-link" href="#heartbeatack"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “HeartbeatAck”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">state</code></td>
+<td><code dir="auto">ServerState</code></td>
+<td>The state of the server after the heartbeat: <code dir="auto">SERVER_STATE_READY</code>, <code dir="auto">SERVER_STATE_CORDONED</code>, <code dir="auto">SERVER_STATE_UNRESPONSIVE</code>, or <code dir="auto">SERVER_STATE_DECOMMISSIONED</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">sequence</code></td>
+<td>uint64</td>
+<td>The heartbeat that the control role recorded last on the channel.</td>
+</tr>
+<tr>
+<td><code dir="auto">renewed</code></td>
+<td>repeated <code dir="auto">MachineLease</code></td>
+<td>The leases of that heartbeat that the control role renewed. The other leases of that heartbeat are stale (<a href="/reference/executor-protocol/#renewals">executor-protocol.md</a>).</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="certificaterenewal-and-certificateissued">CertificateRenewal and CertificateIssued</h3><a class="sl-anchor-link" href="#certificaterenewal-and-certificateissued"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “CertificateRenewal and CertificateIssued”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">CertificateRenewal</code></td>
+<td><code dir="auto">csr</code></td>
+<td>bytes</td>
+<td>A DER certificate request for the ECDSA P-256 key of the renewal.</td>
+</tr>
+<tr>
+<td><code dir="auto">CertificateIssued</code></td>
+<td><code dir="auto">certificate</code></td>
+<td>bytes</td>
+<td>The new DER certificate. It names the same server and roles.</td>
+</tr>
+<tr>
+<td><code dir="auto">CertificateRefused</code></td>
+<td><code dir="auto">reason</code></td>
+<td>string</td>
+<td>Why the control role grants no certificate now.</td>
+</tr>
+<tr>
+<td><code dir="auto">CertificateRefused</code></td>
+<td><code dir="auto">retry_time</code></td>
+<td><code dir="auto">google.protobuf.Timestamp</code></td>
+<td>The earliest time of the next renewal.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="openstream-and-streamrefused">OpenStream and StreamRefused</h3><a class="sl-anchor-link" href="#openstream-and-streamrefused"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “OpenStream and StreamRefused”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">OpenStream</code></td>
+<td><code dir="auto">stream_id</code></td>
+<td>string</td>
+<td>A random ID of the stream, 26 characters. The server sends it back in its first <code dir="auto">AttachStreamRequest</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">OpenStream</code></td>
+<td><code dir="auto">kind</code></td>
+<td>string</td>
+<td>What the stream carries, and so which part of the server serves it.</td>
+</tr>
+<tr>
+<td><code dir="auto">StreamRefused</code></td>
+<td><code dir="auto">stream_id</code></td>
+<td>string</td>
+<td>The ID of the refused stream.</td>
+</tr>
+<tr>
+<td><code dir="auto">StreamRefused</code></td>
+<td><code dir="auto">reason</code></td>
+<td>string</td>
+<td>Why the server refuses, such as <code dir="auto">this server serves no stream of kind "exec"</code>.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="dnszones-dnszone-and-dnsrecord">DNSZones, DNSZone, and DNSRecord</h3><a class="sl-anchor-link" href="#dnszones-dnszone-and-dnsrecord"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “DNSZones, DNSZone, and DNSRecord”</span></a></div>
+<p><code dir="auto">DNSZones</code> is the whole set of zones that the DNS role serves. Each set replaces the set before it.</p>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">DNSZones</code></td>
+<td><code dir="auto">serial</code></td>
+<td>uint32</td>
+<td>The SOA serial of every zone. It grows with each change (<a href="/reference/control-store/#dns_zone">control-store.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">DNSZones</code></td>
+<td><code dir="auto">zones</code></td>
+<td>repeated <code dir="auto">DNSZone</code></td>
+<td>The zones. Empty until an instance admin sets the domain of the install.</td>
+</tr>
+<tr>
+<td><code dir="auto">DNSZone</code></td>
+<td><code dir="auto">origin</code></td>
+<td>string</td>
+<td>The name of the zone, in lowercase, without the final dot, such as <code dir="auto">example.com</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">DNSZone</code></td>
+<td><code dir="auto">records</code></td>
+<td>repeated <code dir="auto">DNSRecord</code></td>
+<td>Every record of the zone: exactly one <code dir="auto">SOA</code> record and at least one <code dir="auto">NS</code> record at the origin.</td>
+</tr>
+<tr>
+<td><code dir="auto">DNSRecord</code></td>
+<td><code dir="auto">name</code></td>
+<td>string</td>
+<td>The owner of the record, relative to the origin, in lowercase: empty for the origin, <code dir="auto">*</code> for the wildcard, or labels such as <code dir="auto">ns1</code> or <code dir="auto">_acme-challenge</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">DNSRecord</code></td>
+<td><code dir="auto">type</code></td>
+<td>string</td>
+<td>The record type: <code dir="auto">SOA</code>, <code dir="auto">NS</code>, <code dir="auto">A</code>, <code dir="auto">AAAA</code>, <code dir="auto">TXT</code>, or <code dir="auto">CAA</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">DNSRecord</code></td>
+<td><code dir="auto">ttl</code></td>
+<td>uint32</td>
+<td>The time to live of the record, in seconds.</td>
+</tr>
+<tr>
+<td><code dir="auto">DNSRecord</code></td>
+<td><code dir="auto">data</code></td>
+<td>string</td>
+<td>The data of the record in the text form of RFC 1035, such as <code dir="auto">203.0.113.10</code> for an <code dir="auto">A</code> record, or <code dir="auto">"a value"</code> for a <code dir="auto">TXT</code> record. A name in the data ends with a dot.</td>
+</tr>
+</tbody>
+</table>
+<p><a href="/reference/dns/#the-zone-of-the-install">dns.md</a> lists the records of the zone of the install.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="edgecertificate-edgeroutes-edgeroute-edgetarget-edgeleaserenewals-edgeaccesschanged-and-edgesshkeys">EdgeCertificate, EdgeRoutes, EdgeRoute, EdgeTarget, EdgeLeaseRenewals, EdgeAccessChanged, and EdgeSSHKeys</h3><a class="sl-anchor-link" href="#edgecertificate-edgeroutes-edgeroute-edgetarget-edgeleaserenewals-edgeaccesschanged-and-edgesshkeys"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “EdgeCertificate, EdgeRoutes, EdgeRoute, EdgeTarget, EdgeLeaseRenewals, EdgeAccessChanged, and EdgeSSHKeys”</span></a></div>
+<p>These messages feed the edge role (<a href="/reference/edge/">edge.md</a>). Each <code dir="auto">EdgeCertificate</code> replaces the one before it, and each <code dir="auto">EdgeRoutes</code> replaces the set before it. <code dir="auto">EdgeService</code>, the service of the edge role on the internal listener, is in <a href="/reference/internal-listener/#edgeservice">internal-listener.md</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">EdgeCertificate</code></td>
+<td><code dir="auto">domain</code></td>
+<td>string</td>
+<td>The domain of the install, in lowercase, such as <code dir="auto">example.com</code>. The certificate covers it and <code dir="auto">*.&lt;domain&gt;</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeCertificate</code></td>
+<td><code dir="auto">chain</code></td>
+<td>repeated bytes</td>
+<td>The DER certificates, the leaf first.</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeCertificate</code></td>
+<td><code dir="auto">private_key</code></td>
+<td>bytes</td>
+<td>The PKCS #8 DER key of the leaf. Only the mutual TLS of the channel protects it.</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeRoutes</code></td>
+<td><code dir="auto">domain</code></td>
+<td>string</td>
+<td>The domain of the install, in lowercase. A machine URL is <code dir="auto">https://&lt;name&gt;.&lt;domain&gt;</code>. It is empty until an instance admin sets the domain, and then the set has no route.</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeRoutes</code></td>
+<td><code dir="auto">routes</code></td>
+<td>repeated <code dir="auto">EdgeRoute</code></td>
+<td>One route for each machine that holds its name and whose target and current state are not <code dir="auto">deleted</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeRoute</code></td>
+<td><code dir="auto">name</code></td>
+<td>string</td>
+<td>The name of the machine.</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeRoute</code></td>
+<td><code dir="auto">machine_id</code></td>
+<td>string</td>
+<td>The ID of the machine, a UUID.</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeRoute</code></td>
+<td><code dir="auto">public</code></td>
+<td>bool</td>
+<td>The URL visibility of the machine. True means <code dir="auto">public</code>: the URL needs no sign-in.</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeRoute</code></td>
+<td><code dir="auto">current_state</code></td>
+<td>string</td>
+<td>The current state of the machine, such as <code dir="auto">running</code> or <code dir="auto">stopped</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeRoute</code></td>
+<td><code dir="auto">org_suspended</code></td>
+<td>bool</td>
+<td>The suspension of the org of the machine. True means that an instance admin suspended it.</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeRoute</code></td>
+<td><code dir="auto">ssh_port</code></td>
+<td>uint32</td>
+<td>The SSH port of the machine on the edge servers, 10000 to 30000 (<a href="/reference/ssh-front-door/">ssh-front-door.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeRoute</code></td>
+<td><code dir="auto">target</code></td>
+<td><code dir="auto">EdgeTarget</code></td>
+<td>Set only for a running machine whose route record names the live grant of its lease (<a href="/reference/control-store/#route_records">control-store.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeTarget</code></td>
+<td><code dir="auto">address</code></td>
+<td>string</td>
+<td>The IP address of the machine on its node, from its route record (<a href="/reference/node-network/#where-the-address-shows">node-network.md</a>). It is empty for a machine without an address.</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeTarget</code></td>
+<td><code dir="auto">url_port</code></td>
+<td>uint32</td>
+<td>The port in the machine that the URL reaches, 1 to 65535.</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeTarget</code></td>
+<td><code dir="auto">lease</code></td>
+<td><code dir="auto">MachineLease</code></td>
+<td>The grant of the machine lease that the route record names (<a href="/reference/executor-protocol/">executor-protocol.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeTarget</code></td>
+<td><code dir="auto">lease_remaining</code></td>
+<td><code dir="auto">google.protobuf.Duration</code></td>
+<td>How long the edge can send traffic to the target, counted from the arrival of the message. See <a href="#edge-pushes">Edge pushes</a>.</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeTarget</code></td>
+<td><code dir="auto">ssh_host_keys</code></td>
+<td>repeated string</td>
+<td>The public SSH host keys of the guest, in the <code dir="auto">authorized_keys</code> format, from the route record. The SSH front door accepts only these keys from the machine.</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeLeaseRenewals</code></td>
+<td><code dir="auto">renewals</code></td>
+<td>repeated <code dir="auto">EdgeLeaseRenewal</code></td>
+<td>The rest of the lease of each target of the last routes.</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeLeaseRenewal</code></td>
+<td><code dir="auto">lease</code></td>
+<td><code dir="auto">MachineLease</code></td>
+<td>The grant of the lease. It extends only the target of the same grant.</td>
+</tr>
+<tr>
+<td><code dir="auto">EdgeLeaseRenewal</code></td>
+<td><code dir="auto">lease_remaining</code></td>
+<td><code dir="auto">google.protobuf.Duration</code></td>
+<td>As in <code dir="auto">EdgeTarget</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><code dir="auto">EdgeAccessChanged</code> has one field, <code dir="auto">machine_id</code>. It names the one machine whose access changed, a UUID. Empty means every machine.</p>
+<p><code dir="auto">EdgeSSHKeys</code> holds the keys of the SSH front door (<a href="/reference/ssh-front-door/#keys">ssh-front-door.md</a>). <code dir="auto">host_key</code> is the PKCS #8 DER Ed25519 host key of the install. <code dir="auto">client_key</code> is the PKCS #8 DER Ed25519 key with which the front door signs in to the machines. Only the mutual TLS of the channel protects them.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="attachstreamrequest-and-attachstreamresponse">AttachStreamRequest and AttachStreamResponse</h3><a class="sl-anchor-link" href="#attachstreamrequest-and-attachstreamresponse"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “AttachStreamRequest and AttachStreamResponse”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">AttachStreamRequest</code></td>
+<td><code dir="auto">stream_id</code></td>
+<td>string</td>
+<td>The ID from <code dir="auto">OpenStream</code> in the first message. Empty after it.</td>
+</tr>
+<tr>
+<td><code dir="auto">AttachStreamRequest</code></td>
+<td><code dir="auto">data</code></td>
+<td>bytes</td>
+<td>The next bytes from the server, at most 64 KiB. The first message can carry bytes too.</td>
+</tr>
+<tr>
+<td><code dir="auto">AttachStreamResponse</code></td>
+<td><code dir="auto">data</code></td>
+<td>bytes</td>
+<td>The next bytes from the control role, at most 64 KiB.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h2"><h2 id="the-heartbeat">The heartbeat</h2><a class="sl-anchor-link" href="#the-heartbeat"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The heartbeat”</span></a></div>
+<p>At the start of the channel, the server sends a heartbeat. Then it sends one every 5 seconds. The control role writes the facts to the server registry in the control store (<a href="/reference/control-store/#servers">control-store.md</a>) and answers with <code dir="auto">HeartbeatAck</code>. The admin calls <code dir="auto">ListServers</code> and <code dir="auto">GetServer</code> show the facts (<a href="/reference/admin-api/#serverservice">admin-api.md</a>).</p>
+<p>The control role writes at most one heartbeat of a channel every 2.5 seconds, half the interval. A heartbeat that comes sooner gets the answer of the last one, with its state, and no write. So a server that sends too fast cannot load the control store.</p>
+<p>Sometimes the write of a heartbeat fails, for example because the control store does not answer for a moment. Then the control role logs <code dir="auto">recording a heartbeat failed</code> at level warn, with the fields <code dir="auto">server</code> and <code dir="auto">err</code>. It sends no <code dir="auto">HeartbeatAck</code>, and keeps the channel open. The next heartbeat tries again. So a short outage of the control store does not drop the channels of the whole fleet. Only a refused heartbeat ends the channel: one with a bad field (<code dir="auto">invalid_argument</code>), or one of a server that the registry no longer serves (<code dir="auto">unauthenticated</code>).</p>
+<p>On a server, the <code dir="auto">Collector</code> of <code dir="auto">internal/node</code> gathers the facts. It reads some facts once, at the first heartbeat of the process, and others at each heartbeat:</p>
+<table>
+<thead>
+<tr>
+<th>Fact</th>
+<th>Source</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">problems</code> from the checks</td>
+<td>the preflight check (<a href="/reference/preflight/">preflight.md</a>): one line <code dir="auto">&lt;check&gt;: &lt;error&gt;</code> for each failed check, of either severity</td>
+<td>once</td>
+</tr>
+<tr>
+<td><code dir="auto">status</code></td>
+<td>A failed check of severity <code dir="auto">fail</code> gives <code dir="auto">SERVER_STATUS_DEGRADED</code>. Else the status is <code dir="auto">SERVER_STATUS_OK</code>. A warning alone, such as a kernel that is not the tested one, leaves the status <code dir="auto">ok</code>.</td>
+<td>once</td>
+</tr>
+<tr>
+<td><code dir="auto">kernel_release</code></td>
+<td><code dir="auto">uname</code>. A failure adds the problem <code dir="auto">host: &lt;error&gt;</code>.</td>
+<td>once</td>
+</tr>
+<tr>
+<td><code dir="auto">cpu</code></td>
+<td>the first processor of <code dir="auto">/proc/cpuinfo</code>. A failure adds the problem <code dir="auto">cpu: &lt;error&gt;</code>, and the fingerprint then holds only the architecture and the template <code dir="auto">none</code>.</td>
+<td>once</td>
+</tr>
+<tr>
+<td><code dir="auto">compatibility_class</code></td>
+<td>the formula below, with the snapshot format version that <code dir="auto">firecracker --snapshot-version</code> prints. The VMM driver of the node runs the Firecracker of <code dir="auto">vmm.firecracker</code> (<a href="/reference/hopboxd-config/#keys">hopboxd-config.md</a>), for at most 5 seconds (<a href="/reference/firecracker-driver/#capabilities">firecracker-driver.md</a>). It never runs a <code dir="auto">firecracker</code> of <code dir="auto">PATH</code>. If it fails, the version is <code dir="auto">unknown</code>, and the problem <code dir="auto">firecracker: &lt;error&gt;</code> appears.</td>
+<td>once</td>
+</tr>
+<tr>
+<td><code dir="auto">capacity</code></td>
+<td>the CPU threads of the process, <code dir="auto">/proc/meminfo</code>, and <code dir="auto">statfs</code> of <code dir="auto">data_dir</code>. A failure on Linux adds the problem <code dir="auto">capacity: &lt;error&gt;</code>.</td>
+<td>each heartbeat</td>
+</tr>
+<tr>
+<td><code dir="auto">labels</code></td>
+<td><code dir="auto">channel.labels</code> of the bootstrap config (<a href="/reference/hopboxd-config/#keys">hopboxd-config.md</a>). Once <code dir="auto">SetServerLabels</code> of the admin API set the labels of the server, the registry keeps those and ignores this field (<a href="/reference/admin-api/#setserverlabels">admin-api.md</a>).</td>
+<td>each heartbeat</td>
+</tr>
+<tr>
+<td><code dir="auto">hopboxd_version</code></td>
+<td>the version of <code dir="auto">hopboxd</code></td>
+<td>each heartbeat</td>
+</tr>
+<tr>
+<td><code dir="auto">allocations</code>, <code dir="auto">actions</code>, <code dir="auto">leases</code>, <code dir="auto">executor</code></td>
+<td>the executors of the node (<a href="/reference/executor/">executor.md</a>). A server with the node role runs the executors. A server without it sends empty lists and <code dir="auto">executor</code> false.</td>
+<td>each heartbeat</td>
+</tr>
+<tr>
+<td><code dir="auto">inbound_machines</code></td>
+<td>the inbound counters of the table <code dir="auto">inet hopbox_node</code> (<a href="/reference/node-network/#counters">node-network.md</a>). A server without the node role sends an empty list.</td>
+<td>each heartbeat</td>
+</tr>
+</tbody>
+</table>
+<p>A server without the node role runs no machine. So it skips the preflight checks and the snapshot version. Its <code dir="auto">status</code> is always <code dir="auto">SERVER_STATUS_OK</code>, its <code dir="auto">problems</code> come only from the host, the CPU, and the capacity, and its <code dir="auto">compatibility_class</code> is empty.</p>
+<p>Off Linux, the CPU, memory, and disk facts are not available. The capacity then stays 0 without a problem line, and the preflight problems already say why.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="compatibility-class">Compatibility class</h3><a class="sl-anchor-link" href="#compatibility-class"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Compatibility class”</span></a></div>
+<p>The compatibility class names the servers that can restore the memory state of each other. It is <code dir="auto">cc-</code> and 16 lowercase hex digits:</p>
+<div class="expressive-code"><link rel="stylesheet" href="/_astro/ec.w36nc.css"><script type="module" src="/_astro/ec.0vx5m.js"></script><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="text"><code><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">cc-&lt;first 8 bytes of SHA-256(arch NUL model NUL kernel_series NUL snapshot_version), in hex&gt;</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="cc-<first 8 bytes of SHA-256(arch NUL model NUL kernel_series NUL snapshot_version), in hex>"><div></div></button></div></figure></div>
+<table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">arch</code></td>
+<td>The CPU architecture, such as <code dir="auto">amd64</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">model</code></td>
+<td>The CPU template. For the template <code dir="auto">none</code>, it is <code dir="auto">&lt;vendor&gt;/&lt;family&gt;/&lt;model&gt;/&lt;stepping&gt;</code>, such as <code dir="auto">GenuineIntel/6/79/1</code>. The model name and the microcode do not count.</td>
+</tr>
+<tr>
+<td><code dir="auto">kernel_series</code></td>
+<td>The first two numbers of the kernel release, such as <code dir="auto">6.18</code> for <code dir="auto">6.18.57-hopbox1</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">snapshot_version</code></td>
+<td>The output of <code dir="auto">firecracker --snapshot-version</code>, such as <code dir="auto">v12.0.0</code>, or <code dir="auto">unknown</code>.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h2"><h2 id="silence">Silence</h2><a class="sl-anchor-link" href="#silence"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Silence”</span></a></div>
+<p>Both sides watch the channel:</p>
+<table>
+<thead>
+<tr>
+<th>Side</th>
+<th>Rule</th>
+<th>Then</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Control role</td>
+<td>No message for 20 seconds, which is 4 heartbeat intervals.</td>
+<td>It ends the channel with <code dir="auto">deadline_exceeded</code>, and logs <code dir="auto">control channel closed</code> with the error <code dir="auto">the server sent nothing for 4 heartbeat intervals</code>.</td>
+</tr>
+<tr>
+<td>Server</td>
+<td>No <code dir="auto">HeartbeatAck</code> for 4 heartbeat intervals.</td>
+<td>It drops the channel with the error <code dir="auto">the control plane answered no heartbeat for 4 intervals</code>, and dials again.</td>
+</tr>
+</tbody>
+</table>
+<p>A new channel of a server replaces the open one of the same server. The control role ends the old channel with <code dir="auto">aborted</code>, and the cause <code dir="auto">a newer channel of the same server replaced this one</code> goes to its log.</p>
+<p>When the control side ends a channel, the server gets the code and the cause: <code dir="auto">deadline_exceeded</code> with <code dir="auto">the server sent nothing for 4 heartbeat intervals</code>, <code dir="auto">aborted</code> with <code dir="auto">a newer channel of the same server replaced this one</code>, <code dir="auto">permission_denied</code> with <code dir="auto">the control plane ended the channel of this server</code> after <code dir="auto">Hub.Disconnect</code>, or <code dir="auto">invalid_argument</code> with <code dir="auto">the message has no known content. Upgrade hopboxd on the control servers</code>. An error of the service layer, such as a refused heartbeat, keeps its code and message as in <a href="/reference/api/#errors">api.md</a>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="server-states">Server states</h2><a class="sl-anchor-link" href="#server-states"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Server states”</span></a></div>
+<p>A server is in one of the states of phase 1. Draining and shutting down come with the drain in phase 2.</p>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">ready</code></td>
+<td>The server sends heartbeats and takes new machines.</td>
+</tr>
+<tr>
+<td><code dir="auto">cordoned</code></td>
+<td>An instance admin cordoned it. It keeps its machines but takes no new one.</td>
+</tr>
+<tr>
+<td><code dir="auto">unresponsive</code></td>
+<td>It sent no heartbeat for 20 seconds, or none since its enrollment. Its machines stay on it.</td>
+</tr>
+<tr>
+<td><code dir="auto">decommissioned</code></td>
+<td>It left the install. The control role refuses its certificates, its heartbeats, and its renewals.</td>
+</tr>
+</tbody>
+</table>
+<p>The registry also keeps the flag <code dir="auto">cordoned</code>, which is the choice of the instance admin. The flag stays while the server is unresponsive, so the server comes back cordoned.</p>
+<table>
+<thead>
+<tr>
+<th>From</th>
+<th>Event</th>
+<th>To</th>
+<th>Audit entry</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>none</td>
+<td><code dir="auto">Enroll</code></td>
+<td><code dir="auto">unresponsive</code></td>
+<td><code dir="auto">server.enroll</code> (<a href="/reference/enrollment/#enroll">enrollment.md</a>)</td>
+</tr>
+<tr>
+<td><code dir="auto">unresponsive</code></td>
+<td>a heartbeat, flag not set</td>
+<td><code dir="auto">ready</code></td>
+<td><code dir="auto">server.heartbeat</code>, actor <code dir="auto">server</code></td>
+</tr>
+<tr>
+<td><code dir="auto">unresponsive</code></td>
+<td>a heartbeat, flag set</td>
+<td><code dir="auto">cordoned</code></td>
+<td><code dir="auto">server.heartbeat</code>, actor <code dir="auto">server</code></td>
+</tr>
+<tr>
+<td><code dir="auto">ready</code></td>
+<td><code dir="auto">CordonServer</code></td>
+<td><code dir="auto">cordoned</code></td>
+<td><code dir="auto">server.cordon</code></td>
+</tr>
+<tr>
+<td><code dir="auto">cordoned</code></td>
+<td><code dir="auto">UncordonServer</code></td>
+<td><code dir="auto">ready</code></td>
+<td><code dir="auto">server.uncordon</code></td>
+</tr>
+<tr>
+<td><code dir="auto">unresponsive</code></td>
+<td><code dir="auto">CordonServer</code> or <code dir="auto">UncordonServer</code></td>
+<td><code dir="auto">unresponsive</code>, with the flag set or cleared</td>
+<td><code dir="auto">server.cordon</code> or <code dir="auto">server.uncordon</code></td>
+</tr>
+<tr>
+<td><code dir="auto">ready</code> or <code dir="auto">cordoned</code></td>
+<td>no heartbeat for 20 seconds, found by the leader job</td>
+<td><code dir="auto">unresponsive</code></td>
+<td><code dir="auto">server.mark_unresponsive</code>, actor <code dir="auto">system</code></td>
+</tr>
+<tr>
+<td><code dir="auto">ready</code>, <code dir="auto">cordoned</code>, or <code dir="auto">unresponsive</code></td>
+<td><code dir="auto">DecommissionServer</code></td>
+<td><code dir="auto">decommissioned</code></td>
+<td><code dir="auto">server.decommission</code></td>
+</tr>
+</tbody>
+</table>
+<p>Only a heartbeat that changes the state writes the audit entry <code dir="auto">server.heartbeat</code>. Its details are <code dir="auto">old_state</code> and <code dir="auto">state</code>. The entries of <code dir="auto">CordonServer</code> and <code dir="auto">UncordonServer</code> have the same details (<a href="/reference/admin-api/#serverservice">admin-api.md</a>). <code dir="auto">DecommissionServer</code> of the admin API sets <code dir="auto">decommissioned</code> (<a href="/reference/admin-api/#decommissionserver">admin-api.md</a>). When Terraform destroys a server, the hopbox Terraform provider calls it.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="the-leader-job">The leader job</h3><a class="sl-anchor-link" href="#the-leader-job"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The leader job”</span></a></div>
+<p>The leader of the control role checks the heartbeats every 5 seconds (<a href="/reference/hopboxd/#leader-jobs">hopboxd.md</a>). The checks of the first 20 seconds of each term do nothing. In that time, the servers can dial again after a stop of the control role. Each check marks unresponsive every <code dir="auto">ready</code> or <code dir="auto">cordoned</code> server whose last heartbeat is 20 seconds old or older.</p>
+<p>The write is fenced with the leader lease (<a href="/reference/control-store/#fenced-writes">control-store.md</a>). So a leader that lost its lease changes nothing, and its check fails with <code dir="auto">lease: the lease epoch is stale or expired</code>.</p>
+<p>For each server that it marks, the job writes the audit entry <code dir="auto">server.mark_unresponsive</code>. The entry has the actor <code dir="auto">system</code>, the target <code dir="auto">server</code>, and the detail <code dir="auto">last_heartbeat_at</code> in RFC 3339. The service logs <code dir="auto">a server is unresponsive</code> at level warn, with <code dir="auto">component=service</code> and the fields <code dir="auto">server</code> and <code dir="auto">after</code>.</p>
+<p>All times come from the clock of Postgres. A server that has never sent a heartbeat stays <code dir="auto">unresponsive</code> and is never marked again.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="certificate-renewal">Certificate renewal</h2><a class="sl-anchor-link" href="#certificate-renewal"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Certificate renewal”</span></a></div>
+<p>A server certificate lives 30 days (<a href="/reference/enrollment/#server-certificate">enrollment.md</a>). The certificate becomes due for renewal at the age of 20 days. At the next heartbeat tick, the server makes a key for the renewal and sends <code dir="auto">CertificateRenewal</code> with a request for it. It sends at most one renewal at a time. It keeps that key, also across channels and drops, until it installs a certificate for it, so each new try asks for the same key.</p>
+<p>The control role locks the row of the server, so two renewals of one server run one after the other. A renewal from a channel whose certificate a renewal retired fails with <code dir="auto">unauthenticated</code>, which ends the channel. Then the control role takes the first step that fits:</p>
+<ol>
+<li>A certificate that an earlier renewal issued for the same key, and that the server never used, comes back as it is. The answer to that renewal got lost. The service logs <code dir="auto">sent a pending server certificate again</code> with <code dir="auto">server</code> and <code dir="auto">serial</code>. This needs no new certificate, so the limit below does not apply.</li>
+<li>Within 1 hour after the newest certificate of the server, the control role grants no new one. It answers <code dir="auto">CertificateRefused</code> with <code dir="auto">retry_time</code> at the end of that hour, and keeps the channel open.</li>
+<li>Otherwise it signs a new certificate with the same server ID and the roles of the registry.</li>
+</ol>
+<p>For a new certificate, the control role records the certificate and writes the audit entry <code dir="auto">server.renew_certificate</code> with the details <code dir="auto">serial</code> and <code dir="auto">not_after</code>. Then it sends <code dir="auto">CertificateIssued</code>. The service logs <code dir="auto">renewed a server certificate</code> with <code dir="auto">component=service</code> and the fields <code dir="auto">server</code> and <code dir="auto">serial</code>.</p>
+<p>The server checks that the CA signed the certificate, that it holds the new key, and that it names the same server. Then it saves the new identity in <code dir="auto">&lt;data_dir&gt;/server</code> (<a href="/reference/enrollment/#identity-files">enrollment.md</a>) and logs <code dir="auto">renewed the server certificate</code> with the field <code dir="auto">not_after</code>. The open HTTP/2 connection still holds the old certificate, and its data streams fail once that certificate expires. So the server closes the channel at once, logs <code dir="auto">dialing the control channel again with the renewed certificate</code>, and dials again without a wait, with the new certificate.</p>
+<p>The redial is the first call with the new certificate, which retires every other certificate of the server (<a href="/reference/enrollment/#client-certificates-on-each-call">enrollment.md</a>). So a stolen copy of the old certificate stops working as soon as the server renewed. A channel that an old certificate still holds open in this control process ends at once with <code dir="auto">unauthenticated</code> and the message <code dir="auto">a renewal retired the certificate of this channel</code>. In another control process, it ends at its next heartbeat, which the registry refuses. The redial is the only gap that a renewal makes.</p>
+<p>When the control role grants no certificate, it logs <code dir="auto">a certificate renewal failed</code> at level warn, with <code dir="auto">server</code> and <code dir="auto">err</code>, and answers <code dir="auto">CertificateRefused</code>. For the limit of one certificate an hour, <code dir="auto">retry_time</code> is the end of that hour. For any other failure, such as a lost connection to the control store, it is 1 minute later. The channel stays open in both cases. The server keeps its certificate and the key of its renewal. It logs <code dir="auto">the control plane refused the certificate renewal</code> with <code dir="auto">reason</code> and <code dir="auto">retry_at</code>. It asks again at <code dir="auto">retry_time</code>, but not before its next heartbeat. A renewal that gets no answer for 4 heartbeat intervals counts as lost: the server logs <code dir="auto">the control plane did not answer the certificate renewal</code> with <code dir="auto">retry_at</code>, and asks again 1 minute later.</p>
+<p>A renewal for a decommissioned server fails with <code dir="auto">unauthenticated</code> and the message <code dir="auto">the server is decommissioned or unknown</code>, which ends the channel. A bad request ends it with <code dir="auto">invalid_argument</code>.</p>
+<p>A <code dir="auto">CertificateIssued</code> that the server did not ask for is ignored, with the warning <code dir="auto">the control plane sent a certificate that this server did not ask for</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="dns-zones">DNS zones</h2><a class="sl-anchor-link" href="#dns-zones"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “DNS zones”</span></a></div>
+<p>The control role sends the zones of the DNS role on the channel of each server whose certificate carries the role <code dir="auto">dns</code> (<a href="/reference/dns/#how-the-zones-reach-the-dns-role">dns.md</a>). A server without the DNS role gets no zones. The control role sends a <code dir="auto">DNSZones</code> message at these times:</p>
+<ul>
+<li>after the first heartbeat of each <code dir="auto">Channel</code> that the control role records,</li>
+<li>after each change event <code dir="auto">dns.zone_changed</code> (<a href="/reference/control-store/#dns_zone">control-store.md</a>). Each control process reads the events and pushes to the channels that it holds, so a change in any control process reaches every channel.</li>
+<li>at the next recorded heartbeat after a failed read of the zones.</li>
+</ul>
+<p>For each push, the control role reads the zones from the control store with the caller of the channel, under the policy action <code dir="auto">server.read_dns_zones</code>. If the read fails, it logs <code dir="auto">reading the dns zones of a server failed. The next heartbeat tries again</code> and marks the zones of the channel as stale. The channel stays open.</p>
+<p>A slow channel gets only the newest set. A set that waits to be sent is replaced by a newer one. The control role never sends a set whose serial is not higher than the serial of the last set of the channel. So a server never gets an older set after a newer one.</p>
+<p>The agent hands each set to the DNS role of its server. The DNS role checks the whole set before it serves it. If the DNS role refuses a set, the agent logs <code dir="auto">the dns role refused the zones of the control plane, and keeps the zones that it has</code> at level error. A set with a lower serial than the set that the DNS role serves is no fault, because a newer push came first. For it, the agent logs <code dir="auto">the dns role keeps newer zones than the zones of the control plane</code> at level info. The DNS role keeps the zones that it serves, and the channel stays open. The next change sends a new set. A server without the DNS role that gets a set logs <code dir="auto">the control plane sent dns zones to a server without the dns role</code> at level warn, and drops the set.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="edge-pushes">Edge pushes</h2><a class="sl-anchor-link" href="#edge-pushes"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Edge pushes”</span></a></div>
+<p>The control role sends five kinds of message on the channel of each server whose certificate carries the role <code dir="auto">edge</code>. A server without the edge role gets none of them. Each channel of an edge server has one worker. A push sets a flag for its kind and wakes the worker. For each flag that is set, the worker then reads and queues one message. The order is the certificate, the keys of the SSH front door, the routes, and the access change. So a burst of changes costs one read of each kind. The messages go out in the order of the queue, after the messages before them.</p>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>The control role sends it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">edge_certificate</code></td>
+<td>after the first recorded heartbeat of each <code dir="auto">Channel</code>, and after each change event <code dir="auto">certificate.changed</code> (<a href="/reference/acme/#where-the-certificate-lives">acme.md</a>)</td>
+</tr>
+<tr>
+<td><code dir="auto">edge_routes</code></td>
+<td>after the first recorded heartbeat of each <code dir="auto">Channel</code>. If the routes changed, also after each later recorded heartbeat, and after each change event <code dir="auto">machine.*</code> or <code dir="auto">dns.zone_changed</code>. The zone holds the domain.</td>
+</tr>
+<tr>
+<td><code dir="auto">edge_ssh_keys</code></td>
+<td>after the first recorded heartbeat of each <code dir="auto">Channel</code>, or after the first heartbeat at which the keys exist. The keys never change.</td>
+</tr>
+<tr>
+<td><code dir="auto">edge_lease_renewals</code></td>
+<td>in place of <code dir="auto">edge_routes</code>, for routes that stay the same since the last <code dir="auto">edge_routes</code> of the channel</td>
+</tr>
+<tr>
+<td><code dir="auto">edge_access_changed</code></td>
+<td>after the first recorded heartbeat of each <code dir="auto">Channel</code>, for every machine. After each change event of a machine, for that machine. After each change event <code dir="auto">edge.access_changed</code>, for every machine (<a href="/reference/control-store/#events">control-store.md</a>). The worker sends one message for each machine that changed since its last send. Past 256 machines, it sends one message for every machine.</td>
+</tr>
+</tbody>
+</table>
+<p>Each control process reads the change events and pushes to its own channels (<code dir="auto">Hub.Notify</code>). So a change in any control process reaches every channel. An edge can miss changes while it has no channel. So the first heartbeat of a channel sends the certificate and the keys of the SSH front door. It also tells the edge to check its private machine URLs and its SSH connections again.</p>
+<p>For the certificate, the control role reads the certificate with <code dir="auto">Service.EdgeCertificate</code>, under the policy action <code dir="auto">server.read_edge_certificate</code>. The read fails before the first certificate, and for a stored certificate of an old domain. Then the control role sends nothing. It logs <code dir="auto">the edge server gets no certificate yet</code> at level info, and waits for the next <code dir="auto">certificate.changed</code>. So an edge never gets the certificate of an old domain. Another failed read logs <code dir="auto">reading the certificate for an edge server failed. The next heartbeat tries again</code> at level warn, and the next recorded heartbeat reads it again.</p>
+<p>For the keys of the SSH front door, the control role reads them with <code dir="auto">Service.EdgeSSHKeys</code>, under the policy action <code dir="auto">server.read_edge_ssh_keys</code>. If the install has no keys yet, the read makes them. Without a key-encryption key, it logs <code dir="auto">the edge server gets no keys of the SSH front door yet. Each heartbeat tries again</code> at level warn, once for each channel. Each recorded heartbeat then reads the keys again, until they exist. Another failed read logs <code dir="auto">reading the keys of the SSH front door for an edge server failed. The next heartbeat tries again</code> at level warn.</p>
+<p>For the routes, the control role reads them with <code dir="auto">Service.EdgeRoutes</code>, under the policy action <code dir="auto">server.read_edge_routes</code>. A failed read logs <code dir="auto">reading the routes for an edge server failed. The next heartbeat tries again</code> at level warn. The channel stays open in each case.</p>
+<p>Each heartbeat reads the routes again. The worker keeps the SHA-256 of the last routes that it sent on the channel, without the rest of each lease. If the routes did not change, it sends only <code dir="auto">edge_lease_renewals</code>: the grant and the rest of the lease of each target. So a heartbeat costs a few bytes for each running machine, not the routes of the install. The edge acknowledges no routes, and can refuse a set. So after 11 sends of renewals, the worker sends the whole routes again: about once a minute. Either way, the lease of each target stays fresh at the edge. The machine leases last 30 s, and the heartbeats of the nodes renew them (<a href="/reference/executor-protocol/">executor-protocol.md</a>). At the send of either message, the control role takes two times from the lease of each target: the time since the read, and a tenth of the machine TTL, 3 s. So <code dir="auto">lease_remaining</code> is the rest of the lease at the send, less 3 s, and at least 0. The edge counts it from the arrival on its own clock, and sends no traffic to the target after it. The clocks of the servers need not agree. A node can stop its renewals of the lease of a machine. Then the traffic of the machine stops at the edge within the lease, also without a change event.</p>
+<p>The agent hands each message to the edge role of its server (<code dir="auto">node.Agent.Edge</code>). The edge role checks each one before it uses it (<a href="/reference/edge/">edge.md</a>). If the edge role refuses a message, the agent logs <code dir="auto">the edge role refused a push of the control plane, and keeps what it has</code> at level error. The fields are <code dir="auto">push</code> and <code dir="auto">err</code>. The push is <code dir="auto">certificate</code>, <code dir="auto">routes</code>, <code dir="auto">lease renewals</code>, <code dir="auto">access change</code>, or <code dir="auto">SSH keys</code>. The channel stays open. A server without the edge role that gets one of these messages logs <code dir="auto">the control plane sent edge data to a server without the edge role</code> at level warn, with <code dir="auto">push</code>, and drops it.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="data-streams">Data streams</h2><a class="sl-anchor-link" href="#data-streams"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Data streams”</span></a></div>
+<p>The control role opens a data stream to a server in these steps:</p>
+<ol>
+<li>A part of the control role calls <code dir="auto">Hub.OpenStream(ctx, server, kind)</code>.</li>
+<li>The hub sends <code dir="auto">OpenStream</code> with a new random ID and the kind on the channel of the server.</li>
+<li>The server looks up its handler of the kind. Without one, it sends <code dir="auto">StreamRefused</code>, and <code dir="auto">OpenStream</code> fails with <code dir="auto">channel: the server refused the stream: &lt;reason&gt;</code>.</li>
+<li>The server opens <code dir="auto">AttachStream</code> and sends the ID in the first message.</li>
+<li>The hub checks that a stream waits for the ID, and that the caller is the server of which it asked the stream. Then <code dir="auto">OpenStream</code> returns the stream.</li>
+</ol>
+<p>The ID works once. An <code dir="auto">AttachStream</code> with an unknown or spent ID fails with <code dir="auto">not_found</code> and the message <code dir="auto">no stream waits for this ID. It expired, or it was never asked for</code>. An <code dir="auto">AttachStream</code> of another server fails with <code dir="auto">permission_denied</code>, and then <code dir="auto">OpenStream</code> fails at once, because the ID leaked. Without an attach within 10 seconds, <code dir="auto">OpenStream</code> fails with <code dir="auto">channel: no attach of the &lt;kind&gt; stream: context deadline exceeded</code>.</p>
+<p>Bytes travel in messages of at most 64 KiB in each direction.</p>
+<table>
+<thead>
+<tr>
+<th>Side</th>
+<th>Read</th>
+<th>Write</th>
+<th>Close</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Control (<code dir="auto">channel.Stream</code>)</td>
+<td>Reads the bytes of the server. Returns <code dir="auto">io.EOF</code> once the server closed its side.</td>
+<td>Sends bytes, in chunks of 64 KiB.</td>
+<td>Ends the whole stream. The server then reads <code dir="auto">io.EOF</code>.</td>
+</tr>
+<tr>
+<td>Server (<code dir="auto">node.Stream</code>)</td>
+<td>Reads the bytes of the control role. Returns <code dir="auto">io.EOF</code> once the control role closed the stream.</td>
+<td>Sends bytes, in chunks of 64 KiB.</td>
+<td><code dir="auto">CloseWrite</code> closes only the side of the server, and reads go on. <code dir="auto">Close</code> ends both sides.</td>
+</tr>
+</tbody>
+</table>
+<p>On each side, one goroutine can read while another writes. After the handler of the server returns, the server closes the stream.</p>
+<p>Each control process knows only the channels that it holds. The server dials <code dir="auto">AttachStream</code> at the same control URL as its channel. Phase 1 has one control process, so the attach always reaches the process that asked for it. An install with more control processes needs a way to route the attach (phase 2).</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="limits-and-windows-of-the-data-streams">Limits and windows of the data streams</h3><a class="sl-anchor-link" href="#limits-and-windows-of-the-data-streams"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Limits and windows of the data streams”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data streams of one server to one control process</td>
+<td>at most 255 (<code dir="auto">channel.MaxStreams</code>), open or waiting for their attach. One more fails with <code dir="auto">ErrTooManyStreams</code>: <code dir="auto">channel: the server has 255 data streams open, the most that it can have</code>.</td>
+</tr>
+<tr>
+<td>HTTP/2 streams of one connection to the internal listener</td>
+<td>at most 256 (<code dir="auto">machinestream.MaxStreams</code>): the channel and 255 data streams</td>
+</tr>
+<tr>
+<td>HTTP/2 receive window of one stream</td>
+<td>256 KiB (<code dir="auto">machinestream.StreamWindow</code>), on the internal listener and in the client of the server</td>
+</tr>
+<tr>
+<td>HTTP/2 receive window of one connection</td>
+<td>64 MiB (<code dir="auto">machinestream.ConnectionWindow</code>), which is 256 times the window of one stream</td>
+</tr>
+<tr>
+<td>Compression</td>
+<td>none. <code dir="auto">ControlService</code> never compresses a response with gzip, so a window holds at most 256 KiB of the data of an exec. With gzip, the window held a compressed copy, and 256 KiB held the copy of many MiB of zeros. A request in gzip fails with <code dir="auto">unimplemented</code> and the message <code dir="auto">unknown compression "gzip"</code>. The other services of the internal listener still take gzip.</td>
+</tr>
+</tbody>
+</table>
+<p>The window of a connection holds every stream at once. So a data stream whose reader stalls, such as an exec whose client reads no output, fills only its own window. The heartbeats and the other data streams of the server go on. With the default HTTP/2 windows of Go, the internal listener gives each stream 1 MiB and the connection 1 MiB too. Then a few stalled streams can fill the window of the connection. With these windows, <code dir="auto">TestSlowClientsStallNoOtherStream</code> shows that the later stalled streams cannot take all of their data. No test shows a stall of the other streams. <code dir="auto">TestInternalListenerWindows</code> and <code dir="auto">TestClientWindows</code> check the windows that each side announces, and <code dir="auto">TestSlowClientsStallNoOtherStream</code> checks the effect.</p>
+<p>A close on one side ends a write that waits for the other side:</p>
+<ul>
+<li><code dir="auto">channel.Stream.Close</code> on the control side ends the call of <code dir="auto">AttachStream</code>. A <code dir="auto">Write</code> that still waits for flow control fails at once, because the handler sets a write deadline in the past (<code dir="auto">api.AbortWrites</code>).</li>
+<li><code dir="auto">node.Stream.Close</code> on the server side closes the request side first, so the last bytes go out. While a <code dir="auto">Write</code> waits for the control role, it cancels the call instead, and the <code dir="auto">Write</code> fails at once.</li>
+</ul>
+<div class="sl-heading-wrapper level-h2"><h2 id="machine-streams">Machine streams</h2><a class="sl-anchor-link" href="#machine-streams"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Machine streams”</span></a></div>
+<p>Exec, file copy, and the logs of machines run on data streams (<a href="/reference/machine-api/#access-calls">machine-api.md</a>). The code is in <code dir="auto">internal/machinestream</code> (the parts that both sides share), <code dir="auto">internal/service/machine_access.go</code> (the control side), and <code dir="auto">internal/node/access</code> (the server side).</p>
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Call of the machine API</th>
+<th>What the server does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">exec</code></td>
+<td><code dir="auto">Exec</code>, and the WebSocket of exec</td>
+<td>Runs the command on the guest link of the machine.</td>
+</tr>
+<tr>
+<td><code dir="auto">upload</code></td>
+<td><code dir="auto">Upload</code></td>
+<td>Writes the data into the machine on the guest link.</td>
+</tr>
+<tr>
+<td><code dir="auto">download</code></td>
+<td><code dir="auto">Download</code></td>
+<td>Reads a file or a directory on the guest link.</td>
+</tr>
+<tr>
+<td><code dir="auto">logs</code></td>
+<td><code dir="auto">StreamMachineLogs</code></td>
+<td>Reads the node-local log of the machine (<a href="/reference/machine-logs/">machine-logs.md</a>).</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="frames">Frames</h3><a class="sl-anchor-link" href="#frames"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Frames”</span></a></div>
+<p>The bytes of a machine stream are frames. A frame is a varint length and then one protobuf message. The message is a <code dir="auto">MachineStreamInput</code> from the control role, or a <code dir="auto">MachineStreamOutput</code> from the server, both in <code dir="auto">proto/hopbox/cluster/v1/machine_stream.proto</code>. A frame has at most 1 MiB (<code dir="auto">machinestream.MaxFrame</code>). A larger frame ends the stream.</p>
+<p><code dir="auto">MachineStreamInput</code> holds one field of the oneof <code dir="auto">message</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">open</code></td>
+<td><code dir="auto">MachineStreamOpen</code></td>
+<td>The first frame of each stream.</td>
+</tr>
+<tr>
+<td><code dir="auto">stdin</code></td>
+<td>bytes</td>
+<td>Input of the command of an exec, at most 32 KiB.</td>
+</tr>
+<tr>
+<td><code dir="auto">stdin_eof</code></td>
+<td>bool</td>
+<td>No more input for the command.</td>
+</tr>
+<tr>
+<td><code dir="auto">resize</code></td>
+<td><code dir="auto">TerminalSize</code></td>
+<td>A new size of the terminal of an exec.</td>
+</tr>
+<tr>
+<td><code dir="auto">signal</code></td>
+<td>string</td>
+<td>A signal for the command of an exec, by name.</td>
+</tr>
+<tr>
+<td><code dir="auto">data</code></td>
+<td>bytes</td>
+<td>The next bytes of an upload, at most 32 KiB.</td>
+</tr>
+<tr>
+<td><code dir="auto">eof</code></td>
+<td>bool</td>
+<td>The end of the data of an upload.</td>
+</tr>
+</tbody>
+</table>
+<p><code dir="auto">MachineStreamOpen</code> has <code dir="auto">machine_id</code>, the UUID of the machine, and one field of the oneof <code dir="auto">operation</code>. The operation must match the kind of the stream.</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">exec</code>, a <code dir="auto">MachineExec</code></td>
+<td>The fields of <code dir="auto">ExecStart</code> of the machine API without the machine. <code dir="auto">env</code> is a repeated <code dir="auto">MachineEnvVar</code>. <code dir="auto">timeout</code> is a <code dir="auto">google.protobuf.Duration</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">upload</code>, a <code dir="auto">MachineUpload</code></td>
+<td><code dir="auto">path</code>, <code dir="auto">archive</code>, <code dir="auto">mode</code>, <code dir="auto">user</code></td>
+</tr>
+<tr>
+<td><code dir="auto">download</code>, a <code dir="auto">MachineDownload</code></td>
+<td><code dir="auto">path</code>, <code dir="auto">user</code>, and <code dir="auto">max_bytes</code>, the cap of the data. 0 is no cap. The control role sends 4 MiB.</td>
+</tr>
+<tr>
+<td><code dir="auto">logs</code>, a <code dir="auto">MachineLogs</code></td>
+<td><code dir="auto">tail</code>, <code dir="auto">since</code> (a <code dir="auto">google.protobuf.Timestamp</code>), and <code dir="auto">follow</code></td>
+</tr>
+</tbody>
+</table>
+<p><code dir="auto">MachineStreamOutput</code> holds one field of the oneof <code dir="auto">message</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">stdout</code>, <code dir="auto">stderr</code></td>
+<td>bytes</td>
+<td>Output of the command of an exec.</td>
+</tr>
+<tr>
+<td><code dir="auto">exit</code></td>
+<td><code dir="auto">MachineExecExit</code></td>
+<td><code dir="auto">code</code>, <code dir="auto">signal</code>, <code dir="auto">error</code>, and <code dir="auto">timed_out</code>. The last frame of an exec.</td>
+</tr>
+<tr>
+<td><code dir="auto">error</code></td>
+<td><code dir="auto">MachineStreamError</code></td>
+<td><code dir="auto">code</code>, a <code dir="auto">MachineStreamErrorCode</code>, and <code dir="auto">message</code>, at most 1024 bytes. The last frame of a stream that failed.</td>
+</tr>
+<tr>
+<td><code dir="auto">info</code></td>
+<td><code dir="auto">MachineFileInfo</code></td>
+<td><code dir="auto">archive</code>, <code dir="auto">mode</code>, and <code dir="auto">size</code>. The first frame of a download.</td>
+</tr>
+<tr>
+<td><code dir="auto">data</code></td>
+<td>bytes</td>
+<td>The next bytes of a download, at most 32 KiB.</td>
+</tr>
+<tr>
+<td><code dir="auto">done</code></td>
+<td>bool</td>
+<td>The last frame of an upload, a download, or a logs stream that ended well.</td>
+</tr>
+<tr>
+<td><code dir="auto">log</code></td>
+<td><code dir="auto">MachineLogEntry</code></td>
+<td><code dir="auto">time</code>, <code dir="auto">stream</code> (a <code dir="auto">MachineLogStream</code>), <code dir="auto">data</code>, and <code dir="auto">dropped</code>. One entry of the log.</td>
+</tr>
+<tr>
+<td><code dir="auto">synced</code></td>
+<td>bool</td>
+<td>The end of the old entries of a logs stream with <code dir="auto">follow</code>.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th><code dir="auto">MachineStreamErrorCode</code></th>
+<th>When</th>
+<th>Code of the machine API</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">MACHINE_STREAM_ERROR_CODE_UNAVAILABLE</code></td>
+<td>The guest agent is not connected, or the machine stopped during the call.</td>
+<td><code dir="auto">unavailable</code></td>
+</tr>
+<tr>
+<td><code dir="auto">MACHINE_STREAM_ERROR_CODE_FAILED_PRECONDITION</code></td>
+<td>The server does not run the machine, holds no valid lease of it, or the guest agent did not come up yet.</td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+<tr>
+<td><code dir="auto">MACHINE_STREAM_ERROR_CODE_INVALID_ARGUMENT</code></td>
+<td>The first frame does not open the stream, names no machine, or opens another kind.</td>
+<td><code dir="auto">internal</code>, because the control role sent it</td>
+</tr>
+<tr>
+<td><code dir="auto">MACHINE_STREAM_ERROR_CODE_GUEST</code></td>
+<td>The guest agent reported an error, such as a file that does not exist.</td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+<tr>
+<td><code dir="auto">MACHINE_STREAM_ERROR_CODE_TOO_LARGE</code></td>
+<td>A download has more bytes than <code dir="auto">max_bytes</code>.</td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+<tr>
+<td><code dir="auto">MACHINE_STREAM_ERROR_CODE_INTERNAL</code></td>
+<td>Any other failure of the server.</td>
+<td><code dir="auto">internal</code></td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="the-steps-of-a-machine-stream">The steps of a machine stream</h3><a class="sl-anchor-link" href="#the-steps-of-a-machine-stream"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The steps of a machine stream”</span></a></div>
+<ol>
+<li>The control role checks the access of the caller to the machine. It opens the data stream on the node of the machine, and writes <code dir="auto">open</code>.</li>
+<li>The server waits at most 10 s for <code dir="auto">open</code>. It finds the guest link of the machine through <code dir="auto">executor.Manager.Guest</code>. Each frame of the control role goes to the guest link, and each message of the guest link becomes a frame.</li>
+<li>The server writes the last frame: <code dir="auto">exit</code>, <code dir="auto">done</code>, or <code dir="auto">error</code>. Then it closes its side, and waits at most 10 s for the control role to close the stream. So the last frame arrives before the end.</li>
+<li>The control role reads the last frame and closes the stream.</li>
+</ol>
+<p>When the control role closes the stream before the last frame, the server reads the end of the stream. It ends the operation at once: the guest agent ends the command, or stops the copy. The timeout of an exec ends the command too, and the server then sends <code dir="auto">exit</code> with the code 124 and <code dir="auto">timed_out</code> true.</p>
+<p>Each side reads the next frame only after it handed on the one before. So each hop holds at most the window of its stream, and a slow client slows the command down. The one exception is the input of an exec on the server. It waits in a queue of 64 chunks, 2 MiB, so the server reads a resize or a signal behind it at once. The server then sends the resize or the signal on <code dir="auto">Link</code> of the guest link, outside the call of the exec (<a href="/reference/guest-link/#versions">guest-link.md</a>). Only a full queue holds a signal back. The server also sends a copy on the call of the exec, at once and always before the next input. The guest agent of a current image knows this copy (<a href="/reference/guest-link/#exec">guest-link.md</a>). With it, the resize or the signal takes effect before any input that the client sent after it.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="go-api-of-the-hub">Go API of the hub</h3><a class="sl-anchor-link" href="#go-api-of-the-hub"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Go API of the hub”</span></a></div>
+<p>The service layer and the units of the control role reach the servers through the hub of the control role, <code dir="auto">Role.Hub()</code> of <code dir="auto">internal/control</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">Hub.Connected(server)</code></td>
+<td>Reports whether the server has an open channel to this process.</td>
+</tr>
+<tr>
+<td><code dir="auto">Hub.OpenStream(ctx, server, kind)</code></td>
+<td>Opens a data stream. It fails with <code dir="auto">ErrNotConnected</code> (<code dir="auto">channel: the server has no open control channel to this control process</code>), with <code dir="auto">ErrStreamRefused</code>, with <code dir="auto">ErrTooManyStreams</code>, or after the attach timeout. The caller must close the stream. The control role gives it to the service layer as <code dir="auto">Service.MachineStreams</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">Hub.DisconnectRetired(server, serial)</code></td>
+<td>If a certificate other than <code dir="auto">serial</code> opened the channel of the server in this process, ends that channel. The service layer calls it through <code dir="auto">Service.CertificatesRetired</code> once the first use of <code dir="auto">serial</code> retired the other certificates. The server gets <code dir="auto">unauthenticated</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">Hub.Dispatch(ctx, machineHub)</code></td>
+<td>Sends <code dir="auto">ReconcileMachine</code> to the executor of each machine that a change event names, on the channels of this process, until <code dir="auto">ctx</code> ends (<a href="/reference/executor-protocol/#reconcilemachine">executor-protocol.md</a>). The internal listener of the control role runs it.</td>
+</tr>
+<tr>
+<td><code dir="auto">Hub.Notify(event)</code></td>
+<td>Pushes again what a change event changes, to the servers on the channels of this process: the zones after <code dir="auto">dns.zone_changed</code>, the certificate after <code dir="auto">certificate.changed</code>, and the routes and the access of the edge role as in <a href="#edge-pushes">Edge pushes</a>. The <code dir="auto">events</code> unit of the control role calls it for each change event.</td>
+</tr>
+<tr>
+<td><code dir="auto">Hub.PushDNSZones()</code></td>
+<td>Sends the zones again to every server with the DNS role on a channel of this process.</td>
+</tr>
+<tr>
+<td><code dir="auto">Hub.PushEdgeCertificate()</code>, <code dir="auto">Hub.PushEdgeRoutes()</code>, <code dir="auto">Hub.PushEdgeAccessChanged(machine)</code></td>
+<td>Ask the worker of each channel of an edge server in this process for one push of their kind.</td>
+</tr>
+<tr>
+<td><code dir="auto">Hub.Disconnect(server, reason)</code></td>
+<td>Ends the open channel of the server in this process, and so its data streams, and reports whether there was one. The server gets <code dir="auto">permission_denied</code>. <code dir="auto">DecommissionServer</code> calls it on the hub of its own process after the commit of the new state. A channel in another control process ends at its next heartbeat, at most 5 seconds later. The registry refuses the heartbeat of a decommissioned server. A new dial fails too, because the internal listener refuses the certificates of a decommissioned server.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Hub field</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">Silence</code></td>
+<td>20 s</td>
+<td>How long a channel can stay without a message.</td>
+</tr>
+<tr>
+<td><code dir="auto">AttachTimeout</code></td>
+<td>10 s</td>
+<td>How long <code dir="auto">OpenStream</code> waits for the attach.</td>
+</tr>
+<tr>
+<td><code dir="auto">MinHeartbeatGap</code></td>
+<td>2.5 s</td>
+<td>The shortest time between two heartbeats of a channel that the hub writes.</td>
+</tr>
+</tbody>
+</table>
+<p>On the server, <code dir="auto">node.Agent.Handlers</code> maps each kind to a <code dir="auto">StreamHandler</code>, <code dir="auto">func(ctx context.Context, s *node.Stream)</code>. <code dir="auto">access.Handlers.Map()</code> of <code dir="auto">internal/node/access</code> returns the handlers of the machine streams. A server that runs executors serves them (<a href="/reference/executor/#exec-file-copy-and-logs">executor.md</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="the-agent">The agent</h2><a class="sl-anchor-link" href="#the-agent"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The agent”</span></a></div>
+<p>The <code dir="auto">channel</code> unit of <code dir="auto">hopboxd run</code> runs the agent of <code dir="auto">internal/node</code> (<a href="/reference/hopboxd/#run">hopboxd.md</a>). It runs on each server with a role other than <code dir="auto">control</code>. The agent takes these steps:</p>
+<ol>
+<li>It reads the identity from <code dir="auto">&lt;data_dir&gt;/server</code>. Without one, it logs <code dir="auto">waiting for the enrollment of this server</code> once and looks again every 2 seconds. So <code dir="auto">hopboxd run</code> can start before <code dir="auto">hopboxd enroll</code>.</li>
+<li>It dials <code dir="auto">channel.control_url</code> with its certificate, and checks that the peer is the control role of its install CA.</li>
+<li>It opens <code dir="auto">Channel</code>, sends a heartbeat at once, and then one every 5 seconds.</li>
+<li>After any drop, it waits and dials again. The wait starts at 1 second and doubles up to 10 seconds. Each wait is a random time between half the wait and the whole wait. A channel that lasted more than 1 minute starts the waits from 1 second again. After 20 seconds of silence, the leader marks a server <code dir="auto">unresponsive</code>. The longest wait stays well under that. So a short stop of the control role never shows as one.</li>
+<li>The control plane can refuse the server with <code dir="auto">unauthenticated</code> or <code dir="auto">permission_denied</code>, for example after a decommission or a retired certificate. Then the agent logs <code dir="auto">the control plane refuses this server. hopboxd retries every minute</code> once at level error, with <code dir="auto">err</code>. After that, it dials only once a minute. The first channel that works ends the slow retries.</li>
+</ol>
+<p>When the unit stops, the agent closes the channel. The control role then ends it at once.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="logs">Logs</h2><a class="sl-anchor-link" href="#logs"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Logs”</span></a></div>
+<p>The control side writes these records with <code dir="auto">component=channel</code> and the field <code dir="auto">server</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Level</th>
+<th>Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">control channel opened</code></td>
+<td>info</td>
+<td><code dir="auto">peer</code></td>
+</tr>
+<tr>
+<td><code dir="auto">control channel closed by the server</code></td>
+<td>info</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">control channel lost</code></td>
+<td>info</td>
+<td><code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">control channel closed</code></td>
+<td>warn</td>
+<td><code dir="auto">err</code>. A refused heartbeat, renewal, or message, or the silence.</td>
+</tr>
+<tr>
+<td><code dir="auto">control channel closed</code></td>
+<td>info</td>
+<td><code dir="auto">err</code>. The server went away, the listener stopped, a newer channel replaced this one, or <code dir="auto">Hub.Disconnect</code> ended it.</td>
+</tr>
+<tr>
+<td><code dir="auto">recording a heartbeat failed</code></td>
+<td>warn</td>
+<td><code dir="auto">err</code>. The channel stays open.</td>
+</tr>
+<tr>
+<td><code dir="auto">reading the dns zones of a server failed. The next heartbeat tries again</code></td>
+<td>warn</td>
+<td><code dir="auto">err</code>. The channel stays open.</td>
+</tr>
+<tr>
+<td><code dir="auto">the edge server gets no certificate yet</code></td>
+<td>info</td>
+<td><code dir="auto">err</code>. The install has no certificate, or one of an old domain.</td>
+</tr>
+<tr>
+<td><code dir="auto">reading the certificate for an edge server failed. The next heartbeat tries again</code></td>
+<td>warn</td>
+<td><code dir="auto">err</code>. The channel stays open.</td>
+</tr>
+<tr>
+<td><code dir="auto">reading the routes for an edge server failed. The next heartbeat tries again</code></td>
+<td>warn</td>
+<td><code dir="auto">err</code>. The channel stays open.</td>
+</tr>
+<tr>
+<td><code dir="auto">the edge server gets no keys of the SSH front door yet. Each heartbeat tries again</code></td>
+<td>warn</td>
+<td><code dir="auto">err</code>. The install has no key-encryption key. Once for each channel.</td>
+</tr>
+<tr>
+<td><code dir="auto">reading the keys of the SSH front door for an edge server failed. The next heartbeat tries again</code></td>
+<td>warn</td>
+<td><code dir="auto">err</code>. The channel stays open.</td>
+</tr>
+<tr>
+<td><code dir="auto">the keys of the SSH front door do not encode</code></td>
+<td>error</td>
+<td><code dir="auto">err</code>. The stored keys do not convert to the message <code dir="auto">EdgeSSHKeys</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">the certificate of the install does not encode</code></td>
+<td>error</td>
+<td><code dir="auto">err</code>. The stored certificate or key does not parse.</td>
+</tr>
+<tr>
+<td><code dir="auto">refused a machine report</code></td>
+<td>warn</td>
+<td><code dir="auto">machine</code>, <code dir="auto">epoch</code>, <code dir="auto">state</code>, <code dir="auto">outcome</code>, <code dir="auto">err</code> (<a href="/reference/executor-protocol/#machinereportresult">executor-protocol.md</a>)</td>
+</tr>
+<tr>
+<td><code dir="auto">recording a machine report failed</code></td>
+<td>warn</td>
+<td><code dir="auto">machine</code>, <code dir="auto">err</code>. The executor sends the report again.</td>
+</tr>
+<tr>
+<td><code dir="auto">sending machine specs failed</code></td>
+<td>warn</td>
+<td><code dir="auto">err</code>, <code dir="auto">retry_in</code>, and <code dir="auto">machines</code> from the dispatcher or <code dir="auto">server</code> after a heartbeat. The channel stays open.</td>
+</tr>
+<tr>
+<td><code dir="auto">the channel of a node is busy, so its next heartbeat gets every machine spec</code></td>
+<td>info</td>
+<td><code dir="auto">server</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the env of machines does not resolve, so they get no spec until it does</code></td>
+<td>warn</td>
+<td><code dir="auto">machines</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">held machines need their hold no more</code></td>
+<td>info</td>
+<td><code dir="auto">machines</code></td>
+</tr>
+<tr>
+<td><code dir="auto">retrying held machines failed</code></td>
+<td>warn</td>
+<td><code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">a certificate renewal failed</code></td>
+<td>warn</td>
+<td><code dir="auto">err</code>. The server gets <code dir="auto">CertificateRefused</code>, and the channel stays open.</td>
+</tr>
+</tbody>
+</table>
+<p>The server side writes these records with <code dir="auto">component=node</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Level</th>
+<th>Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">waiting for the enrollment of this server</code></td>
+<td>info</td>
+<td><code dir="auto">dir</code></td>
+</tr>
+<tr>
+<td><code dir="auto">cannot read the identity of this server</code></td>
+<td>error</td>
+<td><code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">control channel connected</code></td>
+<td>info</td>
+<td><code dir="auto">server</code>, <code dir="auto">control</code>, <code dir="auto">state</code></td>
+</tr>
+<tr>
+<td><code dir="auto">control channel lost</code></td>
+<td>warn</td>
+<td><code dir="auto">err</code>, <code dir="auto">retry_in</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the control plane refuses this server. hopboxd retries every minute</code></td>
+<td>error</td>
+<td><code dir="auto">err</code>. Once, until a channel works again.</td>
+</tr>
+<tr>
+<td><code dir="auto">dialing the control channel again with the renewed certificate</code></td>
+<td>info</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">the control plane refused the certificate renewal</code></td>
+<td>info</td>
+<td><code dir="auto">reason</code>, <code dir="auto">retry_at</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the control plane did not answer the certificate renewal</code></td>
+<td>warn</td>
+<td><code dir="auto">retry_at</code></td>
+</tr>
+<tr>
+<td><code dir="auto">renewed the server certificate</code></td>
+<td>info</td>
+<td><code dir="auto">server</code>, <code dir="auto">not_after</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the control plane sent a certificate that this server did not ask for</code></td>
+<td>warn</td>
+<td><code dir="auto">server</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the control plane sent a message that this hopboxd does not know. Upgrade hopboxd</code></td>
+<td>warn</td>
+<td><code dir="auto">server</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the dns role refused the zones of the control plane, and keeps the zones that it has</code></td>
+<td>error</td>
+<td><code dir="auto">server</code>, <code dir="auto">serial</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the dns role keeps newer zones than the zones of the control plane</code></td>
+<td>info</td>
+<td><code dir="auto">server</code>, <code dir="auto">serial</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the control plane sent dns zones to a server without the dns role</code></td>
+<td>warn</td>
+<td><code dir="auto">server</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the edge role refused a push of the control plane, and keeps what it has</code></td>
+<td>error</td>
+<td><code dir="auto">server</code>, <code dir="auto">push</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the control plane sent edge data to a server without the edge role</code></td>
+<td>warn</td>
+<td><code dir="auto">server</code>, <code dir="auto">push</code></td>
+</tr>
+<tr>
+<td><code dir="auto">cannot refuse a stream</code></td>
+<td>warn</td>
+<td><code dir="auto">stream</code> (the kind), <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">cannot attach a stream</code></td>
+<td>warn</td>
+<td><code dir="auto">stream</code> (the kind), <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the control plane sent a machine spec, but this server runs no machine executor</code></td>
+<td>warn</td>
+<td><code dir="auto">server</code>. Once per channel.</td>
+</tr>
+<tr>
+<td><code dir="auto">machine stream ended</code></td>
+<td>info</td>
+<td><code dir="auto">component=access</code>, <code dir="auto">stream</code> (the kind), <code dir="auto">machine</code>, <code dir="auto">outcome</code>, <code dir="auto">duration</code>. The outcome is <code dir="auto">ok</code>, or the name of the code of the error frame. A last frame that did not go out has the outcome <code dir="auto">lost</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">a machine stream ended before its open frame</code></td>
+<td>warn</td>
+<td><code dir="auto">component=access</code>, <code dir="auto">stream</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">a resize or a signal of an exec did not reach the guest agent</code></td>
+<td>warn</td>
+<td><code dir="auto">component=access</code>, <code dir="auto">machine</code>, <code dir="auto">err</code>, <code dir="auto">missed</code>. At most once a minute for each exec (<a href="/reference/guest-link/#versions">guest-link.md</a>).</td>
+</tr>
+</tbody>
+</table>
+<p>At its end, each call of the channel also gets the access log record <code dir="auto">api call</code> of the internal listener (<a href="/reference/api/#logs">api.md</a>).</p>
+</div><footer class="sl-flex astro-fzngq47q"><div class="meta sl-flex astro-fzngq47q"></div><div class="pagination-links print:hidden astro-7jhddma2" dir="ltr"><a href="/reference/enrollment/" rel="prev" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-7jhddma2">Previous<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">Enrollment and the install PKI</span></span></a><a href="/reference/dns/" rel="next" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-7jhddma2">Next<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">The DNS role</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>

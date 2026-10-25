@@ -1,0 +1,717 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-toc data-has-sidebar class="astro-g6oqdoeg"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>The executor protocol | hopbox docs</title><link rel="canonical" href="https://docs.hopbox.dev/reference/executor-protocol/"/><link rel="sitemap" href="/sitemap-index.xml"/><link rel="shortcut icon" href="/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.3.8"/><meta name="generator" content="Starlight v0.42.6"/><meta property="og:title" content="The executor protocol"/><meta property="og:type" content="article"/><meta property="og:url" content="https://docs.hopbox.dev/reference/executor-protocol/"/><meta property="og:locale" content="en"/><meta property="og:description" content="The executor protocol on the control channel: the machine leases and their renewals, ReconcileMachine, the current-state reports, and their results."/><meta property="og:site_name" content="hopbox docs"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="The executor protocol on the control channel: the machine leases and their renewals, ReconcileMachine, the current-state reports, and their results."/><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/_astro/print.ehPL0gv-.css" media="print"><link rel="stylesheet" href="/_astro/middleware.DkUYdNkX.css"><script type="module" src="/_astro/page.cNngjUgL.js"></script></head><body class="astro-g6oqdoeg"><a class="sl-skip-link astro-ktawktwe" href="#_top">Skip to content</a><div class="page sl-flex astro-vlwsw6sx"><header class="header astro-vlwsw6sx"><div class="header astro-qe7tu4yu"><div class="title-wrapper sl-flex astro-qe7tu4yu"><a href="/" class="site-title sl-flex astro-42muqipg"><span class="astro-42muqipg" translate="no">hopbox docs</span></a></div><div class="sl-flex print:hidden astro-qe7tu4yu"><site-search class="astro-qe7tu4yu astro-yp365hkw" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"><button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-yp365hkw"><svg aria-hidden="true" class="astro-yp365hkw astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg><span class="sl-hidden md:sl-block astro-yp365hkw" aria-hidden="true">Search</span><kbd class="sl-hidden md:sl-flex astro-yp365hkw" style="display: none;"><kbd class="astro-yp365hkw">Ctrl</kbd><kbd class="astro-yp365hkw">K</kbd></kbd></button><dialog style="padding:0" aria-label="Search" class="astro-yp365hkw"><div class="dialog-frame sl-flex astro-yp365hkw"><button data-close-modal class="sl-flex md:sl-hidden astro-yp365hkw">Cancel</button><div class="search-container astro-yp365hkw"><div id="starlight__search" class="astro-yp365hkw"></div></div></div></dialog></site-search><script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script><script type="module" src="/_astro/Search.astro_astro_type_script_index_0_lang.g9hoxVJg.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-qe7tu4yu"><div class="sl-flex social-icons astro-qe7tu4yu"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script><script type="module">var e=`starlight-theme`,t=e=>e===`auto`||e===`dark`||e===`light`?e:`auto`,n=()=>t(typeof localStorage<`u`&&localStorage.getItem(e));function r(t){typeof localStorage<`u`&&localStorage.setItem(e,t===`light`||t===`dark`?t:``)}var i=()=>matchMedia(`(prefers-color-scheme: light)`).matches?`light`:`dark`;function a(e){StarlightThemeProvider.updatePickers(e),document.documentElement.dataset.theme=e===`auto`?i():e,r(e)}matchMedia(`(prefers-color-scheme: light)`).addEventListener(`change`,()=>{n()===`auto`&&a(`auto`)});var o=class extends HTMLElement{constructor(){super(),a(n()),this.querySelector(`select`)?.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&a(t(e.currentTarget.value))})}};customElements.define(`starlight-theme-select`,o);</script><script type="module">var e=class extends HTMLElement{constructor(){super();let e=this.querySelector(`select`);e&&(e.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=e.currentTarget.value)}),window.addEventListener(`pageshow`,t=>{if(!t.persisted)return;let n=e.querySelector(`option[selected]`)?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}};customElements.define(`starlight-lang-select`,e);</script></div></div></header><nav class="sidebar print:hidden astro-vlwsw6sx" aria-label="Main"><button popovertarget="starlight__sidebar" class="sl-menu-button sl-flex md:sl-hidden print:hidden astro-ibd3qwco"><svg aria-hidden="true" class="open-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg><span class="sr-only astro-ibd3qwco">Menu</span></button><script type="module">var e=class extends HTMLElement{constructor(){super();let e=matchMedia(`(min-width: 50em)`),t=()=>{this.popover=e.matches?null:`auto`};t(),e.addEventListener(`change`,()=>t()),this.addEventListener(`toggle`,({newState:e})=>this.trapFocus(e===`open`))}trapFocus(e){document.querySelectorAll(`.main-frame, .sl-skip-link`).forEach(t=>{t.toggleAttribute(`inert`,e)})}};customElements.define(`sl-sidebar-pane`,e);</script><sl-sidebar-pane popover id="starlight__sidebar" class="sidebar-pane astro-vlwsw6sx"><div class="sidebar-content sl-flex astro-vlwsw6sx"><sl-sidebar-state-persist data-hash="0qsyok1" class="astro-oblzz35h"><script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script><ul class="top-level astro-twzrdani"><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Guides</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/guide/run-hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">Run the control role on a laptop</span></a></li><li class="astro-twzrdani"><a href="/guide/install-on-ovhcloud/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on an OVHcloud server with Terraform</span></a></li><li class="astro-twzrdani"><a href="/guide/enroll-node/" class="astro-twzrdani"><span class="astro-twzrdani">Enroll the node role on one server</span></a></li><li class="astro-twzrdani"><a href="/guide/dns-role/" class="astro-twzrdani"><span class="astro-twzrdani">Serve the domain of an install with the DNS role</span></a></li><li class="astro-twzrdani"><a href="/guide/acme-certificate/" class="astro-twzrdani"><span class="astro-twzrdani">Get the wildcard certificate of an install</span></a></li><li class="astro-twzrdani"><a href="/guide/machine-urls/" class="astro-twzrdani"><span class="astro-twzrdani">Run the edge role and open machine URLs</span></a></li><li class="astro-twzrdani"><a href="/guide/first-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">First sign-in on a new install</span></a></li><li class="astro-twzrdani"><a href="/guide/github-google-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/guide/orgs/" class="astro-twzrdani"><span class="astro-twzrdani">Work in a team org</span></a></li><li class="astro-twzrdani"><a href="/guide/env-vars/" class="astro-twzrdani"><span class="astro-twzrdani">Set env vars and secrets</span></a></li><li class="astro-twzrdani"><a href="/guide/machines/" class="astro-twzrdani"><span class="astro-twzrdani">Create and manage machines</span></a></li><li class="astro-twzrdani"><a href="/guide/firecracker-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Run machines with Firecracker</span></a></li><li class="astro-twzrdani"><a href="/guide/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">Check the network of a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/cli/" class="astro-twzrdani"><span class="astro-twzrdani">Use the hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Use machines from the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-prompt/" class="astro-twzrdani"><span class="astro-twzrdani">Work in the prompt of the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/ssh/" class="astro-twzrdani"><span class="astro-twzrdani">Reach a machine over SSH</span></a></li><li class="astro-twzrdani"><a href="/guide/exec-and-files/" class="astro-twzrdani"><span class="astro-twzrdani">Run commands and copy files in a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">Connect an AI agent to hopbox with MCP</span></a></li><li class="astro-twzrdani"><a href="/guide/console/" class="astro-twzrdani"><span class="astro-twzrdani">Use the console</span></a></li><li class="astro-twzrdani"><a href="/guide/typescript-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">Call the API from TypeScript</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-and-keys/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in the CLI, and make API keys and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/guide/install-debian/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on a Debian 13 server by hand</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Reference</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="1"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/reference/hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/release-bundle/" class="astro-twzrdani"><span class="astro-twzrdani">Release bundle</span></a></li><li class="astro-twzrdani"><a href="/reference/server-layout/" class="astro-twzrdani"><span class="astro-twzrdani">Server layout</span></a></li><li class="astro-twzrdani"><a href="/reference/hopboxd-config/" class="astro-twzrdani"><span class="astro-twzrdani">The bootstrap config of hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/api/" class="astro-twzrdani"><span class="astro-twzrdani">The API server</span></a></li><li class="astro-twzrdani"><a href="/reference/org-api/" class="astro-twzrdani"><span class="astro-twzrdani">The org API</span></a></li><li class="astro-twzrdani"><a href="/reference/vars-api/" class="astro-twzrdani"><span class="astro-twzrdani">The env var API</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-api/" class="astro-twzrdani"><span class="astro-twzrdani">The machine API</span></a></li><li class="astro-twzrdani"><a href="/reference/placement/" class="astro-twzrdani"><span class="astro-twzrdani">Placement</span></a></li><li class="astro-twzrdani"><a href="/reference/auth-api/" class="astro-twzrdani"><span class="astro-twzrdani">The sign-in, account, and audit API</span></a></li><li class="astro-twzrdani"><a href="/reference/credentials/" class="astro-twzrdani"><span class="astro-twzrdani">CLI tokens, API keys, admin API keys, and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/reference/sessions/" class="astro-twzrdani"><span class="astro-twzrdani">Sessions, cookies, and sign-in links</span></a></li><li class="astro-twzrdani"><a href="/reference/smtp/" class="astro-twzrdani"><span class="astro-twzrdani">SMTP config</span></a></li><li class="astro-twzrdani"><a href="/reference/mail/" class="astro-twzrdani"><span class="astro-twzrdani">Mail</span></a></li><li class="astro-twzrdani"><a href="/reference/oauth/" class="astro-twzrdani"><span class="astro-twzrdani">Sign-in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/reference/metrics/" class="astro-twzrdani"><span class="astro-twzrdani">Metrics</span></a></li><li class="astro-twzrdani"><a href="/reference/admin-api/" class="astro-twzrdani"><span class="astro-twzrdani">The admin API</span></a></li><li class="astro-twzrdani"><a href="/reference/internal-listener/" class="astro-twzrdani"><span class="astro-twzrdani">The internal listener</span></a></li><li class="astro-twzrdani"><a href="/reference/enrollment/" class="astro-twzrdani"><span class="astro-twzrdani">Enrollment and the install PKI</span></a></li><li class="astro-twzrdani"><a href="/reference/control-channel/" class="astro-twzrdani"><span class="astro-twzrdani">The control channel</span></a></li><li class="astro-twzrdani"><a href="/reference/dns/" class="astro-twzrdani"><span class="astro-twzrdani">The DNS role</span></a></li><li class="astro-twzrdani"><a href="/reference/edge/" class="astro-twzrdani"><span class="astro-twzrdani">The edge role</span></a></li><li class="astro-twzrdani"><a href="/reference/ssh-front-door/" class="astro-twzrdani"><span class="astro-twzrdani">The SSH front door</span></a></li><li class="astro-twzrdani"><a href="/reference/acme/" class="astro-twzrdani"><span class="astro-twzrdani">The certificate of the install</span></a></li><li class="astro-twzrdani"><a href="/reference/executor-protocol/" aria-current="page" class="astro-twzrdani"><span class="astro-twzrdani">The executor protocol</span></a></li><li class="astro-twzrdani"><a href="/reference/executor/" class="astro-twzrdani"><span class="astro-twzrdani">The node executor</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-logs/" class="astro-twzrdani"><span class="astro-twzrdani">Machine logs</span></a></li><li class="astro-twzrdani"><a href="/reference/vmm/" class="astro-twzrdani"><span class="astro-twzrdani">The VMM driver interface</span></a></li><li class="astro-twzrdani"><a href="/reference/firecracker-driver/" class="astro-twzrdani"><span class="astro-twzrdani">The Firecracker driver</span></a></li><li class="astro-twzrdani"><a href="/reference/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">The node network</span></a></li><li class="astro-twzrdani"><a href="/reference/preflight/" class="astro-twzrdani"><span class="astro-twzrdani">The preflight check</span></a></li><li class="astro-twzrdani"><a href="/reference/cli/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/reference/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">The MCP server</span></a></li><li class="astro-twzrdani"><a href="/reference/console/" class="astro-twzrdani"><span class="astro-twzrdani">Console</span></a></li><li class="astro-twzrdani"><a href="/reference/go-client/" class="astro-twzrdani"><span class="astro-twzrdani">Go client</span></a></li><li class="astro-twzrdani"><a href="/reference/ts-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">TypeScript SDK</span></a></li><li class="astro-twzrdani"><a href="/reference/hopbox-guest/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox-guest</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-link/" class="astro-twzrdani"><span class="astro-twzrdani">Guest link</span></a></li><li class="astro-twzrdani"><a href="/reference/terraform-provider/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox Terraform provider</span></a></li><li class="astro-twzrdani"><a href="/reference/version/" class="astro-twzrdani"><span class="astro-twzrdani">The version command</span></a></li><li class="astro-twzrdani"><a href="/reference/api-definitions/" class="astro-twzrdani"><span class="astro-twzrdani">API definitions</span></a></li><li class="astro-twzrdani"><a href="/reference/postgres/" class="astro-twzrdani"><span class="astro-twzrdani">The bundled Postgres</span></a></li><li class="astro-twzrdani"><a href="/reference/domain-rules/" class="astro-twzrdani"><span class="astro-twzrdani">Domain rules</span></a></li><li class="astro-twzrdani"><a href="/reference/control-store/" class="astro-twzrdani"><span class="astro-twzrdani">Control store tables</span></a></li><li class="astro-twzrdani"><a href="/reference/sealing/" class="astro-twzrdani"><span class="astro-twzrdani">Sealing</span></a></li><li class="astro-twzrdani"><a href="/reference/host-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Host kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Guest kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/default-image/" class="astro-twzrdani"><span class="astro-twzrdani">Default image</span></a></li><li class="astro-twzrdani"><a href="/reference/artifact-format/" class="astro-twzrdani"><span class="astro-twzrdani">Artifact format</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Releases</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="2"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/releases/v0.1.0/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox v0.1.0</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="3"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Public API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="4"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="5"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicecreatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">CreateMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicegetmachine/" class="astro-twzrdani"><span class="astro-twzrdani">GetMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachinesizes/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachineSizes</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerebootmachine/" class="astro-twzrdani"><span class="astro-twzrdani">RebootMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerenamemachine/" class="astro-twzrdani"><span class="astro-twzrdani">RenameMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlport/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLPort</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlvisibility/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLVisibility</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">ShareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestartmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StartMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceunsharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UnshareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceupdatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.InstallService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="6"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1installservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1installservicegetinstallinfo/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallInfo</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="7"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicedeleteaccount/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceendclisignin/" class="astro-twzrdani"><span class="astro-twzrdani">EndCLISignIn</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicegetaccount/" class="astro-twzrdani"><span class="astro-twzrdani">GetAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistclisignins/" class="astro-twzrdani"><span class="astro-twzrdani">ListCLISignIns</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceremovesigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSignInMethod</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceupdateaccount/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateAccount</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.APIKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="8"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1apikeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicecreateapikey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAPIKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicelistapikeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAPIKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicerevokeapikey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAPIKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuditService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="9"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1auditservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1auditservicelistauditentries/" class="astro-twzrdani"><span class="astro-twzrdani">ListAuditEntries</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuthService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="10"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1authservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceapprovedevice/" class="astro-twzrdani"><span class="astro-twzrdani">ApproveDevice</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicegetdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">GetDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicepolldeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">PollDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerefreshclitoken/" class="astro-twzrdani"><span class="astro-twzrdani">RefreshCLIToken</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerequestmagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">RequestMagicLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicesignout/" class="astro-twzrdani"><span class="astro-twzrdani">SignOut</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicestartdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">StartDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifyloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyLoginLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifymagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyMagicLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="11"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceacceptinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">AcceptInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">CreateInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateorg/" class="astro-twzrdani"><span class="astro-twzrdani">CreateOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicedeleteorg/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorg/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorgusage/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrgUsage</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceleaveorg/" class="astro-twzrdani"><span class="astro-twzrdani">LeaveOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistinvitations/" class="astro-twzrdani"><span class="astro-twzrdani">ListInvitations</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgmembers/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgMembers</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceremoveorgmember/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveOrgMember</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicerevokeinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicesetorgmemberrole/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgMemberRole</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceupdateorg/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.SSHKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="12"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1sshkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceaddsshkey/" class="astro-twzrdani"><span class="astro-twzrdani">AddSSHKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyservicelistsshkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListSSHKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceremovesshkey/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSSHKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.VarService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="13"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1varservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicedeletevar/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteVar</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicelistvars/" class="astro-twzrdani"><span class="astro-twzrdani">ListVars</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicesetvar/" class="astro-twzrdani"><span class="astro-twzrdani">SetVar</span></a></li></ul></details></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Admin API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="14"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="15"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountservicelistaccountsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListAccountSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountserviceremoveaccountsigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveAccountSignInMethod</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AdminKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="16"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1adminkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicecreateadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicelistadminkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAdminKeys</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyserviceregisteradminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicerevokeadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAdminKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.CertificateService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="17"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1certificateservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1certificateservicegetcertificate/" class="astro-twzrdani"><span class="astro-twzrdani">GetCertificate</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ImageService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="18"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1imageservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageservicelistimages/" class="astro-twzrdani"><span class="astro-twzrdani">ListImages</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageserviceregisterimage/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterImage</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstallConfigService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="19"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1installconfigservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">ClearOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">ClearSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetoauthconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetOAuthConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">SetOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">SetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceupdateinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateInstallConfig</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstanceAdminService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="20"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1instanceadminservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicegrantinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">GrantInstanceAdmin</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicelistinstanceadmins/" class="astro-twzrdani"><span class="astro-twzrdani">ListInstanceAdmins</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicerevokeinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInstanceAdmin</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.KeyringService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="21"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1keyringservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicelistkeks/" class="astro-twzrdani"><span class="astro-twzrdani">ListKEKs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerewrapsealedvalues/" class="astro-twzrdani"><span class="astro-twzrdani">RewrapSealedValues</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerotatekek/" class="astro-twzrdani"><span class="astro-twzrdani">RotateKEK</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.LoginLinkService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="22"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1loginlinkservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1loginlinkservicecreateloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">CreateLoginLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="23"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MailService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="24"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1mailservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicegetmailfile/" class="astro-twzrdani"><span class="astro-twzrdani">GetMailFile</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicelistmailfiles/" class="astro-twzrdani"><span class="astro-twzrdani">ListMailFiles</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="25"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicegetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">GetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">SuspendOrg</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgserviceunsuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">UnsuspendOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ServerService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="26"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1serverservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">CordonServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecreateenrollmenttoken/" class="astro-twzrdani"><span class="astro-twzrdani">CreateEnrollmentToken</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicedecommissionserver/" class="astro-twzrdani"><span class="astro-twzrdani">DecommissionServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicegetserver/" class="astro-twzrdani"><span class="astro-twzrdani">GetServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicelistservers/" class="astro-twzrdani"><span class="astro-twzrdani">ListServers</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicesetserverlabels/" class="astro-twzrdani"><span class="astro-twzrdani">SetServerLabels</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverserviceuncordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">UncordonServer</span></a></li></ul></details></li></ul></details></li></ul></details></li></ul><script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-jl756n3h"><div class="social-icons astro-jl756n3h"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script></div></div></div></sl-sidebar-pane></nav><div class="main-frame astro-vlwsw6sx"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-bfhpgjcp"><aside class="right-sidebar-container print:hidden astro-bfhpgjcp"><div class="right-sidebar astro-bfhpgjcp"><div class="lg:sl-hidden astro-6ky2bkwt"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-bwzeb267"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-bwzeb267"><details id="starlight__mobile-toc" class="astro-bwzeb267"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-bwzeb267"><span class="toggle sl-flex astro-bwzeb267">On this page<svg aria-hidden="true" class="caret astro-bwzeb267 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-bwzeb267"></span></summary><div class="dropdown astro-bwzeb267"><ul class="isMobile astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-machine-lease" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The machine lease</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#grants" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Grants</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#renewals" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Renewals</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#heartbeat-fields" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Heartbeat fields</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#machinelease" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">MachineLease</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#reconcilemachine" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">ReconcileMachine</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#machinespec" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">MachineSpec</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#a-machine-whose-env-does-not-resolve" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">A machine whose env does not resolve</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#machinereport" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">MachineReport</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#what-the-control-role-does" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">What the control role does</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#machinereportresult" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">MachineReportResult</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#policy" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Policy</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#go-api" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Go API</span></a></li></ul></div></details></nav></mobile-starlight-toc><script type="module" src="/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.C3fM4Kra.js"></script></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-6ky2bkwt"><div class="sl-container astro-6ky2bkwt"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-machine-lease" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The machine lease</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#grants" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Grants</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#renewals" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Renewals</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#heartbeat-fields" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Heartbeat fields</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#machinelease" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">MachineLease</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#reconcilemachine" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">ReconcileMachine</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#machinespec" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">MachineSpec</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#a-machine-whose-env-does-not-resolve" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">A machine whose env does not resolve</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#machinereport" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">MachineReport</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#what-the-control-role-does" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">What the control role does</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#machinereportresult" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">MachineReportResult</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#policy" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Policy</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#go-api" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Go API</span></a></li></ul></nav></starlight-toc><script type="module" src="/_astro/TableOfContents.astro_astro_type_script_index_0_lang.BpJaGz7G.js"></script></div></div></div></aside><div class="main-pane astro-bfhpgjcp"><main data-pagefind-body class="astro-g6oqdoeg" lang="en" dir="ltr"><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><h1 id="_top" class="astro-42k5req6">The executor protocol</h1></div></div><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><div class="sl-markdown-content"><p>The executor protocol is the part of the control channel that runs the machines of a node (<a href="/reference/control-channel/">control-channel.md</a>). Each machine has one executor on its node. The executor is the only code that changes the microVM of the machine. A request only sets the target state in the control store. The control role then tells the executor what the machine must become, and the executor reports each step of the current state back.</p>
+<p>The protocol has three parts:</p>
+<ol>
+<li>The machine lease. The executor acts only with a live grant of the lease of its machine. The heartbeats of the node renew the leases.</li>
+<li><code dir="auto">ReconcileMachine</code>. The control role sends the spec of a machine and the lease to act with.</li>
+<li><code dir="auto">MachineReport</code>. The executor reports each step of the current state. The control role refuses a report of a grant that is not live.</li>
+</ol>
+<p>The messages are in <code dir="auto">proto/hopbox/cluster/v1/machine.proto</code>. The control side is in <code dir="auto">internal/control/channel</code> (<code dir="auto">executor.go</code>) and <code dir="auto">internal/service</code> (<code dir="auto">executor.go</code>). The node side is in <code dir="auto">internal/node</code> (<code dir="auto">agent.go</code>) and <code dir="auto">internal/node/executor</code> (<a href="/reference/executor/">executor.md</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="the-machine-lease">The machine lease</h2><a class="sl-anchor-link" href="#the-machine-lease"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The machine lease”</span></a></div>
+<p>Each machine has the lease <code dir="auto">machine/&lt;machine ID&gt;</code> in the table <code dir="auto">leases</code> (<a href="/reference/control-store/#leases">control-store.md</a>). The holder is the server ID of the node of the machine. One grant of the lease is one execution of the machine on its node. The epoch of the grant is the execution ID, and the epoch and the random token together are its fencing token. Every message of this protocol and every route record carries both.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TTL</td>
+<td>30 s (<code dir="auto">domain.MachineLeaseTTL</code>, <code dir="auto">lease.MachineTTL</code>)</td>
+<td>The life of a grant after its grant or its last renewal.</td>
+</tr>
+<tr>
+<td>Margin</td>
+<td>3 s (<code dir="auto">executor.LeaseMargin</code>)</td>
+<td>The executor stops acting this long before the lease expires, so the clocks of the node and of the control store need not agree.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="grants">Grants</h3><a class="sl-anchor-link" href="#grants"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Grants”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>When</th>
+<th>Who</th>
+<th>What it writes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">CreateMachine</code> places a machine</td>
+<td>the machine API (<a href="/reference/placement/#the-machine-lease">placement.md</a>)</td>
+<td>the lease and the first row of <code dir="auto">placements</code></td>
+</tr>
+<tr>
+<td>A heartbeat finds a machine of its node without a live lease</td>
+<td><code dir="auto">RecordHeartbeat</code></td>
+<td>a new grant with a new epoch and token, and a new row of <code dir="auto">placements</code></td>
+</tr>
+</tbody>
+</table>
+<p>Three rules decide whether a heartbeat grants a lease again. All of them must hold:</p>
+<ul>
+<li>The heartbeat has <code dir="auto">executor</code> set, so the node runs executors. A node without executors gets no new grant, so no grant stays alive for a node that cannot act.</li>
+<li>The machine is on the node, and its current state is not <code dir="auto">deleted</code>.</li>
+<li>The lease of the machine expired, or has no row. A live grant that the node does not list waits for its expiry. So two executions never act at once.</li>
+<li>The machine is not held with the target <code dir="auto">running</code> (<a href="#a-machine-whose-env-does-not-resolve">A machine whose env does not resolve</a>). A held machine with another target gets its grant, so its stop or its delete goes on.</li>
+</ul>
+<p>The same transaction moves the route record of the machine to the new grant (<a href="/reference/control-store/#route_records">control-store.md</a>). After the commit, the control role sends <code dir="auto">ReconcileMachine</code> with the new grant. The service logs <code dir="auto">granted a machine lease again</code> at level info, with <code dir="auto">machine</code> and <code dir="auto">server</code>.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="renewals">Renewals</h3><a class="sl-anchor-link" href="#renewals"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Renewals”</span></a></div>
+<p>Each heartbeat lists in <code dir="auto">leases</code> the grants that the executors of the node hold. <code dir="auto">RecordHeartbeat</code> renews them in the same transaction as the facts of the heartbeat, with one statement (<code dir="auto">lease.RenewAll</code>). For each grant, the machine must be on the node, and the grant must be its current one, with the same epoch and token. Then the grant is renewed. A renewal moves the expiry to 30 s after the time of the write. It never changes the epoch or the token.</p>
+<p>The transaction takes its locks in this order (<a href="/reference/control-store/#leases">control-store.md</a>):</p>
+<ol>
+<li>The rows of the machines of the server, in the order of their IDs, <code dir="auto">FOR NO KEY UPDATE</code>.</li>
+<li>The lease rows to renew, in the order of their names, <code dir="auto">FOR UPDATE</code>.</li>
+<li>The row of the server, <code dir="auto">FOR UPDATE</code>.</li>
+</ol>
+<p><code dir="auto">sequence</code> of <code dir="auto">HeartbeatAck</code> names the heartbeat that the control role recorded last on the channel. <code dir="auto">renewed</code> holds the grants of that heartbeat that the control role renewed. The node matches the answer to the heartbeat with the same <code dir="auto">sequence</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Lease of that heartbeat</th>
+<th>What the executor does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>in <code dir="auto">renewed</code></td>
+<td>It counts the lease as live until the send time of the heartbeat plus 30 s, less the margin.</td>
+</tr>
+<tr>
+<td>not in <code dir="auto">renewed</code></td>
+<td>The lease is stale. The executor stops acting with it.</td>
+</tr>
+</tbody>
+</table>
+<p>The control role records at most one heartbeat of a channel every 2.5 s (<a href="/reference/control-channel/#the-heartbeat">control-channel.md</a>). A heartbeat that comes sooner gets the answer of the last recorded one, with its <code dir="auto">sequence</code> and its <code dir="auto">renewed</code>. The node takes each answer once, so a repeated answer changes nothing. A heartbeat that the control role fails to record gets no answer, and its leases are not renewed.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="heartbeat-fields">Heartbeat fields</h3><a class="sl-anchor-link" href="#heartbeat-fields"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Heartbeat fields”</span></a></div>
+<p>These fields of <code dir="auto">Heartbeat</code> and <code dir="auto">HeartbeatAck</code> carry the protocol. <a href="/reference/control-channel/#heartbeat">control-channel.md</a> lists the others.</p>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+<th>Limit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">Heartbeat</code></td>
+<td><code dir="auto">sequence</code></td>
+<td>uint64</td>
+<td>Numbers the heartbeats of one channel, from 1.</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">Heartbeat</code></td>
+<td><code dir="auto">executor</code></td>
+<td>bool</td>
+<td>Tells that the server runs machine executors.</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">Heartbeat</code></td>
+<td><code dir="auto">leases</code></td>
+<td>repeated <code dir="auto">MachineLease</code></td>
+<td>The grants that the executors hold.</td>
+<td>at most 4096</td>
+</tr>
+<tr>
+<td><code dir="auto">Heartbeat</code></td>
+<td><code dir="auto">inbound_machines</code></td>
+<td>repeated string</td>
+<td>The machines of the node with inbound traffic since the last heartbeat (<a href="/reference/node-network/#inbound-traffic-as-a-use">node-network.md</a>).</td>
+<td>at most 4096</td>
+</tr>
+<tr>
+<td><code dir="auto">HeartbeatAck</code></td>
+<td><code dir="auto">sequence</code></td>
+<td>uint64</td>
+<td>The heartbeat that the control role recorded last.</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">HeartbeatAck</code></td>
+<td><code dir="auto">renewed</code></td>
+<td>repeated <code dir="auto">MachineLease</code></td>
+<td>The grants of that heartbeat that the control role renewed.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="machinelease">MachineLease</h3><a class="sl-anchor-link" href="#machinelease"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “MachineLease”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">machine_id</code></td>
+<td>string</td>
+<td>The ID of the machine, a UUID.</td>
+</tr>
+<tr>
+<td><code dir="auto">epoch</code></td>
+<td>int64</td>
+<td>The number of the grant, and the execution ID.</td>
+</tr>
+<tr>
+<td><code dir="auto">token</code></td>
+<td>string</td>
+<td>The random token of the grant, a UUID.</td>
+</tr>
+</tbody>
+</table>
+<p>A lease whose <code dir="auto">machine_id</code> or <code dir="auto">token</code> is not a UUID ends the channel with <code dir="auto">invalid_argument</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="reconcilemachine">ReconcileMachine</h2><a class="sl-anchor-link" href="#reconcilemachine"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “ReconcileMachine”</span></a></div>
+<p><code dir="auto">ReconcileMachine</code> (field 5 of <code dir="auto">ChannelResponse</code>) tells the executor of a machine what the machine must become. The executor acts on the newest one. The control process that holds the channel of the node sends it in these cases:</p>
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Machines</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The first recorded heartbeat of a channel with <code dir="auto">executor</code> set</td>
+<td>every machine of the server</td>
+</tr>
+<tr>
+<td>A change event <code dir="auto">machine.created</code> or <code dir="auto">machine.updated</code>, from any control process (<a href="/reference/machine-api/#change-events">machine-api.md</a>)</td>
+<td>the machine of the event</td>
+</tr>
+<tr>
+<td>A heartbeat that granted leases again</td>
+<td>the machines of the new grants</td>
+</tr>
+</tbody>
+</table>
+<p>Three rules decide which machines get a spec. The machine runs on the server. Its current state is not <code dir="auto">deleted</code>. The server holds its lease live. A machine whose lease expired gets its spec after the heartbeat that grants its lease again. A machine whose current state is <code dir="auto">deleted</code> gets no spec, because its executor is done.</p>
+<p>The dispatcher of each control process (<code dir="auto">Hub.Dispatch</code>) follows the change events of every machine. It reads the node of each machine, and sends the specs on the channels of this process. A read that fails is logged as <code dir="auto">sending machine specs failed</code> at level warn, with <code dir="auto">machines</code>, <code dir="auto">err</code>, and <code dir="auto">retry_in</code>. It runs again 1 s later, then after twice the wait each time, up to 1 min (<code dir="auto">DispatchRetry</code>, <code dir="auto">MaxDispatchRetry</code>). The dispatcher never waits for a slow node. If the send queue of a channel is full, the dispatcher skips the node and logs <code dir="auto">the channel of a node is busy, so its next heartbeat gets every machine spec</code> at level info, with <code dir="auto">server</code>. The next heartbeat of the node then sends every spec of the node. In the same way, a failed read of the specs after a heartbeat keeps the channel open: the service logs <code dir="auto">sending machine specs failed</code>, and the next heartbeat tries again. The reports of the executors publish <code dir="auto">machine.state_changed</code>, which changes no spec, so that kind sends nothing.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">lease</code></td>
+<td><code dir="auto">MachineLease</code></td>
+<td>The grant that the executor acts with.</td>
+</tr>
+<tr>
+<td><code dir="auto">lease_remaining</code></td>
+<td>Duration</td>
+<td>The rest of the life of the grant at the send of the message. The control role counts it from the time before its read of the lease. The executor counts it from the arrival of the message, less the margin. The executor also ends the lease at most 30 s after its last heartbeat, less the margin. So a spec that waited in a slow channel cannot stretch it.</td>
+</tr>
+<tr>
+<td><code dir="auto">spec</code></td>
+<td><code dir="auto">MachineSpec</code></td>
+<td>What the machine must become.</td>
+</tr>
+<tr>
+<td><code dir="auto">current_state</code></td>
+<td><code dir="auto">MachineState</code></td>
+<td>The current state in the control store: the last report that the control role accepted.</td>
+</tr>
+<tr>
+<td><code dir="auto">current_boot_generation</code></td>
+<td>uint64</td>
+<td>The boot generation of that report.</td>
+</tr>
+<tr>
+<td><code dir="auto">version</code></td>
+<td>int64</td>
+<td>The version of the machine row at the read. Two messages can arrive out of order, so the executor keeps the spec with the highest version of its grant.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="machinespec">MachineSpec</h3><a class="sl-anchor-link" href="#machinespec"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “MachineSpec”</span></a></div>
+<p>The spec holds the env vars and the secrets of the machine. No part of hopbox logs it, and the node never writes it to disk.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">name</code></td>
+<td>string</td>
+<td>The name of the machine, and its host name.</td>
+</tr>
+<tr>
+<td><code dir="auto">target_state</code></td>
+<td><code dir="auto">MachineState</code></td>
+<td>The target state (<a href="/reference/domain-rules/#machine-states">domain-rules.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">reboot_generation</code></td>
+<td>uint64</td>
+<td>Grows with each reboot that a request asks for, and with each start of a failed machine. The executor boots the machine again until it booted this generation.</td>
+</tr>
+<tr>
+<td><code dir="auto">vcpus</code></td>
+<td>uint32</td>
+<td>The vCPUs of the size of the machine.</td>
+</tr>
+<tr>
+<td><code dir="auto">memory_bytes</code></td>
+<td>uint64</td>
+<td>The RAM of the size, in bytes.</td>
+</tr>
+<tr>
+<td><code dir="auto">disk_bytes</code></td>
+<td>uint64</td>
+<td>The disk of the size, in bytes.</td>
+</tr>
+<tr>
+<td><code dir="auto">image</code></td>
+<td><code dir="auto">MachineImage</code></td>
+<td>The image that the disk starts from.</td>
+</tr>
+<tr>
+<td><code dir="auto">env</code></td>
+<td>repeated <code dir="auto">MachineEnvVar</code></td>
+<td>The env vars and the open secrets of the machine, from <code dir="auto">Service.ResolveEnv</code> (<a href="/reference/vars-api/#env-of-a-machine">vars-api.md</a>). A machine without an org, or a private machine whose creator is gone, gets none.</td>
+</tr>
+<tr>
+<td><code dir="auto">start_command</code></td>
+<td>string</td>
+<td>The start command. Empty means none (<a href="/reference/domain-rules/#start-command">domain-rules.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">restart_policy</code></td>
+<td><code dir="auto">RestartPolicy</code></td>
+<td><code dir="auto">RESTART_POLICY_ALWAYS</code> or <code dir="auto">RESTART_POLICY_NEVER</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">network</code></td>
+<td><code dir="auto">MachineNetwork</code></td>
+<td>The address setup of the machine (<a href="/reference/node-network/#addresses">node-network.md</a>). Not set for a machine without an address, which then boots without network.</td>
+</tr>
+<tr>
+<td><code dir="auto">authorized_keys</code></td>
+<td>repeated string</td>
+<td>The public keys that sshd in the machine accepts for every Linux user: the client key of the SSH front door (<a href="/reference/ssh-front-door/#keys">ssh-front-door.md</a>). Empty while the install has no keys of the front door, which needs a key-encryption key. The control role then logs <code dir="auto">the machine specs go out without the key of the SSH front door</code> at level warn, with <code dir="auto">component=service</code> and <code dir="auto">err</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">env_unresolved</code></td>
+<td>bool</td>
+<td>The env of the machine did not resolve. The spec then holds no env, and the executor pushes nothing to the guest with it.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="a-machine-whose-env-does-not-resolve">A machine whose env does not resolve</h3><a class="sl-anchor-link" href="#a-machine-whose-env-does-not-resolve"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “A machine whose env does not resolve”</span></a></div>
+<p>The env of a machine can fail to resolve for three causes. The keyring has no key-encryption key, the keyring does not open, or a secret does not open. A retry cannot help until something changes. So the control role does this:</p>
+<ul>
+<li>A machine with the target <code dir="auto">running</code> gets no spec. It does not boot without its env.</li>
+<li>A machine with another target gets a spec with <code dir="auto">env_unresolved</code> and no env. So its stop or its delete goes on.</li>
+<li>The other machines of the node get their specs.</li>
+<li>A machine with the target <code dir="auto">running</code> that got no spec is held. The hub logs <code dir="auto">the env of machines does not resolve, so they get no spec until it does</code> at level warn, with <code dir="auto">server</code>, <code dir="auto">machines</code>, and <code dir="auto">err</code>. A held machine keeps the spec that its executor has, with the old env.</li>
+<li>The hub tries each held machine again at the recorded heartbeats of its node, at most once each 1 min. It also tries 1 min after the hold, then after twice the wait each time, up to 5 min (<code dir="auto">HeldRetry</code>, <code dir="auto">MaxHeldRetry</code>). Nothing else tells the control role that a key-encryption key came back or that a secret opens again.</li>
+<li>A try ends the hold once the env resolves, or once the target is not <code dir="auto">running</code> any more. The hub then logs <code dir="auto">held machines need their hold no more</code> at level info, with <code dir="auto">server</code> and <code dir="auto">machines</code>, and sends the spec. A spec with another target, such as the spec of a stop, ends the hold too.</li>
+<li>A heartbeat lists the held machines of its node in <code dir="auto">Hold</code>. A held machine with the target <code dir="auto">running</code> gets no new grant of its expired lease. So a grant that no spec carries never makes a row of <code dir="auto">placements</code>. After the hold, the next heartbeat grants the lease again.</li>
+<li>Any other failure of the env is not a hold, for example a failed read of the control store. Then the whole read of the specs fails. The hub tries again as after any failed read (<a href="#reconcilemachine">ReconcileMachine</a>). The dispatcher tries after 1 s, then after longer waits. A channel tries at its next heartbeat.</li>
+<li>The hub forgets the held machines of a node in two cases. The channel of the node to this process ends, or a timed try finds no channel. The next channel sends every spec again.</li>
+</ul>
+<p>The spec carries no link key of the guest link. The node makes a new link key for each boot of the machine, and for each attach after a restart of <code dir="auto">hopboxd</code> (<a href="/reference/guest-link/#link-key">guest-link.md</a>).</p>
+<table>
+<thead>
+<tr>
+<th><code dir="auto">MachineImage</code> field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">digest</code></td>
+<td>string</td>
+<td>The digest of the artifact, <code dir="auto">sha256:&lt;hex&gt;</code> (<a href="/reference/artifact-format/">artifact-format.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">url</code></td>
+<td>string</td>
+<td>Where the node downloads the image. Empty means that the node has it in its image cache.</td>
+</tr>
+<tr>
+<td><code dir="auto">kernel_sha256</code></td>
+<td>string</td>
+<td>The SHA-256, in hex, of the guest kernel.</td>
+</tr>
+<tr>
+<td><code dir="auto">disk_sha256</code></td>
+<td>string</td>
+<td>The SHA-256, in hex, of the disk file.</td>
+</tr>
+<tr>
+<td><code dir="auto">disk_size</code></td>
+<td>uint64</td>
+<td>The size of the disk file, in bytes.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th><code dir="auto">MachineEnvVar</code> field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">name</code></td>
+<td>string</td>
+<td>The name of the env var.</td>
+</tr>
+<tr>
+<td><code dir="auto">value</code></td>
+<td>string</td>
+<td>The value.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th><code dir="auto">MachineNetwork</code> field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">address</code></td>
+<td>string</td>
+<td>The address of the machine with its prefix length, such as <code dir="auto">10.240.0.5/32</code>. The node routes it to the tap device of the machine.</td>
+</tr>
+<tr>
+<td><code dir="auto">gateway</code></td>
+<td>string</td>
+<td>The on-link gateway of the default route: <code dir="auto">169.254.0.1</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">mtu</code></td>
+<td>uint32</td>
+<td>The MTU of the interface: <code dir="auto">1420</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">nameservers</code></td>
+<td>repeated string</td>
+<td>The DNS resolvers of the machine. The control role leaves it empty, and the executor then gives the guest the resolvers of its node (<a href="/reference/node-network/#the-resolvers-of-the-machines">node-network.md</a>).</td>
+</tr>
+</tbody>
+</table>
+<p>Each value of <code dir="auto">MachineState</code> is a state of <a href="/reference/domain-rules/#machine-states">domain-rules.md</a> with the prefix <code dir="auto">MACHINE_STATE_</code>, such as <code dir="auto">MACHINE_STATE_RUNNING</code>. <code dir="auto">MACHINE_STATE_UNSPECIFIED</code> is no state.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="machinereport">MachineReport</h2><a class="sl-anchor-link" href="#machinereport"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “MachineReport”</span></a></div>
+<p><code dir="auto">MachineReport</code> (field 4 of <code dir="auto">ChannelRequest</code>) is one step of the current state of a machine. The executor sends its reports one at a time: it sends the next one after the result of the one before. So the reports of a machine arrive in order. After a new channel opens, the executor sends its waiting report again. A report of the state that the control store holds already changes nothing, so a report that arrives twice is harmless.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+<th>Limit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">lease</code></td>
+<td><code dir="auto">MachineLease</code></td>
+<td>The grant that the executor acts with.</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">sequence</code></td>
+<td>uint64</td>
+<td>Numbers the reports of one grant, from 1. The result names it.</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">state</code></td>
+<td><code dir="auto">MachineState</code></td>
+<td>The new current state. <code dir="auto">MACHINE_STATE_PENDING</code> and <code dir="auto">MACHINE_STATE_UNSPECIFIED</code> are refused.</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">boot_generation</code></td>
+<td>uint64</td>
+<td>The reboot generation of the boot that the report is about: the boot that starts, runs, or failed.</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">stopped_by_itself</code></td>
+<td>bool</td>
+<td>Tells that the machine shut down from inside, with the restart policy <code dir="auto">never</code>. Only a report of <code dir="auto">stopped</code> can set it.</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">error</code></td>
+<td>string</td>
+<td>Why the machine failed, for a report of <code dir="auto">failed</code>.</td>
+<td>at most 1024 bytes, valid UTF-8</td>
+</tr>
+<tr>
+<td><code dir="auto">skipped_env</code></td>
+<td>uint32</td>
+<td>For a report of <code dir="auto">running</code>, the count of env values that the guest agent left out (<a href="/reference/guest-link/#configuration">guest-link.md</a>). After a change of the count, the executor reports <code dir="auto">running</code> again.</td>
+<td>at most 2147483647</td>
+</tr>
+<tr>
+<td><code dir="auto">ssh_host_keys</code></td>
+<td>repeated string</td>
+<td>For a report of <code dir="auto">running</code>, the public SSH host keys of the guest, as the guest agent reported them in its status. Each one is in the <code dir="auto">authorized_keys</code> format without a comment. The executor leaves out a key that does not parse, and a key that it has already. After a change of the keys, the executor reports <code dir="auto">running</code> again. A report of another state carries none.</td>
+<td>at most 8, each one key without options or a comment</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="what-the-control-role-does">What the control role does</h3><a class="sl-anchor-link" href="#what-the-control-role-does"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “What the control role does”</span></a></div>
+<p><code dir="auto">ReportMachine</code> of the service layer writes each report in one transaction:</p>
+<ol>
+<li>It checks that the certificate of the channel was not retired (<a href="/reference/control-channel/#certificate-renewal">control-channel.md</a>).</li>
+<li>It locks the machine row. A machine that is gone, or that runs on another node, refuses the report as stale.</li>
+<li>It fences the report with its lease (<code dir="auto">lease.Fenced</code>, <a href="/reference/control-store/#fenced-writes">control-store.md</a>). A report of another grant, or of an expired one, is stale. One case differs. A report of <code dir="auto">deleted</code> for a machine that is <code dir="auto">deleted</code> already, with the grant of the delete, is accepted and changes nothing. That is the case of a lost answer, because the delete ended the lease.</li>
+<li>A report of the state that the machine has already, with no higher boot generation, changes no state. A repeated report of <code dir="auto">running</code> still writes the route record with its grant, and the count of step 6.</li>
+<li>It checks the step from the current state to the new state with <code dir="auto">domain.CheckStep</code> (<a href="/reference/domain-rules/#steps-between-current-states">domain-rules.md</a>).</li>
+<li>A report of <code dir="auto">running</code> writes <code dir="auto">skipped_env</code> to the machine. The service then logs <code dir="auto">the guest agent left env values out of a machine</code> at level warn, with <code dir="auto">machine</code> and <code dir="auto">count</code>, for a count above 0. A change of the count alone publishes <code dir="auto">machine.state_changed</code>.</li>
+<li>It writes <code dir="auto">current_state</code>, and moves <code dir="auto">current_reboot_generation</code> up to <code dir="auto">boot_generation</code>. For a new state, it also sets <code dir="auto">state_changed_at</code>.</li>
+<li>A report with <code dir="auto">stopped_by_itself</code> of a machine with the target <code dir="auto">running</code> and the restart policy <code dir="auto">never</code> sets the target to <code dir="auto">stopped</code>. So a later start boots the machine again. The <code dir="auto">boot_generation</code> of the report must not be lower than the <code dir="auto">reboot_generation</code> of the machine. A start after the shutdown adds 1 to <code dir="auto">reboot_generation</code> (<a href="/reference/machine-api/#startmachine">machine-api.md</a>). So when the executor sends the report again on a new channel after that start, the report leaves the target <code dir="auto">running</code>. The audit entry is <code dir="auto">machine.stop</code> with the actor <code dir="auto">system</code> and the details <code dir="auto">old_target</code> and <code dir="auto">reason</code>.</li>
+<li>A report of <code dir="auto">running</code> writes the route record of the machine, with the address of the machine and <code dir="auto">ssh_host_keys</code>. The check holds a transaction lock of each of these keys, in the class <code dir="auto">LockClassGuestHostKey</code> (<a href="/reference/postgres/#advisory-lock-keys">postgres.md</a>). Thus only reports that share a key wait on each other. If the record of another machine holds one of these keys, the record gets no key. The service then logs <code dir="auto">a guest reported an SSH host key of another machine, so the SSH front door does not reach it</code> at level error. The fields are <code dir="auto">machine</code> and <code dir="auto">other_machine</code>. A report of another state drops it (<a href="/reference/control-store/#route_records">control-store.md</a>).</li>
+<li>A report of <code dir="auto">deleted</code> ends the lease of the machine, and starts the hold of its address (<a href="/reference/node-network/#the-hold-of-a-released-address">node-network.md</a>).</li>
+<li>It publishes the event <code dir="auto">machine.state_changed</code> with the payload <code dir="auto">{"action": "server.report_machine"}</code>. The lifecycle waits and <code dir="auto">WatchMachines</code> follow it (<a href="/reference/machine-api/#change-events">machine-api.md</a>).</li>
+</ol>
+<p>The service logs each change with <code dir="auto">component=service</code> and the fields <code dir="auto">machine</code>, <code dir="auto">server</code>, <code dir="auto">epoch</code>, and <code dir="auto">boot_generation</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Level</th>
+<th>More fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">machine state changed</code></td>
+<td>info</td>
+<td><code dir="auto">from</code>, <code dir="auto">to</code></td>
+</tr>
+<tr>
+<td><code dir="auto">a machine failed</code></td>
+<td>warn</td>
+<td><code dir="auto">from</code>, <code dir="auto">err</code> (the <code dir="auto">error</code> of the report)</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="machinereportresult">MachineReportResult</h3><a class="sl-anchor-link" href="#machinereportresult"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “MachineReportResult”</span></a></div>
+<p>The control role answers each report with <code dir="auto">MachineReportResult</code> (field 6 of <code dir="auto">ChannelResponse</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">lease</code></td>
+<td><code dir="auto">MachineLease</code></td>
+<td>The lease of the report.</td>
+</tr>
+<tr>
+<td><code dir="auto">sequence</code></td>
+<td>uint64</td>
+<td>The sequence of the report.</td>
+</tr>
+<tr>
+<td><code dir="auto">outcome</code></td>
+<td><code dir="auto">ReportOutcome</code></td>
+<td>What the control role did.</td>
+</tr>
+<tr>
+<td><code dir="auto">reason</code></td>
+<td>string</td>
+<td>Why, for an outcome other than accepted.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Outcome</th>
+<th>When</th>
+<th>What the executor does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">REPORT_OUTCOME_ACCEPTED</code></td>
+<td>The control role wrote the report, or it had it already.</td>
+<td>It sends the next report.</td>
+</tr>
+<tr>
+<td><code dir="auto">REPORT_OUTCOME_STALE</code></td>
+<td>The lease is not the live grant of the machine, or the machine is gone or on another node.</td>
+<td>It stops acting with the lease, and drops its waiting reports.</td>
+</tr>
+<tr>
+<td><code dir="auto">REPORT_OUTCOME_REFUSED</code></td>
+<td>The report breaks a rule, such as a step that the lifecycle does not allow.</td>
+<td>It logs <code dir="auto">the control plane refused a report of the machine</code> at level error, drops its waiting reports, and goes on from the last state that the control role accepted.</td>
+</tr>
+<tr>
+<td><code dir="auto">REPORT_OUTCOME_RETRY</code></td>
+<td>The control role failed to write the report, for example during an outage of the control store.</td>
+<td>It sends the report again 1 s later.</td>
+</tr>
+</tbody>
+</table>
+<p>The control side logs with <code dir="auto">component=channel</code> and the fields <code dir="auto">server</code> and <code dir="auto">machine</code>. A stale or refused report logs <code dir="auto">refused a machine report</code> at level warn. A failed write logs <code dir="auto">recording a machine report failed</code> at level warn. Some reports break the protocol, such as a report without a state. Such a report ends the channel with <code dir="auto">invalid_argument</code>. A lease that is not a UUID does the same.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="policy">Policy</h2><a class="sl-anchor-link" href="#policy"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Policy”</span></a></div>
+<p>The policy lets a server act only for itself (<a href="/reference/api/#callers-and-policy">api.md</a>):</p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Operation</th>
+<th>Allowed caller</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">server.read_machine_specs</code></td>
+<td>read the specs of the machines of the server, with their env vars and secrets</td>
+<td>the server that the certificate names</td>
+</tr>
+<tr>
+<td><code dir="auto">server.report_machine</code></td>
+<td>record a report of an executor of the server</td>
+<td>the same server</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h2"><h2 id="go-api">Go API</h2><a class="sl-anchor-link" href="#go-api"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Go API”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">Service.RecordHeartbeat(ctx, caller, Heartbeat)</code></td>
+<td>Records the facts, renews the leases, and grants expired leases again. Returns <code dir="auto">HeartbeatResult</code> with <code dir="auto">State</code>, <code dir="auto">Renewed</code>, and <code dir="auto">Granted</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">Service.ExecutorSpecs(ctx, caller, ids)</code></td>
+<td>Returns the specs of the machines of the server of <code dir="auto">caller</code> whose live lease it holds, or of every such machine for nil <code dir="auto">ids</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">Service.ReportMachine(ctx, caller, MachineReport)</code></td>
+<td>Writes one report. Fails with <code dir="auto">lease.ErrStale</code> for a stale lease, and with <code dir="auto">ErrFailedPrecondition</code> for a step that the lifecycle does not allow.</td>
+</tr>
+<tr>
+<td><code dir="auto">Service.MachineNodes(ctx, ids)</code></td>
+<td>Returns the node of each machine, so the dispatcher finds the channel of its spec.</td>
+</tr>
+<tr>
+<td><code dir="auto">Hub.Dispatch(ctx, MachineHub)</code></td>
+<td>Sends the specs of changed machines until <code dir="auto">ctx</code> ends. The internal listener of the control role runs it.</td>
+</tr>
+<tr>
+<td><code dir="auto">MachineHub.SubscribeKinds(kinds...)</code></td>
+<td>Follows the changes of every machine in events of the given kinds.</td>
+</tr>
+</tbody>
+</table>
+</div><footer class="sl-flex astro-fzngq47q"><div class="meta sl-flex astro-fzngq47q"></div><div class="pagination-links print:hidden astro-7jhddma2" dir="ltr"><a href="/reference/acme/" rel="prev" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-7jhddma2">Previous<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">The certificate of the install</span></span></a><a href="/reference/executor/" rel="next" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-7jhddma2">Next<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">The node executor</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>

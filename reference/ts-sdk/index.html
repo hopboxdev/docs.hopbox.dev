@@ -1,0 +1,902 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-toc data-has-sidebar class="astro-g6oqdoeg"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>TypeScript SDK | hopbox docs</title><link rel="canonical" href="https://docs.hopbox.dev/reference/ts-sdk/"/><link rel="sitemap" href="/sitemap-index.xml"/><link rel="shortcut icon" href="/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.3.8"/><meta name="generator" content="Starlight v0.42.6"/><meta property="og:title" content="TypeScript SDK"/><meta property="og:type" content="article"/><meta property="og:url" content="https://docs.hopbox.dev/reference/ts-sdk/"/><meta property="og:locale" content="en"/><meta property="og:description" content="The TypeScript SDK @hopbox/sdk for Node.js and browsers: its options, retries, idempotency keys, typed errors, credentials, exec, file copy, and tests."/><meta property="og:site_name" content="hopbox docs"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="The TypeScript SDK @hopbox/sdk for Node.js and browsers: its options, retries, idempotency keys, typed errors, credentials, exec, file copy, and tests."/><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/_astro/print.ehPL0gv-.css" media="print"><link rel="stylesheet" href="/_astro/middleware.DkUYdNkX.css"><script type="module" src="/_astro/page.cNngjUgL.js"></script></head><body class="astro-g6oqdoeg"><a class="sl-skip-link astro-ktawktwe" href="#_top">Skip to content</a><div class="page sl-flex astro-vlwsw6sx"><header class="header astro-vlwsw6sx"><div class="header astro-qe7tu4yu"><div class="title-wrapper sl-flex astro-qe7tu4yu"><a href="/" class="site-title sl-flex astro-42muqipg"><span class="astro-42muqipg" translate="no">hopbox docs</span></a></div><div class="sl-flex print:hidden astro-qe7tu4yu"><site-search class="astro-qe7tu4yu astro-yp365hkw" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"><button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-yp365hkw"><svg aria-hidden="true" class="astro-yp365hkw astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg><span class="sl-hidden md:sl-block astro-yp365hkw" aria-hidden="true">Search</span><kbd class="sl-hidden md:sl-flex astro-yp365hkw" style="display: none;"><kbd class="astro-yp365hkw">Ctrl</kbd><kbd class="astro-yp365hkw">K</kbd></kbd></button><dialog style="padding:0" aria-label="Search" class="astro-yp365hkw"><div class="dialog-frame sl-flex astro-yp365hkw"><button data-close-modal class="sl-flex md:sl-hidden astro-yp365hkw">Cancel</button><div class="search-container astro-yp365hkw"><div id="starlight__search" class="astro-yp365hkw"></div></div></div></dialog></site-search><script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script><script type="module" src="/_astro/Search.astro_astro_type_script_index_0_lang.g9hoxVJg.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-qe7tu4yu"><div class="sl-flex social-icons astro-qe7tu4yu"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script><script type="module">var e=`starlight-theme`,t=e=>e===`auto`||e===`dark`||e===`light`?e:`auto`,n=()=>t(typeof localStorage<`u`&&localStorage.getItem(e));function r(t){typeof localStorage<`u`&&localStorage.setItem(e,t===`light`||t===`dark`?t:``)}var i=()=>matchMedia(`(prefers-color-scheme: light)`).matches?`light`:`dark`;function a(e){StarlightThemeProvider.updatePickers(e),document.documentElement.dataset.theme=e===`auto`?i():e,r(e)}matchMedia(`(prefers-color-scheme: light)`).addEventListener(`change`,()=>{n()===`auto`&&a(`auto`)});var o=class extends HTMLElement{constructor(){super(),a(n()),this.querySelector(`select`)?.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&a(t(e.currentTarget.value))})}};customElements.define(`starlight-theme-select`,o);</script><script type="module">var e=class extends HTMLElement{constructor(){super();let e=this.querySelector(`select`);e&&(e.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=e.currentTarget.value)}),window.addEventListener(`pageshow`,t=>{if(!t.persisted)return;let n=e.querySelector(`option[selected]`)?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}};customElements.define(`starlight-lang-select`,e);</script></div></div></header><nav class="sidebar print:hidden astro-vlwsw6sx" aria-label="Main"><button popovertarget="starlight__sidebar" class="sl-menu-button sl-flex md:sl-hidden print:hidden astro-ibd3qwco"><svg aria-hidden="true" class="open-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg><span class="sr-only astro-ibd3qwco">Menu</span></button><script type="module">var e=class extends HTMLElement{constructor(){super();let e=matchMedia(`(min-width: 50em)`),t=()=>{this.popover=e.matches?null:`auto`};t(),e.addEventListener(`change`,()=>t()),this.addEventListener(`toggle`,({newState:e})=>this.trapFocus(e===`open`))}trapFocus(e){document.querySelectorAll(`.main-frame, .sl-skip-link`).forEach(t=>{t.toggleAttribute(`inert`,e)})}};customElements.define(`sl-sidebar-pane`,e);</script><sl-sidebar-pane popover id="starlight__sidebar" class="sidebar-pane astro-vlwsw6sx"><div class="sidebar-content sl-flex astro-vlwsw6sx"><sl-sidebar-state-persist data-hash="0qsyok1" class="astro-oblzz35h"><script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script><ul class="top-level astro-twzrdani"><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Guides</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/guide/run-hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">Run the control role on a laptop</span></a></li><li class="astro-twzrdani"><a href="/guide/install-on-ovhcloud/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on an OVHcloud server with Terraform</span></a></li><li class="astro-twzrdani"><a href="/guide/enroll-node/" class="astro-twzrdani"><span class="astro-twzrdani">Enroll the node role on one server</span></a></li><li class="astro-twzrdani"><a href="/guide/dns-role/" class="astro-twzrdani"><span class="astro-twzrdani">Serve the domain of an install with the DNS role</span></a></li><li class="astro-twzrdani"><a href="/guide/acme-certificate/" class="astro-twzrdani"><span class="astro-twzrdani">Get the wildcard certificate of an install</span></a></li><li class="astro-twzrdani"><a href="/guide/machine-urls/" class="astro-twzrdani"><span class="astro-twzrdani">Run the edge role and open machine URLs</span></a></li><li class="astro-twzrdani"><a href="/guide/first-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">First sign-in on a new install</span></a></li><li class="astro-twzrdani"><a href="/guide/github-google-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/guide/orgs/" class="astro-twzrdani"><span class="astro-twzrdani">Work in a team org</span></a></li><li class="astro-twzrdani"><a href="/guide/env-vars/" class="astro-twzrdani"><span class="astro-twzrdani">Set env vars and secrets</span></a></li><li class="astro-twzrdani"><a href="/guide/machines/" class="astro-twzrdani"><span class="astro-twzrdani">Create and manage machines</span></a></li><li class="astro-twzrdani"><a href="/guide/firecracker-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Run machines with Firecracker</span></a></li><li class="astro-twzrdani"><a href="/guide/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">Check the network of a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/cli/" class="astro-twzrdani"><span class="astro-twzrdani">Use the hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Use machines from the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-prompt/" class="astro-twzrdani"><span class="astro-twzrdani">Work in the prompt of the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/ssh/" class="astro-twzrdani"><span class="astro-twzrdani">Reach a machine over SSH</span></a></li><li class="astro-twzrdani"><a href="/guide/exec-and-files/" class="astro-twzrdani"><span class="astro-twzrdani">Run commands and copy files in a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">Connect an AI agent to hopbox with MCP</span></a></li><li class="astro-twzrdani"><a href="/guide/console/" class="astro-twzrdani"><span class="astro-twzrdani">Use the console</span></a></li><li class="astro-twzrdani"><a href="/guide/typescript-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">Call the API from TypeScript</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-and-keys/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in the CLI, and make API keys and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/guide/install-debian/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on a Debian 13 server by hand</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Reference</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="1"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/reference/hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/release-bundle/" class="astro-twzrdani"><span class="astro-twzrdani">Release bundle</span></a></li><li class="astro-twzrdani"><a href="/reference/server-layout/" class="astro-twzrdani"><span class="astro-twzrdani">Server layout</span></a></li><li class="astro-twzrdani"><a href="/reference/hopboxd-config/" class="astro-twzrdani"><span class="astro-twzrdani">The bootstrap config of hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/api/" class="astro-twzrdani"><span class="astro-twzrdani">The API server</span></a></li><li class="astro-twzrdani"><a href="/reference/org-api/" class="astro-twzrdani"><span class="astro-twzrdani">The org API</span></a></li><li class="astro-twzrdani"><a href="/reference/vars-api/" class="astro-twzrdani"><span class="astro-twzrdani">The env var API</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-api/" class="astro-twzrdani"><span class="astro-twzrdani">The machine API</span></a></li><li class="astro-twzrdani"><a href="/reference/placement/" class="astro-twzrdani"><span class="astro-twzrdani">Placement</span></a></li><li class="astro-twzrdani"><a href="/reference/auth-api/" class="astro-twzrdani"><span class="astro-twzrdani">The sign-in, account, and audit API</span></a></li><li class="astro-twzrdani"><a href="/reference/credentials/" class="astro-twzrdani"><span class="astro-twzrdani">CLI tokens, API keys, admin API keys, and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/reference/sessions/" class="astro-twzrdani"><span class="astro-twzrdani">Sessions, cookies, and sign-in links</span></a></li><li class="astro-twzrdani"><a href="/reference/smtp/" class="astro-twzrdani"><span class="astro-twzrdani">SMTP config</span></a></li><li class="astro-twzrdani"><a href="/reference/mail/" class="astro-twzrdani"><span class="astro-twzrdani">Mail</span></a></li><li class="astro-twzrdani"><a href="/reference/oauth/" class="astro-twzrdani"><span class="astro-twzrdani">Sign-in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/reference/metrics/" class="astro-twzrdani"><span class="astro-twzrdani">Metrics</span></a></li><li class="astro-twzrdani"><a href="/reference/admin-api/" class="astro-twzrdani"><span class="astro-twzrdani">The admin API</span></a></li><li class="astro-twzrdani"><a href="/reference/internal-listener/" class="astro-twzrdani"><span class="astro-twzrdani">The internal listener</span></a></li><li class="astro-twzrdani"><a href="/reference/enrollment/" class="astro-twzrdani"><span class="astro-twzrdani">Enrollment and the install PKI</span></a></li><li class="astro-twzrdani"><a href="/reference/control-channel/" class="astro-twzrdani"><span class="astro-twzrdani">The control channel</span></a></li><li class="astro-twzrdani"><a href="/reference/dns/" class="astro-twzrdani"><span class="astro-twzrdani">The DNS role</span></a></li><li class="astro-twzrdani"><a href="/reference/edge/" class="astro-twzrdani"><span class="astro-twzrdani">The edge role</span></a></li><li class="astro-twzrdani"><a href="/reference/ssh-front-door/" class="astro-twzrdani"><span class="astro-twzrdani">The SSH front door</span></a></li><li class="astro-twzrdani"><a href="/reference/acme/" class="astro-twzrdani"><span class="astro-twzrdani">The certificate of the install</span></a></li><li class="astro-twzrdani"><a href="/reference/executor-protocol/" class="astro-twzrdani"><span class="astro-twzrdani">The executor protocol</span></a></li><li class="astro-twzrdani"><a href="/reference/executor/" class="astro-twzrdani"><span class="astro-twzrdani">The node executor</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-logs/" class="astro-twzrdani"><span class="astro-twzrdani">Machine logs</span></a></li><li class="astro-twzrdani"><a href="/reference/vmm/" class="astro-twzrdani"><span class="astro-twzrdani">The VMM driver interface</span></a></li><li class="astro-twzrdani"><a href="/reference/firecracker-driver/" class="astro-twzrdani"><span class="astro-twzrdani">The Firecracker driver</span></a></li><li class="astro-twzrdani"><a href="/reference/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">The node network</span></a></li><li class="astro-twzrdani"><a href="/reference/preflight/" class="astro-twzrdani"><span class="astro-twzrdani">The preflight check</span></a></li><li class="astro-twzrdani"><a href="/reference/cli/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/reference/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">The MCP server</span></a></li><li class="astro-twzrdani"><a href="/reference/console/" class="astro-twzrdani"><span class="astro-twzrdani">Console</span></a></li><li class="astro-twzrdani"><a href="/reference/go-client/" class="astro-twzrdani"><span class="astro-twzrdani">Go client</span></a></li><li class="astro-twzrdani"><a href="/reference/ts-sdk/" aria-current="page" class="astro-twzrdani"><span class="astro-twzrdani">TypeScript SDK</span></a></li><li class="astro-twzrdani"><a href="/reference/hopbox-guest/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox-guest</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-link/" class="astro-twzrdani"><span class="astro-twzrdani">Guest link</span></a></li><li class="astro-twzrdani"><a href="/reference/terraform-provider/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox Terraform provider</span></a></li><li class="astro-twzrdani"><a href="/reference/version/" class="astro-twzrdani"><span class="astro-twzrdani">The version command</span></a></li><li class="astro-twzrdani"><a href="/reference/api-definitions/" class="astro-twzrdani"><span class="astro-twzrdani">API definitions</span></a></li><li class="astro-twzrdani"><a href="/reference/postgres/" class="astro-twzrdani"><span class="astro-twzrdani">The bundled Postgres</span></a></li><li class="astro-twzrdani"><a href="/reference/domain-rules/" class="astro-twzrdani"><span class="astro-twzrdani">Domain rules</span></a></li><li class="astro-twzrdani"><a href="/reference/control-store/" class="astro-twzrdani"><span class="astro-twzrdani">Control store tables</span></a></li><li class="astro-twzrdani"><a href="/reference/sealing/" class="astro-twzrdani"><span class="astro-twzrdani">Sealing</span></a></li><li class="astro-twzrdani"><a href="/reference/host-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Host kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Guest kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/default-image/" class="astro-twzrdani"><span class="astro-twzrdani">Default image</span></a></li><li class="astro-twzrdani"><a href="/reference/artifact-format/" class="astro-twzrdani"><span class="astro-twzrdani">Artifact format</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Releases</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="2"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/releases/v0.1.0/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox v0.1.0</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="3"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Public API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="4"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="5"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicecreatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">CreateMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicegetmachine/" class="astro-twzrdani"><span class="astro-twzrdani">GetMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachinesizes/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachineSizes</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerebootmachine/" class="astro-twzrdani"><span class="astro-twzrdani">RebootMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerenamemachine/" class="astro-twzrdani"><span class="astro-twzrdani">RenameMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlport/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLPort</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlvisibility/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLVisibility</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">ShareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestartmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StartMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceunsharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UnshareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceupdatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.InstallService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="6"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1installservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1installservicegetinstallinfo/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallInfo</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="7"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicedeleteaccount/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceendclisignin/" class="astro-twzrdani"><span class="astro-twzrdani">EndCLISignIn</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicegetaccount/" class="astro-twzrdani"><span class="astro-twzrdani">GetAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistclisignins/" class="astro-twzrdani"><span class="astro-twzrdani">ListCLISignIns</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceremovesigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSignInMethod</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceupdateaccount/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateAccount</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.APIKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="8"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1apikeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicecreateapikey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAPIKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicelistapikeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAPIKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicerevokeapikey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAPIKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuditService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="9"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1auditservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1auditservicelistauditentries/" class="astro-twzrdani"><span class="astro-twzrdani">ListAuditEntries</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuthService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="10"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1authservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceapprovedevice/" class="astro-twzrdani"><span class="astro-twzrdani">ApproveDevice</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicegetdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">GetDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicepolldeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">PollDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerefreshclitoken/" class="astro-twzrdani"><span class="astro-twzrdani">RefreshCLIToken</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerequestmagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">RequestMagicLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicesignout/" class="astro-twzrdani"><span class="astro-twzrdani">SignOut</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicestartdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">StartDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifyloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyLoginLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifymagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyMagicLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="11"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceacceptinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">AcceptInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">CreateInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateorg/" class="astro-twzrdani"><span class="astro-twzrdani">CreateOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicedeleteorg/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorg/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorgusage/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrgUsage</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceleaveorg/" class="astro-twzrdani"><span class="astro-twzrdani">LeaveOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistinvitations/" class="astro-twzrdani"><span class="astro-twzrdani">ListInvitations</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgmembers/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgMembers</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceremoveorgmember/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveOrgMember</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicerevokeinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicesetorgmemberrole/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgMemberRole</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceupdateorg/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.SSHKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="12"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1sshkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceaddsshkey/" class="astro-twzrdani"><span class="astro-twzrdani">AddSSHKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyservicelistsshkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListSSHKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceremovesshkey/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSSHKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.VarService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="13"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1varservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicedeletevar/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteVar</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicelistvars/" class="astro-twzrdani"><span class="astro-twzrdani">ListVars</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicesetvar/" class="astro-twzrdani"><span class="astro-twzrdani">SetVar</span></a></li></ul></details></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Admin API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="14"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="15"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountservicelistaccountsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListAccountSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountserviceremoveaccountsigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveAccountSignInMethod</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AdminKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="16"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1adminkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicecreateadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicelistadminkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAdminKeys</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyserviceregisteradminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicerevokeadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAdminKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.CertificateService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="17"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1certificateservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1certificateservicegetcertificate/" class="astro-twzrdani"><span class="astro-twzrdani">GetCertificate</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ImageService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="18"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1imageservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageservicelistimages/" class="astro-twzrdani"><span class="astro-twzrdani">ListImages</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageserviceregisterimage/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterImage</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstallConfigService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="19"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1installconfigservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">ClearOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">ClearSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetoauthconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetOAuthConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">SetOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">SetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceupdateinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateInstallConfig</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstanceAdminService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="20"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1instanceadminservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicegrantinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">GrantInstanceAdmin</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicelistinstanceadmins/" class="astro-twzrdani"><span class="astro-twzrdani">ListInstanceAdmins</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicerevokeinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInstanceAdmin</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.KeyringService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="21"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1keyringservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicelistkeks/" class="astro-twzrdani"><span class="astro-twzrdani">ListKEKs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerewrapsealedvalues/" class="astro-twzrdani"><span class="astro-twzrdani">RewrapSealedValues</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerotatekek/" class="astro-twzrdani"><span class="astro-twzrdani">RotateKEK</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.LoginLinkService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="22"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1loginlinkservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1loginlinkservicecreateloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">CreateLoginLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="23"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MailService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="24"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1mailservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicegetmailfile/" class="astro-twzrdani"><span class="astro-twzrdani">GetMailFile</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicelistmailfiles/" class="astro-twzrdani"><span class="astro-twzrdani">ListMailFiles</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="25"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicegetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">GetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">SuspendOrg</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgserviceunsuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">UnsuspendOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ServerService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="26"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1serverservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">CordonServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecreateenrollmenttoken/" class="astro-twzrdani"><span class="astro-twzrdani">CreateEnrollmentToken</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicedecommissionserver/" class="astro-twzrdani"><span class="astro-twzrdani">DecommissionServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicegetserver/" class="astro-twzrdani"><span class="astro-twzrdani">GetServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicelistservers/" class="astro-twzrdani"><span class="astro-twzrdani">ListServers</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicesetserverlabels/" class="astro-twzrdani"><span class="astro-twzrdani">SetServerLabels</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverserviceuncordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">UncordonServer</span></a></li></ul></details></li></ul></details></li></ul></details></li></ul><script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-jl756n3h"><div class="social-icons astro-jl756n3h"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script></div></div></div></sl-sidebar-pane></nav><div class="main-frame astro-vlwsw6sx"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-bfhpgjcp"><aside class="right-sidebar-container print:hidden astro-bfhpgjcp"><div class="right-sidebar astro-bfhpgjcp"><div class="lg:sl-hidden astro-6ky2bkwt"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-bwzeb267"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-bwzeb267"><details id="starlight__mobile-toc" class="astro-bwzeb267"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-bwzeb267"><span class="toggle sl-flex astro-bwzeb267">On this page<svg aria-hidden="true" class="caret astro-bwzeb267 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-bwzeb267"></span></summary><div class="dropdown astro-bwzeb267"><ul class="isMobile astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#package" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Package</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#entry-points" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Entry points</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#make-a-client" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Make a client</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#hopboxclient" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">HopboxClient</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#the-transport" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">The transport</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#install-urls" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Install URLs</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-steps-of-a-call" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The steps of a call</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#idempotency-keys" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Idempotency keys</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#retries" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Retries</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#errors" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Errors</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#credentials" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Credentials</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#machine-names" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Machine names</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#exec" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Exec</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#upload" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Upload</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#download" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Download</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#logs-and-other-streams" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Logs and other streams</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#constants" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Constants</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#build-and-tests" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Build and tests</span></a></li></ul></div></details></nav></mobile-starlight-toc><script type="module" src="/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.C3fM4Kra.js"></script></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-6ky2bkwt"><div class="sl-container astro-6ky2bkwt"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#package" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Package</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#entry-points" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Entry points</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#make-a-client" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Make a client</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#hopboxclient" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">HopboxClient</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#the-transport" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">The transport</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#install-urls" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Install URLs</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-steps-of-a-call" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The steps of a call</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#idempotency-keys" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Idempotency keys</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#retries" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Retries</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#errors" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Errors</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#credentials" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Credentials</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#machine-names" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Machine names</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#exec" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Exec</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#upload" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Upload</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#download" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Download</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#logs-and-other-streams" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Logs and other streams</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#constants" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Constants</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#build-and-tests" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Build and tests</span></a></li></ul></nav></starlight-toc><script type="module" src="/_astro/TableOfContents.astro_astro_type_script_index_0_lang.BpJaGz7G.js"></script></div></div></div></aside><div class="main-pane astro-bfhpgjcp"><main data-pagefind-body class="astro-g6oqdoeg" lang="en" dir="ltr"><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><h1 id="_top" class="astro-42k5req6">TypeScript SDK</h1></div></div><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><div class="sl-markdown-content"><p><code dir="auto">@hopbox/sdk</code> in <code dir="auto">web/packages/sdk</code> is the TypeScript SDK of the public API <code dir="auto">hopbox.v1</code>. It runs in Node.js and in a browser. It is the generated code of protoc-gen-es plus a small hand-written facade. The facade follows the rules of the Go client (<a href="/reference/go-client/">go-client.md</a>): retries with backoff, idempotency keys on create calls, typed errors, and the bearer credential of the caller. The console uses it. <a href="/guide/typescript-sdk/">guide/typescript-sdk.md</a> shows a script that uses it.</p>
+<p>The SDK never holds the admin API. <code dir="auto">buf.gen.yaml</code> keeps <code dir="auto">hopbox.admin.v1</code> out of its generated code (<a href="/reference/api-definitions/#generators-and-outputs">api-definitions.md</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="package">Package</h2><a class="sl-anchor-link" href="#package"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Package”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Name</td>
+<td><code dir="auto">@hopbox/sdk</code></td>
+</tr>
+<tr>
+<td>Folder</td>
+<td><code dir="auto">web/packages/sdk</code></td>
+</tr>
+<tr>
+<td>Published</td>
+<td>No. The package is <code dir="auto">private</code>. The owner decides on the npm scope <code dir="auto">@hopbox</code> before a release to npm (plan item 13). The console takes the package from the pnpm workspace.</td>
+</tr>
+<tr>
+<td>Module format</td>
+<td>ES modules only (<code dir="auto">"type": "module"</code>)</td>
+</tr>
+<tr>
+<td>Node.js</td>
+<td>24 or later, the version that CI tests</td>
+</tr>
+<tr>
+<td>Runtime dependencies</td>
+<td><code dir="auto">@bufbuild/protobuf</code> 2.16.0, <code dir="auto">@connectrpc/connect</code> 2.2.0, <code dir="auto">@connectrpc/connect-node</code> 2.2.0, <code dir="auto">@connectrpc/connect-web</code> 2.2.0, all pinned to an exact version</td>
+</tr>
+<tr>
+<td>Build output</td>
+<td><code dir="auto">dist/</code>, which git ignores. Build it with <code dir="auto">corepack pnpm --filter @hopbox/sdk build</code>.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="entry-points">Entry points</h3><a class="sl-anchor-link" href="#entry-points"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Entry points”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Import</th>
+<th>Condition</th>
+<th>File</th>
+<th>What it holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">@hopbox/sdk</code></td>
+<td><code dir="auto">browser</code></td>
+<td><code dir="auto">dist/browser.js</code></td>
+<td><code dir="auto">createClient</code> for a browser, and every export of the facade</td>
+</tr>
+<tr>
+<td><code dir="auto">@hopbox/sdk</code></td>
+<td><code dir="auto">node</code></td>
+<td><code dir="auto">dist/node.js</code></td>
+<td><code dir="auto">createClient</code> for Node.js, and every export of the facade</td>
+</tr>
+<tr>
+<td><code dir="auto">@hopbox/sdk</code></td>
+<td><code dir="auto">default</code></td>
+<td><code dir="auto">dist/browser.js</code></td>
+<td>the same as <code dir="auto">browser</code></td>
+</tr>
+<tr>
+<td><code dir="auto">@hopbox/sdk/v1</code></td>
+<td>none</td>
+<td><code dir="auto">dist/v1.js</code></td>
+<td>every generated message, enum, service, and schema of <code dir="auto">hopbox.v1</code>, such as <code dir="auto">MachineState</code> and <code dir="auto">MachineService</code></td>
+</tr>
+</tbody>
+</table>
+<p>Node.js picks the <code dir="auto">node</code> condition, and a bundler for the browser, such as Vite, picks <code dir="auto">browser</code>. Both entry points export the same names with the same types: the names on this page. A test checks it.</p>
+<table>
+<thead>
+<tr>
+<th>Runtime</th>
+<th>Unary calls and server streams</th>
+<th><code dir="auto">Exec</code></th>
+<th><code dir="auto">Upload</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Node.js</td>
+<td>Connect protocol, binary protobuf, over HTTP/2. Plain <code dir="auto">http://</code> to a loopback install starts HTTP/2 with prior knowledge.</td>
+<td>the bidi stream <code dir="auto">Exec</code> over HTTP/2 by default, or the WebSocket</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Browser</td>
+<td>Connect protocol, binary protobuf, <code dir="auto">POST</code> requests over <code dir="auto">fetch</code></td>
+<td>the WebSocket <code dir="auto">/api/ws/exec</code> only</td>
+<td>no. A browser cannot stream a request body.</td>
+</tr>
+</tbody>
+</table>
+<p>The browser client passes the check of the session cookie (<a href="/reference/sessions/#calls-with-the-cookie">sessions.md</a>). Each call is a Connect <code dir="auto">POST</code> request with <code dir="auto">Connect-Protocol-Version: 1</code>, and the browser adds the <code dir="auto">Origin</code> header itself. The client never uses a Connect <code dir="auto">GET</code> request.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="make-a-client">Make a client</h2><a class="sl-anchor-link" href="#make-a-client"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Make a client”</span></a></div>
+<div class="expressive-code"><link rel="stylesheet" href="/_astro/ec.w36nc.css"><script type="module" src="/_astro/ec.0vx5m.js"></script><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="ts"><code><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">import</span><span style="--0:#D6DEEB;--1:#403F53"> { bearerToken, createClient, NotFoundError } </span><span style="--0:#C792EA;--1:#8844AE">from</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">@hopbox/sdk</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">;</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">const </span><span style="--0:#82AAFF;--1:#3B61B0">hb</span><span style="--0:#C792EA;--1:#8844AE"> = </span><span style="--0:#82AAFF;--1:#3B61B0">createClient</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#C792EA;--1:#8844AE">{</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#C792EA;--1:#8844AE">  </span></span><span style="--0:#C792EA;--1:#8844AE">url: </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">https://example.com</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C792EA;--1:#8844AE">,</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#C792EA;--1:#8844AE">  </span></span><span style="--0:#C792EA;--1:#8844AE">credentials: </span><span style="--0:#82AAFF;--1:#3B61B0">bearerToken</span><span style="--0:#D6DEEB;--1:#403F53">(process</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#FAF39F;--1:#111111">env</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#82AAFF;--1:#3B61B0">HOPBOX_API_KEY</span><span style="--0:#C792EA;--1:#8844AE"> ?? </span><span style="--0:#D9F5DD;--1:#111111">""</span><span style="--0:#D6DEEB;--1:#403F53">)</span><span style="--0:#C792EA;--1:#8844AE">,</span></div></div><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">}</span><span style="--0:#D6DEEB;--1:#403F53">);</span></div></div><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">try</span><span style="--0:#D6DEEB;--1:#403F53"> {</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C792EA;--1:#8844AE">const { </span><span style="--0:#82AAFF;--1:#3B61B0">machine</span><span style="--0:#C792EA;--1:#8844AE"> } = await </span><span style="--0:#D6DEEB;--1:#403F53">hb</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#FAF39F;--1:#111111">machines</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#82AAFF;--1:#3B61B0">getMachine</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#C792EA;--1:#8844AE">{ machine: { case: </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">name</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C792EA;--1:#8844AE">, value: </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">box1</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C792EA;--1:#8844AE"> } }</span><span style="--0:#D6DEEB;--1:#403F53">);</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">  </span></span><span style="--0:#D6DEEB;--1:#403F53">console</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#82AAFF;--1:#3B61B0">log</span><span style="--0:#D6DEEB;--1:#403F53">(machine</span><span style="--0:#C792EA;--1:#8844AE">?.</span><span style="--0:#7FDBCA;--1:#096E72">state</span><span style="--0:#D6DEEB;--1:#403F53">);</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">} </span><span style="--0:#C792EA;--1:#8844AE">catch</span><span style="--0:#D6DEEB;--1:#403F53"> (err) {</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C792EA;--1:#8844AE">if</span><span style="--0:#D6DEEB;--1:#403F53"> (err </span><span style="--0:#C792EA;--1:#8844AE">instanceof</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#FFCB8B;--1:#111111">NotFoundError</span><span style="--0:#D6DEEB;--1:#403F53">) {</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">console</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#82AAFF;--1:#3B61B0">log</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">no machine box1</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">);</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">  </span></span><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">} </span><span style="--0:#C792EA;--1:#8844AE">finally</span><span style="--0:#D6DEEB;--1:#403F53"> {</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">  </span></span><span style="--0:#D6DEEB;--1:#403F53">hb</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#82AAFF;--1:#3B61B0">close</span><span style="--0:#D6DEEB;--1:#403F53">();</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="import { bearerToken, createClient, NotFoundError } from &quot;@hopbox/sdk&quot;;const hb = createClient({  url: &quot;https://example.com&quot;,  credentials: bearerToken(process.env.HOPBOX_API_KEY ?? &quot;&quot;),});try {  const { machine } = await hb.machines.getMachine({ machine: { case: &quot;name&quot;, value: &quot;box1&quot; } });  console.log(machine?.state);} catch (err) {  if (err instanceof NotFoundError) {    console.log(&quot;no machine box1&quot;);  }} finally {  hb.close();}"><div></div></button></div></figure></div>
+<p><code dir="auto">createClient(options)</code> checks <code dir="auto">options.url</code> with <code dir="auto">parseURL</code> and returns a <code dir="auto">HopboxClient</code>. A bad URL throws a <code dir="auto">BadURLError</code>. A browser client with <code dir="auto">execTransport: "stream"</code> throws an <code dir="auto">Error</code>.</p>
+<table>
+<thead>
+<tr>
+<th><code dir="auto">ClientOptions</code> field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">url</code></td>
+<td>string</td>
+<td>required</td>
+<td>The URL of the install, such as <code dir="auto">https://example.com</code> (<a href="#install-urls">Install URLs</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">credentials</code></td>
+<td><code dir="auto">Credentials</code></td>
+<td>none</td>
+<td>Gives the bearer token of each call (<a href="#credentials">Credentials</a>). Without it, the calls carry no <code dir="auto">Authorization</code> header. The console leaves it out, so the session cookie of the browser authenticates each call. The device flow leaves it out too.</td>
+</tr>
+<tr>
+<td><code dir="auto">userAgent</code></td>
+<td>string</td>
+<td><code dir="auto">hopbox-ts-client (&lt;platform&gt;/&lt;arch&gt;)</code> in Node.js, such as <code dir="auto">hopbox-ts-client (darwin/arm64)</code></td>
+<td>The <code dir="auto">User-Agent</code> header of each call. A browser sends its own and ignores this field.</td>
+</tr>
+<tr>
+<td><code dir="auto">attemptTimeoutMs</code></td>
+<td>number</td>
+<td><code dir="auto">DEFAULT_ATTEMPT_TIMEOUT_MS</code>, 90000</td>
+<td>The deadline of one try of a unary call, in milliseconds. The server gives a call 30 s, and a lifecycle call of a machine 60 s.</td>
+</tr>
+<tr>
+<td><code dir="auto">maxRetryAfterMs</code></td>
+<td>number</td>
+<td>none, no cap</td>
+<td>The longest <code dir="auto">Retry-After</code> that the client waits for, in milliseconds. A longer one ends the call with its error, and <code dir="auto">retryAfterMs</code> of the error holds the wanted wait. Without it, the client waits as long as the server asks, up to 24 hours.</td>
+</tr>
+<tr>
+<td><code dir="auto">logger</code></td>
+<td><code dir="auto">Logger</code></td>
+<td>no logs</td>
+<td>Gets a record for each retry (<a href="#retries">Retries</a>). <code dir="auto">console</code> works.</td>
+</tr>
+<tr>
+<td><code dir="auto">execTransport</code></td>
+<td><code dir="auto">"stream"</code> or <code dir="auto">"websocket"</code></td>
+<td><code dir="auto">"stream"</code> in Node.js, <code dir="auto">"websocket"</code> in a browser</td>
+<td>How <code dir="auto">exec</code> reaches the machine (<a href="#exec">Exec</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">fetch</code></td>
+<td><code dir="auto">typeof fetch</code></td>
+<td><code dir="auto">globalThis.fetch</code></td>
+<td>The <code dir="auto">fetch</code> function of a browser client. Node.js ignores it.</td>
+</tr>
+</tbody>
+</table>
+<p><code dir="auto">Logger</code> has two methods, <code dir="auto">debug(message, fields)</code> and <code dir="auto">warn(message, fields)</code>.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="hopboxclient"><code dir="auto">HopboxClient</code></h3><a class="sl-anchor-link" href="#hopboxclient"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “HopboxClient”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Field or method</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">baseUrl</code></td>
+<td>string</td>
+<td>The URL of the install, as <code dir="auto">parseURL</code> returned it.</td>
+</tr>
+<tr>
+<td><code dir="auto">transport</code></td>
+<td><code dir="auto">Transport</code></td>
+<td>The Connect transport of the client, with steps 2 to 5 of <a href="#the-steps-of-a-call">The steps of a call</a>. A tool such as connect-query takes it, so its calls get the same retries, keys, and credential (<a href="#the-transport">The transport</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">install</code></td>
+<td><code dir="auto">Client&lt;typeof InstallService&gt;</code></td>
+<td><code dir="auto">GetInstallInfo</code> (<a href="/reference/api/#installservice">api.md</a>)</td>
+</tr>
+<tr>
+<td><code dir="auto">auth</code></td>
+<td><code dir="auto">Client&lt;typeof AuthService&gt;</code></td>
+<td>sign-in links, the device flow, and CLI tokens (<a href="/reference/auth-api/">auth-api.md</a>)</td>
+</tr>
+<tr>
+<td><code dir="auto">account</code></td>
+<td><code dir="auto">Client&lt;typeof AccountService&gt;</code></td>
+<td>the account of the caller (<a href="/reference/auth-api/">auth-api.md</a>)</td>
+</tr>
+<tr>
+<td><code dir="auto">audit</code></td>
+<td><code dir="auto">Client&lt;typeof AuditService&gt;</code></td>
+<td>the audit log (<a href="/reference/auth-api/">auth-api.md</a>)</td>
+</tr>
+<tr>
+<td><code dir="auto">orgs</code></td>
+<td><code dir="auto">Client&lt;typeof OrgService&gt;</code></td>
+<td>orgs, members, and invitations (<a href="/reference/org-api/">org-api.md</a>)</td>
+</tr>
+<tr>
+<td><code dir="auto">apiKeys</code></td>
+<td><code dir="auto">Client&lt;typeof APIKeyService&gt;</code></td>
+<td>API keys (<a href="/reference/auth-api/">auth-api.md</a>)</td>
+</tr>
+<tr>
+<td><code dir="auto">sshKeys</code></td>
+<td><code dir="auto">Client&lt;typeof SSHKeyService&gt;</code></td>
+<td>SSH keys (<a href="/reference/auth-api/">auth-api.md</a>)</td>
+</tr>
+<tr>
+<td><code dir="auto">machines</code></td>
+<td><code dir="auto">Client&lt;typeof MachineService&gt;</code></td>
+<td>machines, their lifecycle, and the access calls (<a href="/reference/machine-api/">machine-api.md</a>)</td>
+</tr>
+<tr>
+<td><code dir="auto">vars</code></td>
+<td><code dir="auto">Client&lt;typeof VarService&gt;</code></td>
+<td>env vars and secrets (<a href="/reference/vars-api/">vars-api.md</a>)</td>
+</tr>
+<tr>
+<td><code dir="auto">exec(start, options?)</code></td>
+<td><code dir="auto">ExecSession</code></td>
+<td>Runs a command in a running machine (<a href="#exec">Exec</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">upload(start, data, options?)</code></td>
+<td><code dir="auto">Promise&lt;UploadResponse&gt;</code></td>
+<td>Writes a file, or a tar stream into a directory, in a running machine (<a href="#upload">Upload</a>). Node.js only.</td>
+</tr>
+<tr>
+<td><code dir="auto">download(request, options?)</code></td>
+<td><code dir="auto">Promise&lt;Download&gt;</code></td>
+<td>Reads a file, or a directory as a tar stream, from a running machine (<a href="#download">Download</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">close()</code></td>
+<td><code dir="auto">void</code></td>
+<td>Ends the HTTP/2 connection of a Node.js client. A later call opens a new one. In a browser, it does nothing.</td>
+</tr>
+</tbody>
+</table>
+<p>Each service field is the generated Connect client of that service, <code dir="auto">Client&lt;S&gt;</code> of <code dir="auto">@connectrpc/connect</code>. A method takes the request message as a plain object, and an optional <code dir="auto">CallOptions</code> of Connect: <code dir="auto">timeoutMs</code>, <code dir="auto">headers</code>, <code dir="auto">signal</code>, <code dir="auto">onHeader</code>, <code dir="auto">onTrailer</code>, and <code dir="auto">contextValues</code>. A unary method returns a <code dir="auto">Promise</code> of the response message. A server stream, such as <code dir="auto">watchMachines</code> or <code dir="auto">streamMachineLogs</code>, returns an <code dir="auto">AsyncIterable</code> of messages. Each method name is the name of the RPC with a small first letter, such as <code dir="auto">listMachines</code> for <code dir="auto">ListMachines</code>.</p>
+<p><code dir="auto">timeoutMs</code> and an <code dir="auto">AbortSignal.timeout()</code> in <code dir="auto">signal</code> both end a call in time. Only <code dir="auto">timeoutMs</code> also sends the deadline to the server in the header <code dir="auto">Connect-Timeout-Ms</code>, so the server stops its work too. A unary call without <code dir="auto">timeoutMs</code> has no deadline of its own. Then each try has the deadline <code dir="auto">attemptTimeoutMs</code>. The helpers <code dir="auto">exec</code>, <code dir="auto">upload</code>, and <code dir="auto">download</code> set no deadline, because a stream can run for hours.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="the-transport">The transport</h3><a class="sl-anchor-link" href="#the-transport"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The transport”</span></a></div>
+<p><code dir="auto">transport</code> is the Connect transport under the service fields. Its calls get the user agent, the idempotency keys, the retries, and the credential. They do not get the typed errors, because that step wraps the service fields. So a call through the transport throws the <code dir="auto">ConnectError</code> of <code dir="auto">@connectrpc/connect</code>. The console gives it to connect-query:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="tsx"><code><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">import</span><span style="--0:#D6DEEB;--1:#403F53"> { TransportProvider } </span><span style="--0:#C792EA;--1:#8844AE">from</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">@connectrpc/connect-query</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">;</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#7FDBCA;--1:#8844AE">&lt;</span><span style="--0:#F78C6C;--1:#AA0982">TransportProvider</span><span style="--0:#7FDBCA;--1:#8844AE"> </span><span style="--0:#C5E478;--1:#3B61B0">transport</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#E2817F;--1:#B23834">{</span><span style="--0:#D6DEEB;--1:#403F53">hb</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#7FDBCA;--1:#096E72">transport</span><span style="--0:#E2817F;--1:#B23834">}</span><span style="--0:#7FDBCA;--1:#8844AE">&gt;</span><span style="--0:#E2817F;--1:#B23834">{</span><span style="--0:#D6DEEB;--1:#403F53">children</span><span style="--0:#E2817F;--1:#B23834">}</span><span style="--0:#7FDBCA;--1:#8844AE">&lt;/</span><span style="--0:#F78C6C;--1:#AA0982">TransportProvider</span><span style="--0:#7FDBCA;--1:#8844AE">&gt;</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="import { TransportProvider } from &quot;@connectrpc/connect-query&quot;;<TransportProvider transport={hb.transport}>{children}</TransportProvider>"><div></div></button></div></figure></div>
+<p>The transport already retries a call (<a href="#retries">Retries</a>). So set <code dir="auto">retry: false</code> in the options of TanStack Query, or the query tries each call up to 3 times more on top:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="ts"><code><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">const </span><span style="--0:#82AAFF;--1:#3B61B0">queryClient</span><span style="--0:#C792EA;--1:#8844AE"> = </span><span style="--0:#7FDBCA;--1:#096E72">new</span><span style="--0:#C792EA;--1:#8844AE"> </span><span style="--0:#82AAFF;--1:#3B61B0">QueryClient</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#C792EA;--1:#8844AE">{ defaultOptions: { queries: { retry: </span><span style="--0:#FF6A83;--1:#A24848">false</span><span style="--0:#C792EA;--1:#8844AE"> }, mutations: { retry: </span><span style="--0:#FF6A83;--1:#A24848">false</span><span style="--0:#C792EA;--1:#8844AE"> } } }</span><span style="--0:#D6DEEB;--1:#403F53">);</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });"><div></div></button></div></figure></div>
+<div class="sl-heading-wrapper level-h2"><h2 id="install-urls">Install URLs</h2><a class="sl-anchor-link" href="#install-urls"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Install URLs”</span></a></div>
+<p><code dir="auto">parseURL(raw)</code> returns the base URL of an install, such as <code dir="auto">https://example.com</code>. It follows <code dir="auto">ParseURL</code> of the Go client:</p>
+<ul>
+<li>A bare domain gets <code dir="auto">https://</code>.</li>
+<li>The host is in lower case, and a <code dir="auto">/</code> at the end goes. A default port goes too.</li>
+<li><code dir="auto">http://</code> works only for a loopback host: <code dir="auto">localhost</code>, <code dir="auto">127.0.0.0/8</code>, or <code dir="auto">[::1]</code>.</li>
+<li>A path, a query, a fragment, a user name, or a password throws a <code dir="auto">BadURLError</code>.</li>
+</ul>
+<p>The message of a <code dir="auto">BadURLError</code> hides the user info of the URL. It shows <code dir="auto">xxxxx</code> in place of all text between <code dir="auto">://</code> and the last <code dir="auto">@</code>, such as <code dir="auto">https://xxxxx@example.com</code>. A password with a <code dir="auto">/</code> or a <code dir="auto">?</code> in it stays hidden too. A URL without an <code dir="auto">@</code> shows as it is.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="the-steps-of-a-call">The steps of a call</h2><a class="sl-anchor-link" href="#the-steps-of-a-call"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The steps of a call”</span></a></div>
+<p>Each unary call passes these steps in order:</p>
+<ol>
+<li><strong>Typed errors.</strong> The error of the call becomes a <code dir="auto">HopboxError</code> (<a href="#errors">Errors</a>).</li>
+<li><strong>User agent.</strong> The step sets <code dir="auto">User-Agent</code>, in Node.js only.</li>
+<li><strong>Idempotency key.</strong> See <a href="#idempotency-keys">Idempotency keys</a>.</li>
+<li><strong>Retries.</strong> See <a href="#retries">Retries</a>. The steps after this one run again on each try.</li>
+<li><strong>Credential.</strong> See <a href="#credentials">Credentials</a>.</li>
+</ol>
+<p>A stream gets the steps 1, 2, and 5, without retries. The typed errors also cover each message of a stream.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="idempotency-keys">Idempotency keys</h2><a class="sl-anchor-link" href="#idempotency-keys"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Idempotency keys”</span></a></div>
+<p>A method with the option <code dir="auto">(hopbox.v1.idempotent)</code> needs an <code dir="auto">Idempotency-Key</code> header (<a href="/reference/api/#idempotency-keys">api.md</a>). Today these are <code dir="auto">CreateMachine</code>, <code dir="auto">CreateOrg</code>, <code dir="auto">CreateAPIKey</code>, and <code dir="auto">AddSSHKey</code>. The client puts a new UUIDv7 in the header of each such call that has no key yet. The step runs before the retries, so each try of one call sends the same key. A key that the caller sets in <code dir="auto">CallOptions.headers</code> stays:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="ts"><code><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">await</span><span style="--0:#D6DEEB;--1:#403F53"> hb</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#FAF39F;--1:#111111">machines</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#82AAFF;--1:#3B61B0">createMachine</span><span style="--0:#D6DEEB;--1:#403F53">({ name: </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">box1</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53"> }, { headers: { </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">Idempotency-Key</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">: </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">deploy-42</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53"> } });</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="await hb.machines.createMachine({ name: &quot;box1&quot; }, { headers: { &quot;Idempotency-Key&quot;: &quot;deploy-42&quot; } });"><div></div></button></div></figure></div>
+<p>A replay of a known key returns the first result. Its response has the header <code dir="auto">Idempotent-Replayed: true</code>, which <code dir="auto">onHeader</code> can read.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="retries">Retries</h2><a class="sl-anchor-link" href="#retries"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Retries”</span></a></div>
+<p>The client tries a unary call at most 3 times: the first try and <code dir="auto">MAX_RETRIES</code>, 2, retries.</p>
+<table>
+<thead>
+<tr>
+<th>Code of the failed try</th>
+<th>Retried</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">unavailable</code></td>
+<td>Yes.</td>
+</tr>
+<tr>
+<td><code dir="auto">resource_exhausted</code></td>
+<td>Yes.</td>
+</tr>
+<tr>
+<td><code dir="auto">deadline_exceeded</code></td>
+<td>Only for a call that is safe to run twice.</td>
+</tr>
+<tr>
+<td>Any other code</td>
+<td>No. An auth error or a bad request never gets a retry.</td>
+</tr>
+</tbody>
+</table>
+<p>A call is safe to run twice in two cases. Its method has <code dir="auto">idempotency_level</code> <code dir="auto">NO_SIDE_EFFECTS</code> or <code dir="auto">IDEMPOTENT</code> in the API definitions, as <code dir="auto">GetInstallInfo</code> has. Or it carries an idempotency key. The read calls, such as <code dir="auto">ListOrgs</code>, have no <code dir="auto">idempotency_level</code> yet. So they get no retry after <code dir="auto">deadline_exceeded</code>.</p>
+<p>A call that did not reach the server fails with <code dir="auto">unavailable</code>, so it gets a retry too. In Node.js, an example is a refused connection. In a browser, <code dir="auto">fetch</code> then rejects with a <code dir="auto">TypeError</code>.</p>
+<p>The wait before a retry has full jitter: a random time from 0 up to 500 ms before the first retry, and up to 1 s before the second (<code dir="auto">BACKOFF_MS</code>). If the error has a <code dir="auto">Retry-After</code> header, the client waits that time instead. The client reads the header as the Go client does. It takes a count of seconds that fits in a signed 64-bit number, such as <code dir="auto">5</code> or <code dir="auto">+5</code>. It also takes an HTTP date in one of the three forms of RFC 9110: <code dir="auto">Wed, 21 Oct 2026 12:00:10 GMT</code>, <code dir="auto">Wednesday, 21-Oct-26 12:00:10 GMT</code>, or <code dir="auto">Wed Oct 21 12:00:10 2026</code>. Any other value counts as no header. The client reads at most <code dir="auto">MAX_RETRY_AFTER_HEADER_MS</code>, 24 hours, from either form. The client calls <code dir="auto">logger.debug("retrying a call", fields)</code> before each retry. A wait of <code dir="auto">LONG_WAIT_MS</code>, 10 s, or more calls <code dir="auto">logger.warn</code> instead. <code dir="auto">fields</code> has <code dir="auto">procedure</code>, <code dir="auto">code</code>, <code dir="auto">retry</code>, and <code dir="auto">waitMs</code>. <code dir="auto">code</code> is the name of the code, such as <code dir="auto">unavailable</code>.</p>
+<p>The client does not retry in these cases:</p>
+<ul>
+<li><code dir="auto">maxRetryAfterMs</code> is set, and <code dir="auto">Retry-After</code> is longer.</li>
+<li>The wait ends after the deadline of the call, from <code dir="auto">timeoutMs</code>.</li>
+<li>The <code dir="auto">signal</code> of the call aborts.</li>
+</ul>
+<p>Each try has its own deadline. It is <code dir="auto">attemptTimeoutMs</code>, or the rest of the deadline of the call, whichever ends first. The client sends it in the header <code dir="auto">Connect-Timeout-Ms</code>. A try that runs out of time fails with <code dir="auto">deadline_exceeded</code>, and the table above applies.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="errors">Errors</h2><a class="sl-anchor-link" href="#errors"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Errors”</span></a></div>
+<p>Each error of a call is a <code dir="auto">HopboxError</code>, or one of its subclasses. The errors of the SDK itself, <code dir="auto">SignedOutError</code> and <code dir="auto">BadURLError</code>, stay as they are.</p>
+<table>
+<thead>
+<tr>
+<th><code dir="auto">HopboxError</code> field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">code</code></td>
+<td><code dir="auto">Code</code></td>
+<td>The Connect code, such as <code dir="auto">Code.NotFound</code>. The SDK exports <code dir="auto">Code</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">codeName</code></td>
+<td>string</td>
+<td>The name of the code, such as <code dir="auto">not_found</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">message</code></td>
+<td>string</td>
+<td><code dir="auto">&lt;code name&gt;: &lt;message of the server&gt;</code>, such as <code dir="auto">not_found: not found: no machine has the name "box9"</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">rawMessage</code></td>
+<td>string</td>
+<td>The message of the server, without the code.</td>
+</tr>
+<tr>
+<td><code dir="auto">procedure</code></td>
+<td>string</td>
+<td>The call, such as <code dir="auto">/hopbox.v1.MachineService/GetMachine</code>. For the WebSocket of exec, it is <code dir="auto">/api/ws/exec</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">requestId</code></td>
+<td>string</td>
+<td>The <code dir="auto">Hopbox-Request-Id</code> of the response (<a href="/reference/api/#the-chain-of-a-call">api.md</a>). For a call that did not reach the server, it is empty. For an error of the WebSocket, it is empty too, because a browser cannot read the headers of a WebSocket.</td>
+</tr>
+<tr>
+<td><code dir="auto">retryAfterMs</code></td>
+<td>number</td>
+<td>The <code dir="auto">Retry-After</code> of the response in milliseconds, or 0.</td>
+</tr>
+<tr>
+<td><code dir="auto">details</code></td>
+<td><code dir="auto">Message[]</code></td>
+<td>The typed details of the error, decoded with the messages of <code dir="auto">hopbox.v1</code>, such as a <code dir="auto">MachineNameTaken</code> with <code dir="auto">$typeName</code> <code dir="auto">hopbox.v1.MachineNameTaken</code>. A detail of an unknown type is left out.</td>
+</tr>
+<tr>
+<td><code dir="auto">cause</code></td>
+<td>unknown</td>
+<td>The <code dir="auto">ConnectError</code> of <code dir="auto">@connectrpc/connect</code>, or undefined.</td>
+</tr>
+</tbody>
+</table>
+<p><code dir="auto">instanceof</code> tells the kinds apart. The codes are those of <a href="/reference/api/#errors">api.md</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">CanceledError</code></td>
+<td><code dir="auto">canceled</code></td>
+</tr>
+<tr>
+<td><code dir="auto">UnknownError</code></td>
+<td><code dir="auto">unknown</code></td>
+</tr>
+<tr>
+<td><code dir="auto">InvalidArgumentError</code></td>
+<td><code dir="auto">invalid_argument</code></td>
+</tr>
+<tr>
+<td><code dir="auto">DeadlineExceededError</code></td>
+<td><code dir="auto">deadline_exceeded</code></td>
+</tr>
+<tr>
+<td><code dir="auto">NotFoundError</code></td>
+<td><code dir="auto">not_found</code></td>
+</tr>
+<tr>
+<td><code dir="auto">AlreadyExistsError</code></td>
+<td><code dir="auto">already_exists</code></td>
+</tr>
+<tr>
+<td><code dir="auto">PermissionDeniedError</code></td>
+<td><code dir="auto">permission_denied</code></td>
+</tr>
+<tr>
+<td><code dir="auto">ResourceExhaustedError</code></td>
+<td><code dir="auto">resource_exhausted</code></td>
+</tr>
+<tr>
+<td><code dir="auto">FailedPreconditionError</code></td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+<tr>
+<td><code dir="auto">AbortedError</code></td>
+<td><code dir="auto">aborted</code></td>
+</tr>
+<tr>
+<td><code dir="auto">UnimplementedError</code></td>
+<td><code dir="auto">unimplemented</code></td>
+</tr>
+<tr>
+<td><code dir="auto">InternalError</code></td>
+<td><code dir="auto">internal</code></td>
+</tr>
+<tr>
+<td><code dir="auto">UnavailableError</code></td>
+<td><code dir="auto">unavailable</code></td>
+</tr>
+<tr>
+<td><code dir="auto">UnauthenticatedError</code></td>
+<td><code dir="auto">unauthenticated</code></td>
+</tr>
+</tbody>
+</table>
+<p>Another code, such as <code dir="auto">out_of_range</code> or <code dir="auto">data_loss</code>, gives a plain <code dir="auto">HopboxError</code>. hopboxd sends neither.</p>
+<table>
+<thead>
+<tr>
+<th>Other error</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">SignedOutError</code></td>
+<td>The credential has no token, for example <code dir="auto">bearerToken("")</code>. No request goes out.</td>
+</tr>
+<tr>
+<td><code dir="auto">BadURLError</code></td>
+<td><code dir="auto">parseURL</code> or <code dir="auto">createClient</code> refused the URL.</td>
+</tr>
+</tbody>
+</table>
+<p>The SDK makes some errors itself:</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">UnknownError</code>, <code dir="auto">the exec ended without its exit chunk</code></td>
+<td>An exec ended with no <code dir="auto">exit</code> chunk.</td>
+</tr>
+<tr>
+<td><code dir="auto">UnknownError</code>, <code dir="auto">the download did not start with its info</code></td>
+<td>The first message of a download held no <code dir="auto">info</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">UnknownError</code>, <code dir="auto">the WebSocket of exec sent a text message</code></td>
+<td>The WebSocket sent a text message. The client then closes the socket.</td>
+</tr>
+<tr>
+<td><code dir="auto">FailedPreconditionError</code>, <code dir="auto">the exec ended, so it takes no more input</code></td>
+<td>A write to an exec after its end.</td>
+</tr>
+<tr>
+<td><code dir="auto">CanceledError</code>, <code dir="auto">the exec was canceled</code></td>
+<td><code dir="auto">cancel()</code>, a <code dir="auto">break</code> out of the <code dir="auto">for await</code> loop, or an abort of the <code dir="auto">signal</code> of <code dir="auto">ExecOptions</code>. This holds also before the WebSocket opens.</td>
+</tr>
+<tr>
+<td><code dir="auto">ResourceExhaustedError</code>, <code dir="auto">the reader of the exec fell more than 16777216 bytes behind the WebSocket</code></td>
+<td>More than 16 MiB of output of the WebSocket waits for the reader. The client then closes the socket.</td>
+</tr>
+<tr>
+<td><code dir="auto">UnimplementedError</code>, <code dir="auto">a browser cannot stream an upload. ...</code></td>
+<td><code dir="auto">upload</code> in a browser.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h2"><h2 id="credentials">Credentials</h2><a class="sl-anchor-link" href="#credentials"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Credentials”</span></a></div>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="ts"><code><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">interface</span><span style="--0:#D6DEEB;--1:#403F53"> Credentials {</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#82AAFF;--1:#3B61B0">token</span><span style="--0:#D9F5DD;--1:#111111">(</span><span style="--0:#D7DBE0;--1:#403F53">signal</span><span style="--0:#7FDBCA;--1:#096E72">:</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--1:#111111"><span style="--0:#FFCB8B">AbortSignal</span><span style="--0:#D9F5DD">)</span></span><span style="--0:#7FDBCA;--1:#096E72">:</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C5E478;--1:#3B61B0">string</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#7FDBCA;--1:#096E72">|</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#FFCB8B;--1:#111111">Promise</span><span style="--0:#D6DEEB;--1:#403F53">&lt;</span><span style="--0:#C5E478;--1:#3B61B0">string</span><span style="--0:#D6DEEB;--1:#403F53">&gt;;</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#82AAFF;--1:#3B61B0">rejected</span><span style="--0:#7FDBCA;--1:#096E72">?</span><span style="--0:#D9F5DD;--1:#111111">(</span><span style="--0:#D7DBE0;--1:#403F53">token</span><span style="--0:#7FDBCA;--1:#096E72">:</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C5E478;--1:#3B61B0">string</span><span style="--0:#D9F5DD;--1:#111111">)</span><span style="--0:#7FDBCA;--1:#096E72">:</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C5E478;--1:#3B61B0">boolean</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#7FDBCA;--1:#096E72">|</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#FFCB8B;--1:#111111">Promise</span><span style="--0:#D6DEEB;--1:#403F53">&lt;</span><span style="--0:#C5E478;--1:#3B61B0">boolean</span><span style="--0:#D6DEEB;--1:#403F53">&gt;;</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="interface Credentials {  token(signal: AbortSignal): string | Promise<string>;  rejected?(token: string): boolean | Promise<boolean>;}"><div></div></button></div></figure></div>
+<p>The client puts the token of <code dir="auto">credentials</code> in the header <code dir="auto">Authorization: Bearer &lt;token&gt;</code> of each try, and of each stream. If <code dir="auto">token</code> throws, the call fails with that error, and no request goes out.</p>
+<p>Sometimes the server refuses the token of a unary call with <code dir="auto">unauthenticated</code>, and the credential has <code dir="auto">rejected</code>. Then the client calls <code dir="auto">rejected</code> with the token. If <code dir="auto">rejected</code> returns true, the client gets a token again. If the new token differs, the client sends the call once more with it. If getting the token throws a <code dir="auto">SignedOutError</code>, the call fails with that error. A credential with <code dir="auto">rejected</code> fits a token that a program renews, such as a CLI access token. A stream gets no second try.</p>
+<p><code dir="auto">bearerToken(token)</code> is a token that never changes, such as an API key in the form <code dir="auto">hbx_&lt;key&gt;</code> (<a href="/reference/credentials/">credentials.md</a>). An empty token throws a <code dir="auto">SignedOutError</code>.</p>
+<p>The SDK does not refresh CLI tokens. The hopbox CLI keeps them in its own files (<a href="/reference/cli/#files">cli.md</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="machine-names">Machine names</h2><a class="sl-anchor-link" href="#machine-names"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Machine names”</span></a></div>
+<p>A request names a machine in the oneof field <code dir="auto">machine</code>, with <code dir="auto">id</code> or <code dir="auto">name</code> (<a href="/reference/machine-api/#naming-a-machine">machine-api.md</a>). Two helpers make the value of the field:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">byName(name)</code></td>
+<td><code dir="auto">{ case: "name", value: name }</code></td>
+</tr>
+<tr>
+<td><code dir="auto">byId(id)</code></td>
+<td><code dir="auto">{ case: "id", value: id }</code></td>
+</tr>
+</tbody>
+</table>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="ts"><code><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">await</span><span style="--0:#D6DEEB;--1:#403F53"> hb</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#FAF39F;--1:#111111">machines</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#82AAFF;--1:#3B61B0">stopMachine</span><span style="--0:#D6DEEB;--1:#403F53">({ machine: </span><span style="--0:#82AAFF;--1:#3B61B0">byName</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">box1</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">) });</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="await hb.machines.stopMachine({ machine: byName(&quot;box1&quot;) });"><div></div></button></div></figure></div>
+<div class="sl-heading-wrapper level-h2"><h2 id="exec">Exec</h2><a class="sl-anchor-link" href="#exec"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Exec”</span></a></div>
+<p><code dir="auto">exec(start, options?)</code> runs a command in a running machine, with an optional terminal. <code dir="auto">start</code> is an <code dir="auto">ExecStart</code> as a plain object (<a href="/reference/machine-api/#exec">machine-api.md</a>): <code dir="auto">machine</code>, <code dir="auto">argv</code>, <code dir="auto">env</code>, <code dir="auto">user</code>, <code dir="auto">dir</code>, <code dir="auto">tty</code>, <code dir="auto">size</code>, <code dir="auto">term</code>, and <code dir="auto">timeout</code>. The session starts at once and returns an <code dir="auto">ExecSession</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Transport</th>
+<th>Used by</th>
+<th>Credential</th>
+<th>Wire</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">"stream"</code></td>
+<td>Node.js, by default</td>
+<td>the <code dir="auto">Authorization</code> header</td>
+<td>the bidi stream <code dir="auto">/hopbox.v1.MachineService/Exec</code> over HTTP/2</td>
+</tr>
+<tr>
+<td><code dir="auto">"websocket"</code></td>
+<td>a browser, always, and Node.js with <code dir="auto">execTransport: "websocket"</code></td>
+<td>the session cookie in a browser. In Node.js, the <code dir="auto">Authorization</code> header of <code dir="auto">credentials</code>.</td>
+<td><code dir="auto">GET /api/ws/exec</code>, one <code dir="auto">ExecChunk</code> in each binary message (<a href="/reference/machine-api/#the-websocket-endpoint">machine-api.md</a>)</td>
+</tr>
+</tbody>
+</table>
+<p>A browser cannot add a header to a WebSocket. So in a browser, the WebSocket carries only the session cookie, also with <code dir="auto">credentials</code> set. The page must have the origin of the install.</p>
+<table>
+<thead>
+<tr>
+<th><code dir="auto">ExecOptions</code> field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">stdin</code></td>
+<td><code dir="auto">Uint8Array</code>, string, or <code dir="auto">AsyncIterable&lt;Uint8Array&gt;</code></td>
+<td>Input for the command. The session sends it, then the end of the input. Without it, send input with <code dir="auto">write</code> and <code dir="auto">closeStdin</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">signal</code></td>
+<td><code dir="auto">AbortSignal</code></td>
+<td>An abort of this signal ends the exec and the command, as <code dir="auto">cancel()</code> does.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th><code dir="auto">ExecSession</code> member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">write(data)</code></td>
+<td>Sends input, a <code dir="auto">Uint8Array</code> or a string in UTF-8. The session splits it into <code dir="auto">stdin</code> chunks of at most 256 KiB (<code dir="auto">MAX_STDIN_CHUNK</code>). The promise resolves after the transport took the input.</td>
+</tr>
+<tr>
+<td><code dir="auto">closeStdin()</code></td>
+<td>Sends <code dir="auto">stdin_eof</code>. With a terminal, the command reads Ctrl-D.</td>
+</tr>
+<tr>
+<td><code dir="auto">resize(rows, cols)</code></td>
+<td>Sends a new terminal size.</td>
+</tr>
+<tr>
+<td><code dir="auto">sendSignal(name)</code></td>
+<td>Sends a signal, such as <code dir="auto">SIGINT</code>, to the process group of the command.</td>
+</tr>
+<tr>
+<td><code dir="auto">cancel()</code></td>
+<td>Ends the exec and the command. A read then throws a <code dir="auto">CanceledError</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">output()</code></td>
+<td>Reads the whole output, and returns <code dir="auto">{ stdout, stderr, exit }</code>. <code dir="auto">stdout</code> and <code dir="auto">stderr</code> are <code dir="auto">Uint8Array</code>. <code dir="auto">exit</code> is the <code dir="auto">ExecExit</code>: <code dir="auto">code</code>, <code dir="auto">signal</code>, <code dir="auto">error</code>, and <code dir="auto">timedOut</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">[Symbol.asyncIterator]()</code></td>
+<td>Reads the output one <code dir="auto">ExecEvent</code> at a time, with <code dir="auto">for await</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><code dir="auto">ExecEvent</code> is one of these:</p>
+<table>
+<thead>
+<tr>
+<th><code dir="auto">kind</code></th>
+<th>Other field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">"stdout"</code></td>
+<td><code dir="auto">data: Uint8Array</code></td>
+<td>Output of the command. With a terminal, all output arrives as <code dir="auto">stdout</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">"stderr"</code></td>
+<td><code dir="auto">data: Uint8Array</code></td>
+<td>Error output of the command.</td>
+</tr>
+<tr>
+<td><code dir="auto">"exit"</code></td>
+<td><code dir="auto">exit: ExecExit</code></td>
+<td>How the command ended. It is the last event.</td>
+</tr>
+</tbody>
+</table>
+<p>Read the output of a session once, with <code dir="auto">for await</code> or with <code dir="auto">output()</code>. A second read throws an <code dir="auto">Error</code>. A <code dir="auto">break</code> out of the <code dir="auto">for await</code> loop cancels the exec, as <code dir="auto">cancel()</code> does.</p>
+<p>Only the stream transport has backpressure. Over the stream, the session reads the next message only after the reader took the last event. So a slow reader slows the command down (<a href="/reference/machine-api/#how-a-stream-ends">machine-api.md</a>). If nobody reads the output, the command stops once the window is full. A WebSocket has no backpressure, so the session keeps the output that waits for the reader in memory. At most <code dir="auto">MAX_WEBSOCKET_BACKLOG</code>, 16 MiB, can wait. Past that, the exec fails with a <code dir="auto">ResourceExhaustedError</code>, and the session closes the socket. The reader gets the event that it waits for, then the error. The rest of the output that waited is lost.</p>
+<p>A write waits until the transport takes the input. If the exec ends first, each waiting write rejects with a <code dir="auto">FailedPreconditionError</code>.</p>
+<p>A failed exec throws its <code dir="auto">HopboxError</code> from the read, such as a <code dir="auto">FailedPreconditionError</code> for a machine that does not run. The close of the WebSocket maps to an error like this:</p>
+<table>
+<thead>
+<tr>
+<th>Close code</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1000 after the <code dir="auto">exit</code> chunk</td>
+<td>The read ends.</td>
+</tr>
+<tr>
+<td>1000 without the <code dir="auto">exit</code> chunk</td>
+<td><code dir="auto">UnknownError</code>, <code dir="auto">the exec ended without its exit chunk</code></td>
+</tr>
+<tr>
+<td>1001</td>
+<td><code dir="auto">UnavailableError</code> with the reason of the server</td>
+</tr>
+<tr>
+<td>4000 plus a Connect code, such as 4009</td>
+<td>The error class of that code, such as <code dir="auto">FailedPreconditionError</code>, with the reason as <code dir="auto">rawMessage</code></td>
+</tr>
+<tr>
+<td>any other code, such as 1006</td>
+<td><code dir="auto">UnavailableError</code>, <code dir="auto">the WebSocket of exec closed with the code &lt;code&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<p>A browser reports a refused upgrade, such as HTTP status 403 for another origin, as the close code 1006.</p>
+<p>After the <code dir="auto">exit</code> chunk, both transports ignore an end that loses nothing. Over the stream, that is a reset of the stream or a cancel. Over the WebSocket, it is the close code 1000, 1005, or 1006. Any other error after the <code dir="auto">exit</code> chunk still throws, such as the close code 4013 for <code dir="auto">internal</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="upload">Upload</h2><a class="sl-anchor-link" href="#upload"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Upload”</span></a></div>
+<p><code dir="auto">upload(start, data, options?)</code> sends <code dir="auto">start</code>, an <code dir="auto">UploadStart</code> as a plain object (<a href="/reference/machine-api/#upload">machine-api.md</a>), then <code dir="auto">data</code> in messages of at most 256 KiB (<code dir="auto">MAX_UPLOAD_CHUNK</code>). It returns the <code dir="auto">UploadResponse</code>, whose <code dir="auto">bytes</code> is a <code dir="auto">bigint</code>.</p>
+<p><code dir="auto">UploadData</code> is one of these: a <code dir="auto">Uint8Array</code>, a string in UTF-8, a <code dir="auto">Blob</code>, an <code dir="auto">Iterable&lt;Uint8Array&gt;</code>, an <code dir="auto">AsyncIterable&lt;Uint8Array&gt;</code>, or a <code dir="auto">ReadableStream&lt;Uint8Array&gt;</code>. In Node.js, a file read stream of <code dir="auto">node:fs</code> is an <code dir="auto">AsyncIterable&lt;Uint8Array&gt;</code>.</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="ts"><code><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">import</span><span style="--0:#D6DEEB;--1:#403F53"> { createReadStream } </span><span style="--0:#C792EA;--1:#8844AE">from</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">node:fs</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">;</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">const { </span><span style="--0:#82AAFF;--1:#3B61B0">bytes</span><span style="--0:#C792EA;--1:#8844AE"> } = await </span><span style="--0:#D6DEEB;--1:#403F53">hb</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#82AAFF;--1:#3B61B0">upload</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#C792EA;--1:#8844AE">{ machine: </span><span style="--0:#82AAFF;--1:#3B61B0">byName</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">box1</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">)</span><span style="--0:#C792EA;--1:#8844AE">, path: </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">app.tar</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C792EA;--1:#8844AE">, mode: </span><span style="--0:#F78C6C;--1:#AA0982">0o644</span><span style="--0:#C792EA;--1:#8844AE"> }, </span><span style="--0:#82AAFF;--1:#3B61B0">createReadStream</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">app.tar</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">));</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="import { createReadStream } from &quot;node:fs&quot;;const { bytes } = await hb.upload({ machine: byName(&quot;box1&quot;), path: &quot;app.tar&quot;, mode: 0o644 }, createReadStream(&quot;app.tar&quot;));"><div></div></button></div></figure></div>
+<div class="sl-heading-wrapper level-h2"><h2 id="download">Download</h2><a class="sl-anchor-link" href="#download"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Download”</span></a></div>
+<p><code dir="auto">download(request, options?)</code> reads the first message, the <code dir="auto">DownloadInfo</code>, and returns a <code dir="auto">Download</code> (<a href="/reference/machine-api/#download">machine-api.md</a>).</p>
+<table>
+<thead>
+<tr>
+<th><code dir="auto">Download</code> member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">info</code></td>
+<td>The <code dir="auto">DownloadInfo</code>: <code dir="auto">archive</code>, <code dir="auto">mode</code>, and <code dir="auto">size</code> as a <code dir="auto">bigint</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">bytes()</code></td>
+<td>Reads the rest of the data into one <code dir="auto">Uint8Array</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">[Symbol.asyncIterator]()</code></td>
+<td>Reads the data in parts of at most 32 KiB, with <code dir="auto">for await</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Read the data once. A download to a laptop holds at most 4 MiB (<a href="/reference/machine-api/#limits">machine-api.md</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="logs-and-other-streams">Logs and other streams</h2><a class="sl-anchor-link" href="#logs-and-other-streams"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Logs and other streams”</span></a></div>
+<p>The log of a machine and the watch of machines have no helper. Call the generated methods, which carry the credential and the typed errors:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="ts"><code><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">const </span><span style="--0:#82AAFF;--1:#3B61B0">ctl</span><span style="--0:#C792EA;--1:#8844AE"> = </span><span style="--0:#7FDBCA;--1:#096E72">new</span><span style="--0:#C792EA;--1:#8844AE"> </span><span style="--0:#82AAFF;--1:#3B61B0">AbortController</span><span style="--0:#D6DEEB;--1:#403F53">();</span></div></div><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">for</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C792EA;--1:#8844AE">await</span><span style="--0:#D6DEEB;--1:#403F53"> (</span><span style="--0:#C792EA;--1:#8844AE">const </span><span style="--0:#82AAFF;--1:#3B61B0">res</span><span style="--0:#C792EA;--1:#8844AE"> </span><span style="--0:#7FDBCA;--1:#096E72">of</span><span style="--0:#D6DEEB;--1:#403F53"> hb</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#FAF39F;--1:#111111">machines</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#82AAFF;--1:#3B61B0">streamMachineLogs</span><span style="--0:#D6DEEB;--1:#403F53">({ machine: </span><span style="--0:#82AAFF;--1:#3B61B0">byName</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">box1</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">), tail: </span><span style="--0:#F78C6C;--1:#AA0982">20</span><span style="--0:#D6DEEB;--1:#403F53">, follow: </span><span style="--0:#FF6A83;--1:#A24848">true</span><span style="--0:#D6DEEB;--1:#403F53"> }, { signal: ctl</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#7FDBCA;--1:#096E72">signal</span><span style="--0:#D6DEEB;--1:#403F53"> })) {</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C792EA;--1:#8844AE">if</span><span style="--0:#D6DEEB;--1:#403F53"> (res</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#FAF39F;--1:#111111">event</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#7FDBCA;--1:#096E72">case</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C792EA;--1:#8844AE">===</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">entry</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">) {</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">process</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#FAF39F;--1:#111111">stdout</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#82AAFF;--1:#3B61B0">write</span><span style="--0:#D6DEEB;--1:#403F53">(</span><span style="--0:#7FDBCA;--1:#096E72">new</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">TextDecoder</span><span style="--0:#D6DEEB;--1:#403F53">()</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#82AAFF;--1:#3B61B0">decode</span><span style="--0:#D6DEEB;--1:#403F53">(res</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#FAF39F;--1:#111111">event</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#FAF39F;--1:#111111">value</span><span style="--0:#C792EA;--1:#8844AE">.</span><span style="--0:#7FDBCA;--1:#096E72">data</span><span style="--0:#D6DEEB;--1:#403F53">) </span><span style="--0:#C792EA;--1:#8844AE">+</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#F78C6C;--1:#AA0982">\n</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">);</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">  </span></span><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="const ctl = new AbortController();for await (const res of hb.machines.streamMachineLogs({ machine: byName(&quot;box1&quot;), tail: 20, follow: true }, { signal: ctl.signal })) {  if (res.event.case === &quot;entry&quot;) {    process.stdout.write(new TextDecoder().decode(res.event.value.data) + &quot;\n&quot;);  }}"><div></div></button></div></figure></div>
+<p>To stop a stream, abort its <code dir="auto">signal</code>, or leave the <code dir="auto">for await</code> loop.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="constants">Constants</h2><a class="sl-anchor-link" href="#constants"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Constants”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">MAX_RETRIES</code></td>
+<td>2</td>
+</tr>
+<tr>
+<td><code dir="auto">BACKOFF_MS</code></td>
+<td><code dir="auto">[500, 1000]</code></td>
+</tr>
+<tr>
+<td><code dir="auto">DEFAULT_ATTEMPT_TIMEOUT_MS</code></td>
+<td>90000</td>
+</tr>
+<tr>
+<td><code dir="auto">LONG_WAIT_MS</code></td>
+<td>10000</td>
+</tr>
+<tr>
+<td><code dir="auto">MAX_RETRY_AFTER_HEADER_MS</code></td>
+<td>86400000, 24 hours</td>
+</tr>
+<tr>
+<td><code dir="auto">IDEMPOTENCY_KEY_HEADER</code></td>
+<td><code dir="auto">Idempotency-Key</code></td>
+</tr>
+<tr>
+<td><code dir="auto">REQUEST_ID_HEADER</code></td>
+<td><code dir="auto">Hopbox-Request-Id</code></td>
+</tr>
+<tr>
+<td><code dir="auto">RETRY_AFTER_HEADER</code></td>
+<td><code dir="auto">Retry-After</code></td>
+</tr>
+<tr>
+<td><code dir="auto">WEBSOCKET_EXEC_PATH</code></td>
+<td><code dir="auto">/api/ws/exec</code></td>
+</tr>
+<tr>
+<td><code dir="auto">MAX_WEBSOCKET_BACKLOG</code></td>
+<td>16777216, 16 MiB</td>
+</tr>
+<tr>
+<td><code dir="auto">MAX_STDIN_CHUNK</code></td>
+<td>262144, 256 KiB</td>
+</tr>
+<tr>
+<td><code dir="auto">MAX_UPLOAD_CHUNK</code></td>
+<td>262144, 256 KiB</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h2"><h2 id="build-and-tests">Build and tests</h2><a class="sl-anchor-link" href="#build-and-tests"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Build and tests”</span></a></div>
+<p>The scripts of <code dir="auto">web/packages/sdk/package.json</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">build</code></td>
+<td><code dir="auto">tsc -p tsconfig.build.json</code>, which writes <code dir="auto">dist/</code> with the <code dir="auto">.d.ts</code> files</td>
+</tr>
+<tr>
+<td><code dir="auto">typecheck</code></td>
+<td><code dir="auto">tsc -p tsconfig.json</code>, over the code and the tests</td>
+</tr>
+<tr>
+<td><code dir="auto">test</code></td>
+<td><code dir="auto">vitest run --project unit</code></td>
+</tr>
+<tr>
+<td><code dir="auto">test:e2e</code></td>
+<td><code dir="auto">vitest run --project e2e</code>. It needs the env of <code dir="auto">TestTypeScriptSDK</code>, so run that Go test instead.</td>
+</tr>
+</tbody>
+</table>
+<p><code dir="auto">make test-sdk</code> runs the type check, the build, and the unit tests. Then it runs <code dir="auto">TestTypeScriptSDK</code> of <code dir="auto">internal/control</code> with <code dir="auto">HOPBOX_TEST_SDK=1</code>. It needs <code dir="auto">corepack pnpm install</code> first.</p>
+<ul>
+<li>The unit tests in <code dir="auto">web/packages/sdk/test/*.test.ts</code> run the client against a fake Connect server over HTTP/2 and HTTP/1.1. They check the retries, the waits, <code dir="auto">Retry-After</code>, and the idempotency keys. They also check the typed errors, the credentials, and the user agent. Then they check exec over the stream and over a fake WebSocket, upload, download, and the browser client.</li>
+<li><code dir="auto">TestTypeScriptSDK</code> serves the real public API of a control role. Its node runs a machine <code dir="auto">box1</code> with the real guest agent and the test VMM driver. The test makes an API key, then runs <code dir="auto">test/e2e/sdk.test.ts</code> with vitest. The suite checks exec over the stream and over the WebSocket, and a terminal with a resize. It also checks upload, download, and the log. Then it checks an idempotent replay, the details of a taken name, and a call with the session cookie of the console. It runs exec over the WebSocket with the session cookie and the <code dir="auto">Origin</code> of the console, and checks that another <code dir="auto">Origin</code> is refused.</li>
+</ul>
+<p>The test reads each file of the SDK and of its tests first. So <code dir="auto">go test</code> runs it again after a change of the SDK, instead of a result from its cache. Without <code dir="auto">web/packages/sdk/node_modules</code>, <code dir="auto">TestTypeScriptSDK</code> skips, so <code dir="auto">make test</code> passes without Node.js. With <code dir="auto">HOPBOX_TEST_SDK</code> set, it fails instead.</p>
+<table>
+<thead>
+<tr>
+<th>Env var</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">HOPBOX_TEST_SDK</code></td>
+<td>Without the node_modules of the SDK, <code dir="auto">TestTypeScriptSDK</code> fails instead of a skip.</td>
+</tr>
+<tr>
+<td><code dir="auto">HOPBOX_E2E_URL</code>, <code dir="auto">HOPBOX_E2E_KEY</code>, <code dir="auto">HOPBOX_E2E_COOKIE</code>, <code dir="auto">HOPBOX_E2E_ORIGIN</code>, <code dir="auto">HOPBOX_E2E_MACHINE</code></td>
+<td>The install, API key, session cookie, origin, and machine of the end-to-end suite. <code dir="auto">TestTypeScriptSDK</code> sets them. Without them, the suite fails at once.</td>
+</tr>
+</tbody>
+</table>
+</div><footer class="sl-flex astro-fzngq47q"><div class="meta sl-flex astro-fzngq47q"></div><div class="pagination-links print:hidden astro-7jhddma2" dir="ltr"><a href="/reference/go-client/" rel="prev" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-7jhddma2">Previous<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">Go client</span></span></a><a href="/reference/hopbox-guest/" rel="next" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-7jhddma2">Next<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">hopbox-guest</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>

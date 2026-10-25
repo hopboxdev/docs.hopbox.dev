@@ -1,0 +1,1060 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-toc data-has-sidebar class="astro-g6oqdoeg"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Default image | hopbox docs</title><link rel="canonical" href="https://docs.hopbox.dev/reference/default-image/"/><link rel="sitemap" href="/sitemap-index.xml"/><link rel="shortcut icon" href="/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.3.8"/><meta name="generator" content="Starlight v0.42.6"/><meta property="og:title" content="Default image"/><meta property="og:type" content="article"/><meta property="og:url" content="https://docs.hopbox.dev/reference/default-image/"/><meta property="og:locale" content="en"/><meta property="og:description" content="The programs, users, services, ports, files, disk, pins, build, and boot test of the default image."/><meta property="og:site_name" content="hopbox docs"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="The programs, users, services, ports, files, disk, pins, build, and boot test of the default image."/><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/_astro/print.ehPL0gv-.css" media="print"><link rel="stylesheet" href="/_astro/middleware.DkUYdNkX.css"><script type="module" src="/_astro/page.cNngjUgL.js"></script></head><body class="astro-g6oqdoeg"><a class="sl-skip-link astro-ktawktwe" href="#_top">Skip to content</a><div class="page sl-flex astro-vlwsw6sx"><header class="header astro-vlwsw6sx"><div class="header astro-qe7tu4yu"><div class="title-wrapper sl-flex astro-qe7tu4yu"><a href="/" class="site-title sl-flex astro-42muqipg"><span class="astro-42muqipg" translate="no">hopbox docs</span></a></div><div class="sl-flex print:hidden astro-qe7tu4yu"><site-search class="astro-qe7tu4yu astro-yp365hkw" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"><button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-yp365hkw"><svg aria-hidden="true" class="astro-yp365hkw astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg><span class="sl-hidden md:sl-block astro-yp365hkw" aria-hidden="true">Search</span><kbd class="sl-hidden md:sl-flex astro-yp365hkw" style="display: none;"><kbd class="astro-yp365hkw">Ctrl</kbd><kbd class="astro-yp365hkw">K</kbd></kbd></button><dialog style="padding:0" aria-label="Search" class="astro-yp365hkw"><div class="dialog-frame sl-flex astro-yp365hkw"><button data-close-modal class="sl-flex md:sl-hidden astro-yp365hkw">Cancel</button><div class="search-container astro-yp365hkw"><div id="starlight__search" class="astro-yp365hkw"></div></div></div></dialog></site-search><script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script><script type="module" src="/_astro/Search.astro_astro_type_script_index_0_lang.g9hoxVJg.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-qe7tu4yu"><div class="sl-flex social-icons astro-qe7tu4yu"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script><script type="module">var e=`starlight-theme`,t=e=>e===`auto`||e===`dark`||e===`light`?e:`auto`,n=()=>t(typeof localStorage<`u`&&localStorage.getItem(e));function r(t){typeof localStorage<`u`&&localStorage.setItem(e,t===`light`||t===`dark`?t:``)}var i=()=>matchMedia(`(prefers-color-scheme: light)`).matches?`light`:`dark`;function a(e){StarlightThemeProvider.updatePickers(e),document.documentElement.dataset.theme=e===`auto`?i():e,r(e)}matchMedia(`(prefers-color-scheme: light)`).addEventListener(`change`,()=>{n()===`auto`&&a(`auto`)});var o=class extends HTMLElement{constructor(){super(),a(n()),this.querySelector(`select`)?.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&a(t(e.currentTarget.value))})}};customElements.define(`starlight-theme-select`,o);</script><script type="module">var e=class extends HTMLElement{constructor(){super();let e=this.querySelector(`select`);e&&(e.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=e.currentTarget.value)}),window.addEventListener(`pageshow`,t=>{if(!t.persisted)return;let n=e.querySelector(`option[selected]`)?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}};customElements.define(`starlight-lang-select`,e);</script></div></div></header><nav class="sidebar print:hidden astro-vlwsw6sx" aria-label="Main"><button popovertarget="starlight__sidebar" class="sl-menu-button sl-flex md:sl-hidden print:hidden astro-ibd3qwco"><svg aria-hidden="true" class="open-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg><span class="sr-only astro-ibd3qwco">Menu</span></button><script type="module">var e=class extends HTMLElement{constructor(){super();let e=matchMedia(`(min-width: 50em)`),t=()=>{this.popover=e.matches?null:`auto`};t(),e.addEventListener(`change`,()=>t()),this.addEventListener(`toggle`,({newState:e})=>this.trapFocus(e===`open`))}trapFocus(e){document.querySelectorAll(`.main-frame, .sl-skip-link`).forEach(t=>{t.toggleAttribute(`inert`,e)})}};customElements.define(`sl-sidebar-pane`,e);</script><sl-sidebar-pane popover id="starlight__sidebar" class="sidebar-pane astro-vlwsw6sx"><div class="sidebar-content sl-flex astro-vlwsw6sx"><sl-sidebar-state-persist data-hash="0qsyok1" class="astro-oblzz35h"><script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script><ul class="top-level astro-twzrdani"><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Guides</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/guide/run-hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">Run the control role on a laptop</span></a></li><li class="astro-twzrdani"><a href="/guide/install-on-ovhcloud/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on an OVHcloud server with Terraform</span></a></li><li class="astro-twzrdani"><a href="/guide/enroll-node/" class="astro-twzrdani"><span class="astro-twzrdani">Enroll the node role on one server</span></a></li><li class="astro-twzrdani"><a href="/guide/dns-role/" class="astro-twzrdani"><span class="astro-twzrdani">Serve the domain of an install with the DNS role</span></a></li><li class="astro-twzrdani"><a href="/guide/acme-certificate/" class="astro-twzrdani"><span class="astro-twzrdani">Get the wildcard certificate of an install</span></a></li><li class="astro-twzrdani"><a href="/guide/machine-urls/" class="astro-twzrdani"><span class="astro-twzrdani">Run the edge role and open machine URLs</span></a></li><li class="astro-twzrdani"><a href="/guide/first-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">First sign-in on a new install</span></a></li><li class="astro-twzrdani"><a href="/guide/github-google-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/guide/orgs/" class="astro-twzrdani"><span class="astro-twzrdani">Work in a team org</span></a></li><li class="astro-twzrdani"><a href="/guide/env-vars/" class="astro-twzrdani"><span class="astro-twzrdani">Set env vars and secrets</span></a></li><li class="astro-twzrdani"><a href="/guide/machines/" class="astro-twzrdani"><span class="astro-twzrdani">Create and manage machines</span></a></li><li class="astro-twzrdani"><a href="/guide/firecracker-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Run machines with Firecracker</span></a></li><li class="astro-twzrdani"><a href="/guide/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">Check the network of a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/cli/" class="astro-twzrdani"><span class="astro-twzrdani">Use the hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Use machines from the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-prompt/" class="astro-twzrdani"><span class="astro-twzrdani">Work in the prompt of the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/ssh/" class="astro-twzrdani"><span class="astro-twzrdani">Reach a machine over SSH</span></a></li><li class="astro-twzrdani"><a href="/guide/exec-and-files/" class="astro-twzrdani"><span class="astro-twzrdani">Run commands and copy files in a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">Connect an AI agent to hopbox with MCP</span></a></li><li class="astro-twzrdani"><a href="/guide/console/" class="astro-twzrdani"><span class="astro-twzrdani">Use the console</span></a></li><li class="astro-twzrdani"><a href="/guide/typescript-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">Call the API from TypeScript</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-and-keys/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in the CLI, and make API keys and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/guide/install-debian/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on a Debian 13 server by hand</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Reference</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="1"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/reference/hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/release-bundle/" class="astro-twzrdani"><span class="astro-twzrdani">Release bundle</span></a></li><li class="astro-twzrdani"><a href="/reference/server-layout/" class="astro-twzrdani"><span class="astro-twzrdani">Server layout</span></a></li><li class="astro-twzrdani"><a href="/reference/hopboxd-config/" class="astro-twzrdani"><span class="astro-twzrdani">The bootstrap config of hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/api/" class="astro-twzrdani"><span class="astro-twzrdani">The API server</span></a></li><li class="astro-twzrdani"><a href="/reference/org-api/" class="astro-twzrdani"><span class="astro-twzrdani">The org API</span></a></li><li class="astro-twzrdani"><a href="/reference/vars-api/" class="astro-twzrdani"><span class="astro-twzrdani">The env var API</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-api/" class="astro-twzrdani"><span class="astro-twzrdani">The machine API</span></a></li><li class="astro-twzrdani"><a href="/reference/placement/" class="astro-twzrdani"><span class="astro-twzrdani">Placement</span></a></li><li class="astro-twzrdani"><a href="/reference/auth-api/" class="astro-twzrdani"><span class="astro-twzrdani">The sign-in, account, and audit API</span></a></li><li class="astro-twzrdani"><a href="/reference/credentials/" class="astro-twzrdani"><span class="astro-twzrdani">CLI tokens, API keys, admin API keys, and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/reference/sessions/" class="astro-twzrdani"><span class="astro-twzrdani">Sessions, cookies, and sign-in links</span></a></li><li class="astro-twzrdani"><a href="/reference/smtp/" class="astro-twzrdani"><span class="astro-twzrdani">SMTP config</span></a></li><li class="astro-twzrdani"><a href="/reference/mail/" class="astro-twzrdani"><span class="astro-twzrdani">Mail</span></a></li><li class="astro-twzrdani"><a href="/reference/oauth/" class="astro-twzrdani"><span class="astro-twzrdani">Sign-in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/reference/metrics/" class="astro-twzrdani"><span class="astro-twzrdani">Metrics</span></a></li><li class="astro-twzrdani"><a href="/reference/admin-api/" class="astro-twzrdani"><span class="astro-twzrdani">The admin API</span></a></li><li class="astro-twzrdani"><a href="/reference/internal-listener/" class="astro-twzrdani"><span class="astro-twzrdani">The internal listener</span></a></li><li class="astro-twzrdani"><a href="/reference/enrollment/" class="astro-twzrdani"><span class="astro-twzrdani">Enrollment and the install PKI</span></a></li><li class="astro-twzrdani"><a href="/reference/control-channel/" class="astro-twzrdani"><span class="astro-twzrdani">The control channel</span></a></li><li class="astro-twzrdani"><a href="/reference/dns/" class="astro-twzrdani"><span class="astro-twzrdani">The DNS role</span></a></li><li class="astro-twzrdani"><a href="/reference/edge/" class="astro-twzrdani"><span class="astro-twzrdani">The edge role</span></a></li><li class="astro-twzrdani"><a href="/reference/ssh-front-door/" class="astro-twzrdani"><span class="astro-twzrdani">The SSH front door</span></a></li><li class="astro-twzrdani"><a href="/reference/acme/" class="astro-twzrdani"><span class="astro-twzrdani">The certificate of the install</span></a></li><li class="astro-twzrdani"><a href="/reference/executor-protocol/" class="astro-twzrdani"><span class="astro-twzrdani">The executor protocol</span></a></li><li class="astro-twzrdani"><a href="/reference/executor/" class="astro-twzrdani"><span class="astro-twzrdani">The node executor</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-logs/" class="astro-twzrdani"><span class="astro-twzrdani">Machine logs</span></a></li><li class="astro-twzrdani"><a href="/reference/vmm/" class="astro-twzrdani"><span class="astro-twzrdani">The VMM driver interface</span></a></li><li class="astro-twzrdani"><a href="/reference/firecracker-driver/" class="astro-twzrdani"><span class="astro-twzrdani">The Firecracker driver</span></a></li><li class="astro-twzrdani"><a href="/reference/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">The node network</span></a></li><li class="astro-twzrdani"><a href="/reference/preflight/" class="astro-twzrdani"><span class="astro-twzrdani">The preflight check</span></a></li><li class="astro-twzrdani"><a href="/reference/cli/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/reference/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">The MCP server</span></a></li><li class="astro-twzrdani"><a href="/reference/console/" class="astro-twzrdani"><span class="astro-twzrdani">Console</span></a></li><li class="astro-twzrdani"><a href="/reference/go-client/" class="astro-twzrdani"><span class="astro-twzrdani">Go client</span></a></li><li class="astro-twzrdani"><a href="/reference/ts-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">TypeScript SDK</span></a></li><li class="astro-twzrdani"><a href="/reference/hopbox-guest/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox-guest</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-link/" class="astro-twzrdani"><span class="astro-twzrdani">Guest link</span></a></li><li class="astro-twzrdani"><a href="/reference/terraform-provider/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox Terraform provider</span></a></li><li class="astro-twzrdani"><a href="/reference/version/" class="astro-twzrdani"><span class="astro-twzrdani">The version command</span></a></li><li class="astro-twzrdani"><a href="/reference/api-definitions/" class="astro-twzrdani"><span class="astro-twzrdani">API definitions</span></a></li><li class="astro-twzrdani"><a href="/reference/postgres/" class="astro-twzrdani"><span class="astro-twzrdani">The bundled Postgres</span></a></li><li class="astro-twzrdani"><a href="/reference/domain-rules/" class="astro-twzrdani"><span class="astro-twzrdani">Domain rules</span></a></li><li class="astro-twzrdani"><a href="/reference/control-store/" class="astro-twzrdani"><span class="astro-twzrdani">Control store tables</span></a></li><li class="astro-twzrdani"><a href="/reference/sealing/" class="astro-twzrdani"><span class="astro-twzrdani">Sealing</span></a></li><li class="astro-twzrdani"><a href="/reference/host-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Host kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Guest kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/default-image/" aria-current="page" class="astro-twzrdani"><span class="astro-twzrdani">Default image</span></a></li><li class="astro-twzrdani"><a href="/reference/artifact-format/" class="astro-twzrdani"><span class="astro-twzrdani">Artifact format</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Releases</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="2"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/releases/v0.1.0/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox v0.1.0</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="3"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Public API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="4"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="5"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicecreatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">CreateMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicegetmachine/" class="astro-twzrdani"><span class="astro-twzrdani">GetMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachinesizes/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachineSizes</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerebootmachine/" class="astro-twzrdani"><span class="astro-twzrdani">RebootMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerenamemachine/" class="astro-twzrdani"><span class="astro-twzrdani">RenameMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlport/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLPort</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlvisibility/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLVisibility</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">ShareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestartmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StartMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceunsharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UnshareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceupdatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.InstallService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="6"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1installservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1installservicegetinstallinfo/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallInfo</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="7"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicedeleteaccount/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceendclisignin/" class="astro-twzrdani"><span class="astro-twzrdani">EndCLISignIn</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicegetaccount/" class="astro-twzrdani"><span class="astro-twzrdani">GetAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistclisignins/" class="astro-twzrdani"><span class="astro-twzrdani">ListCLISignIns</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceremovesigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSignInMethod</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceupdateaccount/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateAccount</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.APIKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="8"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1apikeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicecreateapikey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAPIKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicelistapikeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAPIKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicerevokeapikey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAPIKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuditService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="9"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1auditservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1auditservicelistauditentries/" class="astro-twzrdani"><span class="astro-twzrdani">ListAuditEntries</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuthService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="10"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1authservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceapprovedevice/" class="astro-twzrdani"><span class="astro-twzrdani">ApproveDevice</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicegetdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">GetDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicepolldeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">PollDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerefreshclitoken/" class="astro-twzrdani"><span class="astro-twzrdani">RefreshCLIToken</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerequestmagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">RequestMagicLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicesignout/" class="astro-twzrdani"><span class="astro-twzrdani">SignOut</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicestartdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">StartDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifyloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyLoginLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifymagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyMagicLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="11"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceacceptinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">AcceptInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">CreateInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateorg/" class="astro-twzrdani"><span class="astro-twzrdani">CreateOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicedeleteorg/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorg/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorgusage/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrgUsage</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceleaveorg/" class="astro-twzrdani"><span class="astro-twzrdani">LeaveOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistinvitations/" class="astro-twzrdani"><span class="astro-twzrdani">ListInvitations</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgmembers/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgMembers</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceremoveorgmember/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveOrgMember</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicerevokeinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicesetorgmemberrole/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgMemberRole</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceupdateorg/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.SSHKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="12"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1sshkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceaddsshkey/" class="astro-twzrdani"><span class="astro-twzrdani">AddSSHKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyservicelistsshkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListSSHKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceremovesshkey/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSSHKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.VarService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="13"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1varservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicedeletevar/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteVar</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicelistvars/" class="astro-twzrdani"><span class="astro-twzrdani">ListVars</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicesetvar/" class="astro-twzrdani"><span class="astro-twzrdani">SetVar</span></a></li></ul></details></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Admin API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="14"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="15"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountservicelistaccountsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListAccountSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountserviceremoveaccountsigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveAccountSignInMethod</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AdminKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="16"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1adminkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicecreateadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicelistadminkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAdminKeys</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyserviceregisteradminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicerevokeadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAdminKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.CertificateService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="17"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1certificateservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1certificateservicegetcertificate/" class="astro-twzrdani"><span class="astro-twzrdani">GetCertificate</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ImageService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="18"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1imageservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageservicelistimages/" class="astro-twzrdani"><span class="astro-twzrdani">ListImages</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageserviceregisterimage/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterImage</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstallConfigService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="19"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1installconfigservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">ClearOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">ClearSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetoauthconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetOAuthConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">SetOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">SetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceupdateinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateInstallConfig</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstanceAdminService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="20"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1instanceadminservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicegrantinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">GrantInstanceAdmin</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicelistinstanceadmins/" class="astro-twzrdani"><span class="astro-twzrdani">ListInstanceAdmins</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicerevokeinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInstanceAdmin</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.KeyringService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="21"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1keyringservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicelistkeks/" class="astro-twzrdani"><span class="astro-twzrdani">ListKEKs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerewrapsealedvalues/" class="astro-twzrdani"><span class="astro-twzrdani">RewrapSealedValues</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerotatekek/" class="astro-twzrdani"><span class="astro-twzrdani">RotateKEK</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.LoginLinkService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="22"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1loginlinkservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1loginlinkservicecreateloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">CreateLoginLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="23"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MailService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="24"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1mailservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicegetmailfile/" class="astro-twzrdani"><span class="astro-twzrdani">GetMailFile</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicelistmailfiles/" class="astro-twzrdani"><span class="astro-twzrdani">ListMailFiles</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="25"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicegetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">GetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">SuspendOrg</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgserviceunsuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">UnsuspendOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ServerService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="26"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1serverservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">CordonServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecreateenrollmenttoken/" class="astro-twzrdani"><span class="astro-twzrdani">CreateEnrollmentToken</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicedecommissionserver/" class="astro-twzrdani"><span class="astro-twzrdani">DecommissionServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicegetserver/" class="astro-twzrdani"><span class="astro-twzrdani">GetServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicelistservers/" class="astro-twzrdani"><span class="astro-twzrdani">ListServers</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicesetserverlabels/" class="astro-twzrdani"><span class="astro-twzrdani">SetServerLabels</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverserviceuncordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">UncordonServer</span></a></li></ul></details></li></ul></details></li></ul></details></li></ul><script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-jl756n3h"><div class="social-icons astro-jl756n3h"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script></div></div></div></sl-sidebar-pane></nav><div class="main-frame astro-vlwsw6sx"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-bfhpgjcp"><aside class="right-sidebar-container print:hidden astro-bfhpgjcp"><div class="right-sidebar astro-bfhpgjcp"><div class="lg:sl-hidden astro-6ky2bkwt"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-bwzeb267"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-bwzeb267"><details id="starlight__mobile-toc" class="astro-bwzeb267"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-bwzeb267"><span class="toggle sl-flex astro-bwzeb267">On this page<svg aria-hidden="true" class="caret astro-bwzeb267 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-bwzeb267"></span></summary><div class="dropdown astro-bwzeb267"><ul class="isMobile astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#programs" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Programs</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#program-manifest" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Program manifest</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#python" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Python</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#users" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Users</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#services" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Services</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#ports" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Ports</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#nginx" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">nginx</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#no-vsock-for-services" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">No vsock for services</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#files" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Files</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#kernel" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Kernel</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#disk" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Disk</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#pins" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Pins</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#recipe" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Recipe</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#reproducible-build" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Reproducible build</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#outputs" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Outputs</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#make-targets" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Make targets</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#boot-test" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Boot test</span></a></li></ul></div></details></nav></mobile-starlight-toc><script type="module" src="/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.C3fM4Kra.js"></script></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-6ky2bkwt"><div class="sl-container astro-6ky2bkwt"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#programs" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Programs</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#program-manifest" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Program manifest</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#python" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Python</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#users" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Users</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#services" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Services</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#ports" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Ports</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#nginx" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">nginx</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#no-vsock-for-services" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">No vsock for services</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#files" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Files</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#kernel" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Kernel</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#disk" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Disk</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#pins" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Pins</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#recipe" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Recipe</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#reproducible-build" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Reproducible build</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#outputs" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Outputs</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#make-targets" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Make targets</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#boot-test" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Boot test</span></a></li></ul></nav></starlight-toc><script type="module" src="/_astro/TableOfContents.astro_astro_type_script_index_0_lang.BpJaGz7G.js"></script></div></div></div></aside><div class="main-pane astro-bfhpgjcp"><main data-pagefind-body class="astro-g6oqdoeg" lang="en" dir="ltr"><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><h1 id="_top" class="astro-42k5req6">Default image</h1></div></div><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><div class="sl-markdown-content"><p>The default image is the disk that a new machine starts from. It is Ubuntu 26.04 LTS for x86_64, with the programs below, the guest agent <code dir="auto">hopbox-guest</code>, and systemd. The recipe lives in <code dir="auto">images/default/</code>. Each build is an artifact in the format of <a href="/reference/artifact-format/">artifact-format.md</a>. <code dir="auto">make image</code> builds it, and <code dir="auto">make check-image</code> checks it (the build guide of the repo has the steps and a boot test).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="programs">Programs</h2><a class="sl-anchor-link" href="#programs"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Programs”</span></a></div>
+<p>The design asks for the latest stable release of each program, and the latest LTS release of Ubuntu and Node.js. <code dir="auto">pins.env</code> fixes these versions for a build, and <code dir="auto">make image-pins</code> moves them to the latest releases (<a href="#pins">Pins</a>). Each program with an official build of its own comes from that build:</p>
+<table>
+<thead>
+<tr>
+<th>Program</th>
+<th>Source</th>
+<th>Installed as</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ubuntu 26.04 LTS</td>
+<td>the Docker image <code dir="auto">ubuntu:26.04</code>, by digest, and a snapshot of the Ubuntu archive</td>
+<td>the base system</td>
+</tr>
+<tr>
+<td>Docker CE with Compose and Buildx</td>
+<td>the apt repository of Docker, <code dir="auto">download.docker.com</code>, signed by its pinned key</td>
+<td><code dir="auto">docker</code>, <code dir="auto">docker compose</code>, <code dir="auto">docker buildx</code>, <code dir="auto">containerd</code></td>
+</tr>
+<tr>
+<td>nginx, latest stable release</td>
+<td>the stable apt repository of <code dir="auto">nginx.org</code>, signed by its pinned key</td>
+<td>the HTTP server on port 8000, off by default (<a href="#nginx">nginx</a>)</td>
+</tr>
+<tr>
+<td>Node.js, latest LTS</td>
+<td>the release archive from <code dir="auto">nodejs.org</code>, with its sha256. The build checks the signature of <code dir="auto">SHASUMS256.txt</code> against the release keys of Node.js.</td>
+<td><code dir="auto">/usr/local/bin/node</code>, <code dir="auto">npm</code>, <code dir="auto">npx</code>, <code dir="auto">corepack</code></td>
+</tr>
+<tr>
+<td>Python, latest stable release</td>
+<td>the CPython build of <code dir="auto">python-build-standalone</code>, installed by uv, which checks its sha256</td>
+<td><code dir="auto">python</code> and <code dir="auto">python3</code> of <code dir="auto">user</code> in login shells, from <code dir="auto">~/.local/bin</code> (<a href="#python">Python</a>)</td>
+</tr>
+<tr>
+<td>uv</td>
+<td>the release archive from GitHub, with its sha256</td>
+<td><code dir="auto">/usr/local/bin/uv</code>, <code dir="auto">uvx</code></td>
+</tr>
+<tr>
+<td>Go</td>
+<td>the release archive from <code dir="auto">go.dev</code>, with its sha256</td>
+<td><code dir="auto">/usr/local/go</code>, with <code dir="auto">go</code> and <code dir="auto">gofmt</code> in <code dir="auto">/usr/local/bin</code></td>
+</tr>
+<tr>
+<td>GitHub CLI</td>
+<td>the release archive from GitHub, with its sha256</td>
+<td><code dir="auto">/usr/local/bin/gh</code></td>
+</tr>
+<tr>
+<td>ripgrep</td>
+<td>the static release archive from GitHub, with its sha256</td>
+<td><code dir="auto">/usr/local/bin/rg</code></td>
+</tr>
+<tr>
+<td>Neovim</td>
+<td>the release archive from GitHub, with its sha256</td>
+<td><code dir="auto">/usr/local/bin/nvim</code></td>
+</tr>
+</tbody>
+</table>
+<p>The other programs have no official build for Ubuntu. They come from the Ubuntu archive, at the version of the snapshot. This version is the latest version that Ubuntu 26.04 LTS ships, which can be older than the latest release of the project. This is an exception to the rule of the design:</p>
+<table>
+<thead>
+<tr>
+<th>Program</th>
+<th>Installed as</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>systemd</td>
+<td>the init system, PID 1</td>
+</tr>
+<tr>
+<td>OpenSSH server and client</td>
+<td><code dir="auto">sshd</code>, started by <code dir="auto">ssh.socket</code> on port 22</td>
+</tr>
+<tr>
+<td>Python 3 of Ubuntu</td>
+<td><code dir="auto">/usr/bin/python3</code>, with <code dir="auto">venv</code> and <code dir="auto">pip</code>, for system tools. <code dir="auto">/usr/bin/python</code> points at it (<code dir="auto">python-is-python3</code>).</td>
+</tr>
+<tr>
+<td>FFmpeg</td>
+<td><code dir="auto">ffmpeg</code>, <code dir="auto">ffprobe</code></td>
+</tr>
+<tr>
+<td>Vim</td>
+<td><code dir="auto">vim</code></td>
+</tr>
+<tr>
+<td>git, curl, and the packages below</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>The image also has more Ubuntu packages, for work on a machine. apt installs them without recommended packages.</p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Packages</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>System</td>
+<td><code dir="auto">sudo</code>, <code dir="auto">dbus</code>, <code dir="auto">libpam-systemd</code>, <code dir="auto">udev</code>, <code dir="auto">tzdata</code>, <code dir="auto">ca-certificates</code></td>
+</tr>
+<tr>
+<td>Network</td>
+<td><code dir="auto">iproute2</code>, <code dir="auto">iptables</code>, <code dir="auto">iputils-ping</code>, <code dir="auto">netcat-openbsd</code>, <code dir="auto">bind9-dnsutils</code>, <code dir="auto">curl</code>, <code dir="auto">wget</code></td>
+</tr>
+<tr>
+<td>Files and text</td>
+<td><code dir="auto">git</code>, <code dir="auto">gnupg</code>, <code dir="auto">rsync</code>, <code dir="auto">unzip</code>, <code dir="auto">zip</code>, <code dir="auto">xz-utils</code>, <code dir="auto">zstd</code>, <code dir="auto">jq</code>, <code dir="auto">less</code>, <code dir="auto">file</code></td>
+</tr>
+<tr>
+<td>Shell and processes</td>
+<td><code dir="auto">tmux</code>, <code dir="auto">htop</code>, <code dir="auto">procps</code>, <code dir="auto">psmisc</code>, <code dir="auto">lsof</code>, <code dir="auto">bash-completion</code></td>
+</tr>
+<tr>
+<td>Builds</td>
+<td><code dir="auto">build-essential</code>, <code dir="auto">pkg-config</code></td>
+</tr>
+</tbody>
+</table>
+<p>Phase 1 leaves these parts out of the image:</p>
+<ul>
+<li>coding agents, and their instructions and skill</li>
+<li>the desktop and the browser</li>
+<li>the in-machine CLI</li>
+<li>the CA certificate of an egress proxy</li>
+</ul>
+<p>Phase 5 adds the coding agents and the in-machine CLI.</p>
+<p>The Ubuntu container image is minimized: it leaves out manual pages and most of <code dir="auto">/usr/share/doc</code>. The default image keeps it so.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="program-manifest">Program manifest</h3><a class="sl-anchor-link" href="#program-manifest"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Program manifest”</span></a></div>
+<p>Each build records the version of each program in a manifest. The manifest is in the image at <code dir="auto">/usr/share/hopbox/programs.json</code>, and in the <code dir="auto">programs</code> field of <code dir="auto">artifact.json</code> (<a href="/reference/artifact-format/#artifactjson">artifact-format.md</a>). The build reads each version from the installed program or package. For an Ubuntu or Docker package, the version is the version of the package.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Version from</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">ubuntu</code></td>
+<td><code dir="auto">VERSION</code> in <code dir="auto">/etc/os-release</code>, for example <code dir="auto">26.04.1</code>. The source is the pinned Docker image.</td>
+</tr>
+<tr>
+<td><code dir="auto">systemd</code>, <code dir="auto">openssh-server</code>, <code dir="auto">sudo</code>, <code dir="auto">git</code>, <code dir="auto">ffmpeg</code>, <code dir="auto">vim</code></td>
+<td>the Ubuntu package. The source is the snapshot of the archive, for example <code dir="auto">snapshot.ubuntu.com/ubuntu/20261016T080000Z</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">python3</code></td>
+<td><code dir="auto">/usr/bin/python3 --version</code>, the interpreter of Ubuntu. Its version can differ from the version of the package <code dir="auto">python3</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">docker-ce</code>, <code dir="auto">containerd.io</code>, <code dir="auto">docker-buildx-plugin</code>, <code dir="auto">docker-compose-plugin</code></td>
+<td>the Docker package</td>
+</tr>
+<tr>
+<td><code dir="auto">nginx</code></td>
+<td>the nginx.org package</td>
+</tr>
+<tr>
+<td><code dir="auto">python</code></td>
+<td><code dir="auto">~/.local/bin/python3 --version</code> of <code dir="auto">user</code>, the CPython of uv</td>
+</tr>
+<tr>
+<td><code dir="auto">ripgrep</code></td>
+<td><code dir="auto">rg --version</code></td>
+</tr>
+<tr>
+<td><code dir="auto">node</code>, <code dir="auto">npm</code></td>
+<td><code dir="auto">node --version</code>, <code dir="auto">npm --version</code></td>
+</tr>
+<tr>
+<td><code dir="auto">go</code></td>
+<td><code dir="auto">go version</code></td>
+</tr>
+<tr>
+<td><code dir="auto">uv</code></td>
+<td><code dir="auto">uv --version</code></td>
+</tr>
+<tr>
+<td><code dir="auto">gh</code></td>
+<td><code dir="auto">gh --version</code></td>
+</tr>
+<tr>
+<td><code dir="auto">neovim</code></td>
+<td><code dir="auto">nvim --version</code></td>
+</tr>
+<tr>
+<td><code dir="auto">hopbox-guest</code></td>
+<td><code dir="auto">hopbox-guest version</code></td>
+</tr>
+</tbody>
+</table>
+<p>Example from the build of 2026-10-16, with the snapshot <code dir="auto">20261016T080000Z</code>:</p>
+<div class="expressive-code"><link rel="stylesheet" href="/_astro/ec.w36nc.css"><script type="module" src="/_astro/ec.0vx5m.js"></script><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="sh"><code><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">$</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">jq</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">-r</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">.[] | "\(.name) \(.version)"</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">/usr/share/hopbox/programs.json</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">containerd.io</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">2.4.2-2~ubuntu.26.04~resolute</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">docker-buildx-plugin</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">0.38.0-1~ubuntu.26.04~resolute</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">docker-ce</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">5:29.9.1-1~ubuntu.26.04~resolute</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">docker-compose-plugin</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">5.6.0-1~ubuntu.26.04~resolute</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">ffmpeg</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">7:8.0.1-3ubuntu2</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">gh</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#F78C6C;--1:#AA0982">2.102.0</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">git</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">1:2.53.0-1ubuntu1</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">go</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#F78C6C;--1:#AA0982">1.27.2</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">hopbox-guest</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">v0.0.0-m18dev</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">neovim</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#F78C6C;--1:#AA0982">0.12.6</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">nginx</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">1.30.6-1~resolute</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">node</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#F78C6C;--1:#AA0982">24.22.0</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">npm</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#F78C6C;--1:#AA0982">11.19.1</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">openssh-server</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">1:10.2p1-2ubuntu3.8</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">python</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#F78C6C;--1:#AA0982">3.15.0</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">python3</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#F78C6C;--1:#AA0982">3.14.4</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">ripgrep</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#F78C6C;--1:#AA0982">15.2.0</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">sudo</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">1.9.17p2-1ubuntu3.2</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">systemd</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">259.5-0ubuntu3.4</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">ubuntu</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#F78C6C;--1:#AA0982">26.04.1</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">uv</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#F78C6C;--1:#AA0982">0.13.1</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">vim</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">2:9.1.2141-1ubuntu4.9</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="$ jq -r &#x27;.[] | &quot;\(.name) \(.version)&quot;&#x27; /usr/share/hopbox/programs.jsoncontainerd.io 2.4.2-2~ubuntu.26.04~resolutedocker-buildx-plugin 0.38.0-1~ubuntu.26.04~resolutedocker-ce 5:29.9.1-1~ubuntu.26.04~resolutedocker-compose-plugin 5.6.0-1~ubuntu.26.04~resoluteffmpeg 7:8.0.1-3ubuntu2gh 2.102.0git 1:2.53.0-1ubuntu1go 1.27.2hopbox-guest v0.0.0-m18devneovim 0.12.6nginx 1.30.6-1~resolutenode 24.22.0npm 11.19.1openssh-server 1:10.2p1-2ubuntu3.8python 3.15.0python3 3.14.4ripgrep 15.2.0sudo 1.9.17p2-1ubuntu3.2systemd 259.5-0ubuntu3.4ubuntu 26.04.1uv 0.13.1vim 2:9.1.2141-1ubuntu4.9"><div></div></button></div></figure></div>
+<div class="sl-heading-wrapper level-h2"><h2 id="python">Python</h2><a class="sl-anchor-link" href="#python"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Python”</span></a></div>
+<p>The image has two Pythons:</p>
+<table>
+<thead>
+<tr>
+<th>Python</th>
+<th>Path</th>
+<th>For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The latest stable CPython, for example 3.15.0</td>
+<td><code dir="auto">~/.local/bin/python</code> and <code dir="auto">python3</code> of <code dir="auto">user</code>, links into <code dir="auto">~/.local/share/uv/python</code></td>
+<td><code dir="auto">user</code> in login shells: SSH sessions, <code dir="auto">hopbox connect</code>, and <code dir="auto">bash -l</code>. The <code dir="auto">~/.profile</code> of Ubuntu puts <code dir="auto">~/.local/bin</code> first in the <code dir="auto">PATH</code>.</td>
+</tr>
+<tr>
+<td>The Python 3 of Ubuntu</td>
+<td><code dir="auto">/usr/bin/python3</code> and <code dir="auto">/usr/bin/python</code></td>
+<td>root, system tools, and commands without a login shell, for example exec without <code dir="auto">bash -l</code></td>
+</tr>
+</tbody>
+</table>
+<p>The build runs <code dir="auto">uv python install --default</code> as <code dir="auto">user</code> with the pinned version. uv downloads the build of <code dir="auto">python-build-standalone</code> and checks it against the sha256 that the pinned uv ships. To get another Python, run <code dir="auto">uv python install 3.14</code>, or use <code dir="auto">uv venv</code> and <code dir="auto">uv run</code> in a project.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="users">Users</h2><a class="sl-anchor-link" href="#users"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Users”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>User</th>
+<th>ID</th>
+<th>Groups</th>
+<th>Shell</th>
+<th>Password</th>
+<th>sudo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">user</code></td>
+<td>1000, group <code dir="auto">user</code> 1000</td>
+<td><code dir="auto">user</code>, <code dir="auto">sudo</code>, <code dir="auto">docker</code></td>
+<td><code dir="auto">/bin/bash</code></td>
+<td>none (<code dir="auto">*</code>): no password works</td>
+<td>every command, without a password</td>
+</tr>
+<tr>
+<td><code dir="auto">root</code></td>
+<td>0</td>
+<td><code dir="auto">root</code></td>
+<td><code dir="auto">/bin/bash</code></td>
+<td>none</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><code dir="auto">user</code> is the main user of a machine. The guest agent runs the start command, exec, and file copy as <code dir="auto">user</code> by default (<a href="/reference/hopbox-guest/">hopbox-guest.md</a>). Its home is <code dir="auto">/home/user</code>. The Ubuntu container image has a user <code dir="auto">ubuntu</code> with the ID 1000. The build deletes it.</p>
+<p><code dir="auto">/etc/sudoers.d/90-hopbox-user</code> (mode 0440) gives <code dir="auto">user</code> sudo without a password. The group <code dir="auto">docker</code> lets <code dir="auto">user</code> run <code dir="auto">docker</code> without sudo.</p>
+<p>SSH logins use keys only. The guest agent writes the key of the SSH front door to <code dir="auto">/etc/hopbox/authorized_keys</code>, which sshd reads for every user (<a href="/reference/hopbox-guest/#files">hopbox-guest.md</a>). A user can add keys to <code dir="auto">~/.ssh/authorized_keys</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="services">Services</h2><a class="sl-anchor-link" href="#services"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Services”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Unit</th>
+<th>State</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">hopbox-guest.service</code></td>
+<td>enabled</td>
+<td>The guest agent. It sets up the network, the host name, and the SSH host key, and keeps the guest link open (<a href="/reference/hopbox-guest/#systemd-unit">hopbox-guest.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">ssh.socket</code></td>
+<td>enabled</td>
+<td>Listens on port 22 and starts <code dir="auto">sshd</code> at the first connection.</td>
+</tr>
+<tr>
+<td><code dir="auto">docker.service</code>, <code dir="auto">docker.socket</code>, <code dir="auto">containerd.service</code></td>
+<td>enabled</td>
+<td>Docker.</td>
+</tr>
+<tr>
+<td><code dir="auto">nginx.service</code></td>
+<td>disabled</td>
+<td>The HTTP server on port 8000 (<a href="#nginx">nginx</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">systemd-growfs-root.service</code></td>
+<td>runs at each boot</td>
+<td>Grows the root file system to the size of the disk (<a href="#disk">Disk</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">systemd-firstboot.service</code></td>
+<td>masked</td>
+<td>Without the mask, it asks for a locale and a time zone on the serial console at the first boot, and the boot waits.</td>
+</tr>
+<tr>
+<td><code dir="auto">systemd-ssh-generator</code></td>
+<td>masked</td>
+<td>Without the mask, it opens sshd on an <code dir="auto">AF_VSOCK</code> socket and on a local socket. Only the guest agent uses vsock.</td>
+</tr>
+</tbody>
+</table>
+<p>The image has no network manager. The guest agent sets up the network from the configuration that the node pushes (<a href="/reference/guest-link/#configuration">guest-link.md</a>). The image has no <code dir="auto">cloud-init</code>.</p>
+<p>The default target is <code dir="auto">graphical.target</code>, as in Ubuntu. It has no graphical programs, so it is the same as <code dir="auto">multi-user.target</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="ports">Ports</h2><a class="sl-anchor-link" href="#ports"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Ports”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Port</th>
+<th>Service</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>22/tcp</td>
+<td>sshd, through <code dir="auto">ssh.socket</code></td>
+<td>on</td>
+</tr>
+<tr>
+<td>8000/tcp</td>
+<td>nginx</td>
+<td>off. <code dir="auto">sudo systemctl enable --now nginx</code> turns it on.</td>
+</tr>
+</tbody>
+</table>
+<p>The guest has no other listening port. The guest link is a connection that the guest agent dials over vsock, so the guest listens on no vsock port.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="nginx">nginx</h2><a class="sl-anchor-link" href="#nginx"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “nginx”</span></a></div>
+<p>nginx serves <code dir="auto">/var/www/html</code> on port 8000, the default port of the machine URL. It is off by default. To turn it on now and at each boot:</p>
+<div class="expressive-code"><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="sh"><code><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">sudo</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">systemctl</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">enable</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">--now</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">nginx</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">curl</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">-s</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">http://localhost:8000/</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="sudo systemctl enable --now nginxcurl -s http://localhost:8000/"><div></div></button></div></figure></div>
+<p>nginx comes from the stable apt repository of nginx.org, so its layout is the layout of nginx.org: the main file is <code dir="auto">/etc/nginx/nginx.conf</code>, and the workers run as the user <code dir="auto">nginx</code>. The site is <code dir="auto">/etc/nginx/conf.d/default.conf</code>. The page <code dir="auto">/var/www/html/index.html</code> says that nginx serves it. Replace the page, or change the site to proxy to an app.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="no-vsock-for-services">No vsock for services</h2><a class="sl-anchor-link" href="#no-vsock-for-services"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “No vsock for services”</span></a></div>
+<p>Only the guest agent talks to the node over vsock. The drop-in <code dir="auto">/usr/lib/systemd/system/service.d/50-hopbox-no-vsock.conf</code> sets two values for every systemd service:</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">RestrictAddressFamilies=~AF_VSOCK</code></td>
+<td>A process of the service cannot open an <code dir="auto">AF_VSOCK</code> socket. <code dir="auto">socket()</code> fails with <code dir="auto">EAFNOSUPPORT</code>, “Address family not supported by protocol”.</td>
+</tr>
+<tr>
+<td><code dir="auto">SystemCallArchitectures=native</code></td>
+<td>The process can make only x86_64 system calls. The filter of <code dir="auto">RestrictAddressFamilies</code> checks only these calls. Without this value, a 64-bit process can open the socket through the i386 call <code dir="auto">socket</code> of <code dir="auto">int 0x80</code>. A test on a server proved it: with <code dir="auto">RestrictAddressFamilies</code> alone, the probe of the boot test opened the socket, and with both values the kernel ended it with <code dir="auto">SIGSYS</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The guest kernel also has no 32-bit system calls (<a href="/reference/guest-kernel/#config-fragment">guest-kernel.md</a>), so this path is closed twice. The drop-in <code dir="auto">/usr/lib/systemd/system/hopbox-guest.service.d/60-hopbox-allow-vsock.conf</code> sets empty values for the guest agent. systemd applies drop-ins in the order of their file names, so the empty values undo the restriction.</p>
+<p>systemd applies the restriction with a seccomp filter. A child process keeps the filter of its parent, also through <code dir="auto">sudo</code>. So these processes cannot open <code dir="auto">AF_VSOCK</code> either:</p>
+<table>
+<thead>
+<tr>
+<th>Process</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SSH sessions, and <code dir="auto">sudo</code> in them</td>
+<td><code dir="auto">ssh.service</code> starts them.</td>
+</tr>
+<tr>
+<td>User services of <code dir="auto">systemctl --user</code></td>
+<td><code dir="auto">user@.service</code> starts them.</td>
+</tr>
+<tr>
+<td>Docker containers</td>
+<td><code dir="auto">containerd.service</code> starts them.</td>
+</tr>
+<tr>
+<td><code dir="auto">systemd-run</code> commands and timers</td>
+<td>Each one is a service.</td>
+</tr>
+<tr>
+<td>nginx and its workers</td>
+<td><code dir="auto">nginx.service</code> starts them.</td>
+</tr>
+</tbody>
+</table>
+<p>Processes that the guest agent starts are not restricted: the start command, and the commands of exec and <code dir="auto">hopbox connect</code>. They are children of the guest agent. Also, root can remove the drop-in. The <a href="/reference/guest-link/#threat-model">threat model of the guest link</a> does not depend on this restriction.</p>
+<p>The filter does not bring <code dir="auto">NoNewPrivileges</code> to <code dir="auto">user@.service</code>, the user manager of <code dir="auto">systemctl --user</code>. On the <a href="/reference/preflight/#the-tested-server">tested server</a>, the user manager of <code dir="auto">user</code> runs with the filter and with <code dir="auto">NoNewPrivs: 0</code>, and the boot test checks it. So <code dir="auto">sudo</code> works in SSH sessions, in <code dir="auto">hopbox connect</code>, in exec, and in user services. The systemd docs say that systemd can set <code dir="auto">NoNewPrivileges=yes</code> for another service with <code dir="auto">User=</code> and a filter. The image has no such service that runs <code dir="auto">sudo</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="files">Files</h2><a class="sl-anchor-link" href="#files"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Files”</span></a></div>
+<p>The image adds these files to Ubuntu. The recipe keeps them in <code dir="auto">images/default/rootfs/</code>, at the same paths.</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">/usr/local/bin/hopbox-guest</code></td>
+<td>The guest agent, built from the same checkout for <code dir="auto">linux/amd64</code> (mode 0755).</td>
+</tr>
+<tr>
+<td><code dir="auto">/usr/lib/systemd/system/hopbox-guest.service</code></td>
+<td>The unit of the guest agent (<a href="/reference/hopbox-guest/#systemd-unit">hopbox-guest.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">/usr/lib/systemd/system/service.d/50-hopbox-no-vsock.conf</code></td>
+<td><code dir="auto">RestrictAddressFamilies=~AF_VSOCK</code> and <code dir="auto">SystemCallArchitectures=native</code> for every service.</td>
+</tr>
+<tr>
+<td><code dir="auto">/usr/lib/systemd/system/hopbox-guest.service.d/60-hopbox-allow-vsock.conf</code></td>
+<td><code dir="auto">RestrictAddressFamilies=</code> and <code dir="auto">SystemCallArchitectures=</code> for the guest agent.</td>
+</tr>
+<tr>
+<td><code dir="auto">/usr/lib/systemd/system-shutdown/hopbox-poweroff</code></td>
+<td>A hook of <code dir="auto">systemd-shutdown</code> (mode 0755). At a poweroff or a halt, it writes <code dir="auto">b</code> to <code dir="auto">/proc/sysrq-trigger</code>, a reboot. Firecracker has no power-off device, so without it a poweroff leaves the microVM running with a stopped kernel. The hook runs once the root file system is read-only, so the reboot is clean, and the reboot ends Firecracker (<a href="/reference/firecracker-driver/#exit-reasons">firecracker-driver.md</a>). <code dir="auto">poweroff -ff</code>, and a direct <code dir="auto">reboot(2)</code> call that powers off, skip <code dir="auto">systemd-shutdown</code> and the hook. They leave the microVM running with a stopped kernel until a stop of the machine. A machine keeps the files of the image that it was made from. So a machine from an image without the hook keeps the old poweroff until it is made again.</td>
+</tr>
+<tr>
+<td><code dir="auto">/etc/ssh/sshd_config.d/10-hopbox-image.conf</code></td>
+<td><code dir="auto">HostKey /etc/ssh/ssh_host_ed25519_key</code>, <code dir="auto">PasswordAuthentication no</code>, and <code dir="auto">KbdInteractiveAuthentication no</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">/etc/sudoers.d/90-hopbox-user</code></td>
+<td><code dir="auto">user ALL=(ALL:ALL) NOPASSWD: ALL</code> (mode 0440).</td>
+</tr>
+<tr>
+<td><code dir="auto">/etc/sysctl.d/90-hopbox.conf</code></td>
+<td><code dir="auto">kernel.modules_disabled = 1</code> (<a href="#kernel">Kernel</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">/etc/fstab</code></td>
+<td><code dir="auto">/dev/vda / ext4 defaults,x-systemd.growfs 0 0</code></td>
+</tr>
+<tr>
+<td><code dir="auto">/etc/nginx/conf.d/default.conf</code></td>
+<td>The nginx site on port 8000. It replaces the site of the nginx.org package on port 80.</td>
+</tr>
+<tr>
+<td><code dir="auto">/var/www/html/index.html</code></td>
+<td>The page of nginx.</td>
+</tr>
+<tr>
+<td><code dir="auto">/etc/profile.d/go-path.sh</code></td>
+<td>Adds <code dir="auto">~/go/bin</code> to the <code dir="auto">PATH</code> of login shells, where <code dir="auto">go install</code> puts programs.</td>
+</tr>
+<tr>
+<td><code dir="auto">/etc/default/locale</code></td>
+<td><code dir="auto">LANG=C.UTF-8</code></td>
+</tr>
+<tr>
+<td><code dir="auto">/etc/hostname</code>, <code dir="auto">/etc/hosts</code></td>
+<td>The host name <code dir="auto">hopbox</code>. The guest agent replaces it with the name of the machine.</td>
+</tr>
+<tr>
+<td><code dir="auto">/etc/localtime</code>, <code dir="auto">/etc/timezone</code></td>
+<td><code dir="auto">Etc/UTC</code></td>
+</tr>
+<tr>
+<td><code dir="auto">/etc/systemd/system-generators/systemd-ssh-generator</code></td>
+<td>A link to <code dir="auto">/dev/null</code>, which masks the generator.</td>
+</tr>
+<tr>
+<td><code dir="auto">/usr/share/hopbox/programs.json</code></td>
+<td>The <a href="#program-manifest">program manifest</a>.</td>
+</tr>
+<tr>
+<td><code dir="auto">/etc/apt/keyrings/docker.asc</code>, <code dir="auto">/etc/apt/keyrings/nginx.asc</code>, and the two files in <code dir="auto">/etc/apt/sources.list.d/</code></td>
+<td>The apt repositories of Docker and nginx.org, so <code dir="auto">apt upgrade</code> in a machine updates them.</td>
+</tr>
+<tr>
+<td><code dir="auto">/home/user/.local/bin/python</code>, <code dir="auto">python3</code>, and <code dir="auto">/home/user/.local/share/uv/python/</code></td>
+<td>The CPython of uv (<a href="#python">Python</a>).</td>
+</tr>
+</tbody>
+</table>
+<p>The image leaves out what each machine must make on its own, or what changes from build to build:</p>
+<table>
+<thead>
+<tr>
+<th>Left out</th>
+<th>Made by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SSH host keys, also the RSA and ECDSA keys of the Ubuntu package</td>
+<td>The guest agent makes the ed25519 key at the first boot of each machine (<a href="/reference/hopbox-guest/#run">hopbox-guest.md</a>).</td>
+</tr>
+<tr>
+<td>The machine ID: <code dir="auto">/etc/machine-id</code> is empty</td>
+<td>systemd, at the first boot of each machine.</td>
+</tr>
+<tr>
+<td><code dir="auto">/var/lib/systemd/random-seed</code></td>
+<td>systemd, at the first boot.</td>
+</tr>
+<tr>
+<td>apt package lists and caches, logs, <code dir="auto">/tmp</code>, and backup files such as <code dir="auto">/etc/shadow-</code></td>
+<td>apt and the services, at their first run.</td>
+</tr>
+<tr>
+<td>The apt snapshot line of the build</td>
+<td>apt in a machine reads the current Ubuntu archive.</td>
+</tr>
+<tr>
+<td>The files under <code dir="auto">/root</code> that <code dir="auto">go</code> and <code dir="auto">gh</code> write at the version check of the build, such as the device ID of <code dir="auto">gh</code></td>
+<td><code dir="auto">go</code> and <code dir="auto">gh</code>, at their first run in the machine.</td>
+</tr>
+<tr>
+<td>The cache of uv in <code dir="auto">/home/user/.cache</code></td>
+<td>uv, at its first run.</td>
+</tr>
+</tbody>
+</table>
+<p>In <code dir="auto">/etc/shadow</code>, the build sets the date of the last password change to the day of the snapshot. So the file is the same on each build.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="kernel">Kernel</h2><a class="sl-anchor-link" href="#kernel"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Kernel”</span></a></div>
+<p>The image boots with the guest kernel of <a href="/reference/guest-kernel/">guest-kernel.md</a>, with the kernel command line of <a href="/reference/guest-kernel/#boot-requirements">guest-kernel.md</a>. The kernel has module support only for its BPF compiler, and the image has no modules. The boot argument <code dir="auto">sysctl.kernel.modules_disabled=1</code> turns module loading off before the first program of the guest runs. <code dir="auto">systemd-sysctl</code> sets the same value from <code dir="auto">/etc/sysctl.d/90-hopbox.conf</code>, so a boot without the argument also ends with module loading off. The guest agent starts after <code dir="auto">systemd-sysctl.service</code>.</p>
+<p>The <code dir="auto">modprobe@</code> services of systemd report that they find no <code dir="auto">modprobe</code> program. The image has no <code dir="auto">kmod</code> package, because it has no modules to load. These services end without an error.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="disk">Disk</h2><a class="sl-anchor-link" href="#disk"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Disk”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Layout</td>
+<td>One ext4 file system on the whole disk, without a partition table</td>
+</tr>
+<tr>
+<td>Device in the guest</td>
+<td><code dir="auto">/dev/vda</code>, the root device of Firecracker</td>
+</tr>
+<tr>
+<td>Label</td>
+<td><code dir="auto">hopbox-root</code></td>
+</tr>
+<tr>
+<td>UUID</td>
+<td><code dir="auto">2f6e1d4a-7c3b-4e58-9a0d-6b1f3c5e8a72</code>, the same in every build</td>
+</tr>
+<tr>
+<td>Block size</td>
+<td>4096 bytes</td>
+</tr>
+<tr>
+<td>Size</td>
+<td>The size of the files, plus a tenth, plus 1 GiB, rounded up to 256 MiB. The build of 2026-10-16 is 3,758,096,384 bytes.</td>
+</tr>
+<tr>
+<td>Features</td>
+<td>The ext4 defaults of <code dir="auto">mke2fs</code> 1.47.2. The inode tables and the journal are written at build time, so a machine does not write them at its first boot.</td>
+</tr>
+</tbody>
+</table>
+<p>The node makes the disk of a machine as a reflink copy of the image disk. Then it grows the copy, for example to 100 GB. At each boot, <code dir="auto">systemd-growfs-root.service</code> grows the file system to the size of the disk, while it is mounted. The <code dir="auto">x-systemd.growfs</code> option in <code dir="auto">/etc/fstab</code> turns this on. A machine sees all of its disk without a step of its own.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="pins">Pins</h2><a class="sl-anchor-link" href="#pins"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Pins”</span></a></div>
+<p><code dir="auto">images/default/pins.env</code> holds every version and digest that a build uses. A build with the same pins and the same <code dir="auto">hopbox-guest</code> gives the same disk (<a href="#reproducible-build">Reproducible build</a>).</p>
+<table>
+<thead>
+<tr>
+<th>Pin</th>
+<th>Example</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">UBUNTU_IMAGE</code></td>
+<td><code dir="auto">ubuntu:26.04@sha256:f144425f...</code></td>
+<td>The Ubuntu container image, by the digest of its multi-platform index.</td>
+</tr>
+<tr>
+<td><code dir="auto">UBUNTU_SNAPSHOT</code></td>
+<td><code dir="auto">20261016T080000Z</code></td>
+<td>The time of the snapshot of the Ubuntu archive on <code dir="auto">snapshot.ubuntu.com</code>. It fixes the version of every Ubuntu package. It is also the build time: <code dir="auto">SOURCE_DATE_EPOCH</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">DOCKER_GPG_SHA256</code></td>
+<td><code dir="auto">1500c1f5...</code></td>
+<td>The sha256 of the signing key of the Docker apt repository. If the key differs, the build fails.</td>
+</tr>
+<tr>
+<td><code dir="auto">DOCKER_VERSION</code></td>
+<td><code dir="auto">5:29.9.1-1~ubuntu.26.04~resolute</code></td>
+<td>The version of <code dir="auto">docker-ce</code> and <code dir="auto">docker-ce-cli</code>. Its last part names the Ubuntu suite.</td>
+</tr>
+<tr>
+<td><code dir="auto">CONTAINERD_VERSION</code>, <code dir="auto">DOCKER_BUILDX_VERSION</code>, <code dir="auto">DOCKER_COMPOSE_VERSION</code></td>
+<td><code dir="auto">2.4.2-2~ubuntu.26.04~resolute</code></td>
+<td>The versions of <code dir="auto">containerd.io</code>, <code dir="auto">docker-buildx-plugin</code>, and <code dir="auto">docker-compose-plugin</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">NGINX_GPG_SHA256</code></td>
+<td><code dir="auto">55385da3...</code></td>
+<td>The sha256 of the signing key of the nginx.org apt repository. If the key differs, the build fails.</td>
+</tr>
+<tr>
+<td><code dir="auto">NGINX_VERSION</code></td>
+<td><code dir="auto">1.30.6-1~resolute</code></td>
+<td>The version of the package <code dir="auto">nginx</code> of nginx.org. Its last part names the Ubuntu suite.</td>
+</tr>
+<tr>
+<td><code dir="auto">NODE_VERSION</code>, <code dir="auto">NODE_SHA256</code></td>
+<td><code dir="auto">24.22.0</code></td>
+<td>The Node.js release and the sha256 of <code dir="auto">node-v&lt;version&gt;-linux-x64.tar.xz</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">GO_VERSION</code>, <code dir="auto">GO_SHA256</code></td>
+<td><code dir="auto">1.27.2</code></td>
+<td>The Go release and the sha256 of <code dir="auto">go&lt;version&gt;.linux-amd64.tar.gz</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">PYTHON_VERSION</code></td>
+<td><code dir="auto">3.15.0</code></td>
+<td>The CPython release that uv installs for <code dir="auto">user</code>. uv checks it against the sha256 that it ships.</td>
+</tr>
+<tr>
+<td><code dir="auto">UV_VERSION</code>, <code dir="auto">UV_SHA256</code></td>
+<td><code dir="auto">0.13.1</code></td>
+<td>The uv release and the sha256 of <code dir="auto">uv-x86_64-unknown-linux-gnu.tar.gz</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">GH_VERSION</code>, <code dir="auto">GH_SHA256</code></td>
+<td><code dir="auto">2.102.0</code></td>
+<td>The GitHub CLI release and the sha256 of <code dir="auto">gh_&lt;version&gt;_linux_amd64.tar.gz</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">NEOVIM_VERSION</code>, <code dir="auto">NEOVIM_SHA256</code></td>
+<td><code dir="auto">0.12.6</code></td>
+<td>The Neovim release and the sha256 of <code dir="auto">nvim-linux-x86_64.tar.gz</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">RIPGREP_VERSION</code>, <code dir="auto">RIPGREP_SHA256</code></td>
+<td><code dir="auto">15.2.0</code></td>
+<td>The ripgrep release and the sha256 of <code dir="auto">ripgrep-&lt;version&gt;-x86_64-unknown-linux-musl.tar.gz</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Each line of <code dir="auto">pins.env</code> is <code dir="auto">NAME=value</code>. <code dir="auto">build.sh</code> reads the file as data, without a shell. It refuses an unknown name, a missing pin, and a value with a character other than letters, digits, and <code dir="auto">.+~:@/_-</code>. <code dir="auto">tools/imagepins</code> checks each value against a stricter pattern of its own pin, for example <code dir="auto">1.2.3</code> for a release version, before it writes the file. So a value from a release page or a hand edit cannot run as shell code in the build.</p>
+<p><code dir="auto">images/default/node-release-keys</code> lists the fingerprints of the primary keys of the active Node.js releasers, from the Node.js README. The build downloads the keyring of <code dir="auto">nodejs/release-keys</code> and <code dir="auto">SHASUMS256.txt.asc</code> of the release. <code dir="auto">gpgv</code> checks the signature. The signer must be in the list, and the signed file must list <code dir="auto">NODE_SHA256</code>. A change of the releasers is a change of this file by hand.</p>
+<p><code dir="auto">make image-pins</code> runs <code dir="auto">tools/imagepins</code>, which sets each pin to the latest release:</p>
+<table>
+<thead>
+<tr>
+<th>Pins</th>
+<th>Latest release from</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">UBUNTU_IMAGE</code></td>
+<td>The digest of the same tag, for example <code dir="auto">26.04</code>, from Docker Hub. If Docker Hub has a tag of a later LTS release, for example <code dir="auto">28.04</code>, the tool prints a warning. A move to it is a change of the tag by hand, together with the suites of Docker and nginx.</td>
+</tr>
+<tr>
+<td><code dir="auto">UBUNTU_SNAPSHOT</code></td>
+<td>The current hour in UTC, rounded down, for example <code dir="auto">20261016T080000Z</code> at 08:41. The snapshot service serves the archive as it was at that time.</td>
+</tr>
+<tr>
+<td>Docker</td>
+<td>The newest version of each package in the Docker apt repository for the suite of <code dir="auto">DOCKER_VERSION</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">NGINX_VERSION</code></td>
+<td>The newest <code dir="auto">nginx</code> in the stable nginx.org repository for the suite of <code dir="auto">NGINX_VERSION</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">NODE_*</code></td>
+<td>The newest LTS release in <code dir="auto">https://nodejs.org/dist/index.json</code>, with the sha256 from its <code dir="auto">SHASUMS256.txt</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">GO_*</code></td>
+<td>The newest stable release in <code dir="auto">https://go.dev/dl/?mode=json</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">PYTHON_VERSION</code></td>
+<td>The newest stable release of Python 3 on <code dir="auto">python.org</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">UV_*</code>, <code dir="auto">GH_*</code>, <code dir="auto">NEOVIM_*</code>, <code dir="auto">RIPGREP_*</code></td>
+<td>The latest GitHub release of <code dir="auto">astral-sh/uv</code>, <code dir="auto">cli/cli</code>, <code dir="auto">neovim/neovim</code>, and <code dir="auto">BurntSushi/ripgrep</code>, with the sha256 that GitHub records for the archive. uv, the GitHub CLI, and ripgrep also publish a checksum file. The file must list the same sha256. Neovim publishes none.</td>
+</tr>
+</tbody>
+</table>
+<p>The tool refuses a release whose tag is not a version, for example <code dir="auto">v2.0;$(id)</code>. It does not change <code dir="auto">DOCKER_GPG_SHA256</code> and <code dir="auto">NGINX_GPG_SHA256</code>. If Docker or nginx.org changes its signing key, the tool fails, and a person checks the new key.</p>
+<p>Run <code dir="auto">make image-pins</code> before the build of an image that machines will use, so the image has the latest releases. Then commit <code dir="auto">pins.env</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="recipe">Recipe</h2><a class="sl-anchor-link" href="#recipe"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Recipe”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>What it holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">images/default/pins.env</code></td>
+<td>The <a href="#pins">pins</a>.</td>
+</tr>
+<tr>
+<td><code dir="auto">images/default/Dockerfile</code></td>
+<td>Four stages. <code dir="auto">base</code> is the pinned Ubuntu image with apt on the snapshot. <code dir="auto">unpack</code> downloads the release archives, checks each one against its pin, and unpacks them with <code dir="auto">bsdtar</code>. <code dir="auto">rootfs</code> installs the programs and the files of the image, and copies the files of <code dir="auto">unpack</code>. <code dir="auto">builder</code> holds <code dir="auto">e2fsprogs</code>, <code dir="auto">bsdtar</code>, and <code dir="auto">zstd</code>. The stages that unpack use <code dir="auto">bsdtar</code>. GNU tar of Ubuntu 26.04 fails under the amd64 emulation of Docker Desktop on an Arm Mac, with <code dir="auto">Cannot open: Function not implemented</code> for each file in a dir. The first line pins the Dockerfile frontend <code dir="auto">docker/dockerfile:1.28.0</code> by digest. So the meaning of the file does not change with the Docker of the host.</td>
+</tr>
+<tr>
+<td><code dir="auto">images/default/node-release-keys</code></td>
+<td>The fingerprints of the Node.js release keys (<a href="#pins">Pins</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">images/default/manifest.sh</code></td>
+<td>Writes the program manifest inside the root file system.</td>
+</tr>
+<tr>
+<td><code dir="auto">images/default/rootfs/</code></td>
+<td>The files that the image adds, at their paths in the image.</td>
+</tr>
+<tr>
+<td><code dir="auto">images/default/build.sh</code></td>
+<td>Runs the build and the check in Docker. <code dir="auto">make image</code> and <code dir="auto">make check-image</code> call it.</td>
+</tr>
+<tr>
+<td><code dir="auto">images/default/finalize.sh</code></td>
+<td>Runs in the <code dir="auto">builder</code> stage. Turns the root file system into the disk and its zstd copy.</td>
+</tr>
+<tr>
+<td><code dir="auto">images/default/check-disk.sh</code></td>
+<td>Runs in the <code dir="auto">builder</code> stage. Reads the disk with <code dir="auto">debugfs</code> and checks the rules of this page.</td>
+</tr>
+<tr>
+<td><code dir="auto">images/default/boottest/</code></td>
+<td>The boot test of <code dir="auto">make test-image</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">tools/imageartifact</code></td>
+<td>Writes and checks <code dir="auto">artifact.json</code> (<a href="/reference/artifact-format/#imageartifact">artifact-format.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">tools/imagepins</code></td>
+<td>Moves the pins to the latest releases.</td>
+</tr>
+</tbody>
+</table>
+<p>The build does these steps:</p>
+<ol>
+<li>It builds <code dir="auto">hopbox-guest</code> for <code dir="auto">linux/amd64</code> with the version of the checkout, as <code dir="auto">make build</code> does. It uses the Go release of the <code dir="auto">toolchain</code> line in <code dir="auto">go.mod</code>, through <code dir="auto">GOTOOLCHAIN</code>, so every host builds the same binary.</li>
+<li>It builds the <code dir="auto">rootfs</code> stage with <code dir="auto">docker buildx</code> for <code dir="auto">linux/amd64</code> and exports the root file system as a tar file.</li>
+<li><code dir="auto">finalize.sh</code> runs in the <code dir="auto">builder</code> stage. It unpacks the tar file inside the container, not in the mounted output dir. A mount from macOS keeps no owners and no extended attributes, such as the file capabilities of <code dir="auto">ping</code>. Then it makes the ext4 disk from the files with <code dir="auto">mke2fs -d</code>. Then it checks the disk with <code dir="auto">e2fsck</code> and compresses it with <code dir="auto">zstd -19</code>.</li>
+<li><code dir="auto">tools/imageartifact</code> writes <code dir="auto">artifact.json</code> and prints the digest.</li>
+</ol>
+<p>apt checks the signatures of the Ubuntu snapshot. The first <code dir="auto">apt-get update</code> of the build runs before the image has CA certificates, so it does not check the TLS certificate of <code dir="auto">snapshot.ubuntu.com</code>. The signatures still protect every package. Every later step checks TLS.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="reproducible-build">Reproducible build</h2><a class="sl-anchor-link" href="#reproducible-build"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Reproducible build”</span></a></div>
+<p>Two builds of the same checkout with the same pins give the same disk, the same compressed copy, and the same digest. These rules make it so:</p>
+<ul>
+<li>The Ubuntu image is pinned by digest, and the Ubuntu packages come from one snapshot of the archive.</li>
+<li>The Docker and nginx packages are pinned by version, and every release archive by its sha256. uv checks the CPython download against the sha256 that the pinned uv ships.</li>
+<li>The Dockerfile frontend is pinned by digest, and <code dir="auto">hopbox-guest</code> is built by the Go release of <code dir="auto">go.mod</code>.</li>
+<li><code dir="auto">mke2fs</code> reads <code dir="auto">SOURCE_DATE_EPOCH</code>, the time of the snapshot. No timestamp in the file system is later than that time. <code dir="auto">mke2fs</code> adds the files in sorted order.</li>
+<li>The file system has a fixed UUID and a fixed hash seed.</li>
+<li>The image leaves out the files that change on each build (<a href="#files">Files</a>).</li>
+<li><code dir="auto">zstd</code> gives the same output for the same input and level.</li>
+</ul>
+<p>The image holds <code dir="auto">hopbox-guest</code>, which carries the version and the commit of the checkout. So each commit gives a new digest.</p>
+<p>On the tested server, on 2026-10-16, two builds of the recipe of this page gave the same files and the same digest <code dir="auto">sha256:354fb76713c333b4d22c0341cab5f9b04b288eb44bd97110f81ca13bfc260e7c</code>. One build ran with <code dir="auto">IMAGE_NO_CACHE=1</code>, which builds every Docker step again. The two builds ran at the same time. The disk has the sha256 <code dir="auto">465579a3e137d8222d1bfde177cca61fb344791812203d628aa09777a1e26162</code>. These builds held a <code dir="auto">hopbox-guest</code> with the version <code dir="auto">v0.0.0-m18dev</code>. An earlier recipe gave the same result for two builds one after the other.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="outputs">Outputs</h2><a class="sl-anchor-link" href="#outputs"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Outputs”</span></a></div>
+<p><code dir="auto">make image</code> writes the artifact to <code dir="auto">bin/image/</code>, or to <code dir="auto">IMAGE_OUT</code>:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">disk.raw</code></td>
+<td>The disk, a sparse file of 3,758,096,384 bytes, with about 2.37 GB of data.</td>
+</tr>
+<tr>
+<td><code dir="auto">disk.raw.zst</code></td>
+<td>The zstd copy, about 559 MB.</td>
+</tr>
+<tr>
+<td><code dir="auto">artifact.json</code></td>
+<td>The metadata (<a href="/reference/artifact-format/#artifactjson">artifact-format.md</a>).</td>
+</tr>
+</tbody>
+</table>
+<p>It also writes <code dir="auto">bin/linux_amd64/hopbox-guest</code>. <code dir="auto">make bundle</code> puts <code dir="auto">artifact.json</code> and <code dir="auto">disk.raw.zst</code> into the release bundle, and the install of a node puts them into the image cache of the node (<a href="/reference/release-bundle/#the-default-image-in-the-bundle">release-bundle.md</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="make-targets">Make targets</h2><a class="sl-anchor-link" href="#make-targets"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Make targets”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Target</th>
+<th>What it does</th>
+<th>Needs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">image</code></td>
+<td>Builds <code dir="auto">hopbox-guest</code> for <code dir="auto">linux/amd64</code> and the image, and prints the digest.</td>
+<td>Docker with buildx and <code dir="auto">linux/amd64</code> containers, Go</td>
+</tr>
+<tr>
+<td><code dir="auto">check-image</code></td>
+<td>Checks the artifact in <code dir="auto">IMAGE_OUT</code>: <code dir="auto">artifact.json</code>, the size and sha256 of each file, and the rules below.</td>
+<td>Docker, Go</td>
+</tr>
+<tr>
+<td><code dir="auto">test-image</code></td>
+<td>Boots the image under Firecracker and checks it (<a href="#boot-test">Boot test</a>).</td>
+<td>Linux, KVM, sudo, Firecracker, a built kernel and image</td>
+</tr>
+<tr>
+<td><code dir="auto">image-pins</code></td>
+<td>Sets <code dir="auto">images/default/pins.env</code> to the latest releases (<a href="#pins">Pins</a>).</td>
+<td>Go, internet access</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">IMAGE_OUT</code></td>
+<td><code dir="auto">bin/image</code></td>
+<td>The artifact folder.</td>
+</tr>
+<tr>
+<td><code dir="auto">IMAGE_NO_CACHE</code></td>
+<td>empty</td>
+<td>Set to <code dir="auto">1</code> in the environment to build every Docker step again, for example to check that the build is reproducible.</td>
+</tr>
+<tr>
+<td><code dir="auto">KERNEL_OUT</code></td>
+<td><code dir="auto">bin/kernel</code></td>
+<td>The folder of the kernel for <code dir="auto">test-image</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">FIRECRACKER</code></td>
+<td><code dir="auto">firecracker</code></td>
+<td>The Firecracker binary for <code dir="auto">test-image</code>. It must be v1.17.</td>
+</tr>
+<tr>
+<td><code dir="auto">TEST_DOCKER_IMAGE</code></td>
+<td>empty</td>
+<td>A <code dir="auto">docker save</code> tar file of <code dir="auto">hello-world</code> for <code dir="auto">test-image</code>. Without it, the test skips the Docker check.</td>
+</tr>
+</tbody>
+</table>
+<p><code dir="auto">check-image</code> reads the disk with <code dir="auto">debugfs</code>, without a mount. It checks these rules. It reports each broken rule, and then it fails:</p>
+<ul>
+<li>The disk has no SSH host key, and <code dir="auto">/etc/machine-id</code> is empty.</li>
+<li><code dir="auto">/usr/local/bin/hopbox-guest</code> exists with mode 0755, and <code dir="auto">hopbox-guest.service</code> is enabled.</li>
+<li>The drop-in that removes <code dir="auto">AF_VSOCK</code> from services exists.</li>
+<li><code dir="auto">nginx.service</code> is not enabled, and <code dir="auto">systemd-ssh-generator</code> is masked.</li>
+<li><code dir="auto">/etc/sudoers.d/90-hopbox-user</code> has mode 0440.</li>
+<li><code dir="auto">/etc/passwd</code> has <code dir="auto">user</code> with the ID 1000, and no user <code dir="auto">ubuntu</code>.</li>
+<li>The apt snapshot line and the apt package lists of the build are gone.</li>
+<li>The disk holds no device ID of <code dir="auto">gh</code> from the build.</li>
+<li><code dir="auto">user</code> has the <code dir="auto">python3</code> of uv in <code dir="auto">~/.local/bin</code>.</li>
+<li><code dir="auto">/usr/local/bin</code> has no <code dir="auto">claude</code>, <code dir="auto">codex</code>, or <code dir="auto">opencode</code>.</li>
+</ul>
+<div class="sl-heading-wrapper level-h2"><h2 id="boot-test">Boot test</h2><a class="sl-anchor-link" href="#boot-test"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Boot test”</span></a></div>
+<p><code dir="auto">make test-image</code> runs the Go test in <code dir="auto">images/default/boottest</code> as root. It boots the image the way a node will, with these parts:</p>
+<ul>
+<li>A copy of the disk, grown to 16 GiB. Where the file system has reflinks, the copy is a reflink copy. Elsewhere, it is a sparse copy.</li>
+<li>A tap device with <code dir="auto">169.254.0.1/32</code> and a route to the machine.</li>
+<li>MMDS version 2 with a new link key, and a vsock device.</li>
+<li>A guest link server of <code dir="auto">internal/node/guestlink</code>.</li>
+</ul>
+<p>Then it checks the machine through the guest link, SSH, and HTTP:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>What passes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Guest link</td>
+<td>The guest agent authenticates and applies its configuration.</td>
+</tr>
+<tr>
+<td>Kernel</td>
+<td><code dir="auto">uname -r</code> is <code dir="auto">6.1.188-hopbox1</code>. The kernel has the i8042 keyboard, so <code dir="auto">SendCtrlAltDel</code> works. SELinux denies nothing. Module loading is off. The BPF compiler is on.</td>
+</tr>
+<tr>
+<td>Boot</td>
+<td><code dir="auto">systemctl is-system-running --wait</code> prints <code dir="auto">running</code>, and <code dir="auto">/etc/machine-id</code> is new.</td>
+</tr>
+<tr>
+<td>Network</td>
+<td>The host name, the address, the default route, the MTU, and <code dir="auto">/etc/resolv.conf</code> match the configuration.</td>
+</tr>
+<tr>
+<td>Configuration</td>
+<td>A login shell has the env of the configuration. <code dir="auto">/etc/hopbox/authorized_keys</code> holds its key. The start command prints its line.</td>
+</tr>
+<tr>
+<td>Main user</td>
+<td><code dir="auto">user</code> has the ID 1000, the groups <code dir="auto">sudo</code> and <code dir="auto">docker</code>, and sudo without a password.</td>
+</tr>
+<tr>
+<td>Disk</td>
+<td>The root file system fills the 16 GiB disk.</td>
+</tr>
+<tr>
+<td>Programs</td>
+<td>The manifest in the image matches <code dir="auto">artifact.json</code>, and each program runs. In a login shell of <code dir="auto">user</code>, <code dir="auto">python</code> and <code dir="auto">python3</code> are the CPython of uv in the manifest. <code dir="auto">/usr/bin/python3</code> is the Python of Ubuntu. No coding agent is in the <code dir="auto">PATH</code>.</td>
+</tr>
+<tr>
+<td>Docker</td>
+<td><code dir="auto">docker load</code> of <code dir="auto">hello-world</code> and <code dir="auto">docker run --network none hello-world</code>, without internet access.</td>
+</tr>
+<tr>
+<td>SSH</td>
+<td>The guest agent reports one ed25519 host key. An SSH client that trusts only that key logs in as <code dir="auto">user</code> with the key of the configuration.</td>
+</tr>
+<tr>
+<td>vsock</td>
+<td>An SSH session, <code dir="auto">sudo</code> in it, and a <code dir="auto">systemd-run</code> service cannot open <code dir="auto">AF_VSOCK</code>. A static x86_64 probe that calls the i386 <code dir="auto">socket</code> through <code dir="auto">int 0x80</code> cannot open it either, in each of these places and in exec. nginx runs with the filter and <code dir="auto">SystemCallArchitectures=native</code>, and the guest agent without a filter. The user manager has the filter and <code dir="auto">NoNewPrivs: 0</code>. The guest listens on no vsock port.</td>
+</tr>
+<tr>
+<td>nginx</td>
+<td>Port 8000 is closed. After <code dir="auto">sudo systemctl enable --now nginx</code>, it serves the page.</td>
+</tr>
+<tr>
+<td>Second machine</td>
+<td>A second machine from the same image has another SSH host key and another machine ID.</td>
+</tr>
+<tr>
+<td>Stop</td>
+<td><code dir="auto">SendCtrlAltDel</code> stops each machine, and Firecracker exits.</td>
+</tr>
+</tbody>
+</table>
+<p>On the tested server, the work folder is on the ext4 root file system, which has no reflinks, so the test makes sparse copies. The XFS file system of <code dir="auto">/var/lib/hopbox</code> has reflinks.</p>
+<p>The test writes the serial console of each machine to <code dir="auto">console-&lt;n&gt;.log</code> in its work folder. It reads these variables, which <code dir="auto">make test-image</code> sets:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">HOPBOX_TEST_KVM</code></td>
+<td>Must be <code dir="auto">1</code>. Otherwise the test skips.</td>
+</tr>
+<tr>
+<td><code dir="auto">HOPBOX_TEST_FIRECRACKER</code></td>
+<td>The Firecracker binary.</td>
+</tr>
+<tr>
+<td><code dir="auto">HOPBOX_TEST_KERNEL</code></td>
+<td>The guest kernel <code dir="auto">vmlinux</code>. Its sha256 must match <code dir="auto">kernel.sha256</code> of the image.</td>
+</tr>
+<tr>
+<td><code dir="auto">HOPBOX_TEST_IMAGE</code></td>
+<td>The artifact folder. The test runs <code dir="auto">Verify</code> on it first.</td>
+</tr>
+<tr>
+<td><code dir="auto">HOPBOX_TEST_DOCKER_IMAGE</code></td>
+<td>Optional. A <code dir="auto">docker save</code> tar file of <code dir="auto">hello-world</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">HOPBOX_TEST_WORKDIR</code></td>
+<td>Optional. The folder for the disk copies and the console logs. A reflink copy needs this folder on the file system of the image. The default is a new temporary folder.</td>
+</tr>
+</tbody>
+</table>
+</div><footer class="sl-flex astro-fzngq47q"><div class="meta sl-flex astro-fzngq47q"></div><div class="pagination-links print:hidden astro-7jhddma2" dir="ltr"><a href="/reference/guest-kernel/" rel="prev" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-7jhddma2">Previous<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">Guest kernel</span></span></a><a href="/reference/artifact-format/" rel="next" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-7jhddma2">Next<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">Artifact format</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>

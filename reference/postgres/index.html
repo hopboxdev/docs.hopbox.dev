@@ -1,0 +1,892 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-toc data-has-sidebar class="astro-g6oqdoeg"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>The bundled Postgres | hopbox docs</title><link rel="canonical" href="https://docs.hopbox.dev/reference/postgres/"/><link rel="sitemap" href="/sitemap-index.xml"/><link rel="shortcut icon" href="/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.3.8"/><meta name="generator" content="Starlight v0.42.6"/><meta property="og:title" content="The bundled Postgres"/><meta property="og:type" content="article"/><meta property="og:url" content="https://docs.hopbox.dev/reference/postgres/"/><meta property="og:locale" content="en"/><meta property="og:description" content="The bundled Postgres: its build, tools/pgdist, paths, OS users, roles, logs, errors, and the schema migrations."/><meta property="og:site_name" content="hopbox docs"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="The bundled Postgres: its build, tools/pgdist, paths, OS users, roles, logs, errors, and the schema migrations."/><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/_astro/print.ehPL0gv-.css" media="print"><link rel="stylesheet" href="/_astro/middleware.DkUYdNkX.css"><script type="module" src="/_astro/page.cNngjUgL.js"></script></head><body class="astro-g6oqdoeg"><a class="sl-skip-link astro-ktawktwe" href="#_top">Skip to content</a><div class="page sl-flex astro-vlwsw6sx"><header class="header astro-vlwsw6sx"><div class="header astro-qe7tu4yu"><div class="title-wrapper sl-flex astro-qe7tu4yu"><a href="/" class="site-title sl-flex astro-42muqipg"><span class="astro-42muqipg" translate="no">hopbox docs</span></a></div><div class="sl-flex print:hidden astro-qe7tu4yu"><site-search class="astro-qe7tu4yu astro-yp365hkw" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"><button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-yp365hkw"><svg aria-hidden="true" class="astro-yp365hkw astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg><span class="sl-hidden md:sl-block astro-yp365hkw" aria-hidden="true">Search</span><kbd class="sl-hidden md:sl-flex astro-yp365hkw" style="display: none;"><kbd class="astro-yp365hkw">Ctrl</kbd><kbd class="astro-yp365hkw">K</kbd></kbd></button><dialog style="padding:0" aria-label="Search" class="astro-yp365hkw"><div class="dialog-frame sl-flex astro-yp365hkw"><button data-close-modal class="sl-flex md:sl-hidden astro-yp365hkw">Cancel</button><div class="search-container astro-yp365hkw"><div id="starlight__search" class="astro-yp365hkw"></div></div></div></dialog></site-search><script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script><script type="module" src="/_astro/Search.astro_astro_type_script_index_0_lang.g9hoxVJg.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-qe7tu4yu"><div class="sl-flex social-icons astro-qe7tu4yu"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script><script type="module">var e=`starlight-theme`,t=e=>e===`auto`||e===`dark`||e===`light`?e:`auto`,n=()=>t(typeof localStorage<`u`&&localStorage.getItem(e));function r(t){typeof localStorage<`u`&&localStorage.setItem(e,t===`light`||t===`dark`?t:``)}var i=()=>matchMedia(`(prefers-color-scheme: light)`).matches?`light`:`dark`;function a(e){StarlightThemeProvider.updatePickers(e),document.documentElement.dataset.theme=e===`auto`?i():e,r(e)}matchMedia(`(prefers-color-scheme: light)`).addEventListener(`change`,()=>{n()===`auto`&&a(`auto`)});var o=class extends HTMLElement{constructor(){super(),a(n()),this.querySelector(`select`)?.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&a(t(e.currentTarget.value))})}};customElements.define(`starlight-theme-select`,o);</script><script type="module">var e=class extends HTMLElement{constructor(){super();let e=this.querySelector(`select`);e&&(e.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=e.currentTarget.value)}),window.addEventListener(`pageshow`,t=>{if(!t.persisted)return;let n=e.querySelector(`option[selected]`)?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}};customElements.define(`starlight-lang-select`,e);</script></div></div></header><nav class="sidebar print:hidden astro-vlwsw6sx" aria-label="Main"><button popovertarget="starlight__sidebar" class="sl-menu-button sl-flex md:sl-hidden print:hidden astro-ibd3qwco"><svg aria-hidden="true" class="open-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg><span class="sr-only astro-ibd3qwco">Menu</span></button><script type="module">var e=class extends HTMLElement{constructor(){super();let e=matchMedia(`(min-width: 50em)`),t=()=>{this.popover=e.matches?null:`auto`};t(),e.addEventListener(`change`,()=>t()),this.addEventListener(`toggle`,({newState:e})=>this.trapFocus(e===`open`))}trapFocus(e){document.querySelectorAll(`.main-frame, .sl-skip-link`).forEach(t=>{t.toggleAttribute(`inert`,e)})}};customElements.define(`sl-sidebar-pane`,e);</script><sl-sidebar-pane popover id="starlight__sidebar" class="sidebar-pane astro-vlwsw6sx"><div class="sidebar-content sl-flex astro-vlwsw6sx"><sl-sidebar-state-persist data-hash="0qsyok1" class="astro-oblzz35h"><script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script><ul class="top-level astro-twzrdani"><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Guides</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/guide/run-hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">Run the control role on a laptop</span></a></li><li class="astro-twzrdani"><a href="/guide/install-on-ovhcloud/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on an OVHcloud server with Terraform</span></a></li><li class="astro-twzrdani"><a href="/guide/enroll-node/" class="astro-twzrdani"><span class="astro-twzrdani">Enroll the node role on one server</span></a></li><li class="astro-twzrdani"><a href="/guide/dns-role/" class="astro-twzrdani"><span class="astro-twzrdani">Serve the domain of an install with the DNS role</span></a></li><li class="astro-twzrdani"><a href="/guide/acme-certificate/" class="astro-twzrdani"><span class="astro-twzrdani">Get the wildcard certificate of an install</span></a></li><li class="astro-twzrdani"><a href="/guide/machine-urls/" class="astro-twzrdani"><span class="astro-twzrdani">Run the edge role and open machine URLs</span></a></li><li class="astro-twzrdani"><a href="/guide/first-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">First sign-in on a new install</span></a></li><li class="astro-twzrdani"><a href="/guide/github-google-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/guide/orgs/" class="astro-twzrdani"><span class="astro-twzrdani">Work in a team org</span></a></li><li class="astro-twzrdani"><a href="/guide/env-vars/" class="astro-twzrdani"><span class="astro-twzrdani">Set env vars and secrets</span></a></li><li class="astro-twzrdani"><a href="/guide/machines/" class="astro-twzrdani"><span class="astro-twzrdani">Create and manage machines</span></a></li><li class="astro-twzrdani"><a href="/guide/firecracker-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Run machines with Firecracker</span></a></li><li class="astro-twzrdani"><a href="/guide/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">Check the network of a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/cli/" class="astro-twzrdani"><span class="astro-twzrdani">Use the hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Use machines from the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-prompt/" class="astro-twzrdani"><span class="astro-twzrdani">Work in the prompt of the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/ssh/" class="astro-twzrdani"><span class="astro-twzrdani">Reach a machine over SSH</span></a></li><li class="astro-twzrdani"><a href="/guide/exec-and-files/" class="astro-twzrdani"><span class="astro-twzrdani">Run commands and copy files in a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">Connect an AI agent to hopbox with MCP</span></a></li><li class="astro-twzrdani"><a href="/guide/console/" class="astro-twzrdani"><span class="astro-twzrdani">Use the console</span></a></li><li class="astro-twzrdani"><a href="/guide/typescript-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">Call the API from TypeScript</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-and-keys/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in the CLI, and make API keys and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/guide/install-debian/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on a Debian 13 server by hand</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Reference</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="1"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/reference/hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/release-bundle/" class="astro-twzrdani"><span class="astro-twzrdani">Release bundle</span></a></li><li class="astro-twzrdani"><a href="/reference/server-layout/" class="astro-twzrdani"><span class="astro-twzrdani">Server layout</span></a></li><li class="astro-twzrdani"><a href="/reference/hopboxd-config/" class="astro-twzrdani"><span class="astro-twzrdani">The bootstrap config of hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/api/" class="astro-twzrdani"><span class="astro-twzrdani">The API server</span></a></li><li class="astro-twzrdani"><a href="/reference/org-api/" class="astro-twzrdani"><span class="astro-twzrdani">The org API</span></a></li><li class="astro-twzrdani"><a href="/reference/vars-api/" class="astro-twzrdani"><span class="astro-twzrdani">The env var API</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-api/" class="astro-twzrdani"><span class="astro-twzrdani">The machine API</span></a></li><li class="astro-twzrdani"><a href="/reference/placement/" class="astro-twzrdani"><span class="astro-twzrdani">Placement</span></a></li><li class="astro-twzrdani"><a href="/reference/auth-api/" class="astro-twzrdani"><span class="astro-twzrdani">The sign-in, account, and audit API</span></a></li><li class="astro-twzrdani"><a href="/reference/credentials/" class="astro-twzrdani"><span class="astro-twzrdani">CLI tokens, API keys, admin API keys, and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/reference/sessions/" class="astro-twzrdani"><span class="astro-twzrdani">Sessions, cookies, and sign-in links</span></a></li><li class="astro-twzrdani"><a href="/reference/smtp/" class="astro-twzrdani"><span class="astro-twzrdani">SMTP config</span></a></li><li class="astro-twzrdani"><a href="/reference/mail/" class="astro-twzrdani"><span class="astro-twzrdani">Mail</span></a></li><li class="astro-twzrdani"><a href="/reference/oauth/" class="astro-twzrdani"><span class="astro-twzrdani">Sign-in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/reference/metrics/" class="astro-twzrdani"><span class="astro-twzrdani">Metrics</span></a></li><li class="astro-twzrdani"><a href="/reference/admin-api/" class="astro-twzrdani"><span class="astro-twzrdani">The admin API</span></a></li><li class="astro-twzrdani"><a href="/reference/internal-listener/" class="astro-twzrdani"><span class="astro-twzrdani">The internal listener</span></a></li><li class="astro-twzrdani"><a href="/reference/enrollment/" class="astro-twzrdani"><span class="astro-twzrdani">Enrollment and the install PKI</span></a></li><li class="astro-twzrdani"><a href="/reference/control-channel/" class="astro-twzrdani"><span class="astro-twzrdani">The control channel</span></a></li><li class="astro-twzrdani"><a href="/reference/dns/" class="astro-twzrdani"><span class="astro-twzrdani">The DNS role</span></a></li><li class="astro-twzrdani"><a href="/reference/edge/" class="astro-twzrdani"><span class="astro-twzrdani">The edge role</span></a></li><li class="astro-twzrdani"><a href="/reference/ssh-front-door/" class="astro-twzrdani"><span class="astro-twzrdani">The SSH front door</span></a></li><li class="astro-twzrdani"><a href="/reference/acme/" class="astro-twzrdani"><span class="astro-twzrdani">The certificate of the install</span></a></li><li class="astro-twzrdani"><a href="/reference/executor-protocol/" class="astro-twzrdani"><span class="astro-twzrdani">The executor protocol</span></a></li><li class="astro-twzrdani"><a href="/reference/executor/" class="astro-twzrdani"><span class="astro-twzrdani">The node executor</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-logs/" class="astro-twzrdani"><span class="astro-twzrdani">Machine logs</span></a></li><li class="astro-twzrdani"><a href="/reference/vmm/" class="astro-twzrdani"><span class="astro-twzrdani">The VMM driver interface</span></a></li><li class="astro-twzrdani"><a href="/reference/firecracker-driver/" class="astro-twzrdani"><span class="astro-twzrdani">The Firecracker driver</span></a></li><li class="astro-twzrdani"><a href="/reference/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">The node network</span></a></li><li class="astro-twzrdani"><a href="/reference/preflight/" class="astro-twzrdani"><span class="astro-twzrdani">The preflight check</span></a></li><li class="astro-twzrdani"><a href="/reference/cli/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/reference/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">The MCP server</span></a></li><li class="astro-twzrdani"><a href="/reference/console/" class="astro-twzrdani"><span class="astro-twzrdani">Console</span></a></li><li class="astro-twzrdani"><a href="/reference/go-client/" class="astro-twzrdani"><span class="astro-twzrdani">Go client</span></a></li><li class="astro-twzrdani"><a href="/reference/ts-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">TypeScript SDK</span></a></li><li class="astro-twzrdani"><a href="/reference/hopbox-guest/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox-guest</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-link/" class="astro-twzrdani"><span class="astro-twzrdani">Guest link</span></a></li><li class="astro-twzrdani"><a href="/reference/terraform-provider/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox Terraform provider</span></a></li><li class="astro-twzrdani"><a href="/reference/version/" class="astro-twzrdani"><span class="astro-twzrdani">The version command</span></a></li><li class="astro-twzrdani"><a href="/reference/api-definitions/" class="astro-twzrdani"><span class="astro-twzrdani">API definitions</span></a></li><li class="astro-twzrdani"><a href="/reference/postgres/" aria-current="page" class="astro-twzrdani"><span class="astro-twzrdani">The bundled Postgres</span></a></li><li class="astro-twzrdani"><a href="/reference/domain-rules/" class="astro-twzrdani"><span class="astro-twzrdani">Domain rules</span></a></li><li class="astro-twzrdani"><a href="/reference/control-store/" class="astro-twzrdani"><span class="astro-twzrdani">Control store tables</span></a></li><li class="astro-twzrdani"><a href="/reference/sealing/" class="astro-twzrdani"><span class="astro-twzrdani">Sealing</span></a></li><li class="astro-twzrdani"><a href="/reference/host-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Host kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Guest kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/default-image/" class="astro-twzrdani"><span class="astro-twzrdani">Default image</span></a></li><li class="astro-twzrdani"><a href="/reference/artifact-format/" class="astro-twzrdani"><span class="astro-twzrdani">Artifact format</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Releases</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="2"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/releases/v0.1.0/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox v0.1.0</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="3"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Public API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="4"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="5"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicecreatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">CreateMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicegetmachine/" class="astro-twzrdani"><span class="astro-twzrdani">GetMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachinesizes/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachineSizes</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerebootmachine/" class="astro-twzrdani"><span class="astro-twzrdani">RebootMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerenamemachine/" class="astro-twzrdani"><span class="astro-twzrdani">RenameMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlport/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLPort</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlvisibility/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLVisibility</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">ShareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestartmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StartMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceunsharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UnshareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceupdatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.InstallService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="6"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1installservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1installservicegetinstallinfo/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallInfo</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="7"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicedeleteaccount/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceendclisignin/" class="astro-twzrdani"><span class="astro-twzrdani">EndCLISignIn</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicegetaccount/" class="astro-twzrdani"><span class="astro-twzrdani">GetAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistclisignins/" class="astro-twzrdani"><span class="astro-twzrdani">ListCLISignIns</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceremovesigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSignInMethod</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceupdateaccount/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateAccount</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.APIKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="8"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1apikeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicecreateapikey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAPIKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicelistapikeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAPIKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicerevokeapikey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAPIKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuditService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="9"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1auditservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1auditservicelistauditentries/" class="astro-twzrdani"><span class="astro-twzrdani">ListAuditEntries</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuthService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="10"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1authservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceapprovedevice/" class="astro-twzrdani"><span class="astro-twzrdani">ApproveDevice</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicegetdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">GetDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicepolldeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">PollDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerefreshclitoken/" class="astro-twzrdani"><span class="astro-twzrdani">RefreshCLIToken</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerequestmagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">RequestMagicLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicesignout/" class="astro-twzrdani"><span class="astro-twzrdani">SignOut</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicestartdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">StartDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifyloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyLoginLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifymagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyMagicLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="11"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceacceptinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">AcceptInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">CreateInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateorg/" class="astro-twzrdani"><span class="astro-twzrdani">CreateOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicedeleteorg/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorg/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorgusage/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrgUsage</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceleaveorg/" class="astro-twzrdani"><span class="astro-twzrdani">LeaveOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistinvitations/" class="astro-twzrdani"><span class="astro-twzrdani">ListInvitations</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgmembers/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgMembers</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceremoveorgmember/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveOrgMember</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicerevokeinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicesetorgmemberrole/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgMemberRole</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceupdateorg/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.SSHKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="12"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1sshkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceaddsshkey/" class="astro-twzrdani"><span class="astro-twzrdani">AddSSHKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyservicelistsshkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListSSHKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceremovesshkey/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSSHKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.VarService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="13"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1varservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicedeletevar/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteVar</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicelistvars/" class="astro-twzrdani"><span class="astro-twzrdani">ListVars</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicesetvar/" class="astro-twzrdani"><span class="astro-twzrdani">SetVar</span></a></li></ul></details></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Admin API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="14"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="15"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountservicelistaccountsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListAccountSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountserviceremoveaccountsigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveAccountSignInMethod</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AdminKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="16"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1adminkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicecreateadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicelistadminkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAdminKeys</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyserviceregisteradminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicerevokeadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAdminKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.CertificateService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="17"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1certificateservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1certificateservicegetcertificate/" class="astro-twzrdani"><span class="astro-twzrdani">GetCertificate</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ImageService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="18"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1imageservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageservicelistimages/" class="astro-twzrdani"><span class="astro-twzrdani">ListImages</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageserviceregisterimage/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterImage</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstallConfigService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="19"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1installconfigservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">ClearOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">ClearSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetoauthconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetOAuthConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">SetOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">SetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceupdateinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateInstallConfig</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstanceAdminService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="20"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1instanceadminservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicegrantinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">GrantInstanceAdmin</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicelistinstanceadmins/" class="astro-twzrdani"><span class="astro-twzrdani">ListInstanceAdmins</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicerevokeinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInstanceAdmin</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.KeyringService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="21"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1keyringservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicelistkeks/" class="astro-twzrdani"><span class="astro-twzrdani">ListKEKs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerewrapsealedvalues/" class="astro-twzrdani"><span class="astro-twzrdani">RewrapSealedValues</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerotatekek/" class="astro-twzrdani"><span class="astro-twzrdani">RotateKEK</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.LoginLinkService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="22"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1loginlinkservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1loginlinkservicecreateloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">CreateLoginLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="23"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MailService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="24"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1mailservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicegetmailfile/" class="astro-twzrdani"><span class="astro-twzrdani">GetMailFile</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicelistmailfiles/" class="astro-twzrdani"><span class="astro-twzrdani">ListMailFiles</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="25"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicegetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">GetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">SuspendOrg</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgserviceunsuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">UnsuspendOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ServerService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="26"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1serverservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">CordonServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecreateenrollmenttoken/" class="astro-twzrdani"><span class="astro-twzrdani">CreateEnrollmentToken</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicedecommissionserver/" class="astro-twzrdani"><span class="astro-twzrdani">DecommissionServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicegetserver/" class="astro-twzrdani"><span class="astro-twzrdani">GetServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicelistservers/" class="astro-twzrdani"><span class="astro-twzrdani">ListServers</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicesetserverlabels/" class="astro-twzrdani"><span class="astro-twzrdani">SetServerLabels</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverserviceuncordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">UncordonServer</span></a></li></ul></details></li></ul></details></li></ul></details></li></ul><script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-jl756n3h"><div class="social-icons astro-jl756n3h"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script></div></div></div></sl-sidebar-pane></nav><div class="main-frame astro-vlwsw6sx"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-bfhpgjcp"><aside class="right-sidebar-container print:hidden astro-bfhpgjcp"><div class="right-sidebar astro-bfhpgjcp"><div class="lg:sl-hidden astro-6ky2bkwt"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-bwzeb267"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-bwzeb267"><details id="starlight__mobile-toc" class="astro-bwzeb267"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-bwzeb267"><span class="toggle sl-flex astro-bwzeb267">On this page<svg aria-hidden="true" class="caret astro-bwzeb267 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-bwzeb267"></span></summary><div class="dropdown astro-bwzeb267"><ul class="isMobile astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#version" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Version</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#build-recipe" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Build recipe</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#targets" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Targets</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#the-install" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">The install</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#pgdist" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">pgdist</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#paths-on-a-server" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Paths on a server</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#os-users-and-database-roles" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">OS users and database roles</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#initdb-flags" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">initdb flags</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#server-parameters" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Server parameters</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#start-restart-and-stop" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Start, restart, and stop</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#upgrades" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Upgrades</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#logs" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Logs</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#errors" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Errors</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#schema-migrations" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Schema migrations</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#advisory-lock-keys" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Advisory lock keys</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#queries" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Queries</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#tests" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Tests</span></a></li></ul></div></details></nav></mobile-starlight-toc><script type="module" src="/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.C3fM4Kra.js"></script></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-6ky2bkwt"><div class="sl-container astro-6ky2bkwt"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#version" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Version</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#build-recipe" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Build recipe</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#targets" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Targets</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#the-install" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">The install</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#pgdist" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">pgdist</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#paths-on-a-server" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Paths on a server</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#os-users-and-database-roles" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">OS users and database roles</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#initdb-flags" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">initdb flags</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#server-parameters" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Server parameters</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#start-restart-and-stop" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Start, restart, and stop</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#upgrades" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Upgrades</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#logs" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Logs</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#errors" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Errors</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#schema-migrations" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Schema migrations</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#advisory-lock-keys" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Advisory lock keys</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#queries" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Queries</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#tests" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Tests</span></a></li></ul></nav></starlight-toc><script type="module" src="/_astro/TableOfContents.astro_astro_type_script_index_0_lang.BpJaGz7G.js"></script></div></div></div></aside><div class="main-pane astro-bfhpgjcp"><main data-pagefind-body class="astro-g6oqdoeg" lang="en" dir="ltr"><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><h1 id="_top" class="astro-42k5req6">The bundled Postgres</h1></div></div><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><div class="sl-markdown-content"><p><code dir="auto">hopboxd</code> brings its own Postgres 18 and runs it as a supervised child process. This page lists the build of that Postgres and the tool that builds it. It also lists the paths, OS users, database roles, server parameters, logs, and errors of Postgres. The last part covers the schema migrations of the control store.</p>
+<p>The package <code dir="auto">internal/pgsup</code> supervises Postgres, and the package <code dir="auto">internal/store</code> runs the migrations. <code dir="auto">hopboxd run</code> starts both for the control role, with the paths on this page (<a href="/reference/hopboxd/#run">hopboxd.md</a>). The keys <code dir="auto">data_dir</code>, <code dir="auto">run_dir</code>, <code dir="auto">postgres.install</code>, and <code dir="auto">postgres.user</code> of the bootstrap config set the paths and the OS user (<a href="/reference/hopboxd-config/#keys">hopboxd-config.md</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="version">Version</h2><a class="sl-anchor-link" href="#version"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Version”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Postgres version</td>
+<td>18.6</td>
+</tr>
+<tr>
+<td>Source</td>
+<td><code dir="auto">https://ftp.postgresql.org/pub/source/v18.6/postgresql-18.6.tar.bz2</code></td>
+</tr>
+<tr>
+<td>sha256 of the source</td>
+<td><code dir="auto">555610c24d53e4316da5b7d3fc25c279d96856d5e0e23ee308c328c5fa881d9f</code></td>
+</tr>
+</tbody>
+</table>
+<p>The file <code dir="auto">build/postgres/source.env</code> pins the version, the URL, and the hash. <code dir="auto">tools/pgdist</code> refuses a download with another hash.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="build-recipe">Build recipe</h2><a class="sl-anchor-link" href="#build-recipe"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Build recipe”</span></a></div>
+<p>The folder <code dir="auto">build/postgres</code> holds the recipe:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">source.env</code></td>
+<td>Pins the source tarball: <code dir="auto">version</code>, <code dir="auto">url</code>, and <code dir="auto">sha256</code>, one <code dir="auto">key=value</code> per line.</td>
+</tr>
+<tr>
+<td><code dir="auto">build.sh</code></td>
+<td><code dir="auto">build.sh &lt;tarball&gt; &lt;empty output dir&gt;</code>. Builds Postgres and checks the result.</td>
+</tr>
+<tr>
+<td><code dir="auto">Dockerfile</code></td>
+<td>Runs <code dir="auto">build.sh</code> for Linux in Debian 12 (<code dir="auto">debian:bookworm-slim</code>, pinned by digest).</td>
+</tr>
+</tbody>
+</table>
+<p><code dir="auto">build.sh</code> runs <code dir="auto">configure</code> with these flags:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">--disable-rpath</code></td>
+<td><code dir="auto">build.sh</code> sets relative library paths after the build.</td>
+</tr>
+<tr>
+<td><code dir="auto">--without-icu</code></td>
+<td>The install must not need ICU. The cluster uses the builtin collation provider.</td>
+</tr>
+<tr>
+<td><code dir="auto">--without-readline</code></td>
+<td>The install must not need readline.</td>
+</tr>
+<tr>
+<td><code dir="auto">--without-zlib</code></td>
+<td>The install must not need zlib. <code dir="auto">pg_dump</code> and <code dir="auto">pg_basebackup</code> cannot compress.</td>
+</tr>
+</tbody>
+</table>
+<p>These three are the only libraries that <code dir="auto">configure</code> turns on by default. Every other optional library is off.</p>
+<p>After <code dir="auto">make install-strip</code>, <code dir="auto">build.sh</code> deletes <code dir="auto">include/</code>, <code dir="auto">lib/postgresql/pgxs/</code>, <code dir="auto">lib/pkgconfig/</code>, and the static libraries. It then makes the install relocatable:</p>
+<ul>
+<li>On Linux, <code dir="auto">patchelf</code> sets the run path of each file that links to <code dir="auto">libpq</code>, <code dir="auto">libecpg</code>, or <code dir="auto">libpgtypes</code>. The run path is <code dir="auto">$ORIGIN/../lib</code> in <code dir="auto">bin/</code> and <code dir="auto">$ORIGIN/..</code> in <code dir="auto">lib/postgresql/</code>.</li>
+<li>On macOS, <code dir="auto">install_name_tool</code> changes the install name of each library to <code dir="auto">@rpath/&lt;name&gt;</code>, and adds the run path <code dir="auto">@loader_path/../lib</code> or <code dir="auto">@loader_path/..</code>. <code dir="auto">codesign</code> then signs each changed file again.</li>
+</ul>
+<p><code dir="auto">build.sh</code> checks each file. A link to a library outside the install, other than the C library, fails the build. An absolute library path also fails the build. At the end, it runs <code dir="auto">--version</code> on <code dir="auto">postgres</code>, <code dir="auto">initdb</code>, <code dir="auto">pg_ctl</code>, <code dir="auto">psql</code>, <code dir="auto">pg_dump</code>, and <code dir="auto">pg_upgrade</code> from the output dir. That dir is not the configured prefix, so the runs prove that the install is relocatable.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="targets">Targets</h3><a class="sl-anchor-link" href="#targets"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Targets”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Target</th>
+<th>Builder</th>
+<th>Runs on</th>
+<th>Used by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">linux/amd64</code></td>
+<td>Docker, Debian 12</td>
+<td>glibc 2.36 and later, for example Debian 13 and Ubuntu 24.04</td>
+<td>the release bundle, CI</td>
+</tr>
+<tr>
+<td><code dir="auto">darwin/arm64</code></td>
+<td>native</td>
+<td>macOS on Apple Silicon</td>
+<td>tests on a Mac</td>
+</tr>
+</tbody>
+</table>
+<p>The Linux build uses Debian 12 because a binary built against an older glibc runs on newer ones.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="the-install">The install</h3><a class="sl-anchor-link" href="#the-install"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The install”</span></a></div>
+<p>An install is one folder:</p>
+<div class="expressive-code"><link rel="stylesheet" href="/_astro/ec.w36nc.css"><script type="module" src="/_astro/ec.0vx5m.js"></script><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="text"><code><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">bin/      postgres, initdb, pg_ctl, psql, pg_dump, pg_upgrade, and the other client programs</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">lib/      libpq, libecpg, libpgtypes, and lib/postgresql/ with the server modules</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">share/    share/postgresql/ with the catalog files, time zones, and extensions</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="bin/      postgres, initdb, pg_ctl, psql, pg_dump, pg_upgrade, and the other client programslib/      libpq, libecpg, libpgtypes, and lib/postgresql/ with the server modulesshare/    share/postgresql/ with the catalog files, time zones, and extensions"><div></div></button></div></figure></div>
+<p>It links only to the C library of the system: <code dir="auto">libc</code>, <code dir="auto">libm</code>, and the dynamic loader on Linux, and <code dir="auto">libSystem</code> on macOS.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="pgdist">pgdist</h2><a class="sl-anchor-link" href="#pgdist"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “pgdist”</span></a></div>
+<p><code dir="auto">tools/pgdist</code> builds the install from the recipe, caches it, and prints its path on stdout. Progress logs go to stderr.</p>
+<div class="expressive-code"><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="sh"><code><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">go</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">run</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">./tools/pgdist</span><span style="--0:#D6DEEB;--1:#403F53"> [flags]</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="go run ./tools/pgdist [flags]"><div></div></button></div></figure></div>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">-target</code></td>
+<td><code dir="auto">os/arch</code></td>
+<td>the host, for example <code dir="auto">darwin/arm64</code></td>
+<td>The platform of the build: <code dir="auto">darwin/arm64</code> or <code dir="auto">linux/amd64</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">-builder</code></td>
+<td>string</td>
+<td><code dir="auto">docker</code> for a <code dir="auto">linux</code> target, <code dir="auto">native</code> for <code dir="auto">darwin</code></td>
+<td><code dir="auto">native</code> runs <code dir="auto">build.sh</code> on the host. It builds only the host target. <code dir="auto">docker</code> runs the <code dir="auto">Dockerfile</code> with <code dir="auto">docker build --platform &lt;target&gt; --output type=local</code>. It builds only <code dir="auto">linux</code> targets.</td>
+</tr>
+<tr>
+<td><code dir="auto">-cache</code></td>
+<td>dir</td>
+<td><code dir="auto">$HOPBOX_PGDIST_CACHE</code>, else <code dir="auto">hopbox/pgdist</code> in the user cache dir</td>
+<td>Where builds and source tarballs live.</td>
+</tr>
+<tr>
+<td><code dir="auto">-recipe</code></td>
+<td>dir</td>
+<td><code dir="auto">build/postgres</code> in the first parent dir of the current dir that has it</td>
+<td>The recipe folder.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Environment variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">HOPBOX_PGDIST_CACHE</code></td>
+<td>The cache dir. <code dir="auto">-cache</code> overrides it.</td>
+</tr>
+</tbody>
+</table>
+<p>The user cache dir is <code dir="auto">~/Library/Caches</code> on macOS, and <code dir="auto">$XDG_CACHE_HOME</code> or <code dir="auto">~/.cache</code> on Linux.</p>
+<p>The cache holds:</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">&lt;cache&gt;/postgres-&lt;version&gt;-&lt;os&gt;-&lt;arch&gt;-&lt;hash&gt;/</code></td>
+<td>One install. <code dir="auto">&lt;hash&gt;</code> is the first 12 hex digits of a sha256 over every file of the recipe folder. Thus each change to the recipe makes a new build.</td>
+</tr>
+<tr>
+<td><code dir="auto">&lt;cache&gt;/postgres-&lt;...&gt;.lock</code></td>
+<td>A lock file. Parallel runs of pgdist wait for each other.</td>
+</tr>
+<tr>
+<td><code dir="auto">&lt;cache&gt;/postgres-&lt;...&gt;.tmp/</code></td>
+<td>A build in progress. After a good build, pgdist renames it to the install dir.</td>
+</tr>
+<tr>
+<td><code dir="auto">&lt;cache&gt;/src/postgresql-&lt;version&gt;.tar.bz2</code></td>
+<td>The source tarball. If its hash does not match, pgdist downloads it again.</td>
+</tr>
+</tbody>
+</table>
+<p>If the install dir exists, pgdist prints its path and builds nothing. On each run, pgdist sets the modes of the install to <code dir="auto">u=rwX,go=rX</code>: <code dir="auto">0755</code> for dirs and programs, <code dir="auto">0644</code> for other files. The OS user <code dir="auto">hopbox-pg</code> must read and run them, whatever modes the build or the Docker export left. It exits with status 1 and an error log on any failure.</p>
+<p>What each builder needs:</p>
+<table>
+<thead>
+<tr>
+<th>Builder</th>
+<th>Needs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">native</code> on macOS</td>
+<td>the Xcode command line tools (clang, make, bison, flex, perl, <code dir="auto">install_name_tool</code>, <code dir="auto">codesign</code>)</td>
+</tr>
+<tr>
+<td><code dir="auto">native</code> on Linux</td>
+<td>gcc, make, bison, flex, perl, patchelf, readelf</td>
+</tr>
+<tr>
+<td><code dir="auto">docker</code></td>
+<td>Docker with BuildKit</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="expressive-code"><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="sh"><code><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">$</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">go</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">run</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">./tools/pgdist</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">/Users/me/Library/Caches/hopbox/pgdist/postgres-18.6-darwin-arm64-82e44458122c</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="$ go run ./tools/pgdist/Users/me/Library/Caches/hopbox/pgdist/postgres-18.6-darwin-arm64-82e44458122c"><div></div></button></div></figure></div>
+<div class="sl-heading-wrapper level-h2"><h2 id="paths-on-a-server">Paths on a server</h2><a class="sl-anchor-link" href="#paths-on-a-server"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Paths on a server”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Owner</th>
+<th>Mode</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">/var/lib/hopbox/pg</code></td>
+<td><code dir="auto">hopbox-pg</code></td>
+<td><code dir="auto">0700</code></td>
+<td>The Postgres state dir. If it does not exist, pgsup creates it.</td>
+</tr>
+<tr>
+<td><code dir="auto">/var/lib/hopbox/pg/data</code></td>
+<td><code dir="auto">hopbox-pg</code></td>
+<td><code dir="auto">0700</code></td>
+<td>The cluster, which is the data dir of Postgres.</td>
+</tr>
+<tr>
+<td><code dir="auto">/var/lib/hopbox/pg/data.init</code></td>
+<td><code dir="auto">hopbox-pg</code></td>
+<td><code dir="auto">0700</code></td>
+<td>A cluster that <code dir="auto">initdb</code> is creating. It exists only during the first start.</td>
+</tr>
+<tr>
+<td><code dir="auto">/run/hopbox/pg</code></td>
+<td><code dir="auto">hopbox-pg</code></td>
+<td><code dir="auto">0700</code></td>
+<td>The socket dir. It holds <code dir="auto">.s.PGSQL.5432</code> and its lock file.</td>
+</tr>
+</tbody>
+</table>
+<p>pgsup creates a missing parent dir, such as <code dir="auto">/var/lib/hopbox</code> or <code dir="auto">/run/hopbox</code>, with mode <code dir="auto">0755</code>. A parent dir that exists must let <code dir="auto">hopbox-pg</code> enter it. pgsup sets the mode <code dir="auto">0700</code> on the state dir and the socket dir on each start. <code dir="auto">hopbox-pg</code> must also be able to read the Postgres install. The path of the socket file must be at most 103 bytes, the limit of unix sockets on macOS.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="os-users-and-database-roles">OS users and database roles</h2><a class="sl-anchor-link" href="#os-users-and-database-roles"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “OS users and database roles”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Kind</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">hopbox-pg</code></td>
+<td>OS user</td>
+<td>Postgres refuses to run as root. So when <code dir="auto">hopboxd</code> runs as root, Postgres runs as this user. The user must exist before the first start. When <code dir="auto">hopboxd</code> is not root, Postgres runs as the user of <code dir="auto">hopboxd</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">hopbox</code></td>
+<td>database role</td>
+<td>The bootstrap superuser of the cluster. <code dir="auto">hopboxd</code> connects with this role.</td>
+</tr>
+<tr>
+<td><code dir="auto">hopbox</code></td>
+<td>database</td>
+<td>The control store database. On each start, pgsup makes sure that it exists.</td>
+</tr>
+</tbody>
+</table>
+<p>Postgres accepts connections only on the unix socket, and only with peer authentication. Peer authentication takes the OS user of the client from the kernel. The two files that pgsup writes after <code dir="auto">initdb</code> set this up:</p>
+<div class="expressive-code"><figure class="frame has-title not-content"><figcaption class="header"><span class="title">pg_hba.conf</span></figcaption><pre data-language="text"><code><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">local all all peer map=hopbox</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53"># pg_ident.conf: maps the OS user of hopboxd to the role hopbox</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">hopbox root hopbox</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="local all all peer map=hopbox# pg_ident.conf: maps the OS user of hopboxd to the role hopboxhopbox root hopbox"><div></div></button></div></figure></div>
+<p>When <code dir="auto">hopboxd</code> is not root, the second line names the user of <code dir="auto">hopboxd</code> in place of <code dir="auto">root</code>. pgsup writes both files on each start, so a change of the user of <code dir="auto">hopboxd</code> takes effect at the next start. pgsup syncs them to disk, because an empty <code dir="auto">pg_hba.conf</code> after a power loss locks <code dir="auto">hopboxd</code> out.</p>
+<p>As root, pgsup works in dirs that <code dir="auto">hopbox-pg</code> owns, and <code dir="auto">hopbox-pg</code> can plant symlinks there. So pgsup does each file operation in the state dir through a handle on that dir that never leaves it. It reads only regular files of at most 4 KiB. It writes a file under a new temp name with <code dir="auto">O_EXCL</code>, changes the owner through the open file, and renames it into place. It never opens an existing path for writing, and never follows a symlink with <code dir="auto">chown</code> or <code dir="auto">chmod</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="initdb-flags">initdb flags</h2><a class="sl-anchor-link" href="#initdb-flags"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “initdb flags”</span></a></div>
+<p>pgsup runs <code dir="auto">initdb</code> as the Postgres OS user, with the environment <code dir="auto">LC_ALL=C</code> and <code dir="auto">TZ=UTC</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">--pgdata=&lt;dir&gt;/data.init</code></td>
+<td>pgsup renames the dir to <code dir="auto">data</code> only after <code dir="auto">initdb</code> succeeds, so a crash never leaves a partial cluster in <code dir="auto">data</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">--username=hopbox</code></td>
+<td>The bootstrap superuser.</td>
+</tr>
+<tr>
+<td><code dir="auto">--encoding=UTF8</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">--locale=C</code></td>
+<td>No dependency on the locales of the OS.</td>
+</tr>
+<tr>
+<td><code dir="auto">--locale-provider=builtin</code> and <code dir="auto">--builtin-locale=C.UTF-8</code></td>
+<td>A collation that stays the same across OS and ICU updates.</td>
+</tr>
+<tr>
+<td><code dir="auto">--auth-local=peer</code> and <code dir="auto">--auth-host=reject</code></td>
+<td>pgsup replaces <code dir="auto">pg_hba.conf</code> right after, but no other method is ever on.</td>
+</tr>
+<tr>
+<td><code dir="auto">--no-instructions</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Postgres 18 turns on data checksums by default.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="server-parameters">Server parameters</h2><a class="sl-anchor-link" href="#server-parameters"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Server parameters”</span></a></div>
+<p>pgsup starts <code dir="auto">bin/postgres -D &lt;dir&gt;/data</code> with these parameters as <code dir="auto">-c name=value</code>. A caller can pass extra parameters, but not these, and not <code dir="auto">config_file</code>, <code dir="auto">data_directory</code>, <code dir="auto">hba_file</code>, <code dir="auto">ident_file</code>, or <code dir="auto">unix_socket_group</code>. Start refuses such a parameter, because it can undo the socket-only and peer-only setup. Postgres reads parameter names without regard to case, so the check does the same: <code dir="auto">Hba_File</code> is refused too.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">listen_addresses</code></td>
+<td>empty</td>
+<td>No TCP listener.</td>
+</tr>
+<tr>
+<td><code dir="auto">unix_socket_directories</code></td>
+<td>the socket dir</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">unix_socket_permissions</code></td>
+<td><code dir="auto">0700</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">port</code></td>
+<td><code dir="auto">5432</code></td>
+<td>Names the socket file <code dir="auto">.s.PGSQL.5432</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">log_destination</code></td>
+<td><code dir="auto">stderr</code></td>
+<td>pgsup turns each line into a log record.</td>
+</tr>
+<tr>
+<td><code dir="auto">logging_collector</code></td>
+<td><code dir="auto">off</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">log_line_prefix</code></td>
+<td><code dir="auto">[%p] </code></td>
+<td>pgsup reads the process ID from it.</td>
+</tr>
+<tr>
+<td><code dir="auto">timezone</code></td>
+<td><code dir="auto">UTC</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">log_timezone</code></td>
+<td><code dir="auto">UTC</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Postgres runs in its own process group, with the environment <code dir="auto">LC_ALL=C</code> and <code dir="auto">TZ=UTC</code>. It does not inherit the environment of <code dir="auto">hopboxd</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="start-restart-and-stop">Start, restart, and stop</h2><a class="sl-anchor-link" href="#start-restart-and-stop"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Start, restart, and stop”</span></a></div>
+<p>On start, pgsup does these steps in order:</p>
+<ol>
+<li>It runs <code dir="auto">postgres --version</code> as the Postgres OS user, with the clean environment of the server, and reads the major version of the binaries. This run also proves that <code dir="auto">hopbox-pg</code> can run the install.</li>
+<li>It refuses a state dir, data dir, or socket dir that is a symlink.</li>
+<li>It reads <code dir="auto">data/PG_VERSION</code>. If the file holds another major version, pgsup refuses to start and changes nothing on disk. If the file is missing and <code dir="auto">data</code> is not empty, pgsup also refuses.</li>
+<li>If <code dir="auto">data/postmaster.pid</code> names a running postmaster, pgsup refuses to start. A Postgres can outlive a <code dir="auto">hopboxd</code> that was killed, because it runs in its own process group. The parent death signal on Linux and the watchdog on macOS make that rare (see below), but not impossible: a postmaster that does not stop in time still holds the data dir. A PID file can also outlive its server, for example after a power loss. So pgsup ignores the file in three cases:
+<ul>
+<li>No process has the PID.</li>
+<li>The start time in the file is before the boot of the host.</li>
+<li>On Linux, the process with the PID is not <code dir="auto">postgres</code>.</li>
+</ul>
+</li>
+<li>It creates the state dir and the socket dir. As root, it gives them to <code dir="auto">hopbox-pg</code>.</li>
+<li>If <code dir="auto">data</code> is missing or empty, it creates the cluster. It deletes any <code dir="auto">data.init</code> from an earlier crash and runs <code dir="auto">initdb</code>. Then it writes <code dir="auto">pg_hba.conf</code> and <code dir="auto">pg_ident.conf</code>, and renames <code dir="auto">data.init</code> to <code dir="auto">data</code>. For a cluster that exists, it writes the two files again.</li>
+<li>It starts the postmaster and connects every 50 ms until a connection succeeds and <code dir="auto">postmaster.pid</code> names the new process. The first start fails after 60 s. An exit of the postmaster also fails it at once.</li>
+<li>If the database <code dir="auto">hopbox</code> does not exist, it creates it.</li>
+</ol>
+<p>After the first start, pgsup restarts Postgres each time it exits without a stop request. It waits 1 s before the first restart, and doubles the wait after each failed attempt, up to 30 s. A server that ran for more than 1 minute before it exited restarts after 1 s again.</p>
+<p>On stop, pgsup sends <code dir="auto">SIGINT</code>, the fast shutdown, which rolls back open transactions and writes a checkpoint. After 30 s, it sends <code dir="auto">SIGQUIT</code>, the immediate shutdown. After 5 s more, it sends <code dir="auto">SIGKILL</code> to the process group of Postgres, because a killed postmaster cannot stop its backends. If the caller stops the wait early, pgsup sends <code dir="auto">SIGQUIT</code> and returns the error of the caller. A second stop call then waits until Postgres exits.</p>
+<p>On Linux, the postmaster has a parent death signal: when <code dir="auto">hopboxd</code> dies, for example by <code dir="auto">SIGKILL</code>, the kernel sends the postmaster <code dir="auto">SIGINT</code>, the fast shutdown. So Postgres does not wait for the timeout of the stop of <code dir="auto">hopboxd.service</code> before systemd kills it. The kernel sends this signal at the end of the thread that started the postmaster. So pgsup starts each postmaster from a goroutine that holds its own thread until the postmaster exits. Other systems, such as macOS, have no parent death signal. There, pgsup starts a watchdog process for each postmaster: a <code dir="auto">/bin/sh</code> that waits on a pipe. Only <code dir="auto">hopboxd</code> holds the write end of the pipe. When <code dir="auto">hopboxd</code> dies, the kernel closes that end, and the watchdog sends the postmaster <code dir="auto">SIGINT</code>. The watchdog runs in its own process group, so a Ctrl-C in the terminal does not stop it first. When the postmaster exits, its PID can go to another process. So pgsup kills the watchdog first, and then closes the pipe. If the watchdog cannot start, pgsup logs the warning <code dir="auto">postgres will outlive a crash of hopboxd</code> and runs Postgres without it.</p>
+<p>The test <code dir="auto">TestPostgresStopsWhenHopboxdDies</code> kills a supervisor process with <code dir="auto">SIGKILL</code>, and checks that its postmaster exits within 10 s. It runs on Linux and on macOS. <code dir="auto">make test-linux</code> with <code dir="auto">PG_LINUX</code> also runs it as root, where Postgres runs as <code dir="auto">hopbox-pg</code>, and CI does so in the job <code dir="auto">test-linux</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="upgrades">Upgrades</h2><a class="sl-anchor-link" href="#upgrades"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Upgrades”</span></a></div>
+<p>A release bundle carries the Postgres of its release (<a href="/reference/release-bundle/">release-bundle.md</a>). An upgrade of <code dir="auto">hopboxd</code> that keeps the major version, for example from 18.6 to 18.7, swaps the binaries with the release: <code dir="auto">postgres.install</code> names <code dir="auto">/opt/hopbox/current/postgres</code>, and the next start of Postgres runs the new binaries on the same cluster.</p>
+<p>An upgrade must never start a cluster with binaries of another major version. <code dir="auto">hopboxd install</code> is the last step of each upgrade. Before it switches the release, it runs the check of step 3 of <a href="#start-restart-and-stop">Start, restart, and stop</a> (<a href="/reference/hopboxd/#install">hopboxd.md</a>). The Go call is <code dir="auto">pgsup.CheckVersion</code>:</p>
+<ul>
+<li>It runs <code dir="auto">postgres --version</code> of the new release as the Postgres OS user, as a start does.</li>
+<li>It reads <code dir="auto">PG_VERSION</code> of the cluster. A dir without a cluster passes.</li>
+<li>It returns the error of a start with <code dir="auto">PG_VERSION</code> of another major version, and it changes nothing on disk.</li>
+<li>It only reads, so it works while the old <code dir="auto">hopboxd</code> runs Postgres.</li>
+</ul>
+<p>The install then stops before it changes the config, the current release, or the units, and the running <code dir="auto">hopboxd</code> keeps running. A move to a new major version needs <code dir="auto">pg_upgrade</code>, which <code dir="auto">hopboxd admin db upgrade</code> runs. That command comes with the first change of the major version.</p>
+<p>The first install of a control server runs <code dir="auto">initdb</code> through pgsup: it starts Postgres once, which makes the cluster and the database <code dir="auto">hopbox</code>, and stops it (<a href="/reference/hopboxd/#install">hopboxd.md</a>). So a broken Postgres stops the install, not the first start of the service.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="logs">Logs</h2><a class="sl-anchor-link" href="#logs"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Logs”</span></a></div>
+<p>pgsup writes slog records with <code dir="auto">component=pgsup</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Level</th>
+<th>Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">creating postgres cluster</code></td>
+<td>info</td>
+<td><code dir="auto">data_dir</code></td>
+</tr>
+<tr>
+<td><code dir="auto">initdb</code></td>
+<td>debug</td>
+<td><code dir="auto">line</code>, one record per output line of <code dir="auto">initdb</code></td>
+</tr>
+<tr>
+<td><code dir="auto">postgres started</code></td>
+<td>info</td>
+<td><code dir="auto">pid</code>, <code dir="auto">data_dir</code></td>
+</tr>
+<tr>
+<td><code dir="auto">postgres ready</code></td>
+<td>info</td>
+<td><code dir="auto">pid</code>, <code dir="auto">socket_dir</code></td>
+</tr>
+<tr>
+<td><code dir="auto">created database</code></td>
+<td>info</td>
+<td><code dir="auto">database</code></td>
+</tr>
+<tr>
+<td><code dir="auto">postgres exited</code></td>
+<td>error</td>
+<td><code dir="auto">pid</code>, <code dir="auto">err</code>, <code dir="auto">uptime</code></td>
+</tr>
+<tr>
+<td><code dir="auto">restarting postgres</code></td>
+<td>info</td>
+<td><code dir="auto">delay</code></td>
+</tr>
+<tr>
+<td><code dir="auto">postgres restart failed</code></td>
+<td>error</td>
+<td><code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">postgres did not become ready</code></td>
+<td>warn</td>
+<td><code dir="auto">pid</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">stopping postgres</code></td>
+<td>info</td>
+<td><code dir="auto">pid</code>, <code dir="auto">mode</code>: <code dir="auto">fast</code>, <code dir="auto">immediate</code>, or <code dir="auto">kill</code></td>
+</tr>
+<tr>
+<td><code dir="auto">postgres log lost</code></td>
+<td>warn</td>
+<td><code dir="auto">err</code>. A log line was longer than 1 MiB. pgsup drops the rest of the log of that run.</td>
+</tr>
+<tr>
+<td><code dir="auto">postgres stopped</code></td>
+<td>info</td>
+<td><code dir="auto">pid</code>, <code dir="auto">duration</code></td>
+</tr>
+</tbody>
+</table>
+<p>Each line that Postgres writes becomes one record. The message is the text of the line, and the fields are <code dir="auto">pid</code>, <code dir="auto">severity</code>, and <code dir="auto">source=postgres</code>. The level follows the severity:</p>
+<table>
+<thead>
+<tr>
+<th>Postgres severity</th>
+<th>slog level</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">PANIC</code>, <code dir="auto">FATAL</code>, <code dir="auto">ERROR</code></td>
+<td>error</td>
+</tr>
+<tr>
+<td><code dir="auto">WARNING</code></td>
+<td>warn</td>
+</tr>
+<tr>
+<td><code dir="auto">DEBUG1</code> to <code dir="auto">DEBUG5</code></td>
+<td>debug</td>
+</tr>
+<tr>
+<td>every other severity</td>
+<td>info</td>
+</tr>
+</tbody>
+</table>
+<p>Some lines have no prefix, for example the second line of a long statement. Each of them becomes a record with the message <code dir="auto">postgres</code> and the field <code dir="auto">line</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="errors">Errors</h2><a class="sl-anchor-link" href="#errors"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Errors”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">postgres data dir &lt;dir&gt; holds a Postgres &lt;N&gt; cluster, but the bundled binaries are Postgres &lt;M&gt;, so pgsup will not start it</code></td>
+<td><code dir="auto">PG_VERSION</code> names another major version. A major upgrade needs <code dir="auto">pg_upgrade</code>, which <code dir="auto">hopboxd</code> does not run yet. An install or an upgrade gives the same error from <code dir="auto">pgsup.CheckVersion</code> (<a href="#upgrades">Upgrades</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">postgres data dir is not empty and has no PG_VERSION file, so pgsup will not use it: &lt;dir&gt;</code></td>
+<td><code dir="auto">data</code> holds files that are not a cluster.</td>
+</tr>
+<tr>
+<td><code dir="auto">pgsup: look up the postgres OS user "hopbox-pg": ...</code></td>
+<td><code dir="auto">hopboxd</code> runs as root, and the user <code dir="auto">hopbox-pg</code> does not exist.</td>
+</tr>
+<tr>
+<td><code dir="auto">pgsup: socket dir &lt;dir&gt; makes a socket path of &lt;n&gt; bytes, more than the 103 that unix sockets allow</code></td>
+<td>The socket dir path is too long.</td>
+</tr>
+<tr>
+<td><code dir="auto">pgsup: hopboxd cannot run &lt;install&gt;/bin/postgres --version: ...</code></td>
+<td>The install has no working <code dir="auto">postgres</code> binary.</td>
+</tr>
+<tr>
+<td><code dir="auto">pgsup: the postgres OS user hopbox-pg cannot run &lt;install&gt;/bin/postgres --version: ...</code></td>
+<td>As root: <code dir="auto">hopbox-pg</code> cannot enter a dir of the install path, or cannot read or run a file of it.</td>
+</tr>
+<tr>
+<td><code dir="auto">pgsup: &lt;dir&gt; is a symlink, so pgsup will not use it</code></td>
+<td>The state dir, the data dir, or the socket dir is a symlink.</td>
+</tr>
+<tr>
+<td><code dir="auto">pgsup: &lt;dir&gt;/PG_VERSION does not hold a version number</code></td>
+<td><code dir="auto">PG_VERSION</code> holds something other than digits.</td>
+</tr>
+<tr>
+<td><code dir="auto">pgsup: read PG_VERSION: ...</code> or <code dir="auto">pgsup: read postmaster.pid: ...</code></td>
+<td>The file is a symlink that leaves the state dir, or it is not a regular file.</td>
+</tr>
+<tr>
+<td><code dir="auto">pgsup: initdb: ...</code></td>
+<td><code dir="auto">initdb</code> failed. The error ends with the last lines of its output.</td>
+</tr>
+<tr>
+<td><code dir="auto">start postgres: postgres exited before it was ready: ...</code></td>
+<td>The postmaster exited during the first start. The Postgres log records give the reason.</td>
+</tr>
+<tr>
+<td><code dir="auto">start postgres: postgres not ready: context deadline exceeded ...</code></td>
+<td>The first start took more than 60 s.</td>
+</tr>
+<tr>
+<td><code dir="auto">postgres supervisor is stopped</code></td>
+<td>A call after <code dir="auto">Stop</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">a postgres server already runs on the data dir, so pgsup will not start another: pid &lt;n&gt; in &lt;dir&gt;/postmaster.pid</code></td>
+<td>A live process holds the data dir. Stop it, or remove a stale <code dir="auto">postmaster.pid</code> whose PID now belongs to another process.</td>
+</tr>
+<tr>
+<td><code dir="auto">pgsup: the setting &lt;name&gt; is fixed and cannot be in Settings</code></td>
+<td>The caller passed a parameter from the <a href="#server-parameters">Server parameters</a> list, or a protected one.</td>
+</tr>
+<tr>
+<td><code dir="auto">pgsup: stop postgres: context canceled</code></td>
+<td>The caller stopped the wait of a stop. Postgres got <code dir="auto">SIGQUIT</code>.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h2"><h2 id="schema-migrations">Schema migrations</h2><a class="sl-anchor-link" href="#schema-migrations"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Schema migrations”</span></a></div>
+<p>The control store schema comes from numbered SQL files in <code dir="auto">internal/store/migrations/</code>. The <code dir="auto">hopboxd</code> binary embeds them.</p>
+<ul>
+<li>Each file is named <code dir="auto">NNNN_name.sql</code>. The name has four digits, a <code dir="auto">_</code>, then lowercase letters, digits, and <code dir="auto">_</code>.</li>
+<li>The numbers start at <code dir="auto">0001</code> and have no gaps. Any other file in the folder fails the load.</li>
+<li>A migration never changes after it ships. A schema change is a new file.</li>
+<li>A migration must not control its transaction. The runner refuses a file with a top-level <code dir="auto">BEGIN</code>, <code dir="auto">START</code>, <code dir="auto">COMMIT</code>, <code dir="auto">END</code>, <code dir="auto">ROLLBACK</code>, or <code dir="auto">ABORT</code> statement. The check skips comments, string literals, quoted names, dollar-quoted bodies, and <code dir="auto">BEGIN ATOMIC</code> function bodies.</li>
+</ul>
+<p>Migration <code dir="auto">0001_schema_migrations.sql</code> creates the table that records the applied migrations:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">number</code></td>
+<td><code dir="auto">integer</code>, primary key</td>
+<td>The number of the migration.</td>
+</tr>
+<tr>
+<td><code dir="auto">name</code></td>
+<td><code dir="auto">text</code></td>
+<td>The name part of the file name.</td>
+</tr>
+<tr>
+<td><code dir="auto">sha256</code></td>
+<td><code dir="auto">bytea</code></td>
+<td>The sha256 of the file.</td>
+</tr>
+<tr>
+<td><code dir="auto">applied_at</code></td>
+<td><code dir="auto">timestamptz</code></td>
+<td>When the migration ran.</td>
+</tr>
+</tbody>
+</table>
+<p>The rows of this table never change after their insert, so the table has no row version column.</p>
+<p><a href="/reference/control-store/">control-store.md</a> lists the tables of the later migrations.</p>
+<p>The runner does these steps:</p>
+<ol>
+<li>It takes the session advisory lock <code dir="auto">LockKeyMigrations</code> on one connection. Other runners wait for it, so many processes can migrate at the same time.</li>
+<li>If the table <code dir="auto">schema_migrations</code> exists, it reads the table.</li>
+<li>It stops with an error in two cases. The first case is a database with a migration that the binary does not have. The second case is an applied migration whose name or hash differs from the file.</li>
+<li>It runs each missing migration in its own transaction, together with the insert of its row. A migration that fails leaves no trace.</li>
+<li>It frees the lock. If the unlock fails, it closes the connection, which frees the lock too.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">store: the database has migrations that this hopboxd does not know: database at migration &lt;n&gt;, this hopboxd knows &lt;m&gt;</code></td>
+<td>A newer <code dir="auto">hopboxd</code> migrated the database.</td>
+</tr>
+<tr>
+<td><code dir="auto">store: an applied migration changed, but migrations must only grow: &lt;NNNN_name&gt;</code></td>
+<td>An applied migration file changed or got a new name.</td>
+</tr>
+<tr>
+<td><code dir="auto">store: migration &lt;NNNN_name&gt;: ...</code></td>
+<td>The SQL of a migration failed.</td>
+</tr>
+<tr>
+<td><code dir="auto">store: migration file "&lt;file&gt;" is not NNNN_name.sql</code></td>
+<td>A file in the folder has a bad name.</td>
+</tr>
+<tr>
+<td><code dir="auto">store: migration &lt;file&gt; has number &lt;n&gt;, want &lt;m&gt;</code></td>
+<td>A gap or a doubled number.</td>
+</tr>
+<tr>
+<td><code dir="auto">store: migration &lt;file&gt; has a top-level &lt;WORD&gt;, but the runner runs each migration in its own transaction</code></td>
+<td>The file has a statement that ends or starts a transaction.</td>
+</tr>
+</tbody>
+</table>
+<p>For each migration, the runner logs <code dir="auto">applied migration</code> at level info, with <code dir="auto">number</code> and <code dir="auto">name</code>. After a wait of more than 1 s for the lock, it logs <code dir="auto">waited for the migration lock</code> at level info, with <code dir="auto">duration</code>. Its records have <code dir="auto">component=store</code>.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="advisory-lock-keys">Advisory lock keys</h3><a class="sl-anchor-link" href="#advisory-lock-keys"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Advisory lock keys”</span></a></div>
+<p>The file <code dir="auto">internal/store/locks.go</code> holds every advisory lock key of hopbox. Each key has <code dir="auto">hopbox</code> in ASCII in its top six bytes, then a 16-bit purpose number. A test checks the prefix and that no two keys are the same.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Value</th>
+<th>Holder</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">LockKeyMigrations</code></td>
+<td><code dir="auto">0x686f70626f780001</code></td>
+<td>The migration runner.</td>
+</tr>
+<tr>
+<td><code dir="auto">LockKeyLeader</code></td>
+<td><code dir="auto">0x686f70626f780002</code></td>
+<td>The leader of the control role, on its own connection (<a href="/reference/control-store/#leader-election">control-store.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">LockKeySignIn</code></td>
+<td><code dir="auto">0x686f70626f780010</code></td>
+<td>A sign-in that can create or link an account, as a transaction lock (<a href="/reference/sessions/#what-a-sign-in-does">sessions.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">LockKeyMagicLinks</code></td>
+<td><code dir="auto">0x686f70626f780011</code></td>
+<td>A request for a magic link, as a transaction lock, so the rate limits count every request (<a href="/reference/sessions/#rate-limits">sessions.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">LockKeyInvitations</code></td>
+<td><code dir="auto">0x686f70626f780012</code></td>
+<td>A new invitation to an org, as a transaction lock, so the rate limits per inviter and per email count every invitation (<a href="/reference/org-api/#invitations">org-api.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">LockKeyDeviceAuthorizations</code></td>
+<td><code dir="auto">0x686f70626f780013</code></td>
+<td>A start of a device sign-in, as a transaction lock, so the limits of the device flow count every start (<a href="/reference/credentials/#limits-of-the-device-flow">credentials.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">LockKeyDeviceApprovals</code></td>
+<td><code dir="auto">0x686f70626f780014</code></td>
+<td>An approval of a device sign-in, as a transaction lock, so the limit of wrong codes counts every failure (<a href="/reference/credentials/#limits-of-the-device-flow">credentials.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">LockKeyServerRegistry</code></td>
+<td><code dir="auto">0x686f70626f780015</code></td>
+<td>A transaction lock of each enrollment. A decommission of the node on the host of the control role takes it before it counts the other servers. So a server that enrolls at that time counts (<a href="/reference/admin-api/#decommissionserver">admin-api.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">LockKeyOAuthFlows</code></td>
+<td><code dir="auto">0x686f70626f780016</code></td>
+<td>A transaction lock of each start of a sign-in with GitHub or Google that the rate limit counts. The limit thus counts every start (<a href="/reference/oauth/#rate-limits">oauth.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">LockKeyRetiredGuestHostKeys</code></td>
+<td><code dir="auto">0x686f70626f780017</code></td>
+<td>Retired, do not reuse. Up to v0.1.0, a report of <code dir="auto">running</code> with SSH host keys took it as a transaction lock. Each host key now has its own lock in the class <code dir="auto">LockClassGuestHostKey</code>. A <code dir="auto">hopboxd</code> of v0.1.0 can still take this key during an upgrade.</td>
+</tr>
+<tr>
+<td><code dir="auto">LockKeyNodeSubnets</code></td>
+<td><code dir="auto">0x686f70626f780018</code></td>
+<td>A transaction lock of each claim of a node subnet. So two nodes that get their first machine at once never pick the same subnet (<a href="/reference/control-store/#node_subnets">control-store.md</a>).</td>
+</tr>
+</tbody>
+</table>
+<p>A lock of one object, such as one SSH host key, uses the two-key form <code dir="auto">pg_advisory_xact_lock(class, key)</code>. Postgres keeps this form apart from the keys above. The same file holds each class. Each class has <code dir="auto">hop</code> in ASCII in its top three bytes, then an 8-bit purpose number. A test checks the prefix.</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Value</th>
+<th>Key</th>
+<th>Holder</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">LockClassGuestHostKey</code></td>
+<td><code dir="auto">0x686f7001</code></td>
+<td>The FNV-1a hash of the SSH host key, from <code dir="auto">GuestHostKeyLock</code></td>
+<td>A report of <code dir="auto">running</code> with SSH host keys takes a transaction lock of each key, in the order of the hashes. So two reports with one key cannot both pass the check that no other route record holds it. Reports with other keys do not wait. Two keys with one hash share a lock, so a report waits for the other one (<a href="/reference/executor-protocol/#machinereport">executor-protocol.md</a>).</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="queries">Queries</h3><a class="sl-anchor-link" href="#queries"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Queries”</span></a></div>
+<p>sqlc generates Go code for the queries in <code dir="auto">internal/store/queries/*.sql</code> into the package <code dir="auto">internal/store/db</code>. Its schema input is the migrations folder, so the generated types always match the schema that the runner builds. The file <code dir="auto">internal/store/sqlc.yaml</code> holds the config of sqlc.</p>
+<p>sqlc maps column types to Go types with these rules:</p>
+<table>
+<thead>
+<tr>
+<th>Postgres type</th>
+<th>Go type</th>
+<th>Go type of a <code dir="auto">NULL</code> column</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">uuid</code></td>
+<td><code dir="auto">uuid.UUID</code> from the Go standard library</td>
+<td><code dir="auto">*uuid.UUID</code></td>
+</tr>
+<tr>
+<td><code dir="auto">timestamptz</code></td>
+<td><code dir="auto">time.Time</code></td>
+<td><code dir="auto">*time.Time</code></td>
+</tr>
+<tr>
+<td>every other type</td>
+<td>the default type of sqlc for pgx v5, for example <code dir="auto">int64</code> or <code dir="auto">string</code></td>
+<td>a pointer to it, for example <code dir="auto">*string</code></td>
+</tr>
+</tbody>
+</table>
+<p>IDs are UUIDv7. The Go code makes them with <code dir="auto">uuid.NewV7</code>, not the database. <code dir="auto">make generate</code> runs sqlc after buf. If <code dir="auto">internal/store/db</code> differs from git, <code dir="auto">make check-generate</code> fails.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="tests">Tests</h2><a class="sl-anchor-link" href="#tests"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Tests”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Environment variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">HOPBOX_PG_DIR</code></td>
+<td>The Postgres install for tests. <code dir="auto">make test</code> sets it to the output of <code dir="auto">tools/pgdist</code>. If it is not set, tests run <code dir="auto">go run ./tools/pgdist</code> themselves.</td>
+</tr>
+</tbody>
+</table>
+<p>The package <code dir="auto">internal/store/storetest</code> starts one Postgres per test package, with <code dir="auto">fsync</code>, <code dir="auto">synchronous_commit</code>, and <code dir="auto">full_page_writes</code> off. It creates the template database <code dir="auto">hopbox_template</code> with every migration applied. Each test gets its own database, copied from the template with <code dir="auto">CREATE DATABASE ... TEMPLATE</code>, and a cleanup drops it.</p>
+<p>A test binary that panics, times out, or gets Ctrl-C or <code dir="auto">SIGKILL</code> skips its cleanup and leaves its dirs behind. Its Postgres stops within seconds, by the parent death signal on Linux or the watchdog on macOS (<a href="#start-restart-and-stop">Start, restart, and stop</a>). So at each start, <code dir="auto">storetest.Main</code> removes old dirs of earlier runs: socket dirs <code dir="auto">/tmp/hbpg-*</code> and data dirs <code dir="auto">storetest-*</code> in the temp dir. A dir goes only on two conditions: it is older than 10 minutes, and its PID file names no live process. A Postgres that still runs keeps its dirs. A test package calls <code dir="auto">storetest.Main</code> from <code dir="auto">TestMain</code>, and <code dir="auto">storetest.New</code> in each test (the build guide of the repo has an example).</p>
+</div><footer class="sl-flex astro-fzngq47q"><div class="meta sl-flex astro-fzngq47q"></div><div class="pagination-links print:hidden astro-7jhddma2" dir="ltr"><a href="/reference/api-definitions/" rel="prev" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-7jhddma2">Previous<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">API definitions</span></span></a><a href="/reference/domain-rules/" rel="next" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-7jhddma2">Next<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">Domain rules</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>

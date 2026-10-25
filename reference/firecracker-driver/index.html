@@ -1,0 +1,812 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-toc data-has-sidebar class="astro-g6oqdoeg"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>The Firecracker driver | hopbox docs</title><link rel="canonical" href="https://docs.hopbox.dev/reference/firecracker-driver/"/><link rel="sitemap" href="/sitemap-index.xml"/><link rel="shortcut icon" href="/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.3.8"/><meta name="generator" content="Starlight v0.42.6"/><meta property="og:title" content="The Firecracker driver"/><meta property="og:type" content="article"/><meta property="og:url" content="https://docs.hopbox.dev/reference/firecracker-driver/"/><meta property="og:locale" content="en"/><meta property="og:description" content="The Firecracker driver of the node role. It covers the unit, the jail, and the disk of each machine, the caches of images and kernels, and the KVM tests."/><meta property="og:site_name" content="hopbox docs"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="The Firecracker driver of the node role. It covers the unit, the jail, and the disk of each machine, the caches of images and kernels, and the KVM tests."/><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/_astro/print.ehPL0gv-.css" media="print"><link rel="stylesheet" href="/_astro/middleware.DkUYdNkX.css"><script type="module" src="/_astro/page.cNngjUgL.js"></script></head><body class="astro-g6oqdoeg"><a class="sl-skip-link astro-ktawktwe" href="#_top">Skip to content</a><div class="page sl-flex astro-vlwsw6sx"><header class="header astro-vlwsw6sx"><div class="header astro-qe7tu4yu"><div class="title-wrapper sl-flex astro-qe7tu4yu"><a href="/" class="site-title sl-flex astro-42muqipg"><span class="astro-42muqipg" translate="no">hopbox docs</span></a></div><div class="sl-flex print:hidden astro-qe7tu4yu"><site-search class="astro-qe7tu4yu astro-yp365hkw" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"><button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-yp365hkw"><svg aria-hidden="true" class="astro-yp365hkw astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg><span class="sl-hidden md:sl-block astro-yp365hkw" aria-hidden="true">Search</span><kbd class="sl-hidden md:sl-flex astro-yp365hkw" style="display: none;"><kbd class="astro-yp365hkw">Ctrl</kbd><kbd class="astro-yp365hkw">K</kbd></kbd></button><dialog style="padding:0" aria-label="Search" class="astro-yp365hkw"><div class="dialog-frame sl-flex astro-yp365hkw"><button data-close-modal class="sl-flex md:sl-hidden astro-yp365hkw">Cancel</button><div class="search-container astro-yp365hkw"><div id="starlight__search" class="astro-yp365hkw"></div></div></div></dialog></site-search><script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script><script type="module" src="/_astro/Search.astro_astro_type_script_index_0_lang.g9hoxVJg.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-qe7tu4yu"><div class="sl-flex social-icons astro-qe7tu4yu"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script><script type="module">var e=`starlight-theme`,t=e=>e===`auto`||e===`dark`||e===`light`?e:`auto`,n=()=>t(typeof localStorage<`u`&&localStorage.getItem(e));function r(t){typeof localStorage<`u`&&localStorage.setItem(e,t===`light`||t===`dark`?t:``)}var i=()=>matchMedia(`(prefers-color-scheme: light)`).matches?`light`:`dark`;function a(e){StarlightThemeProvider.updatePickers(e),document.documentElement.dataset.theme=e===`auto`?i():e,r(e)}matchMedia(`(prefers-color-scheme: light)`).addEventListener(`change`,()=>{n()===`auto`&&a(`auto`)});var o=class extends HTMLElement{constructor(){super(),a(n()),this.querySelector(`select`)?.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&a(t(e.currentTarget.value))})}};customElements.define(`starlight-theme-select`,o);</script><script type="module">var e=class extends HTMLElement{constructor(){super();let e=this.querySelector(`select`);e&&(e.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=e.currentTarget.value)}),window.addEventListener(`pageshow`,t=>{if(!t.persisted)return;let n=e.querySelector(`option[selected]`)?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}};customElements.define(`starlight-lang-select`,e);</script></div></div></header><nav class="sidebar print:hidden astro-vlwsw6sx" aria-label="Main"><button popovertarget="starlight__sidebar" class="sl-menu-button sl-flex md:sl-hidden print:hidden astro-ibd3qwco"><svg aria-hidden="true" class="open-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg><span class="sr-only astro-ibd3qwco">Menu</span></button><script type="module">var e=class extends HTMLElement{constructor(){super();let e=matchMedia(`(min-width: 50em)`),t=()=>{this.popover=e.matches?null:`auto`};t(),e.addEventListener(`change`,()=>t()),this.addEventListener(`toggle`,({newState:e})=>this.trapFocus(e===`open`))}trapFocus(e){document.querySelectorAll(`.main-frame, .sl-skip-link`).forEach(t=>{t.toggleAttribute(`inert`,e)})}};customElements.define(`sl-sidebar-pane`,e);</script><sl-sidebar-pane popover id="starlight__sidebar" class="sidebar-pane astro-vlwsw6sx"><div class="sidebar-content sl-flex astro-vlwsw6sx"><sl-sidebar-state-persist data-hash="0qsyok1" class="astro-oblzz35h"><script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script><ul class="top-level astro-twzrdani"><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Guides</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/guide/run-hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">Run the control role on a laptop</span></a></li><li class="astro-twzrdani"><a href="/guide/install-on-ovhcloud/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on an OVHcloud server with Terraform</span></a></li><li class="astro-twzrdani"><a href="/guide/enroll-node/" class="astro-twzrdani"><span class="astro-twzrdani">Enroll the node role on one server</span></a></li><li class="astro-twzrdani"><a href="/guide/dns-role/" class="astro-twzrdani"><span class="astro-twzrdani">Serve the domain of an install with the DNS role</span></a></li><li class="astro-twzrdani"><a href="/guide/acme-certificate/" class="astro-twzrdani"><span class="astro-twzrdani">Get the wildcard certificate of an install</span></a></li><li class="astro-twzrdani"><a href="/guide/machine-urls/" class="astro-twzrdani"><span class="astro-twzrdani">Run the edge role and open machine URLs</span></a></li><li class="astro-twzrdani"><a href="/guide/first-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">First sign-in on a new install</span></a></li><li class="astro-twzrdani"><a href="/guide/github-google-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/guide/orgs/" class="astro-twzrdani"><span class="astro-twzrdani">Work in a team org</span></a></li><li class="astro-twzrdani"><a href="/guide/env-vars/" class="astro-twzrdani"><span class="astro-twzrdani">Set env vars and secrets</span></a></li><li class="astro-twzrdani"><a href="/guide/machines/" class="astro-twzrdani"><span class="astro-twzrdani">Create and manage machines</span></a></li><li class="astro-twzrdani"><a href="/guide/firecracker-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Run machines with Firecracker</span></a></li><li class="astro-twzrdani"><a href="/guide/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">Check the network of a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/cli/" class="astro-twzrdani"><span class="astro-twzrdani">Use the hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Use machines from the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-prompt/" class="astro-twzrdani"><span class="astro-twzrdani">Work in the prompt of the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/ssh/" class="astro-twzrdani"><span class="astro-twzrdani">Reach a machine over SSH</span></a></li><li class="astro-twzrdani"><a href="/guide/exec-and-files/" class="astro-twzrdani"><span class="astro-twzrdani">Run commands and copy files in a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">Connect an AI agent to hopbox with MCP</span></a></li><li class="astro-twzrdani"><a href="/guide/console/" class="astro-twzrdani"><span class="astro-twzrdani">Use the console</span></a></li><li class="astro-twzrdani"><a href="/guide/typescript-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">Call the API from TypeScript</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-and-keys/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in the CLI, and make API keys and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/guide/install-debian/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on a Debian 13 server by hand</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Reference</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="1"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/reference/hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/release-bundle/" class="astro-twzrdani"><span class="astro-twzrdani">Release bundle</span></a></li><li class="astro-twzrdani"><a href="/reference/server-layout/" class="astro-twzrdani"><span class="astro-twzrdani">Server layout</span></a></li><li class="astro-twzrdani"><a href="/reference/hopboxd-config/" class="astro-twzrdani"><span class="astro-twzrdani">The bootstrap config of hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/api/" class="astro-twzrdani"><span class="astro-twzrdani">The API server</span></a></li><li class="astro-twzrdani"><a href="/reference/org-api/" class="astro-twzrdani"><span class="astro-twzrdani">The org API</span></a></li><li class="astro-twzrdani"><a href="/reference/vars-api/" class="astro-twzrdani"><span class="astro-twzrdani">The env var API</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-api/" class="astro-twzrdani"><span class="astro-twzrdani">The machine API</span></a></li><li class="astro-twzrdani"><a href="/reference/placement/" class="astro-twzrdani"><span class="astro-twzrdani">Placement</span></a></li><li class="astro-twzrdani"><a href="/reference/auth-api/" class="astro-twzrdani"><span class="astro-twzrdani">The sign-in, account, and audit API</span></a></li><li class="astro-twzrdani"><a href="/reference/credentials/" class="astro-twzrdani"><span class="astro-twzrdani">CLI tokens, API keys, admin API keys, and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/reference/sessions/" class="astro-twzrdani"><span class="astro-twzrdani">Sessions, cookies, and sign-in links</span></a></li><li class="astro-twzrdani"><a href="/reference/smtp/" class="astro-twzrdani"><span class="astro-twzrdani">SMTP config</span></a></li><li class="astro-twzrdani"><a href="/reference/mail/" class="astro-twzrdani"><span class="astro-twzrdani">Mail</span></a></li><li class="astro-twzrdani"><a href="/reference/oauth/" class="astro-twzrdani"><span class="astro-twzrdani">Sign-in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/reference/metrics/" class="astro-twzrdani"><span class="astro-twzrdani">Metrics</span></a></li><li class="astro-twzrdani"><a href="/reference/admin-api/" class="astro-twzrdani"><span class="astro-twzrdani">The admin API</span></a></li><li class="astro-twzrdani"><a href="/reference/internal-listener/" class="astro-twzrdani"><span class="astro-twzrdani">The internal listener</span></a></li><li class="astro-twzrdani"><a href="/reference/enrollment/" class="astro-twzrdani"><span class="astro-twzrdani">Enrollment and the install PKI</span></a></li><li class="astro-twzrdani"><a href="/reference/control-channel/" class="astro-twzrdani"><span class="astro-twzrdani">The control channel</span></a></li><li class="astro-twzrdani"><a href="/reference/dns/" class="astro-twzrdani"><span class="astro-twzrdani">The DNS role</span></a></li><li class="astro-twzrdani"><a href="/reference/edge/" class="astro-twzrdani"><span class="astro-twzrdani">The edge role</span></a></li><li class="astro-twzrdani"><a href="/reference/ssh-front-door/" class="astro-twzrdani"><span class="astro-twzrdani">The SSH front door</span></a></li><li class="astro-twzrdani"><a href="/reference/acme/" class="astro-twzrdani"><span class="astro-twzrdani">The certificate of the install</span></a></li><li class="astro-twzrdani"><a href="/reference/executor-protocol/" class="astro-twzrdani"><span class="astro-twzrdani">The executor protocol</span></a></li><li class="astro-twzrdani"><a href="/reference/executor/" class="astro-twzrdani"><span class="astro-twzrdani">The node executor</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-logs/" class="astro-twzrdani"><span class="astro-twzrdani">Machine logs</span></a></li><li class="astro-twzrdani"><a href="/reference/vmm/" class="astro-twzrdani"><span class="astro-twzrdani">The VMM driver interface</span></a></li><li class="astro-twzrdani"><a href="/reference/firecracker-driver/" aria-current="page" class="astro-twzrdani"><span class="astro-twzrdani">The Firecracker driver</span></a></li><li class="astro-twzrdani"><a href="/reference/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">The node network</span></a></li><li class="astro-twzrdani"><a href="/reference/preflight/" class="astro-twzrdani"><span class="astro-twzrdani">The preflight check</span></a></li><li class="astro-twzrdani"><a href="/reference/cli/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/reference/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">The MCP server</span></a></li><li class="astro-twzrdani"><a href="/reference/console/" class="astro-twzrdani"><span class="astro-twzrdani">Console</span></a></li><li class="astro-twzrdani"><a href="/reference/go-client/" class="astro-twzrdani"><span class="astro-twzrdani">Go client</span></a></li><li class="astro-twzrdani"><a href="/reference/ts-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">TypeScript SDK</span></a></li><li class="astro-twzrdani"><a href="/reference/hopbox-guest/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox-guest</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-link/" class="astro-twzrdani"><span class="astro-twzrdani">Guest link</span></a></li><li class="astro-twzrdani"><a href="/reference/terraform-provider/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox Terraform provider</span></a></li><li class="astro-twzrdani"><a href="/reference/version/" class="astro-twzrdani"><span class="astro-twzrdani">The version command</span></a></li><li class="astro-twzrdani"><a href="/reference/api-definitions/" class="astro-twzrdani"><span class="astro-twzrdani">API definitions</span></a></li><li class="astro-twzrdani"><a href="/reference/postgres/" class="astro-twzrdani"><span class="astro-twzrdani">The bundled Postgres</span></a></li><li class="astro-twzrdani"><a href="/reference/domain-rules/" class="astro-twzrdani"><span class="astro-twzrdani">Domain rules</span></a></li><li class="astro-twzrdani"><a href="/reference/control-store/" class="astro-twzrdani"><span class="astro-twzrdani">Control store tables</span></a></li><li class="astro-twzrdani"><a href="/reference/sealing/" class="astro-twzrdani"><span class="astro-twzrdani">Sealing</span></a></li><li class="astro-twzrdani"><a href="/reference/host-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Host kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Guest kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/default-image/" class="astro-twzrdani"><span class="astro-twzrdani">Default image</span></a></li><li class="astro-twzrdani"><a href="/reference/artifact-format/" class="astro-twzrdani"><span class="astro-twzrdani">Artifact format</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Releases</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="2"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/releases/v0.1.0/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox v0.1.0</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="3"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Public API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="4"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="5"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicecreatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">CreateMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicegetmachine/" class="astro-twzrdani"><span class="astro-twzrdani">GetMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachinesizes/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachineSizes</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerebootmachine/" class="astro-twzrdani"><span class="astro-twzrdani">RebootMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerenamemachine/" class="astro-twzrdani"><span class="astro-twzrdani">RenameMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlport/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLPort</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlvisibility/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLVisibility</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">ShareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestartmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StartMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceunsharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UnshareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceupdatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.InstallService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="6"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1installservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1installservicegetinstallinfo/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallInfo</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="7"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicedeleteaccount/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceendclisignin/" class="astro-twzrdani"><span class="astro-twzrdani">EndCLISignIn</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicegetaccount/" class="astro-twzrdani"><span class="astro-twzrdani">GetAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistclisignins/" class="astro-twzrdani"><span class="astro-twzrdani">ListCLISignIns</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceremovesigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSignInMethod</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceupdateaccount/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateAccount</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.APIKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="8"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1apikeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicecreateapikey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAPIKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicelistapikeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAPIKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicerevokeapikey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAPIKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuditService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="9"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1auditservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1auditservicelistauditentries/" class="astro-twzrdani"><span class="astro-twzrdani">ListAuditEntries</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuthService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="10"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1authservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceapprovedevice/" class="astro-twzrdani"><span class="astro-twzrdani">ApproveDevice</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicegetdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">GetDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicepolldeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">PollDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerefreshclitoken/" class="astro-twzrdani"><span class="astro-twzrdani">RefreshCLIToken</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerequestmagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">RequestMagicLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicesignout/" class="astro-twzrdani"><span class="astro-twzrdani">SignOut</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicestartdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">StartDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifyloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyLoginLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifymagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyMagicLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="11"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceacceptinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">AcceptInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">CreateInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateorg/" class="astro-twzrdani"><span class="astro-twzrdani">CreateOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicedeleteorg/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorg/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorgusage/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrgUsage</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceleaveorg/" class="astro-twzrdani"><span class="astro-twzrdani">LeaveOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistinvitations/" class="astro-twzrdani"><span class="astro-twzrdani">ListInvitations</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgmembers/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgMembers</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceremoveorgmember/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveOrgMember</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicerevokeinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicesetorgmemberrole/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgMemberRole</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceupdateorg/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.SSHKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="12"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1sshkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceaddsshkey/" class="astro-twzrdani"><span class="astro-twzrdani">AddSSHKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyservicelistsshkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListSSHKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceremovesshkey/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSSHKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.VarService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="13"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1varservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicedeletevar/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteVar</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicelistvars/" class="astro-twzrdani"><span class="astro-twzrdani">ListVars</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicesetvar/" class="astro-twzrdani"><span class="astro-twzrdani">SetVar</span></a></li></ul></details></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Admin API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="14"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="15"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountservicelistaccountsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListAccountSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountserviceremoveaccountsigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveAccountSignInMethod</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AdminKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="16"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1adminkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicecreateadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicelistadminkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAdminKeys</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyserviceregisteradminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicerevokeadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAdminKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.CertificateService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="17"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1certificateservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1certificateservicegetcertificate/" class="astro-twzrdani"><span class="astro-twzrdani">GetCertificate</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ImageService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="18"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1imageservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageservicelistimages/" class="astro-twzrdani"><span class="astro-twzrdani">ListImages</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageserviceregisterimage/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterImage</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstallConfigService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="19"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1installconfigservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">ClearOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">ClearSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetoauthconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetOAuthConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">SetOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">SetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceupdateinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateInstallConfig</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstanceAdminService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="20"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1instanceadminservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicegrantinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">GrantInstanceAdmin</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicelistinstanceadmins/" class="astro-twzrdani"><span class="astro-twzrdani">ListInstanceAdmins</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicerevokeinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInstanceAdmin</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.KeyringService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="21"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1keyringservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicelistkeks/" class="astro-twzrdani"><span class="astro-twzrdani">ListKEKs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerewrapsealedvalues/" class="astro-twzrdani"><span class="astro-twzrdani">RewrapSealedValues</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerotatekek/" class="astro-twzrdani"><span class="astro-twzrdani">RotateKEK</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.LoginLinkService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="22"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1loginlinkservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1loginlinkservicecreateloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">CreateLoginLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="23"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MailService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="24"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1mailservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicegetmailfile/" class="astro-twzrdani"><span class="astro-twzrdani">GetMailFile</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicelistmailfiles/" class="astro-twzrdani"><span class="astro-twzrdani">ListMailFiles</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="25"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicegetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">GetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">SuspendOrg</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgserviceunsuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">UnsuspendOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ServerService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="26"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1serverservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">CordonServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecreateenrollmenttoken/" class="astro-twzrdani"><span class="astro-twzrdani">CreateEnrollmentToken</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicedecommissionserver/" class="astro-twzrdani"><span class="astro-twzrdani">DecommissionServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicegetserver/" class="astro-twzrdani"><span class="astro-twzrdani">GetServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicelistservers/" class="astro-twzrdani"><span class="astro-twzrdani">ListServers</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicesetserverlabels/" class="astro-twzrdani"><span class="astro-twzrdani">SetServerLabels</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverserviceuncordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">UncordonServer</span></a></li></ul></details></li></ul></details></li></ul></details></li></ul><script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-jl756n3h"><div class="social-icons astro-jl756n3h"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script></div></div></div></sl-sidebar-pane></nav><div class="main-frame astro-vlwsw6sx"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-bfhpgjcp"><aside class="right-sidebar-container print:hidden astro-bfhpgjcp"><div class="right-sidebar astro-bfhpgjcp"><div class="lg:sl-hidden astro-6ky2bkwt"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-bwzeb267"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-bwzeb267"><details id="starlight__mobile-toc" class="astro-bwzeb267"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-bwzeb267"><span class="toggle sl-flex astro-bwzeb267">On this page<svg aria-hidden="true" class="caret astro-bwzeb267 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-bwzeb267"></span></summary><div class="dropdown astro-bwzeb267"><ul class="isMobile astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#capabilities" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Capabilities</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#files-of-a-machine" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Files of a machine</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-unit-of-a-machine" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The unit of a machine</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#jail-users" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Jail users</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#boot" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Boot</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#disks" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Disks</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-image-cache" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The image cache</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-kernel-cache" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The kernel cache</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-tap-device" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The tap device</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#stop" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Stop</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#a-stop-through-systemd" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">A stop through systemd</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#exit-reasons" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Exit reasons</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#attach-after-a-restart-or-an-upgrade" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Attach after a restart or an upgrade</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#delete" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Delete</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#logs" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Logs</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#go-api" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Go API</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#tests" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Tests</span></a></li></ul></div></details></nav></mobile-starlight-toc><script type="module" src="/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.C3fM4Kra.js"></script></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-6ky2bkwt"><div class="sl-container astro-6ky2bkwt"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#capabilities" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Capabilities</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#files-of-a-machine" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Files of a machine</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-unit-of-a-machine" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The unit of a machine</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#jail-users" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Jail users</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#boot" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Boot</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#disks" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Disks</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-image-cache" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The image cache</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-kernel-cache" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The kernel cache</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-tap-device" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The tap device</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#stop" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Stop</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#a-stop-through-systemd" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">A stop through systemd</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#exit-reasons" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Exit reasons</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#attach-after-a-restart-or-an-upgrade" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Attach after a restart or an upgrade</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#delete" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Delete</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#logs" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Logs</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#go-api" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Go API</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#tests" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Tests</span></a></li></ul></nav></starlight-toc><script type="module" src="/_astro/TableOfContents.astro_astro_type_script_index_0_lang.BpJaGz7G.js"></script></div></div></div></aside><div class="main-pane astro-bfhpgjcp"><main data-pagefind-body class="astro-g6oqdoeg" lang="en" dir="ltr"><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><h1 id="_top" class="astro-42k5req6">The Firecracker driver</h1></div></div><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><div class="sl-markdown-content"><p>The Firecracker driver is the VMM driver of the node role (<a href="/reference/vmm/">vmm.md</a>). It runs the microVM of each machine with Firecracker v1.17.0 under the jailer, the Firecracker tool that isolates each microVM process. Each microVM runs in a transient systemd unit of its own. A transient unit is a unit that a program starts through systemd, without a unit file. So when <code dir="auto">hopboxd</code> restarts or upgrades, each microVM keeps running. The code is in <code dir="auto">internal/node/vmm/firecracker</code>.</p>
+<p><code dir="auto">hopboxd run</code> makes the driver on a server with the node role (<a href="/reference/hopboxd/#run">hopboxd.md</a>). The executor of each machine is the only code that calls it (<a href="/reference/executor/">executor.md</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="capabilities">Capabilities</h2><a class="sl-anchor-link" href="#capabilities"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Capabilities”</span></a></div>
+<p>The driver declares no capability in phase 1. It boots, stops, attaches to, and deletes machines. Pause, snapshot, restore, and fork come in phase 3.</p>
+<p><code dir="auto">SnapshotFormat</code> runs <code dir="auto">firecracker --snapshot-version</code> once, with at most 5 s, and returns the version that it prints, such as <code dir="auto">v12.0.0</code>. The compatibility class of the node holds it (<a href="/reference/control-channel/#compatibility-class">control-channel.md</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="files-of-a-machine">Files of a machine</h2><a class="sl-anchor-link" href="#files-of-a-machine"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Files of a machine”</span></a></div>
+<p><code dir="auto">&lt;data_dir&gt;</code> is <code dir="auto">data_dir</code> of the bootstrap config, <code dir="auto">/var/lib/hopbox</code> by default (<a href="/reference/server-layout/#paths">server-layout.md</a>). Each dir is on one file system with reflinks, XFS or btrfs, so a disk and a kernel can enter a jail as hard links.</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Owner</th>
+<th>Mode</th>
+<th>What it holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">&lt;data_dir&gt;/machines/&lt;id&gt;/disk.raw</code></td>
+<td>the jail user of the machine</td>
+<td>0600</td>
+<td>The disk of the machine. See <a href="#disks">Disks</a>.</td>
+</tr>
+<tr>
+<td><code dir="auto">&lt;data_dir&gt;/machines/&lt;id&gt;/machine.json</code></td>
+<td>root</td>
+<td>0600</td>
+<td>The jail ID of the machine, as <code dir="auto">{"jail_id":1879048192}</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">&lt;data_dir&gt;/jail/firecracker/&lt;id&gt;/root/</code></td>
+<td>the jail user</td>
+<td>0700</td>
+<td>The root of the jail. The jailed Firecracker sees it as <code dir="auto">/</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">.../root/firecracker</code></td>
+<td>the jail user</td>
+<td>0755</td>
+<td>The copy of Firecracker that the jailer makes at each boot. A running microVM keeps its copy, so an upgrade does not change it.</td>
+</tr>
+<tr>
+<td><code dir="auto">.../root/vmlinux</code></td>
+<td>root</td>
+<td>0644</td>
+<td>The guest kernel, as a hard link to the kernel cache.</td>
+</tr>
+<tr>
+<td><code dir="auto">.../root/rootfs</code></td>
+<td>the jail user</td>
+<td>0600</td>
+<td>The disk, as a hard link to <code dir="auto">disk.raw</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">.../root/run/firecracker.socket</code></td>
+<td>the jail user</td>
+<td>socket</td>
+<td>The API socket of Firecracker.</td>
+</tr>
+<tr>
+<td><code dir="auto">.../root/v.sock</code></td>
+<td>the jail user</td>
+<td>socket</td>
+<td>The vsock device socket. Firecracker listens on it.</td>
+</tr>
+<tr>
+<td><code dir="auto">.../root/v.sock_10240</code></td>
+<td>root</td>
+<td>0666 socket</td>
+<td>The guest link socket. The executor listens on it, and Firecracker gives it each connection of the guest agent to vsock port 10240 (<a href="/reference/guest-link/#transport">guest-link.md</a>). Only root and the jail user can enter the jail dir, so the socket is open to every user.</td>
+</tr>
+<tr>
+<td><code dir="auto">.../root/dev/</code></td>
+<td>the jail user</td>
+<td></td>
+<td>The device nodes that the jailer makes: <code dir="auto">kvm</code>, <code dir="auto">net/tun</code>, and others.</td>
+</tr>
+<tr>
+<td><code dir="auto">&lt;data_dir&gt;/kernels/&lt;sha256&gt;</code></td>
+<td>root</td>
+<td>0644</td>
+<td>One guest kernel. See <a href="#the-kernel-cache">The kernel cache</a>.</td>
+</tr>
+<tr>
+<td><code dir="auto">&lt;data_dir&gt;/images/&lt;hex&gt;/</code></td>
+<td>root</td>
+<td>0700</td>
+<td>One image. See <a href="#the-image-cache">The image cache</a>.</td>
+</tr>
+</tbody>
+</table>
+<p>A unix socket path has at most 107 bytes on Linux. The API socket of a machine has the path <code dir="auto">&lt;data_dir&gt;/jail/firecracker/&lt;id&gt;/root/run/firecracker.socket</code>, so <code dir="auto">data_dir</code> has at most 25 characters. The bootstrap config refuses a longer path on a server with the node role (<a href="/reference/hopboxd-config/#keys">hopboxd-config.md</a>), so an install stops before it changes anything.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="the-unit-of-a-machine">The unit of a machine</h2><a class="sl-anchor-link" href="#the-unit-of-a-machine"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The unit of a machine”</span></a></div>
+<p>Each microVM runs in the unit <code dir="auto">hopbox-machine-&lt;id&gt;.service</code>, in the slice <code dir="auto">hopbox-machines.slice</code> (<a href="/reference/server-layout/#hopbox-machinesslice">server-layout.md</a>). The driver starts it through the D-Bus API of systemd. It first tries the private socket of systemd, which only root can use, and then the system bus.</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">Description</code></td>
+<td><code dir="auto">hopbox machine &lt;id&gt;</code></td>
+</tr>
+<tr>
+<td><code dir="auto">Slice</code></td>
+<td><code dir="auto">hopbox-machines.slice</code></td>
+</tr>
+<tr>
+<td><code dir="auto">Type</code></td>
+<td><code dir="auto">exec</code>. systemd reports the start once the jailer runs.</td>
+</tr>
+<tr>
+<td><code dir="auto">ExecStart</code></td>
+<td>the jailer, with the arguments below</td>
+</tr>
+<tr>
+<td><code dir="auto">MemoryMax</code></td>
+<td>the RAM of the machine plus 256 MiB. The extra memory is for Firecracker and for the page cache of the disk.</td>
+</tr>
+<tr>
+<td><code dir="auto">TasksMax</code></td>
+<td>256. Firecracker runs one thread for each vCPU and a few of its own.</td>
+</tr>
+<tr>
+<td><code dir="auto">LogRateLimitIntervalUSec</code>, <code dir="auto">LogRateLimitBurst</code></td>
+<td>30 s and 1000. The journal takes at most 1000 lines of the unit in 30 s, a tenth of the default of journald. A guest can write to its serial console without end, and journald drops the lines above the limit.</td>
+</tr>
+<tr>
+<td><code dir="auto">ExecStop</code></td>
+<td><code dir="auto">hopboxd stop-guest --api-socket &lt;API socket&gt; --timeout &lt;StopTimeout&gt;</code>, with the path of the <code dir="auto">hopboxd</code> that booted the machine, such as <code dir="auto">/opt/hopbox/current/hopboxd</code>. systemd ignores a failure of the command, as the prefix <code dir="auto">-</code> of a unit file says. See <a href="#a-stop-through-systemd">A stop through systemd</a>. A driver without <code dir="auto">StopHelper</code> sets no <code dir="auto">ExecStop</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">TimeoutStopUSec</code></td>
+<td><code dir="auto">StopTimeout</code> plus 10 s, 40 s by default. systemd waits this long for <code dir="auto">ExecStop</code>, and then this long again for the end of Firecracker after <code dir="auto">SIGTERM</code>. If Firecracker still runs, systemd sends <code dir="auto">SIGKILL</code> and can wait a third time. So a stop takes at most 2 min.</td>
+</tr>
+<tr>
+<td><code dir="auto">Before</code></td>
+<td><code dir="auto">hopboxd.service</code>, the unit of <code dir="auto">DaemonUnit</code>. At a shutdown, systemd stops both units, and this order makes it stop <code dir="auto">hopboxd</code> first. A restart of <code dir="auto">hopboxd</code> alone does not stop the unit.</td>
+</tr>
+<tr>
+<td><code dir="auto">RequiresMountsFor</code></td>
+<td><code dir="auto">&lt;data_dir&gt;/machines</code> and <code dir="auto">&lt;data_dir&gt;/jail</code>. At a shutdown, systemd unmounts the file system of the disks only after the unit stopped.</td>
+</tr>
+</tbody>
+</table>
+<p>The jailer gets these arguments:</p>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">--id</code></td>
+<td>the machine ID</td>
+</tr>
+<tr>
+<td><code dir="auto">--exec-file</code></td>
+<td><code dir="auto">vmm.firecracker</code> of the bootstrap config (<a href="/reference/hopboxd-config/#keys">hopboxd-config.md</a>)</td>
+</tr>
+<tr>
+<td><code dir="auto">--uid</code>, <code dir="auto">--gid</code></td>
+<td>the jail ID of the machine. See <a href="#jail-users">Jail users</a>.</td>
+</tr>
+<tr>
+<td><code dir="auto">--chroot-base-dir</code></td>
+<td><code dir="auto">&lt;data_dir&gt;/jail</code></td>
+</tr>
+<tr>
+<td><code dir="auto">--cgroup-version</code></td>
+<td><code dir="auto">2</code></td>
+</tr>
+<tr>
+<td><code dir="auto">--parent-cgroup</code></td>
+<td>the cgroup of the unit, such as <code dir="auto">hopbox.slice/hopbox-machines.slice/hopbox-machine-&lt;id&gt;.service</code>. Firecracker runs in it already. When a cgroup <code dir="auto">/firecracker</code> exists and the argument is missing, the jailer moves Firecracker into that cgroup.</td>
+</tr>
+<tr>
+<td><code dir="auto">--netns</code></td>
+<td><code dir="auto">NetNS</code> of the config: by default <code dir="auto">/proc/&lt;pid of hopboxd&gt;/ns/net</code>, the network namespace of <code dir="auto">hopboxd</code>. The driver makes the tap device there, so Firecracker must open it there. A unit of systemd starts in the namespace of the host. So for a <code dir="auto">hopboxd</code> in a namespace of its own, as in the KVM tests, only this argument puts Firecracker next to its device.</td>
+</tr>
+<tr>
+<td>after <code dir="auto">--</code></td>
+<td><code dir="auto">--api-sock /run/firecracker.socket</code>, for Firecracker</td>
+</tr>
+</tbody>
+</table>
+<p>The jailer makes no cgroup of its own. The limits of the unit apply to Firecracker. The jailer then runs Firecracker in the same process, so the main process of the unit is Firecracker. It uses the default seccomp filter of Firecracker.</p>
+<p>The serial console of the guest and the log of Firecracker go to the journal of the unit:</p>
+<div class="expressive-code"><link rel="stylesheet" href="/_astro/ec.w36nc.css"><script type="module" src="/_astro/ec.0vx5m.js"></script><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="sh"><code><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">journalctl</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">-u</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">hopbox-machine-01a1460c-1f6e-7b8a-9c42-3d5e7f8a9b10.service</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="journalctl -u hopbox-machine-01a1460c-1f6e-7b8a-9c42-3d5e7f8a9b10.service"><div></div></button></div></figure></div>
+<p>A stop of <code dir="auto">hopboxd.service</code> stops only the processes of <code dir="auto">hopboxd.service</code>. The unit of a machine is not part of it, so the microVM keeps running.</p>
+<p>A reboot or a shutdown of the server shuts each guest down cleanly. See <a href="#a-stop-through-systemd">A stop through systemd</a>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="jail-users">Jail users</h2><a class="sl-anchor-link" href="#jail-users"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Jail users”</span></a></div>
+<p>Each machine runs as its own user and group ID, its jail ID. The IDs come from the range of the user <code dir="auto">hopbox-jail</code>, 1879048192 to 1879113727 (<a href="/reference/server-layout/#users-and-ids">server-layout.md</a>). At the first boot of a machine, the driver gives it the lowest free ID of the node. It writes the ID to <code dir="auto">machine.json</code>. The machine keeps the ID until its delete. When all 65536 IDs are in use, a boot fails with <code dir="auto">firecracker: all 65536 jail IDs are in use</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="boot">Boot</h2><a class="sl-anchor-link" href="#boot"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Boot”</span></a></div>
+<p>A boot runs these steps. The executor then waits for the guest agent (<a href="/reference/executor/#actions">executor.md</a>).</p>
+<ol>
+<li>The driver checks the size of the machine. Firecracker takes 1 vCPU or an even number of vCPUs, up to 32. The RAM is a whole number of MiB, at least 128 MiB.</li>
+<li>It refuses a machine whose unit runs, and resets the failed state of an old unit.</li>
+<li>It takes the kernel that the image names from the kernel cache.</li>
+<li>It takes the disk of the image from the image cache. The first boot of an image can unpack or download it.</li>
+<li>It makes the disk of the machine, at its first boot. See <a href="#disks">Disks</a>.</li>
+<li>It fills the jail: it removes what an earlier boot left there, apart from the guest link socket, and makes hard links to the kernel and the disk.</li>
+<li>It makes the tap device of the machine, and connects it to the node network. See <a href="#the-tap-device">The tap device</a>.</li>
+<li>It starts the unit, and waits at most 10 s for the API socket of Firecracker.</li>
+<li>It configures the microVM through the API, and starts it.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>API call</th>
+<th>Body</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">PUT /machine-config</code></td>
+<td><code dir="auto">vcpu_count</code>, <code dir="auto">mem_size_mib</code>, and <code dir="auto">smt</code> false. No CPU template.</td>
+</tr>
+<tr>
+<td><code dir="auto">PUT /boot-source</code></td>
+<td><code dir="auto">kernel_image_path</code> <code dir="auto">/vmlinux</code>, and the boot arguments of <a href="/reference/guest-kernel/#boot-requirements">guest-kernel.md</a>. The kernel command line holds no secret.</td>
+</tr>
+<tr>
+<td><code dir="auto">PUT /drives/rootfs</code></td>
+<td>The root disk <code dir="auto">/rootfs</code>, read-write, with <code dir="auto">cache_type</code> <code dir="auto">Writeback</code> and <code dir="auto">discard</code> true. See <a href="#disks">Disks</a>.</td>
+</tr>
+<tr>
+<td><code dir="auto">PUT /network-interfaces/eth0</code></td>
+<td>The tap device, and a MAC address from a hash of the machine ID, <code dir="auto">06:00:xx:xx:xx:xx</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">PUT /mmds/config</code></td>
+<td>MMDS version 2 on <code dir="auto">eth0</code>, at <code dir="auto">169.254.169.254</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">PUT /mmds</code></td>
+<td><code dir="auto">{"hopbox": {"guest_link_key": "&lt;64 hex characters&gt;"}}</code>, the link key of the boot (<a href="/reference/guest-link/#link-key">guest-link.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">PUT /vsock</code></td>
+<td><code dir="auto">guest_cid</code> 3, <code dir="auto">uds_path</code> <code dir="auto">/v.sock</code>. The vsock device of Firecracker carries the connections over unix sockets, so every guest can have the address 3.</td>
+</tr>
+<tr>
+<td><code dir="auto">PUT /actions</code></td>
+<td><code dir="auto">InstanceStart</code></td>
+</tr>
+</tbody>
+</table>
+<p><code dir="auto">Boot</code> returns once Firecracker started the microVM. If a step fails after the start of the unit, the driver kills the unit and waits until it stopped. Then it resets the failed state of the unit and removes the tap device. So no microVM of the machine runs after a failed boot. Each step has its own error, such as <code dir="auto">firecracker PUT /actions: 400 Bad Request: &lt;message of Firecracker&gt;</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="disks">Disks</h2><a class="sl-anchor-link" href="#disks"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Disks”</span></a></div>
+<p>The disk of a machine is a reflink copy of the disk of its image, made with the <code dir="auto">FICLONE</code> call of Linux. Then the driver makes the file as large as the disk size of the machine, 100 GB for the default size. The file stays sparse: only the blocks that the machine writes take space of their own. At boot, <code dir="auto">systemd-growfs</code> in the guest grows the file system to the end of the disk (<a href="/reference/default-image/#disk">default-image.md</a>).</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>When</td>
+<td>At the first boot of the machine. Each later boot uses the disk that exists. A larger disk size grows it at the next boot.</td>
+</tr>
+<tr>
+<td>File system</td>
+<td>XFS with reflinks or btrfs. On another file system, the boot fails with <code dir="auto">the file system of &lt;dir&gt; has no reflinks</code>.</td>
+</tr>
+<tr>
+<td>Cache mode</td>
+<td><code dir="auto">Writeback</code>: a flush in the guest reaches the disk of the node.</td>
+</tr>
+<tr>
+<td>Discard</td>
+<td>On: the guest can give freed blocks back, so the disk stays sparse.</td>
+</tr>
+<tr>
+<td>Delete</td>
+<td><code dir="auto">Delete</code> removes the disk with the machine dir.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h2"><h2 id="the-image-cache">The image cache</h2><a class="sl-anchor-link" href="#the-image-cache"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The image cache”</span></a></div>
+<p><code dir="auto">&lt;data_dir&gt;/images/&lt;hex&gt;</code> holds the image with the digest <code dir="auto">sha256:&lt;hex&gt;</code> (<a href="/reference/server-layout/#the-image-cache">server-layout.md</a>). The driver takes the disk of an image in this order:</p>
+<ol>
+<li>When the dir has <code dir="auto">artifact.json</code>, it must hold the image of the digest. Its disk must have the sha256 and the size that the control role sends, and it must name the kernel of the spec.</li>
+<li>When the disk is there, the driver checks its size and its sha256 at the first use in each process of <code dir="auto">hopboxd</code>. For the default image of 3.5 GiB, this takes about 9 s on the <a href="/reference/preflight/#the-tested-server">tested server</a>.</li>
+<li>An install leaves only the compressed copy. In that case, the driver checks the copy and unpacks it with zstd. Then it checks the disk and removes the copy. The unpack of the default image takes about 22 s on the tested server. The disk keeps a hole for each block of 64 KiB of zeros.</li>
+<li>If the dir has no disk and the image has a URL, the driver downloads the compressed disk from the URL. It unpacks it and checks the disk against the sha256 of the image. Only an <code dir="auto">https</code> URL works. If the download gets larger than the disk plus an eighth, the driver stops it. The dir then holds only <code dir="auto">disk.raw</code>. A later install of a release with the same image adds its <code dir="auto">artifact.json</code>.</li>
+<li>Otherwise the boot fails with <code dir="auto">firecracker: the image cache has no image &lt;digest&gt;, and the image has no URL</code>.</li>
+</ol>
+<p>One job of the process prepares each image. It runs apart from the boot that started it, with a deadline of 2 hours. So a download can take longer than the timeout of one boot. The next boot of the machine then waits for the same job. Two boots of one image at the same time wait for one job. A boot whose wait ends first fails with <code dir="auto">firecracker: the image &lt;digest&gt; is not ready yet, and the node goes on with it</code>, and the restart policy boots the machine again later.</p>
+<p>Each unpack and download writes a temp file <code dir="auto">.&lt;name&gt;.tmp-&lt;random&gt;</code> in the dir of the image, and renames it only after the checks. At the first use of an image in a process, the job removes each such file that an earlier process left. It also removes a compressed copy that stayed beside a checked disk. The cache never removes an image.</p>
+<p>A disk that does not match fails the boot with an error such as <code dir="auto">artifact file disk.raw: sha256 is &lt;got&gt;, the metadata says &lt;want&gt;</code>. Remove the dir of the image. The next boot unpacks or downloads it again.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="the-kernel-cache">The kernel cache</h2><a class="sl-anchor-link" href="#the-kernel-cache"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The kernel cache”</span></a></div>
+<p><code dir="auto">&lt;data_dir&gt;/kernels/&lt;sha256&gt;</code> holds each guest kernel that the node got with a release. The image names the kernel that it was built and tested with, by its sha256 (<a href="/reference/artifact-format/#artifactjson">artifact-format.md</a>). With the cache, a machine still boots after an upgrade brings another kernel.</p>
+<p>At each start of <code dir="auto">hopboxd run</code>, the node adds the kernel of <code dir="auto">vmm.kernel</code> to the cache, unless the cache has it. When the kernel is missing, <code dir="auto">hopboxd</code> logs a warning and starts anyway. Each boot checks the sha256 of a kernel at its first use in the process. A boot whose kernel is not in the cache fails with <code dir="auto">firecracker: the node has no guest kernel with the sha256 &lt;sha256&gt;, which the image needs</code>. The cache never removes a kernel.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="the-tap-device">The tap device</h2><a class="sl-anchor-link" href="#the-tap-device"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The tap device”</span></a></div>
+<p>Each machine has a tap device, a virtual network device of Linux, in the network namespace of <code dir="auto">hopboxd</code>. The guest reaches its node and the internet through it (<a href="/reference/node-network/">node-network.md</a>). The metadata service of Firecracker, which holds the link key, also needs a network interface in the guest.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Name</td>
+<td><code dir="auto">hbt</code> and the first 12 hex digits of the sha256 of the machine ID, such as <code dir="auto">hbt3f2c9a0b1d4e</code></td>
+</tr>
+<tr>
+<td>Owner and group</td>
+<td>the jail ID of the machine, so the jailed Firecracker can open it</td>
+</tr>
+<tr>
+<td>State</td>
+<td>For a machine with an address, the driver calls <code dir="auto">Network.Connect</code> of its config before it starts the unit. The device is then up, with the gateway address and the route of the machine (<a href="/reference/node-network/#the-tap-device-of-a-machine">node-network.md</a>). A failed connect fails the boot. A machine without an address, or a driver without <code dir="auto">Network</code>, keeps the device down, and the driver logs <code dir="auto">the machine boots without network</code>. Firecracker answers the requests of the guest to the metadata service itself, so they never reach the device.</td>
+</tr>
+<tr>
+<td>Removal</td>
+<td>when the microVM ends while <code dir="auto">hopboxd</code> watches it, after a failed boot, and at a delete. The driver first calls <code dir="auto">Network.Disconnect</code>, so the table of the node network drops the device.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h2"><h2 id="stop">Stop</h2><a class="sl-anchor-link" href="#stop"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Stop”</span></a></div>
+<p><code dir="auto">Instance.Stop</code> sends <code dir="auto">SendCtrlAltDel</code> through the API. The guest reboots, and with <code dir="auto">reboot=k</code> a reboot ends Firecracker. The stop waits for the end of the process. After 30 s, or at the end of the context of the call, the driver kills the unit with <code dir="auto">SIGKILL</code>. On the tested server, a stop of the default image takes about 0.4 s.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="a-stop-through-systemd">A stop through systemd</h2><a class="sl-anchor-link" href="#a-stop-through-systemd"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “A stop through systemd”</span></a></div>
+<p>A reboot or a shutdown of the server stops each unit through systemd. So does <code dir="auto">sudo systemctl stop hopbox-machine-&lt;id&gt;.service</code>. Without <code dir="auto">ExecStop</code>, systemd sends <code dir="auto">SIGTERM</code>, which ends Firecracker at once, as a power loss does. So the unit of each machine gets an <code dir="auto">ExecStop</code>, and a stop runs these steps:</p>
+<ol>
+<li>At a shutdown, systemd stops <code dir="auto">hopboxd.service</code> first, because each unit is ordered before it. So no executor sees its guests go down, and none applies the restart policy or reports a state.</li>
+<li>systemd runs <code dir="auto">hopboxd stop-guest</code>. It sends <code dir="auto">SendCtrlAltDel</code> through the API socket, as <code dir="auto">Instance.Stop</code> does.</li>
+<li>The guest shuts down. It writes its page cache to the disk, and unmounts its file systems. Then it reboots, and with <code dir="auto">reboot=k</code> Firecracker ends with status 0.</li>
+<li><code dir="auto">stop-guest</code> sees the end of the process, and exits with status 0. The unit is then inactive.</li>
+</ol>
+<p>If the guest does not end within <code dir="auto">StopTimeout</code>, 30 s by default, <code dir="auto">stop-guest</code> exits with status 1. If the call to Firecracker fails, and Firecracker does not end within 2 s, <code dir="auto">stop-guest</code> exits with status 1 too. systemd ignores the status, and sends <code dir="auto">SIGTERM</code> to Firecracker. Firecracker ends at once, as at a power loss. The unit then ends inactive, not failed, because <code dir="auto">SIGTERM</code> is a clean end for systemd. The root file system of the guest is still in use, so the driver reports <code dir="auto">crash</code>.</p>
+<p>systemd runs <code dir="auto">ExecStop</code> also after Firecracker ended by itself, as after a reboot from inside. It then leaves <code dir="auto">MAINPID</code> unset, and <code dir="auto">stop-guest</code> exits with status 0 at once.</p>
+<p>The next boot of the server brings each machine back. The target of each machine stays as it was, so the executor boots each machine with the target <code dir="auto">running</code>, whatever its restart policy (<a href="/reference/executor/#restart-policy">executor.md</a>).</p>
+<p>A stop of one unit while <code dir="auto">hopboxd</code> runs is a stop that <code dir="auto">hopboxd</code> did not ask for. When the guest shuts down cleanly, the exit reason is <code dir="auto">shutdown</code>, as for a shutdown from inside. When systemd had to kill Firecracker, the exit reason is <code dir="auto">crash</code>. The executor then applies the restart policy. With <code dir="auto">always</code>, the machine boots again after the backoff. With <code dir="auto">never</code>, a clean stop sets the target to <code dir="auto">stopped</code>. To stop a machine, use the API or <code dir="auto">hopbox machine stop</code> instead.</p>
+<p>A unit keeps the properties of the boot that started it. So a microVM that a release without <code dir="auto">ExecStop</code> booted still gets <code dir="auto">SIGTERM</code> at a shutdown, until its next boot. After a rollback to a release without <code dir="auto">stop-guest</code>, the units of the later release run the older <code dir="auto">hopboxd</code>. It exits with status 80, <code dir="auto">unexpected argument stop-guest</code>. systemd ignores that status. A shutdown or a reboot from inside thus still counts as <code dir="auto">shutdown</code>. A stop through systemd sends <code dir="auto">SIGTERM</code> at once, as before <code dir="auto">stop-guest</code>, until the next boot of the machine. Each later release keeps the flags of <code dir="auto">stop-guest</code>. A unit runs the <code dir="auto">hopboxd</code> of the current release, with the flags of the release that booted it.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="exit-reasons">Exit reasons</h2><a class="sl-anchor-link" href="#exit-reasons"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Exit reasons”</span></a></div>
+<p>The driver watches the main process of the unit with a pidfd, a file descriptor of a process. When the process ends, it asks systemd why.</p>
+<table>
+<thead>
+<tr>
+<th>What ended the process</th>
+<th>Unit after the end</th>
+<th>Root file system</th>
+<th>Exit reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A stop of the driver</td>
+<td>any</td>
+<td>any</td>
+<td><code dir="auto">stopped</code></td>
+</tr>
+<tr>
+<td>A shutdown or a reboot in the guest, or a stop through systemd that the guest finished in time</td>
+<td>inactive</td>
+<td>clean</td>
+<td><code dir="auto">shutdown</code></td>
+</tr>
+<tr>
+<td>A kernel panic or a reset in the guest</td>
+<td>inactive</td>
+<td>in use</td>
+<td><code dir="auto">crash</code>, with the error <code dir="auto">the guest ended without a clean unmount of its root file system, as after a kernel panic or a reset</code></td>
+</tr>
+<tr>
+<td>A crash of Firecracker or a signal</td>
+<td>failed</td>
+<td>any</td>
+<td><code dir="auto">crash</code>, with an error such as <code dir="auto">the Firecracker process ended: unit failed/failed, result signal, killed by SIGKILL</code></td>
+</tr>
+<tr>
+<td>A stop through systemd that the guest did not finish in time</td>
+<td>inactive</td>
+<td>in use</td>
+<td><code dir="auto">crash</code>, with the error of a kernel panic above</td>
+</tr>
+</tbody>
+</table>
+<p>A kernel panic and a reboot both end Firecracker with status 0, because of <code dir="auto">panic=1</code> and <code dir="auto">reboot=k</code>. So the driver reads the ext4 superblock of the disk of the machine after the end. A shutdown or a reboot makes the root file system read-only first, which clears the journal flag <code dir="auto">needs_recovery</code>. After a panic or a reset, the flag stays set. The driver reads only this flag. The error state of ext4 tells nothing about the last boot, because it stays across clean unmounts until <code dir="auto">e2fsck</code> clears it. A disk without ext4 or without a journal tells nothing, so its end counts as <code dir="auto">shutdown</code>, and the driver logs a warning. A panic before the guest mounts its root file system read-write also counts as <code dir="auto">shutdown</code>, because the flag is not set yet.</p>
+<p>A poweroff or a halt in the guest also ends Firecracker. Firecracker has no power-off device, so the default image turns both into a clean reboot at their last step (<a href="/reference/default-image/#files">default-image.md</a>).</p>
+<p>The driver resets the failed state of the unit, so the name is free for the next boot.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="attach-after-a-restart-or-an-upgrade">Attach after a restart or an upgrade</h2><a class="sl-anchor-link" href="#attach-after-a-restart-or-an-upgrade"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Attach after a restart or an upgrade”</span></a></div>
+<p>After a restart of <code dir="auto">hopboxd</code>, the executor asks the driver for each machine of its node-local state (<a href="/reference/executor/#node-local-state">executor.md</a>). <code dir="auto">Inspect</code> reports a machine as running while its unit is <code dir="auto">active</code>, <code dir="auto">activating</code>, <code dir="auto">deactivating</code>, <code dir="auto">reloading</code>, or <code dir="auto">refreshing</code>. <code dir="auto">Attach</code> then asks the API of Firecracker for the state of the microVM. For a microVM that runs, it watches the main process of the unit again. The executor then gives the microVM a new link key through <code dir="auto">PUT /mmds</code>, and the guest agent connects again.</p>
+<p>A microVM in the state <code dir="auto">Not started</code> comes from a boot that <code dir="auto">hopboxd</code> left before <code dir="auto">InstanceStart</code>. Its link key went with that <code dir="auto">hopboxd</code>. So <code dir="auto">Attach</code> kills its unit and returns <code dir="auto">vmm.ErrNotRunning</code>, and the executor boots the machine again.</p>
+<p>An upgrade changes the files of <code dir="auto">vmm.firecracker</code> and <code dir="auto">vmm.kernel</code>. A running microVM keeps its copy of Firecracker in its jail and the kernel that it booted with. The next boot of a machine uses the new Firecracker.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="delete">Delete</h2><a class="sl-anchor-link" href="#delete"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Delete”</span></a></div>
+<p><code dir="auto">Delete</code> refuses a machine whose unit runs. It resets a failed unit, removes the tap device, the jail dir, and the machine dir with the disk. The jail ID of the machine is then free.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="logs">Logs</h2><a class="sl-anchor-link" href="#logs"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Logs”</span></a></div>
+<p>Every record has <code dir="auto">component=firecracker</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Log message</th>
+<th>Level</th>
+<th>Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">booted a microVM</code></td>
+<td>info</td>
+<td><code dir="auto">machine</code>, <code dir="auto">unit</code>, <code dir="auto">jail_id</code>, <code dir="auto">tap</code>, <code dir="auto">duration</code></td>
+</tr>
+<tr>
+<td><code dir="auto">attached to a microVM</code></td>
+<td>info</td>
+<td><code dir="auto">machine</code>, <code dir="auto">unit</code>, <code dir="auto">state</code></td>
+</tr>
+<tr>
+<td><code dir="auto">stopping a microVM that never started</code></td>
+<td>warn</td>
+<td><code dir="auto">machine</code>, <code dir="auto">unit</code></td>
+</tr>
+<tr>
+<td><code dir="auto">made the disk of a machine as a reflink copy of its image</code></td>
+<td>info</td>
+<td><code dir="auto">machine</code>, <code dir="auto">image</code></td>
+</tr>
+<tr>
+<td><code dir="auto">unpacked the disk of an image</code></td>
+<td>info</td>
+<td><code dir="auto">digest</code>, <code dir="auto">duration</code></td>
+</tr>
+<tr>
+<td><code dir="auto">downloaded the disk of an image</code></td>
+<td>info</td>
+<td><code dir="auto">digest</code>, <code dir="auto">url</code>, <code dir="auto">duration</code></td>
+</tr>
+<tr>
+<td><code dir="auto">checked the disk of an image</code></td>
+<td>info</td>
+<td><code dir="auto">digest</code>, <code dir="auto">duration</code></td>
+</tr>
+<tr>
+<td><code dir="auto">cannot remove the compressed disk of an unpacked image</code></td>
+<td>warn</td>
+<td><code dir="auto">digest</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">removed a temp file of the image cache</code></td>
+<td>info</td>
+<td><code dir="auto">file</code></td>
+</tr>
+<tr>
+<td><code dir="auto">cannot remove a temp file of the image cache</code></td>
+<td>warn</td>
+<td><code dir="auto">file</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">cannot ask the guest to shut down, so the microVM gets killed</code></td>
+<td>warn</td>
+<td><code dir="auto">machine</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the guest did not shut down in time, so the microVM gets killed</code></td>
+<td>warn</td>
+<td><code dir="auto">machine</code>, <code dir="auto">timeout</code></td>
+</tr>
+<tr>
+<td><code dir="auto">cannot stop the unit of a failed boot</code></td>
+<td>error</td>
+<td><code dir="auto">machine</code>, <code dir="auto">unit</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the machine boots without network</code></td>
+<td>warn</td>
+<td><code dir="auto">machine</code>, <code dir="auto">address</code>, <code dir="auto">network</code></td>
+</tr>
+<tr>
+<td><code dir="auto">cannot remove the tap device of a machine</code></td>
+<td>warn</td>
+<td><code dir="auto">machine</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">cannot watch a microVM</code></td>
+<td>error</td>
+<td><code dir="auto">machine</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">cannot reset a failed unit</code></td>
+<td>warn</td>
+<td><code dir="auto">unit</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">cannot read the root file system of a stopped guest, so its end counts as a shutdown</code></td>
+<td>warn</td>
+<td><code dir="auto">machine</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the root file system of the guest is not ext4 with a journal, so its end counts as a shutdown</code></td>
+<td>warn</td>
+<td><code dir="auto">machine</code></td>
+</tr>
+</tbody>
+</table>
+<p><code dir="auto">hopboxd stop-guest</code> logs to the journal of the unit of the machine, at level info (<a href="/reference/hopboxd/#stop-guest">hopboxd.md</a>). For a stop of a running guest, it logs <code dir="auto">asking the guest to shut down</code> and then <code dir="auto">the guest shut down</code>. On a failure, it prints the error and exits with status 1, for example <code dir="auto">firecracker: the guest did not shut down within 30s</code>.</p>
+<p>The driver has no metrics of its own. The executor counts each boot, stop, and delete (<a href="/reference/executor/#metrics">executor.md</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="go-api">Go API</h2><a class="sl-anchor-link" href="#go-api"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Go API”</span></a></div>
+<p><code dir="auto">firecracker.New(Config)</code> checks the config and returns a <code dir="auto">Driver</code>. It touches no file and no system service, so a node without KVM still starts, and each boot names what is missing.</p>
+<table>
+<thead>
+<tr>
+<th>Field of <code dir="auto">Config</code></th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">Firecracker</code></td>
+<td>required</td>
+<td>The path of Firecracker. Its file name must be <code dir="auto">firecracker</code>, because the jailer names the jail dir after it.</td>
+</tr>
+<tr>
+<td><code dir="auto">Jailer</code></td>
+<td>required</td>
+<td>The path of the jailer.</td>
+</tr>
+<tr>
+<td><code dir="auto">ImagesDir</code>, <code dir="auto">KernelsDir</code>, <code dir="auto">MachinesDir</code>, <code dir="auto">JailDir</code></td>
+<td>required</td>
+<td>The dirs of <a href="#files-of-a-machine">Files of a machine</a>.</td>
+</tr>
+<tr>
+<td><code dir="auto">JailIDFirst</code>, <code dir="auto">JailIDCount</code></td>
+<td>required</td>
+<td>The range of the jail IDs.</td>
+</tr>
+<tr>
+<td><code dir="auto">Slice</code></td>
+<td><code dir="auto">hopbox-machines.slice</code></td>
+<td>The slice of the units.</td>
+</tr>
+<tr>
+<td><code dir="auto">UnitPrefix</code></td>
+<td><code dir="auto">hopbox-machine-</code></td>
+<td>The start of the unit names.</td>
+</tr>
+<tr>
+<td><code dir="auto">TapPrefix</code></td>
+<td><code dir="auto">hbt</code></td>
+<td>The start of the tap device names, at most 4 characters.</td>
+</tr>
+<tr>
+<td><code dir="auto">Network</code></td>
+<td>nil</td>
+<td>The node network, such as a <code dir="auto">netcfg.Network</code>. Its <code dir="auto">Connect</code> and <code dir="auto">Disconnect</code> take the tap device of each machine with an address. Nil keeps each device down.</td>
+</tr>
+<tr>
+<td><code dir="auto">NetNS</code></td>
+<td><code dir="auto">/proc/&lt;pid&gt;/ns/net</code> of the process</td>
+<td>The network namespace of the microVMs, for <code dir="auto">--netns</code> of the jailer. It must be an absolute path.</td>
+</tr>
+<tr>
+<td><code dir="auto">StopTimeout</code></td>
+<td>30 s</td>
+<td>The wait for the guest at a stop, also in <code dir="auto">stop-guest</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">StopHelper</code></td>
+<td>empty</td>
+<td>The absolute path of <code dir="auto">hopboxd</code>, for the <code dir="auto">ExecStop</code> of each unit. <code dir="auto">hopboxd run</code> sets the path that started it, such as <code dir="auto">/opt/hopbox/current/hopboxd</code>. Empty sets no <code dir="auto">ExecStop</code>, so a stop through systemd ends Firecracker with <code dir="auto">SIGTERM</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">DaemonUnit</code></td>
+<td>empty</td>
+<td>The unit of <code dir="auto">hopboxd</code>. Each unit of a machine is ordered before it. <code dir="auto">hopboxd run</code> sets <code dir="auto">hopboxd.service</code>. Empty adds no order.</td>
+</tr>
+<tr>
+<td><code dir="auto">StartTimeout</code></td>
+<td>10 s</td>
+<td>The wait for the API socket of a new Firecracker.</td>
+</tr>
+<tr>
+<td><code dir="auto">MemoryOverhead</code></td>
+<td>256 MiB</td>
+<td>The memory of a unit beyond the RAM of the guest.</td>
+</tr>
+<tr>
+<td><code dir="auto">HTTPClient</code></td>
+<td>a client with the proxy of the environment</td>
+<td>The client of image downloads.</td>
+</tr>
+<tr>
+<td><code dir="auto">Logger</code></td>
+<td><code dir="auto">slog.Default()</code></td>
+<td>The logger.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">AddKernel(ctx, path)</code></td>
+<td>Adds the kernel at <code dir="auto">path</code> to the kernel cache, and returns its sha256.</td>
+</tr>
+<tr>
+<td><code dir="auto">SnapshotFormat(ctx)</code></td>
+<td>The snapshot format version of Firecracker.</td>
+</tr>
+<tr>
+<td><code dir="auto">Close()</code></td>
+<td>Closes the connection to systemd. A later call makes a new one. <code dir="auto">hopboxd run</code> calls it after the stop of the unit <code dir="auto">machines</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The function <code dir="auto">firecracker.StopGuest(ctx, sock, pid, timeout)</code> is the body of <code dir="auto">hopboxd stop-guest</code>. It sends <code dir="auto">SendCtrlAltDel</code> to the API socket <code dir="auto">sock</code>, and waits for the end of the process <code dir="auto">pid</code>, at most for <code dir="auto">timeout</code>. A <code dir="auto">pid</code> of 0 returns at once.</p>
+<p>The methods of <code dir="auto">vmm.Driver</code> follow <a href="/reference/vmm/#driver">vmm.md</a>. The driver needs Linux. On another system, <code dir="auto">Inspect</code>, <code dir="auto">Boot</code>, <code dir="auto">Attach</code>, and <code dir="auto">Delete</code> fail with <code dir="auto">firecracker: the driver runs only on Linux</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="tests">Tests</h2><a class="sl-anchor-link" href="#tests"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Tests”</span></a></div>
+<p><code dir="auto">make test</code> runs the unit tests of the driver on any system: the config checks, the names, the API client against a fake Firecracker, the image cache, the kernel cache, and the jail IDs. <code dir="auto">make test-linux</code> runs them on Linux too.</p>
+<p><code dir="auto">make test-kvm</code> runs the KVM tests. <code dir="auto">TestKVMLifecycle</code> boots the default image with the real guest agent and checks the unit, the jail user, the cgroup, the tap device, and the disk. Then it restarts the driver and attaches, stops, and boots from the kept disk. It reboots and powers off from inside, which must give <code dir="auto">shutdown</code>. A kernel panic and a kill of Firecracker must give <code dir="auto">crash</code>. It checks <code dir="auto">ExecStop</code>, <code dir="auto">Before</code>, and <code dir="auto">TimeoutStopUSec</code> of the unit. Then the guest turns its writeback off and writes a file without a sync, and <code dir="auto">systemctl stop</code> stops the unit. That must give <code dir="auto">shutdown</code>, and the file must be there at the next boot. Then the stop helper is <code dir="auto">/bin/false</code>, as after a rollback. A reboot from inside must still give <code dir="auto">shutdown</code>, and the unit must not end failed. A stop of the unit must then give <code dir="auto">crash</code>, with a root file system in use. It also attaches to a microVM that never started, and deletes the machine. <code dir="auto">TestKVMFailedBoot</code> checks that a failed boot leaves no unit and no tap device. <code dir="auto">TestKVMSystemdConnection</code> checks that the connection to systemd outlives the call that made it. <code dir="auto">TestKVMEndToEnd</code> of <code dir="auto">internal/control</code> runs a single-host install. It makes a machine through the API, runs exec, stops and starts it, upgrades <code dir="auto">hopboxd</code> with the microVM running, and deletes it. It also checks the node network with a second machine (<a href="/reference/node-network/#tests">node-network.md</a>). The KVM tests run in a network namespace of their own.</p>
+<table>
+<thead>
+<tr>
+<th>Variable of <code dir="auto">make test-kvm</code></th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">KVM_WORKDIR</code></td>
+<td>none, required</td>
+<td>A dir on XFS with reflinks, of at most 22 characters.</td>
+</tr>
+<tr>
+<td><code dir="auto">FIRECRACKER</code>, <code dir="auto">JAILER</code></td>
+<td><code dir="auto">firecracker</code>, <code dir="auto">jailer</code></td>
+<td>Firecracker v1.17.0 and its jailer, on the host of the tests.</td>
+</tr>
+<tr>
+<td><code dir="auto">KVM_HOST</code></td>
+<td>empty</td>
+<td>An SSH host that runs the tests. Empty runs them on this host.</td>
+</tr>
+<tr>
+<td><code dir="auto">KVM_DIR</code></td>
+<td><code dir="auto">/var/tmp/hopbox-kvm</code></td>
+<td>The dir on <code dir="auto">KVM_HOST</code> for the test binaries, the kernel, the image, and Postgres.</td>
+</tr>
+<tr>
+<td><code dir="auto">KVM_TEST_ENV</code></td>
+<td>empty</td>
+<td>More env vars for the tests.</td>
+</tr>
+<tr>
+<td><code dir="auto">KERNEL_OUT</code>, <code dir="auto">IMAGE_OUT</code>, <code dir="auto">PG_LINUX</code></td>
+<td>as in the <code dir="auto">Makefile</code></td>
+<td>The kernel, the image, and the Linux build of Postgres.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Env var of the tests</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">HOPBOX_TEST_KVM</code></td>
+<td>none</td>
+<td><code dir="auto">1</code> runs the KVM tests. Without it, they skip.</td>
+</tr>
+<tr>
+<td><code dir="auto">HOPBOX_TEST_FIRECRACKER</code>, <code dir="auto">HOPBOX_TEST_JAILER</code></td>
+<td>none, required</td>
+<td>The Firecracker binary and its jailer. <code dir="auto">make test-kvm</code> sets them from <code dir="auto">FIRECRACKER</code> and <code dir="auto">JAILER</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">HOPBOX_TEST_KERNEL</code></td>
+<td>none, required</td>
+<td>The guest kernel <code dir="auto">vmlinux</code>. <code dir="auto">make test-kvm</code> sets it from <code dir="auto">KERNEL_OUT</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">HOPBOX_TEST_IMAGE</code></td>
+<td>none, required</td>
+<td>The artifact folder of the default image. <code dir="auto">make test-kvm</code> sets it from <code dir="auto">IMAGE_OUT</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">HOPBOX_TEST_WORKDIR</code></td>
+<td>none, required</td>
+<td>The work folder of the tests, <code dir="auto">KVM_WORKDIR</code> of <code dir="auto">make test-kvm</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">HOPBOX_PG_DIR</code></td>
+<td>none, required by <code dir="auto">TestKVMEndToEnd</code></td>
+<td>The bundled Postgres for Linux. <code dir="auto">make test-kvm</code> sets it to <code dir="auto">PG_LINUX</code>, or to a Linux build of <code dir="auto">tools/pgdist</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">HOPBOX_TEST_HOPBOXD</code></td>
+<td>none, required</td>
+<td>A <code dir="auto">hopboxd</code> for Linux, for the <code dir="auto">ExecStop</code> of the units of the tests. <code dir="auto">make test-kvm</code> builds it.</td>
+</tr>
+<tr>
+<td><code dir="auto">HOPBOX_TEST_UNIT_PREFIX</code></td>
+<td><code dir="auto">hopbox-test-machine-</code></td>
+<td>The start of the unit names of the tests.</td>
+</tr>
+<tr>
+<td><code dir="auto">HOPBOX_TEST_SLICE</code></td>
+<td><code dir="auto">hopbox_test.slice</code></td>
+<td>The slice of the tests.</td>
+</tr>
+<tr>
+<td><code dir="auto">HOPBOX_TEST_TAP_PREFIX</code></td>
+<td><code dir="auto">hbx</code></td>
+<td>The start of the tap device names of the tests.</td>
+</tr>
+<tr>
+<td><code dir="auto">HOPBOX_TEST_JAIL_ID_FIRST</code></td>
+<td><code dir="auto">1879110000</code></td>
+<td>The first jail ID of <code dir="auto">TestKVMLifecycle</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">HOPBOX_TEST_PG_USER</code></td>
+<td><code dir="auto">hopbox-pg</code></td>
+<td>The user of Postgres in the tests of <code dir="auto">internal/control</code>, which run as root. Set it on a host without the user <code dir="auto">hopbox-pg</code>, such as <code dir="auto">nobody</code>.</td>
+</tr>
+</tbody>
+</table>
+</div><footer class="sl-flex astro-fzngq47q"><div class="meta sl-flex astro-fzngq47q"></div><div class="pagination-links print:hidden astro-7jhddma2" dir="ltr"><a href="/reference/vmm/" rel="prev" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-7jhddma2">Previous<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">The VMM driver interface</span></span></a><a href="/reference/node-network/" rel="next" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-7jhddma2">Next<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">The node network</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>

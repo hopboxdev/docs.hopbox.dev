@@ -1,0 +1,1413 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-toc data-has-sidebar class="astro-g6oqdoeg"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>The org API | hopbox docs</title><link rel="canonical" href="https://docs.hopbox.dev/reference/org-api/"/><link rel="sitemap" href="/sitemap-index.xml"/><link rel="shortcut icon" href="/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.3.8"/><meta name="generator" content="Starlight v0.42.6"/><meta property="og:title" content="The org API"/><meta property="og:type" content="article"/><meta property="og:url" content="https://docs.hopbox.dev/reference/org-api/"/><meta property="og:locale" content="en"/><meta property="og:description" content="The org calls of the public API, OrgService: orgs, roles, members, invitations, usage limits, the suspension, and their audit entries."/><meta property="og:site_name" content="hopbox docs"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="The org calls of the public API, OrgService: orgs, roles, members, invitations, usage limits, the suspension, and their audit entries."/><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/_astro/print.ehPL0gv-.css" media="print"><link rel="stylesheet" href="/_astro/middleware.DkUYdNkX.css"><script type="module" src="/_astro/page.cNngjUgL.js"></script></head><body class="astro-g6oqdoeg"><a class="sl-skip-link astro-ktawktwe" href="#_top">Skip to content</a><div class="page sl-flex astro-vlwsw6sx"><header class="header astro-vlwsw6sx"><div class="header astro-qe7tu4yu"><div class="title-wrapper sl-flex astro-qe7tu4yu"><a href="/" class="site-title sl-flex astro-42muqipg"><span class="astro-42muqipg" translate="no">hopbox docs</span></a></div><div class="sl-flex print:hidden astro-qe7tu4yu"><site-search class="astro-qe7tu4yu astro-yp365hkw" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"><button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-yp365hkw"><svg aria-hidden="true" class="astro-yp365hkw astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg><span class="sl-hidden md:sl-block astro-yp365hkw" aria-hidden="true">Search</span><kbd class="sl-hidden md:sl-flex astro-yp365hkw" style="display: none;"><kbd class="astro-yp365hkw">Ctrl</kbd><kbd class="astro-yp365hkw">K</kbd></kbd></button><dialog style="padding:0" aria-label="Search" class="astro-yp365hkw"><div class="dialog-frame sl-flex astro-yp365hkw"><button data-close-modal class="sl-flex md:sl-hidden astro-yp365hkw">Cancel</button><div class="search-container astro-yp365hkw"><div id="starlight__search" class="astro-yp365hkw"></div></div></div></dialog></site-search><script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script><script type="module" src="/_astro/Search.astro_astro_type_script_index_0_lang.g9hoxVJg.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-qe7tu4yu"><div class="sl-flex social-icons astro-qe7tu4yu"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script><script type="module">var e=`starlight-theme`,t=e=>e===`auto`||e===`dark`||e===`light`?e:`auto`,n=()=>t(typeof localStorage<`u`&&localStorage.getItem(e));function r(t){typeof localStorage<`u`&&localStorage.setItem(e,t===`light`||t===`dark`?t:``)}var i=()=>matchMedia(`(prefers-color-scheme: light)`).matches?`light`:`dark`;function a(e){StarlightThemeProvider.updatePickers(e),document.documentElement.dataset.theme=e===`auto`?i():e,r(e)}matchMedia(`(prefers-color-scheme: light)`).addEventListener(`change`,()=>{n()===`auto`&&a(`auto`)});var o=class extends HTMLElement{constructor(){super(),a(n()),this.querySelector(`select`)?.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&a(t(e.currentTarget.value))})}};customElements.define(`starlight-theme-select`,o);</script><script type="module">var e=class extends HTMLElement{constructor(){super();let e=this.querySelector(`select`);e&&(e.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=e.currentTarget.value)}),window.addEventListener(`pageshow`,t=>{if(!t.persisted)return;let n=e.querySelector(`option[selected]`)?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}};customElements.define(`starlight-lang-select`,e);</script></div></div></header><nav class="sidebar print:hidden astro-vlwsw6sx" aria-label="Main"><button popovertarget="starlight__sidebar" class="sl-menu-button sl-flex md:sl-hidden print:hidden astro-ibd3qwco"><svg aria-hidden="true" class="open-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg><span class="sr-only astro-ibd3qwco">Menu</span></button><script type="module">var e=class extends HTMLElement{constructor(){super();let e=matchMedia(`(min-width: 50em)`),t=()=>{this.popover=e.matches?null:`auto`};t(),e.addEventListener(`change`,()=>t()),this.addEventListener(`toggle`,({newState:e})=>this.trapFocus(e===`open`))}trapFocus(e){document.querySelectorAll(`.main-frame, .sl-skip-link`).forEach(t=>{t.toggleAttribute(`inert`,e)})}};customElements.define(`sl-sidebar-pane`,e);</script><sl-sidebar-pane popover id="starlight__sidebar" class="sidebar-pane astro-vlwsw6sx"><div class="sidebar-content sl-flex astro-vlwsw6sx"><sl-sidebar-state-persist data-hash="0qsyok1" class="astro-oblzz35h"><script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script><ul class="top-level astro-twzrdani"><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Guides</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/guide/run-hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">Run the control role on a laptop</span></a></li><li class="astro-twzrdani"><a href="/guide/install-on-ovhcloud/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on an OVHcloud server with Terraform</span></a></li><li class="astro-twzrdani"><a href="/guide/enroll-node/" class="astro-twzrdani"><span class="astro-twzrdani">Enroll the node role on one server</span></a></li><li class="astro-twzrdani"><a href="/guide/dns-role/" class="astro-twzrdani"><span class="astro-twzrdani">Serve the domain of an install with the DNS role</span></a></li><li class="astro-twzrdani"><a href="/guide/acme-certificate/" class="astro-twzrdani"><span class="astro-twzrdani">Get the wildcard certificate of an install</span></a></li><li class="astro-twzrdani"><a href="/guide/machine-urls/" class="astro-twzrdani"><span class="astro-twzrdani">Run the edge role and open machine URLs</span></a></li><li class="astro-twzrdani"><a href="/guide/first-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">First sign-in on a new install</span></a></li><li class="astro-twzrdani"><a href="/guide/github-google-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/guide/orgs/" class="astro-twzrdani"><span class="astro-twzrdani">Work in a team org</span></a></li><li class="astro-twzrdani"><a href="/guide/env-vars/" class="astro-twzrdani"><span class="astro-twzrdani">Set env vars and secrets</span></a></li><li class="astro-twzrdani"><a href="/guide/machines/" class="astro-twzrdani"><span class="astro-twzrdani">Create and manage machines</span></a></li><li class="astro-twzrdani"><a href="/guide/firecracker-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Run machines with Firecracker</span></a></li><li class="astro-twzrdani"><a href="/guide/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">Check the network of a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/cli/" class="astro-twzrdani"><span class="astro-twzrdani">Use the hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Use machines from the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-prompt/" class="astro-twzrdani"><span class="astro-twzrdani">Work in the prompt of the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/ssh/" class="astro-twzrdani"><span class="astro-twzrdani">Reach a machine over SSH</span></a></li><li class="astro-twzrdani"><a href="/guide/exec-and-files/" class="astro-twzrdani"><span class="astro-twzrdani">Run commands and copy files in a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">Connect an AI agent to hopbox with MCP</span></a></li><li class="astro-twzrdani"><a href="/guide/console/" class="astro-twzrdani"><span class="astro-twzrdani">Use the console</span></a></li><li class="astro-twzrdani"><a href="/guide/typescript-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">Call the API from TypeScript</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-and-keys/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in the CLI, and make API keys and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/guide/install-debian/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on a Debian 13 server by hand</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Reference</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="1"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/reference/hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/release-bundle/" class="astro-twzrdani"><span class="astro-twzrdani">Release bundle</span></a></li><li class="astro-twzrdani"><a href="/reference/server-layout/" class="astro-twzrdani"><span class="astro-twzrdani">Server layout</span></a></li><li class="astro-twzrdani"><a href="/reference/hopboxd-config/" class="astro-twzrdani"><span class="astro-twzrdani">The bootstrap config of hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/api/" class="astro-twzrdani"><span class="astro-twzrdani">The API server</span></a></li><li class="astro-twzrdani"><a href="/reference/org-api/" aria-current="page" class="astro-twzrdani"><span class="astro-twzrdani">The org API</span></a></li><li class="astro-twzrdani"><a href="/reference/vars-api/" class="astro-twzrdani"><span class="astro-twzrdani">The env var API</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-api/" class="astro-twzrdani"><span class="astro-twzrdani">The machine API</span></a></li><li class="astro-twzrdani"><a href="/reference/placement/" class="astro-twzrdani"><span class="astro-twzrdani">Placement</span></a></li><li class="astro-twzrdani"><a href="/reference/auth-api/" class="astro-twzrdani"><span class="astro-twzrdani">The sign-in, account, and audit API</span></a></li><li class="astro-twzrdani"><a href="/reference/credentials/" class="astro-twzrdani"><span class="astro-twzrdani">CLI tokens, API keys, admin API keys, and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/reference/sessions/" class="astro-twzrdani"><span class="astro-twzrdani">Sessions, cookies, and sign-in links</span></a></li><li class="astro-twzrdani"><a href="/reference/smtp/" class="astro-twzrdani"><span class="astro-twzrdani">SMTP config</span></a></li><li class="astro-twzrdani"><a href="/reference/mail/" class="astro-twzrdani"><span class="astro-twzrdani">Mail</span></a></li><li class="astro-twzrdani"><a href="/reference/oauth/" class="astro-twzrdani"><span class="astro-twzrdani">Sign-in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/reference/metrics/" class="astro-twzrdani"><span class="astro-twzrdani">Metrics</span></a></li><li class="astro-twzrdani"><a href="/reference/admin-api/" class="astro-twzrdani"><span class="astro-twzrdani">The admin API</span></a></li><li class="astro-twzrdani"><a href="/reference/internal-listener/" class="astro-twzrdani"><span class="astro-twzrdani">The internal listener</span></a></li><li class="astro-twzrdani"><a href="/reference/enrollment/" class="astro-twzrdani"><span class="astro-twzrdani">Enrollment and the install PKI</span></a></li><li class="astro-twzrdani"><a href="/reference/control-channel/" class="astro-twzrdani"><span class="astro-twzrdani">The control channel</span></a></li><li class="astro-twzrdani"><a href="/reference/dns/" class="astro-twzrdani"><span class="astro-twzrdani">The DNS role</span></a></li><li class="astro-twzrdani"><a href="/reference/edge/" class="astro-twzrdani"><span class="astro-twzrdani">The edge role</span></a></li><li class="astro-twzrdani"><a href="/reference/ssh-front-door/" class="astro-twzrdani"><span class="astro-twzrdani">The SSH front door</span></a></li><li class="astro-twzrdani"><a href="/reference/acme/" class="astro-twzrdani"><span class="astro-twzrdani">The certificate of the install</span></a></li><li class="astro-twzrdani"><a href="/reference/executor-protocol/" class="astro-twzrdani"><span class="astro-twzrdani">The executor protocol</span></a></li><li class="astro-twzrdani"><a href="/reference/executor/" class="astro-twzrdani"><span class="astro-twzrdani">The node executor</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-logs/" class="astro-twzrdani"><span class="astro-twzrdani">Machine logs</span></a></li><li class="astro-twzrdani"><a href="/reference/vmm/" class="astro-twzrdani"><span class="astro-twzrdani">The VMM driver interface</span></a></li><li class="astro-twzrdani"><a href="/reference/firecracker-driver/" class="astro-twzrdani"><span class="astro-twzrdani">The Firecracker driver</span></a></li><li class="astro-twzrdani"><a href="/reference/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">The node network</span></a></li><li class="astro-twzrdani"><a href="/reference/preflight/" class="astro-twzrdani"><span class="astro-twzrdani">The preflight check</span></a></li><li class="astro-twzrdani"><a href="/reference/cli/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/reference/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">The MCP server</span></a></li><li class="astro-twzrdani"><a href="/reference/console/" class="astro-twzrdani"><span class="astro-twzrdani">Console</span></a></li><li class="astro-twzrdani"><a href="/reference/go-client/" class="astro-twzrdani"><span class="astro-twzrdani">Go client</span></a></li><li class="astro-twzrdani"><a href="/reference/ts-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">TypeScript SDK</span></a></li><li class="astro-twzrdani"><a href="/reference/hopbox-guest/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox-guest</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-link/" class="astro-twzrdani"><span class="astro-twzrdani">Guest link</span></a></li><li class="astro-twzrdani"><a href="/reference/terraform-provider/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox Terraform provider</span></a></li><li class="astro-twzrdani"><a href="/reference/version/" class="astro-twzrdani"><span class="astro-twzrdani">The version command</span></a></li><li class="astro-twzrdani"><a href="/reference/api-definitions/" class="astro-twzrdani"><span class="astro-twzrdani">API definitions</span></a></li><li class="astro-twzrdani"><a href="/reference/postgres/" class="astro-twzrdani"><span class="astro-twzrdani">The bundled Postgres</span></a></li><li class="astro-twzrdani"><a href="/reference/domain-rules/" class="astro-twzrdani"><span class="astro-twzrdani">Domain rules</span></a></li><li class="astro-twzrdani"><a href="/reference/control-store/" class="astro-twzrdani"><span class="astro-twzrdani">Control store tables</span></a></li><li class="astro-twzrdani"><a href="/reference/sealing/" class="astro-twzrdani"><span class="astro-twzrdani">Sealing</span></a></li><li class="astro-twzrdani"><a href="/reference/host-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Host kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Guest kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/default-image/" class="astro-twzrdani"><span class="astro-twzrdani">Default image</span></a></li><li class="astro-twzrdani"><a href="/reference/artifact-format/" class="astro-twzrdani"><span class="astro-twzrdani">Artifact format</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Releases</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="2"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/releases/v0.1.0/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox v0.1.0</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="3"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Public API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="4"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="5"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicecreatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">CreateMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicegetmachine/" class="astro-twzrdani"><span class="astro-twzrdani">GetMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachinesizes/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachineSizes</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerebootmachine/" class="astro-twzrdani"><span class="astro-twzrdani">RebootMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerenamemachine/" class="astro-twzrdani"><span class="astro-twzrdani">RenameMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlport/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLPort</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlvisibility/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLVisibility</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">ShareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestartmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StartMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceunsharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UnshareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceupdatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.InstallService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="6"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1installservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1installservicegetinstallinfo/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallInfo</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="7"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicedeleteaccount/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceendclisignin/" class="astro-twzrdani"><span class="astro-twzrdani">EndCLISignIn</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicegetaccount/" class="astro-twzrdani"><span class="astro-twzrdani">GetAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistclisignins/" class="astro-twzrdani"><span class="astro-twzrdani">ListCLISignIns</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceremovesigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSignInMethod</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceupdateaccount/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateAccount</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.APIKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="8"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1apikeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicecreateapikey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAPIKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicelistapikeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAPIKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicerevokeapikey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAPIKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuditService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="9"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1auditservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1auditservicelistauditentries/" class="astro-twzrdani"><span class="astro-twzrdani">ListAuditEntries</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuthService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="10"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1authservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceapprovedevice/" class="astro-twzrdani"><span class="astro-twzrdani">ApproveDevice</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicegetdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">GetDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicepolldeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">PollDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerefreshclitoken/" class="astro-twzrdani"><span class="astro-twzrdani">RefreshCLIToken</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerequestmagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">RequestMagicLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicesignout/" class="astro-twzrdani"><span class="astro-twzrdani">SignOut</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicestartdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">StartDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifyloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyLoginLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifymagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyMagicLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="11"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceacceptinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">AcceptInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">CreateInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateorg/" class="astro-twzrdani"><span class="astro-twzrdani">CreateOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicedeleteorg/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorg/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorgusage/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrgUsage</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceleaveorg/" class="astro-twzrdani"><span class="astro-twzrdani">LeaveOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistinvitations/" class="astro-twzrdani"><span class="astro-twzrdani">ListInvitations</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgmembers/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgMembers</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceremoveorgmember/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveOrgMember</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicerevokeinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicesetorgmemberrole/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgMemberRole</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceupdateorg/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.SSHKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="12"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1sshkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceaddsshkey/" class="astro-twzrdani"><span class="astro-twzrdani">AddSSHKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyservicelistsshkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListSSHKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceremovesshkey/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSSHKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.VarService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="13"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1varservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicedeletevar/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteVar</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicelistvars/" class="astro-twzrdani"><span class="astro-twzrdani">ListVars</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicesetvar/" class="astro-twzrdani"><span class="astro-twzrdani">SetVar</span></a></li></ul></details></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Admin API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="14"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="15"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountservicelistaccountsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListAccountSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountserviceremoveaccountsigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveAccountSignInMethod</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AdminKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="16"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1adminkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicecreateadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicelistadminkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAdminKeys</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyserviceregisteradminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicerevokeadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAdminKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.CertificateService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="17"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1certificateservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1certificateservicegetcertificate/" class="astro-twzrdani"><span class="astro-twzrdani">GetCertificate</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ImageService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="18"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1imageservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageservicelistimages/" class="astro-twzrdani"><span class="astro-twzrdani">ListImages</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageserviceregisterimage/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterImage</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstallConfigService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="19"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1installconfigservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">ClearOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">ClearSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetoauthconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetOAuthConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">SetOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">SetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceupdateinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateInstallConfig</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstanceAdminService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="20"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1instanceadminservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicegrantinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">GrantInstanceAdmin</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicelistinstanceadmins/" class="astro-twzrdani"><span class="astro-twzrdani">ListInstanceAdmins</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicerevokeinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInstanceAdmin</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.KeyringService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="21"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1keyringservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicelistkeks/" class="astro-twzrdani"><span class="astro-twzrdani">ListKEKs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerewrapsealedvalues/" class="astro-twzrdani"><span class="astro-twzrdani">RewrapSealedValues</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerotatekek/" class="astro-twzrdani"><span class="astro-twzrdani">RotateKEK</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.LoginLinkService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="22"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1loginlinkservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1loginlinkservicecreateloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">CreateLoginLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="23"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MailService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="24"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1mailservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicegetmailfile/" class="astro-twzrdani"><span class="astro-twzrdani">GetMailFile</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicelistmailfiles/" class="astro-twzrdani"><span class="astro-twzrdani">ListMailFiles</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="25"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicegetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">GetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">SuspendOrg</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgserviceunsuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">UnsuspendOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ServerService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="26"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1serverservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">CordonServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecreateenrollmenttoken/" class="astro-twzrdani"><span class="astro-twzrdani">CreateEnrollmentToken</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicedecommissionserver/" class="astro-twzrdani"><span class="astro-twzrdani">DecommissionServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicegetserver/" class="astro-twzrdani"><span class="astro-twzrdani">GetServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicelistservers/" class="astro-twzrdani"><span class="astro-twzrdani">ListServers</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicesetserverlabels/" class="astro-twzrdani"><span class="astro-twzrdani">SetServerLabels</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverserviceuncordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">UncordonServer</span></a></li></ul></details></li></ul></details></li></ul></details></li></ul><script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-jl756n3h"><div class="social-icons astro-jl756n3h"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script></div></div></div></sl-sidebar-pane></nav><div class="main-frame astro-vlwsw6sx"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-bfhpgjcp"><aside class="right-sidebar-container print:hidden astro-bfhpgjcp"><div class="right-sidebar astro-bfhpgjcp"><div class="lg:sl-hidden astro-6ky2bkwt"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-bwzeb267"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-bwzeb267"><details id="starlight__mobile-toc" class="astro-bwzeb267"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-bwzeb267"><span class="toggle sl-flex astro-bwzeb267">On this page<svg aria-hidden="true" class="caret astro-bwzeb267 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-bwzeb267"></span></summary><div class="dropdown astro-bwzeb267"><ul class="isMobile astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-org-of-a-request" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The org of a request</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#roles" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Roles</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#what-each-role-can-do" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">What each role can do</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#every-org-keeps-an-owner" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Every org keeps an owner</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#messages" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Messages</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#org" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Org</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#orgmember" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">OrgMember</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#orglimits-and-orgusage" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">OrgLimits and OrgUsage</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#invitation" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Invitation</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#orgs" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Orgs</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#createorg" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">CreateOrg</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#getorg" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">GetOrg</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#listorgs" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">ListOrgs</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#updateorg" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">UpdateOrg</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#deleteorg" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">DeleteOrg</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#getorgusage" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">GetOrgUsage</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#members" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Members</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#listorgmembers" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">ListOrgMembers</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#setorgmemberrole" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">SetOrgMemberRole</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#removeorgmember" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">RemoveOrgMember</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#leaveorg" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">LeaveOrg</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#what-a-member-leaves-behind" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">What a member leaves behind</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#invitations" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Invitations</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#createinvitation" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">CreateInvitation</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#listinvitations" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">ListInvitations</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#revokeinvitation" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">RevokeInvitation</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#acceptinvitation" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">AcceptInvitation</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#usage-limits" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Usage limits</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#suspension" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Suspension</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#audit-entries" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Audit entries</span></a></li></ul></div></details></nav></mobile-starlight-toc><script type="module" src="/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.C3fM4Kra.js"></script></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-6ky2bkwt"><div class="sl-container astro-6ky2bkwt"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-org-of-a-request" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The org of a request</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#roles" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Roles</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#what-each-role-can-do" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">What each role can do</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#every-org-keeps-an-owner" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Every org keeps an owner</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#messages" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Messages</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#org" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Org</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#orgmember" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">OrgMember</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#orglimits-and-orgusage" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">OrgLimits and OrgUsage</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#invitation" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Invitation</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#orgs" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Orgs</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#createorg" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">CreateOrg</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#getorg" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">GetOrg</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#listorgs" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">ListOrgs</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#updateorg" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">UpdateOrg</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#deleteorg" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">DeleteOrg</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#getorgusage" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">GetOrgUsage</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#members" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Members</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#listorgmembers" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">ListOrgMembers</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#setorgmemberrole" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">SetOrgMemberRole</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#removeorgmember" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">RemoveOrgMember</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#leaveorg" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">LeaveOrg</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#what-a-member-leaves-behind" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">What a member leaves behind</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#invitations" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Invitations</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#createinvitation" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">CreateInvitation</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#listinvitations" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">ListInvitations</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#revokeinvitation" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">RevokeInvitation</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#acceptinvitation" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">AcceptInvitation</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#usage-limits" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Usage limits</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#suspension" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Suspension</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#audit-entries" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Audit entries</span></a></li></ul></nav></starlight-toc><script type="module" src="/_astro/TableOfContents.astro_astro_type_script_index_0_lang.BpJaGz7G.js"></script></div></div></div></aside><div class="main-pane astro-bfhpgjcp"><main data-pagefind-body class="astro-g6oqdoeg" lang="en" dir="ltr"><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><h1 id="_top" class="astro-42k5req6">The org API</h1></div></div><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><div class="sl-markdown-content"><p>The service <code dir="auto">hopbox.v1.OrgService</code> of the public API manages the orgs of the caller, their members, their invitations, and reads their usage and limits. <a href="/reference/admin-api/#orgservice">admin-api.md</a> covers the calls of instance admins on orgs: the list of every org, the suspension, and the limits. <a href="/reference/api/">api.md</a> covers the parts that every call shares: the request gate, the policy check, the idempotency keys, and the error codes. The generated reference is <a href="/api/public/">api/hopbox.v1.openapi.yaml</a>. The code is in <code dir="auto">internal/service</code> (<code dir="auto">orgs.go</code>, <code dir="auto">invitations.go</code>) and <code dir="auto">internal/api</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Calls</th>
+<th>What they do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">CreateOrg</code>, <code dir="auto">GetOrg</code>, <code dir="auto">ListOrgs</code>, <code dir="auto">UpdateOrg</code>, <code dir="auto">DeleteOrg</code></td>
+<td>Make, read, rename, and delete orgs.</td>
+</tr>
+<tr>
+<td><code dir="auto">GetOrgUsage</code></td>
+<td>Reads what an org uses, and its limits.</td>
+</tr>
+<tr>
+<td><code dir="auto">ListOrgMembers</code>, <code dir="auto">SetOrgMemberRole</code>, <code dir="auto">RemoveOrgMember</code>, <code dir="auto">LeaveOrg</code></td>
+<td>Read and change the members of an org.</td>
+</tr>
+<tr>
+<td><code dir="auto">CreateInvitation</code>, <code dir="auto">ListInvitations</code>, <code dir="auto">RevokeInvitation</code>, <code dir="auto">AcceptInvitation</code></td>
+<td>Invite a person by email, and join with the invitation.</td>
+</tr>
+</tbody>
+</table>
+<p>Each call acts as the account of a <code dir="auto">session</code> or <code dir="auto">cli_token</code> caller. A <code dir="auto">member_key</code> acts as its account too, but only in the org of the key, and it never creates, joins, or leaves an org. An <code dir="auto">org_key</code> has the rights of a member in its own org, without personal resources: it reads the org, its usage, and its members (<a href="/reference/credentials/#api-keys">credentials.md</a>). An instance admin sees the orgs of others only through the admin API. Here, a session of an instance admin has only the rights of its own roles.</p>
+<p>The examples on this page use the shell function <code dir="auto">browser</code> of <a href="/reference/auth-api/">auth-api.md</a>, with the session cookie of the caller. <a href="/guide/orgs/">guide/orgs.md</a> runs the whole flow on a laptop.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="the-org-of-a-request">The org of a request</h2><a class="sl-anchor-link" href="#the-org-of-a-request"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The org of a request”</span></a></div>
+<p>A request that acts in one org has the field <code dir="auto">org_id</code>, an optional string. Leave it out to act in the personal org of the caller (<a href="/reference/api/#callers-and-policy">api.md</a>). <code dir="auto">ListOrgs</code>, <code dir="auto">CreateOrg</code>, and <code dir="auto">AcceptInvitation</code> have no <code dir="auto">org_id</code>.</p>
+<p>The service layer reads the role of the caller in the org before the policy check. A caller that is not a member has no role. So an org that does not exist gets the same <code dir="auto">permission_denied</code> as an org of others. An <code dir="auto">org_id</code> that is not a UUID gets <code dir="auto">invalid_argument</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="roles">Roles</h2><a class="sl-anchor-link" href="#roles"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Roles”</span></a></div>
+<p>The enum <code dir="auto">OrgRole</code> names the role of an account in an org (<a href="/reference/domain-rules/#org-roles">domain-rules.md</a>). Each role has every right of the roles before it.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Role</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">ORG_ROLE_UNSPECIFIED</code></td>
+<td>Never in a response. In a request, the field takes its default.</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">ORG_ROLE_MEMBER</code></td>
+<td><code dir="auto">member</code></td>
+<td>the role of an invitation without a role</td>
+</tr>
+<tr>
+<td><code dir="auto">ORG_ROLE_ADMIN</code></td>
+<td><code dir="auto">admin</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">ORG_ROLE_OWNER</code></td>
+<td><code dir="auto">owner</code></td>
+<td>the role of the account that creates the org</td>
+</tr>
+</tbody>
+</table>
+<p>A value that is not in the enum gets <code dir="auto">invalid_argument</code> with the message <code dir="auto">invalid argument: the org role &lt;n&gt; is not known</code>.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="what-each-role-can-do">What each role can do</h3><a class="sl-anchor-link" href="#what-each-role-can-do"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “What each role can do”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Call</th>
+<th><code dir="auto">member</code></th>
+<th><code dir="auto">admin</code></th>
+<th><code dir="auto">owner</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">GetOrg</code>, <code dir="auto">GetOrgUsage</code>, <code dir="auto">ListOrgMembers</code>, <code dir="auto">LeaveOrg</code></td>
+<td>yes</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code dir="auto">ListInvitations</code>, <code dir="auto">RevokeInvitation</code></td>
+<td>no</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code dir="auto">CreateInvitation</code> with the role <code dir="auto">member</code></td>
+<td>no</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code dir="auto">CreateInvitation</code> with the role <code dir="auto">admin</code> or <code dir="auto">owner</code></td>
+<td>no</td>
+<td>no</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code dir="auto">RemoveOrgMember</code> of a <code dir="auto">member</code></td>
+<td>no</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code dir="auto">RemoveOrgMember</code> of an <code dir="auto">admin</code> or an <code dir="auto">owner</code></td>
+<td>no</td>
+<td>no</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code dir="auto">SetOrgMemberRole</code>, <code dir="auto">UpdateOrg</code>, <code dir="auto">DeleteOrg</code></td>
+<td>no</td>
+<td>no</td>
+<td>yes</td>
+</tr>
+</tbody>
+</table>
+<p>Only an owner makes other owners and admins. So an admin invites and removes members only. A caller without the right gets <code dir="auto">permission_denied</code>, with the message <code dir="auto">permission denied: a caller of kind session may not do &lt;action&gt;</code>.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="every-org-keeps-an-owner">Every org keeps an owner</h3><a class="sl-anchor-link" href="#every-org-keeps-an-owner"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Every org keeps an owner”</span></a></div>
+<p>An org always has at least one owner. If a change takes the last owner from the org, it fails with <code dir="auto">failed_precondition</code>. These changes can do so: <code dir="auto">SetOrgMemberRole</code> of the last owner to another role, <code dir="auto">RemoveOrgMember</code> of the last owner, <code dir="auto">LeaveOrg</code> by the last owner, and <code dir="auto">DeleteAccount</code> of the last owner (<a href="/reference/auth-api/#deleteaccount">auth-api.md</a>).</p>
+<p>Each such change first locks the row of the org in <code dir="auto">orgs</code>. Then it reads the role of the caller again, checks the policy again, and counts the owners in a new statement (<a href="/reference/control-store/#orgs">control-store.md</a>). So two owners that each step down, leave, or remove the other at the same time leave one owner. The second change sees the first one, and fails with <code dir="auto">failed_precondition</code> or <code dir="auto">permission_denied</code>. The delete of an account locks every org of the account in the same way. So a promotion of the account to owner during its delete waits for the delete, and then fails with <code dir="auto">not_found</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="messages">Messages</h2><a class="sl-anchor-link" href="#messages"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Messages”</span></a></div>
+<div class="sl-heading-wrapper level-h3"><h3 id="org">Org</h3><a class="sl-anchor-link" href="#org"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Org”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">id</code></td>
+<td>string</td>
+<td>The UUID of the org.</td>
+</tr>
+<tr>
+<td><code dir="auto">name</code></td>
+<td>string</td>
+<td>The name of the org (<a href="/reference/domain-rules/#org-names">domain-rules.md</a>). A personal org starts with the name <code dir="auto">Personal</code>, and its owner can rename it.</td>
+</tr>
+<tr>
+<td><code dir="auto">personal</code></td>
+<td>bool</td>
+<td><code dir="auto">true</code> for the personal org of an account.</td>
+</tr>
+<tr>
+<td><code dir="auto">role</code></td>
+<td><code dir="auto">OrgRole</code></td>
+<td>The role of the caller in the org.</td>
+</tr>
+<tr>
+<td><code dir="auto">suspended</code></td>
+<td>bool</td>
+<td><code dir="auto">true</code> while an instance admin suspends the org (<a href="#suspension">Suspension</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">suspend_time</code></td>
+<td><code dir="auto">google.protobuf.Timestamp</code></td>
+<td>The start of the suspension. Unset for an org that is not suspended.</td>
+</tr>
+<tr>
+<td><code dir="auto">suspend_reason</code></td>
+<td>string</td>
+<td>The reason that the instance admin gave, or empty.</td>
+</tr>
+<tr>
+<td><code dir="auto">version</code></td>
+<td>int64</td>
+<td>The version of the org. It starts at 1 and grows by 1 with each change, such as a rename, a suspension, or new limits.</td>
+</tr>
+<tr>
+<td><code dir="auto">create_time</code></td>
+<td><code dir="auto">google.protobuf.Timestamp</code></td>
+<td>The creation time of the org.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="orgmember">OrgMember</h3><a class="sl-anchor-link" href="#orgmember"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “OrgMember”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">account_id</code></td>
+<td>string</td>
+<td>The UUID of the account.</td>
+</tr>
+<tr>
+<td><code dir="auto">display_name</code></td>
+<td>string</td>
+<td>The display name of the account.</td>
+</tr>
+<tr>
+<td><code dir="auto">emails</code></td>
+<td>repeated <code dir="auto">AccountEmail</code></td>
+<td>The emails of the account (<a href="/reference/auth-api/#accountemail">auth-api.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">role</code></td>
+<td><code dir="auto">OrgRole</code></td>
+<td>The role of the account in the org.</td>
+</tr>
+<tr>
+<td><code dir="auto">join_time</code></td>
+<td><code dir="auto">google.protobuf.Timestamp</code></td>
+<td>The time of the join.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="orglimits-and-orgusage">OrgLimits and OrgUsage</h3><a class="sl-anchor-link" href="#orglimits-and-orgusage"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “OrgLimits and OrgUsage”</span></a></div>
+<p><code dir="auto">OrgLimits</code> holds the usage limits of an org, and <code dir="auto">OrgUsage</code> holds what the org uses (<a href="#usage-limits">Usage limits</a>). Both have the same fields.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">machines</code></td>
+<td>int32</td>
+<td>The machines.</td>
+</tr>
+<tr>
+<td><code dir="auto">vcpus</code></td>
+<td>int32</td>
+<td>The vCPUs of all machines together.</td>
+</tr>
+<tr>
+<td><code dir="auto">memory_bytes</code></td>
+<td>int64</td>
+<td>The RAM of all machines together, in bytes.</td>
+</tr>
+<tr>
+<td><code dir="auto">disk_bytes</code></td>
+<td>int64</td>
+<td>The disk of all machines together, in bytes.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="invitation">Invitation</h3><a class="sl-anchor-link" href="#invitation"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Invitation”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">id</code></td>
+<td>string</td>
+<td>The UUID of the invitation.</td>
+</tr>
+<tr>
+<td><code dir="auto">org_id</code></td>
+<td>string</td>
+<td>The UUID of the org.</td>
+</tr>
+<tr>
+<td><code dir="auto">email</code></td>
+<td>string</td>
+<td>The email that the invitation is for, in lower case.</td>
+</tr>
+<tr>
+<td><code dir="auto">role</code></td>
+<td><code dir="auto">OrgRole</code></td>
+<td>The role that the invitation gives.</td>
+</tr>
+<tr>
+<td><code dir="auto">inviter_account_id</code></td>
+<td>string</td>
+<td>The UUID of the account that made the invitation, or empty after the delete of that account.</td>
+</tr>
+<tr>
+<td><code dir="auto">create_time</code></td>
+<td><code dir="auto">google.protobuf.Timestamp</code></td>
+<td>The time of the invitation.</td>
+</tr>
+<tr>
+<td><code dir="auto">expire_time</code></td>
+<td><code dir="auto">google.protobuf.Timestamp</code></td>
+<td>The end of the invitation, 7 days after <code dir="auto">create_time</code>.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h2"><h2 id="orgs">Orgs</h2><a class="sl-anchor-link" href="#orgs"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Orgs”</span></a></div>
+<div class="sl-heading-wrapper level-h3"><h3 id="createorg">CreateOrg</h3><a class="sl-anchor-link" href="#createorg"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “CreateOrg”</span></a></div>
+<p>Makes an org with the caller as its owner.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Procedure</td>
+<td><code dir="auto">/hopbox.v1.OrgService/CreateOrg</code></td>
+</tr>
+<tr>
+<td>Policy action</td>
+<td><code dir="auto">org.create</code>: <code dir="auto">session</code> and <code dir="auto">cli_token</code></td>
+</tr>
+<tr>
+<td>Idempotent option</td>
+<td>yes. A call must have an <code dir="auto">Idempotency-Key</code> header (<a href="/reference/api/#idempotency-keys">api.md</a>). A retry with the same key returns the same org.</td>
+</tr>
+<tr>
+<td>Audit entry</td>
+<td>action <code dir="auto">org.create</code>, org the new org, target kind <code dir="auto">org</code>, details <code dir="auto">name</code></td>
+</tr>
+</tbody>
+</table>
+<p>The request <code dir="auto">CreateOrgRequest</code> has the field <code dir="auto">name</code>, a string (<a href="/reference/domain-rules/#org-names">domain-rules.md</a>). The response <code dir="auto">CreateOrgResponse</code> has the field <code dir="auto">org</code>, an <code dir="auto">Org</code>.</p>
+<p>An account owns at most 10 orgs besides its personal org. Every new org brings its own usage limits, so this cap keeps one account from many limits. An instance admin changes the cap with <code dir="auto">SetDefaultOrgLimits</code> (<a href="/reference/admin-api/#setdefaultorglimits">admin-api.md</a>). The cap counts each org in which the account is an owner. The call takes the row lock of the account, so two creates at the same time cannot pass the cap together.</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A bad name, for example <code dir="auto">invalid argument: invalid org name: it must not start or end with a space</code></td>
+<td><code dir="auto">invalid_argument</code></td>
+</tr>
+<tr>
+<td>The account owns the most orgs: <code dir="auto">usage limit exceeded: the account owns 10 orgs besides its personal org, the most that the install allows. Delete one, or ask an instance admin to raise the limit</code></td>
+<td><code dir="auto">resource_exhausted</code></td>
+</tr>
+</tbody>
+</table>
+<div class="expressive-code"><link rel="stylesheet" href="/_astro/ec.w36nc.css"><script type="module" src="/_astro/ec.0vx5m.js"></script><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="sh"><code><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">browser</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">-H</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">Idempotency-Key: 6f1c2f0e-team</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">-d</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">{"name":"Team"}</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C5E478;--1:#3B61B0">$API</span><span style="--0:#ECC48D;--1:#3B61B0">/hopbox.v1.OrgService/CreateOrg</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="browser -H &#x27;Idempotency-Key: 6f1c2f0e-team&#x27; -d &#x27;{&quot;name&quot;:&quot;Team&quot;}&#x27; $API/hopbox.v1.OrgService/CreateOrg"><div></div></button></div></figure></div>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="json"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">{</span><span style="--0:#7FDBCA;--1:#096E72">"org"</span><span style="--0:#D6DEEB;--1:#403F53">:{</span><span style="--0:#7FDBCA;--1:#096E72">"id"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">01a14565-a2df-75a1-9401-ed28dfa37fc4</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"name"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">Team</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"role"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">ORG_ROLE_OWNER</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"version"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">1</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"createTime"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">2026-10-16T15:47:31.166821Z</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">}}</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="{&quot;org&quot;:{&quot;id&quot;:&quot;01a14565-a2df-75a1-9401-ed28dfa37fc4&quot;,&quot;name&quot;:&quot;Team&quot;,&quot;role&quot;:&quot;ORG_ROLE_OWNER&quot;,&quot;version&quot;:&quot;1&quot;,&quot;createTime&quot;:&quot;2026-10-16T15:47:31.166821Z&quot;}}"><div></div></button></div></figure></div>
+<div class="sl-heading-wrapper level-h3"><h3 id="getorg">GetOrg</h3><a class="sl-anchor-link" href="#getorg"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “GetOrg”</span></a></div>
+<p>Returns one org of the caller.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Procedure</td>
+<td><code dir="auto">/hopbox.v1.OrgService/GetOrg</code></td>
+</tr>
+<tr>
+<td>Policy action</td>
+<td><code dir="auto">org.get</code>: a <code dir="auto">session</code>, <code dir="auto">cli_token</code>, or <code dir="auto">member_key</code> with a role in the org, or an <code dir="auto">org_key</code> of the org</td>
+</tr>
+<tr>
+<td>Idempotent option</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Audit entry</td>
+<td>none</td>
+</tr>
+</tbody>
+</table>
+<p>The request <code dir="auto">GetOrgRequest</code> has the field <code dir="auto">org_id</code>. The response <code dir="auto">GetOrgResponse</code> has the field <code dir="auto">org</code>.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="listorgs">ListOrgs</h3><a class="sl-anchor-link" href="#listorgs"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “ListOrgs”</span></a></div>
+<p>Lists the orgs of the caller: the personal org first, then the others, oldest first.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Procedure</td>
+<td><code dir="auto">/hopbox.v1.OrgService/ListOrgs</code></td>
+</tr>
+<tr>
+<td>Policy action</td>
+<td><code dir="auto">org.list</code>: the <code dir="auto">session</code> or <code dir="auto">cli_token</code> of the account</td>
+</tr>
+<tr>
+<td>Idempotent option</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Audit entry</td>
+<td>none</td>
+</tr>
+</tbody>
+</table>
+<p>The request <code dir="auto">ListOrgsRequest</code> has no fields. The response <code dir="auto">ListOrgsResponse</code> has the field <code dir="auto">orgs</code>, a repeated <code dir="auto">Org</code>.</p>
+<div class="expressive-code"><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="sh"><code><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">browser</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">-d</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">{}</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C5E478;--1:#3B61B0">$API</span><span style="--0:#ECC48D;--1:#3B61B0">/hopbox.v1.OrgService/ListOrgs</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="browser -d &#x27;{}&#x27; $API/hopbox.v1.OrgService/ListOrgs"><div></div></button></div></figure></div>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="json"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">{</span><span style="--0:#7FDBCA;--1:#096E72">"orgs"</span><span style="--0:#D6DEEB;--1:#403F53">:[{</span><span style="--0:#7FDBCA;--1:#096E72">"id"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">01a14565-8448-7753-9c1f-5ec0a86b8d92</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"name"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">Personal</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"personal"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#FF6A83;--1:#A24848">true</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"role"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">ORG_ROLE_OWNER</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"version"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">1</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"createTime"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">2026-10-16T15:47:23.335394Z</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">},{</span><span style="--0:#7FDBCA;--1:#096E72">"id"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">01a14565-a2df-75a1-9401-ed28dfa37fc4</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"name"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">Team</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"role"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">ORG_ROLE_OWNER</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"version"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">1</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"createTime"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">2026-10-16T15:47:31.166821Z</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">}]}</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="{&quot;orgs&quot;:[{&quot;id&quot;:&quot;01a14565-8448-7753-9c1f-5ec0a86b8d92&quot;,&quot;name&quot;:&quot;Personal&quot;,&quot;personal&quot;:true,&quot;role&quot;:&quot;ORG_ROLE_OWNER&quot;,&quot;version&quot;:&quot;1&quot;,&quot;createTime&quot;:&quot;2026-10-16T15:47:23.335394Z&quot;},{&quot;id&quot;:&quot;01a14565-a2df-75a1-9401-ed28dfa37fc4&quot;,&quot;name&quot;:&quot;Team&quot;,&quot;role&quot;:&quot;ORG_ROLE_OWNER&quot;,&quot;version&quot;:&quot;1&quot;,&quot;createTime&quot;:&quot;2026-10-16T15:47:31.166821Z&quot;}]}"><div></div></button></div></figure></div>
+<div class="sl-heading-wrapper level-h3"><h3 id="updateorg">UpdateOrg</h3><a class="sl-anchor-link" href="#updateorg"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “UpdateOrg”</span></a></div>
+<p>Changes the name of an org, and returns the org after the change.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Procedure</td>
+<td><code dir="auto">/hopbox.v1.OrgService/UpdateOrg</code></td>
+</tr>
+<tr>
+<td>Policy action</td>
+<td><code dir="auto">org.update</code>: a <code dir="auto">session</code>, <code dir="auto">cli_token</code>, or <code dir="auto">member_key</code> with the role <code dir="auto">owner</code></td>
+</tr>
+<tr>
+<td>Idempotent option</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Audit entry</td>
+<td>action <code dir="auto">org.update</code>, target kind <code dir="auto">org</code>, details <code dir="auto">name</code> and <code dir="auto">old_name</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">org_id</code></td>
+<td>optional string</td>
+<td>The org.</td>
+</tr>
+<tr>
+<td><code dir="auto">name</code></td>
+<td>optional string</td>
+<td>The new name. Leave it out to keep the name.</td>
+</tr>
+<tr>
+<td><code dir="auto">expected_version</code></td>
+<td>optional int64</td>
+<td>The <code dir="auto">version</code> of the org that the caller read. If the org has another version now, the call fails with <code dir="auto">aborted</code> and changes nothing.</td>
+</tr>
+</tbody>
+</table>
+<p>A request that sets no field gets <code dir="auto">invalid_argument</code> with the message <code dir="auto">invalid argument: the update sets no field</code>. The response <code dir="auto">UpdateOrgResponse</code> has the field <code dir="auto">org</code>.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="deleteorg">DeleteOrg</h3><a class="sl-anchor-link" href="#deleteorg"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “DeleteOrg”</span></a></div>
+<p>Deletes an org, its memberships, its invitations, and every resource in it. The request must hold the name of the org in <code dir="auto">confirm</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Procedure</td>
+<td><code dir="auto">/hopbox.v1.OrgService/DeleteOrg</code></td>
+</tr>
+<tr>
+<td>Policy action</td>
+<td><code dir="auto">org.delete</code>: a <code dir="auto">session</code>, <code dir="auto">cli_token</code>, or <code dir="auto">member_key</code> with the role <code dir="auto">owner</code></td>
+</tr>
+<tr>
+<td>Idempotent option</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Audit entry</td>
+<td>action <code dir="auto">org.delete</code>, org the deleted org, target kind <code dir="auto">org</code>, details <code dir="auto">name</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">org_id</code></td>
+<td>optional string</td>
+<td>The org.</td>
+</tr>
+<tr>
+<td><code dir="auto">confirm</code></td>
+<td>string</td>
+<td>The name of the org, exactly.</td>
+</tr>
+</tbody>
+</table>
+<p>The response <code dir="auto">DeleteOrgResponse</code> has no fields. The audit log keeps the entries of the deleted org, and instance admins read them.</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">confirm</code> is not the name: <code dir="auto">invalid argument: confirm the delete with the name of the org, "Team"</code></td>
+<td><code dir="auto">invalid_argument</code></td>
+</tr>
+<tr>
+<td>The personal org: <code dir="auto">failed precondition: a personal org goes only with its account. Delete the account instead</code></td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+<tr>
+<td>A suspended org: <code dir="auto">failed precondition: org suspended: an instance admin suspended the org, and nothing deletes its data until the suspension ends. Ask for the end of the suspension first</code></td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+</tbody>
+</table>
+<p>A suspension keeps the org and its resources, for example as the evidence of abuse. So the owners delete the org only after an instance admin ends the suspension.</p>
+<div class="expressive-code"><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="sh"><code><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">browser</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">-d</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">{"orgId":"01a14565-a2df-75a1-9401-ed28dfa37fc4","confirm":"Team"}</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C5E478;--1:#3B61B0">$API</span><span style="--0:#ECC48D;--1:#3B61B0">/hopbox.v1.OrgService/DeleteOrg</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="browser -d &#x27;{&quot;orgId&quot;:&quot;01a14565-a2df-75a1-9401-ed28dfa37fc4&quot;,&quot;confirm&quot;:&quot;Team&quot;}&#x27; $API/hopbox.v1.OrgService/DeleteOrg"><div></div></button></div></figure></div>
+<div class="sl-heading-wrapper level-h3"><h3 id="getorgusage">GetOrgUsage</h3><a class="sl-anchor-link" href="#getorgusage"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “GetOrgUsage”</span></a></div>
+<p>Returns what an org uses, and its limits (<a href="#usage-limits">Usage limits</a>).</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Procedure</td>
+<td><code dir="auto">/hopbox.v1.OrgService/GetOrgUsage</code></td>
+</tr>
+<tr>
+<td>Policy action</td>
+<td><code dir="auto">org.get_usage</code>: a <code dir="auto">session</code>, <code dir="auto">cli_token</code>, or <code dir="auto">member_key</code> with a role in the org, or an <code dir="auto">org_key</code> of the org</td>
+</tr>
+<tr>
+<td>Idempotent option</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Audit entry</td>
+<td>none</td>
+</tr>
+</tbody>
+</table>
+<p>The request <code dir="auto">GetOrgUsageRequest</code> has the field <code dir="auto">org_id</code>. The response <code dir="auto">GetOrgUsageResponse</code> has the fields <code dir="auto">usage</code>, an <code dir="auto">OrgUsage</code>, and <code dir="auto">limits</code>, an <code dir="auto">OrgLimits</code>.</p>
+<div class="expressive-code"><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="sh"><code><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">browser</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">-d</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">{"orgId":"01a14565-a2df-75a1-9401-ed28dfa37fc4"}</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C5E478;--1:#3B61B0">$API</span><span style="--0:#ECC48D;--1:#3B61B0">/hopbox.v1.OrgService/GetOrgUsage</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="browser -d &#x27;{&quot;orgId&quot;:&quot;01a14565-a2df-75a1-9401-ed28dfa37fc4&quot;}&#x27; $API/hopbox.v1.OrgService/GetOrgUsage"><div></div></button></div></figure></div>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="json"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">{</span><span style="--0:#7FDBCA;--1:#096E72">"usage"</span><span style="--0:#D6DEEB;--1:#403F53">:{},</span><span style="--0:#7FDBCA;--1:#096E72">"limits"</span><span style="--0:#D6DEEB;--1:#403F53">:{</span><span style="--0:#7FDBCA;--1:#096E72">"machines"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#F78C6C;--1:#AA0982">3</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"vcpus"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#F78C6C;--1:#AA0982">6</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"memoryBytes"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">25769803776</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"diskBytes"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">300000000000</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">}}</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="{&quot;usage&quot;:{},&quot;limits&quot;:{&quot;machines&quot;:3,&quot;vcpus&quot;:6,&quot;memoryBytes&quot;:&quot;25769803776&quot;,&quot;diskBytes&quot;:&quot;300000000000&quot;}}"><div></div></button></div></figure></div>
+<p>In the JSON codec, a field with its default value is left out, so a usage of 0 is <code dir="auto">{}</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="members">Members</h2><a class="sl-anchor-link" href="#members"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Members”</span></a></div>
+<div class="sl-heading-wrapper level-h3"><h3 id="listorgmembers">ListOrgMembers</h3><a class="sl-anchor-link" href="#listorgmembers"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “ListOrgMembers”</span></a></div>
+<p>Lists the members of an org, in the order that they joined.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Procedure</td>
+<td><code dir="auto">/hopbox.v1.OrgService/ListOrgMembers</code></td>
+</tr>
+<tr>
+<td>Policy action</td>
+<td><code dir="auto">org.member_list</code>: a <code dir="auto">session</code>, <code dir="auto">cli_token</code>, or <code dir="auto">member_key</code> with a role in the org, or an <code dir="auto">org_key</code> of the org</td>
+</tr>
+<tr>
+<td>Idempotent option</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Audit entry</td>
+<td>none</td>
+</tr>
+</tbody>
+</table>
+<p>The request <code dir="auto">ListOrgMembersRequest</code> has the field <code dir="auto">org_id</code>. The response <code dir="auto">ListOrgMembersResponse</code> has the field <code dir="auto">members</code>, a repeated <code dir="auto">OrgMember</code>. For the other members, <code dir="auto">emails</code> holds only their verified emails, because nobody proved an unverified email. For the caller, it holds every email.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="setorgmemberrole">SetOrgMemberRole</h3><a class="sl-anchor-link" href="#setorgmemberrole"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “SetOrgMemberRole”</span></a></div>
+<p>Changes the role of a member. A change to the role that the member has already changes nothing and succeeds.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Procedure</td>
+<td><code dir="auto">/hopbox.v1.OrgService/SetOrgMemberRole</code></td>
+</tr>
+<tr>
+<td>Policy action</td>
+<td><code dir="auto">org.member_set_role</code>: a <code dir="auto">session</code>, <code dir="auto">cli_token</code>, or <code dir="auto">member_key</code> with the role <code dir="auto">owner</code></td>
+</tr>
+<tr>
+<td>Idempotent option</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Audit entry</td>
+<td>action <code dir="auto">org.member_set_role</code>, target kind <code dir="auto">account</code>, details <code dir="auto">role</code> and <code dir="auto">old_role</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">org_id</code></td>
+<td>optional string</td>
+<td>The org.</td>
+</tr>
+<tr>
+<td><code dir="auto">account_id</code></td>
+<td>string</td>
+<td>The UUID of the member.</td>
+</tr>
+<tr>
+<td><code dir="auto">role</code></td>
+<td><code dir="auto">OrgRole</code></td>
+<td>The new role.</td>
+</tr>
+</tbody>
+</table>
+<p>The response <code dir="auto">SetOrgMemberRoleResponse</code> has no fields.</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">account_id</code> is not a UUID, or <code dir="auto">role</code> is <code dir="auto">ORG_ROLE_UNSPECIFIED</code> or not known: <code dir="auto">invalid argument: unknown org role: "". The role must be member, admin, or owner</code></td>
+<td><code dir="auto">invalid_argument</code></td>
+</tr>
+<tr>
+<td>The account is not a member: <code dir="auto">not found: the account &lt;id&gt; is not a member of the org</code></td>
+<td><code dir="auto">not_found</code></td>
+</tr>
+<tr>
+<td>The last owner: <code dir="auto">failed precondition: the account is the only owner of the org, and every org keeps at least one owner. Make another member an owner first</code></td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+</tbody>
+</table>
+<p>The call checks <code dir="auto">account_id</code> and <code dir="auto">role</code> before it reads the org. So a bad value gets <code dir="auto">invalid_argument</code>, also in an org that does not exist, or of which the caller is not a member. The check reads only the request, so it tells nothing about the org. An anonymous caller still gets <code dir="auto">unauthenticated</code> first.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="removeorgmember">RemoveOrgMember</h3><a class="sl-anchor-link" href="#removeorgmember"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “RemoveOrgMember”</span></a></div>
+<p>Takes another account out of an org, with what it made in the org and did not share.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Procedure</td>
+<td><code dir="auto">/hopbox.v1.OrgService/RemoveOrgMember</code></td>
+</tr>
+<tr>
+<td>Policy action</td>
+<td><code dir="auto">org.member_remove</code>: a <code dir="auto">session</code>, <code dir="auto">cli_token</code>, or <code dir="auto">member_key</code> with the role <code dir="auto">admin</code> for a <code dir="auto">member</code>, or with the role <code dir="auto">owner</code> for anyone</td>
+</tr>
+<tr>
+<td>Idempotent option</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Audit entry</td>
+<td>action <code dir="auto">org.member_remove</code>, target kind <code dir="auto">account</code>, details <code dir="auto">role</code> and <code dir="auto">reason</code> (<code dir="auto">removed</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>The request <code dir="auto">RemoveOrgMemberRequest</code> has the fields <code dir="auto">org_id</code> and <code dir="auto">account_id</code>. The response <code dir="auto">RemoveOrgMemberResponse</code> has no fields.</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The caller names its own account: <code dir="auto">invalid argument: to take your own account out of the org, leave it</code></td>
+<td><code dir="auto">invalid_argument</code></td>
+</tr>
+<tr>
+<td>The account is not a member, or no account has the ID. Both get the same message, <code dir="auto">not found: the account &lt;id&gt; is not a member of the org</code>, so the call tells nothing about which accounts exist.</td>
+<td><code dir="auto">not_found</code></td>
+</tr>
+<tr>
+<td>A suspended org, with the message of <code dir="auto">DeleteOrg</code></td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+<tr>
+<td>The last owner</td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="leaveorg">LeaveOrg</h3><a class="sl-anchor-link" href="#leaveorg"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “LeaveOrg”</span></a></div>
+<p>Takes the account of the caller out of an org, with what it made in the org and did not share.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Procedure</td>
+<td><code dir="auto">/hopbox.v1.OrgService/LeaveOrg</code></td>
+</tr>
+<tr>
+<td>Policy action</td>
+<td><code dir="auto">org.leave</code>: a <code dir="auto">session</code> or <code dir="auto">cli_token</code> with a role in the org</td>
+</tr>
+<tr>
+<td>Idempotent option</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Audit entry</td>
+<td>action <code dir="auto">org.leave</code>, target kind <code dir="auto">account</code>, details <code dir="auto">role</code></td>
+</tr>
+</tbody>
+</table>
+<p>The request <code dir="auto">LeaveOrgRequest</code> has the field <code dir="auto">org_id</code>. The response <code dir="auto">LeaveOrgResponse</code> has no fields.</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The personal org: <code dir="auto">failed precondition: an account cannot leave its personal org</code></td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+<tr>
+<td>The last owner: <code dir="auto">failed precondition: the account is the only owner of the org, and every org keeps at least one owner. Make another member an owner first, or delete the org</code></td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+<tr>
+<td>A suspended org, with the message of <code dir="auto">DeleteOrg</code></td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="what-a-member-leaves-behind">What a member leaves behind</h3><a class="sl-anchor-link" href="#what-a-member-leaves-behind"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “What a member leaves behind”</span></a></div>
+<p>A leave, a removal, and the delete of an account take the account out of the org. They also delete what the account made in the org and did not share. The delete of an org deletes every resource of the org. The service layer does this through the Go interface <code dir="auto">service.OrgResource</code>, in the transaction of the change:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Called by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">MemberLeaving(org, account)</code></td>
+<td><code dir="auto">LeaveOrg</code>, <code dir="auto">RemoveOrgMember</code>, and <code dir="auto">DeleteAccount</code>, once for each org other than the personal org</td>
+</tr>
+<tr>
+<td><code dir="auto">OrgDeleting(org)</code></td>
+<td><code dir="auto">DeleteOrg</code>, and <code dir="auto">DeleteAccount</code> for the personal org</td>
+</tr>
+<tr>
+<td><code dir="auto">OrgSuspending(org)</code></td>
+<td><code dir="auto">SuspendOrg</code> of the admin API (<a href="/reference/admin-api/#suspendorg">admin-api.md</a>)</td>
+</tr>
+</tbody>
+</table>
+<p>Each call holds the row lock of the org while the method runs. A leave, a removal, and an account delete also hold the lock of the account, which they take first. The lock order is the account row, then the org row, then the rows of the resource, such as machines (<a href="/reference/control-store/#orgs">control-store.md</a>). A change of a resource outside these calls takes the locks in the same order.</p>
+<p>The env vars and secrets are built into the service layer, and it runs their methods first. <code dir="auto">MemberLeaving</code> deletes the private values of the account in the org, with a <code dir="auto">var.delete</code> entry for each (<a href="/reference/vars-api/#what-a-member-leaves-behind">vars-api.md</a>). The other values of the org stay. The delete of an org deletes its values through the foreign key. Each other kind of resource in an org adds its implementation to <code dir="auto">Service.OrgResources</code>. The control role adds the machines (<a href="/reference/machine-api/">machine-api.md</a>). A method that fails rolls the whole change back, and the call fails with <code dir="auto">internal</code>.</p>
+<p>The machines do this in each method. Each method locks the machine rows in the order of their IDs, and skips a machine whose target is <code dir="auto">deleted</code> already.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>What it does to the machines</th>
+<th>Audit entry of each machine that changes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">MemberLeaving(org, account)</code></td>
+<td>Sets the target <code dir="auto">deleted</code> on each machine that the account made in the org and did not share. A shared machine stays in the org.</td>
+<td><code dir="auto">machine.delete</code>, with the detail <code dir="auto">reason</code> (<code dir="auto">member left</code>)</td>
+</tr>
+<tr>
+<td><code dir="auto">OrgDeleting(org)</code></td>
+<td>Sets the target <code dir="auto">deleted</code> on every machine of the org.</td>
+<td><code dir="auto">machine.delete</code>, with the detail <code dir="auto">reason</code> (<code dir="auto">org deleted</code>)</td>
+</tr>
+<tr>
+<td><code dir="auto">OrgSuspending(org)</code></td>
+<td>Sets the target <code dir="auto">stopped</code> on every machine of the org, except a machine whose target is <code dir="auto">hibernated</code>. A hibernated machine stays hibernated, because only a delete drops its memory file (<a href="/reference/domain-rules/#org-suspension">domain-rules.md</a>).</td>
+<td><code dir="auto">machine.stop</code>, with the details <code dir="auto">old_target</code> and <code dir="auto">reason</code> (<code dir="auto">org suspended</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>A delete reserves the name and the SSH port of the machine for 7 days, as <code dir="auto">DeleteMachine</code> does (<a href="/reference/machine-api/#deletemachine">machine-api.md</a>). The actor of each entry is the caller of the change, and each change publishes the event <code dir="auto">machine.updated</code> (<a href="/reference/machine-api/#change-events">machine-api.md</a>). A delete of an org sets <code dir="auto">org_id</code> of its machines to null once their target is <code dir="auto">deleted</code>. The machines then wait for their executor (<a href="/reference/control-store/#machines">control-store.md</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="invitations">Invitations</h2><a class="sl-anchor-link" href="#invitations"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Invitations”</span></a></div>
+<p>An org owner or an org admin invites a person by email, and the person accepts after the sign-in. An invitation is for one email and gives one role.</p>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Link</td>
+<td><code dir="auto">https://&lt;domain&gt;/invite#token=&lt;token&gt;</code>. The token is 32 random bytes in base64url, as for a sign-in link (<a href="/reference/sessions/#tokens">sessions.md</a>). It is in the fragment, so a browser never sends it to a server. The console page <code dir="auto">/invite</code> reads it and calls <code dir="auto">AcceptInvitation</code>.</td>
+</tr>
+<tr>
+<td>Storage</td>
+<td>The control store keeps only the SHA-256 of the token (<a href="/reference/control-store/#org_invitations">control-store.md</a>). The audit log never holds the token.</td>
+</tr>
+<tr>
+<td>Lifetime</td>
+<td>7 days</td>
+</tr>
+<tr>
+<td>Use</td>
+<td>once</td>
+</tr>
+<tr>
+<td>Open invitations</td>
+<td>one for each email in an org. A new invitation for the email revokes the open one, so its link stops working.</td>
+</tr>
+<tr>
+<td>Rate limits</td>
+<td>An org makes at most 20 invitations in an hour. An inviting account makes at most 20 in an hour, in all its orgs together. An email gets at most 5 in an hour, from every org together. The control store counts them in <code dir="auto">org_invitation_sends</code>, a table without foreign keys (<a href="/reference/control-store/#org_invitation_sends">control-store.md</a>). So the limits hold across every control server, and the delete of an org or an account resets no limit. Each new invitation takes a transaction lock (<code dir="auto">LockKeyInvitations</code>, <a href="/reference/postgres/#advisory-lock-keys">postgres.md</a>), so invitations at the same time cannot pass a limit together.</td>
+</tr>
+<tr>
+<td>Email</td>
+<td>With an SMTP config, the server sends the link to the email (<a href="/reference/smtp/">smtp.md</a>). Without one, only the inviter gets the link. With the file mail transport, the server writes the email to a file on the server, and the inviter passes the link on (<a href="/reference/mail/#invitations">mail.md</a>).</td>
+</tr>
+<tr>
+<td>Who accepts</td>
+<td>A <code dir="auto">session</code> whose account holds the email of the invitation as a verified email. The email of a login link stays unverified, so it does not count (<a href="/reference/sessions/#what-a-sign-in-does">sessions.md</a>).</td>
+</tr>
+<tr>
+<td>Orgs</td>
+<td>A personal org belongs to one account, so it takes no invitations. A suspended org sends none and takes no new members.</td>
+</tr>
+<tr>
+<td>Rights of the inviter</td>
+<td>An invitation never gives more than its inviter can give now. A leave, a removal, or an account delete of the inviter revokes each open invitation of the inviter in the org. A role change of the inviter revokes each one with a role that the new role cannot give.</td>
+</tr>
+</tbody>
+</table>
+<p>The leader deletes an invitation 24 hours after its end: its use, its revoke, or its expiry (<a href="/reference/hopboxd/#leader-jobs">hopboxd.md</a>).</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="createinvitation">CreateInvitation</h3><a class="sl-anchor-link" href="#createinvitation"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “CreateInvitation”</span></a></div>
+<p>Invites an email to join an org with a role, and returns the link. With an SMTP config, it also sends the link to the email.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Procedure</td>
+<td><code dir="auto">/hopbox.v1.OrgService/CreateInvitation</code></td>
+</tr>
+<tr>
+<td>Policy action</td>
+<td><code dir="auto">org.invitation_create</code>: a <code dir="auto">session</code>, <code dir="auto">cli_token</code>, or <code dir="auto">member_key</code> with the role <code dir="auto">admin</code> for the role <code dir="auto">member</code>, or with the role <code dir="auto">owner</code> for any role</td>
+</tr>
+<tr>
+<td>Idempotent option</td>
+<td>no. The response holds the link, which must never stay in the table of idempotency keys. A retry revokes the invitation of the first try and makes a new one.</td>
+</tr>
+<tr>
+<td>Audit entries</td>
+<td>action <code dir="auto">org.invitation_create</code>, target kind <code dir="auto">invitation</code>, details <code dir="auto">email</code> and <code dir="auto">role</code>. A replaced invitation gets the action <code dir="auto">org.invitation_revoke</code> with the details <code dir="auto">email</code>, <code dir="auto">role</code>, and <code dir="auto">reason</code> (<code dir="auto">replaced</code>).</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">org_id</code></td>
+<td>optional string</td>
+<td>the personal org, which the call refuses</td>
+<td>The org.</td>
+</tr>
+<tr>
+<td><code dir="auto">email</code></td>
+<td>string</td>
+<td>none, required</td>
+<td>The email of the person, such as <code dir="auto">bob@example.org</code> (<a href="/reference/domain-rules/#emails">domain-rules.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">role</code></td>
+<td><code dir="auto">OrgRole</code></td>
+<td><code dir="auto">ORG_ROLE_MEMBER</code></td>
+<td>The role that the invitation gives.</td>
+</tr>
+</tbody>
+</table>
+<p>The response <code dir="auto">CreateInvitationResponse</code> has these fields:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">invitation</code></td>
+<td><code dir="auto">Invitation</code></td>
+<td>The new invitation.</td>
+</tr>
+<tr>
+<td><code dir="auto">url</code></td>
+<td>string</td>
+<td>The link. It is a secret until its use or its end.</td>
+</tr>
+<tr>
+<td><code dir="auto">email_sent</code></td>
+<td>bool</td>
+<td><code dir="auto">true</code> after a sent email. It is <code dir="auto">false</code> without an SMTP config, after a failed email, and with the file mail transport, because that email reaches nobody.</td>
+</tr>
+</tbody>
+</table>
+<p>The server sends the email after the invitation commits, and waits at most 20 s for the SMTP server. A failed email does not fail the call, because the inviter has the link. The server then logs <code dir="auto">the invitation email failed</code> at level error, with <code dir="auto">component=service</code>, <code dir="auto">invitation</code>, and <code dir="auto">err</code>.</p>
+<p>The email has this form:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="text"><code><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">From: hopbox &lt;no-reply@example.org&gt;</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">To: bob@example.org</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">Subject: Join Team on example.com</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">You are invited to join the org "Team" on example.com as admin.</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">Open this link, and sign in with the email bob@example.org to accept:</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">https://example.com/invite#token=&lt;token&gt;</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">The link works once, until Fri, 23 Oct 2026 15:47:31 UTC. If you did not expect it, you can ignore this email.</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="From: hopbox <no-reply@example.org>To: bob@example.orgSubject: Join Team on example.comYou are invited to join the org &quot;Team&quot; on example.com as admin.Open this link, and sign in with the email bob@example.org to accept:https://example.com/invite#token=<token>The link works once, until Fri, 23 Oct 2026 15:47:31 UTC. If you did not expect it, you can ignore this email."><div></div></button></div></figure></div>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The email breaks a rule, or the role is not known</td>
+<td><code dir="auto">invalid_argument</code></td>
+</tr>
+<tr>
+<td>The install has no domain: <code dir="auto">failed precondition: the install has no domain, and the invitation link needs one</code></td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+<tr>
+<td>The personal org: <code dir="auto">failed precondition: a personal org belongs to one account, so it takes no invitations</code></td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+<tr>
+<td>A suspended org: <code dir="auto">failed precondition: org suspended: an instance admin suspended the org, so it sends no invitations</code></td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+<tr>
+<td>An account with the email as a verified email is a member already</td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+<tr>
+<td>The org made 20 invitations in the last hour: <code dir="auto">too many requests: this org made the most invitations of an hour. Wait, then retry</code></td>
+<td><code dir="auto">resource_exhausted</code></td>
+</tr>
+<tr>
+<td>The caller made 20 invitations in the last hour, in any orgs: <code dir="auto">too many requests: this account made the most invitations of an hour. Wait, then retry</code></td>
+<td><code dir="auto">resource_exhausted</code></td>
+</tr>
+<tr>
+<td>The email got 5 invitations in the last hour, from any orgs: <code dir="auto">too many requests: this email got the most invitations of an hour. Wait, then retry</code></td>
+<td><code dir="auto">resource_exhausted</code></td>
+</tr>
+<tr>
+<td>The SMTP password does not open, for example after the loss of its key-encryption key</td>
+<td><code dir="auto">internal</code></td>
+</tr>
+</tbody>
+</table>
+<div class="expressive-code"><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="sh"><code><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">browser</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">-d</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">{"orgId":"01a14565-a2df-75a1-9401-ed28dfa37fc4","email":"bob@example.org","role":"ORG_ROLE_ADMIN"}</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#F78C6C;--1:#AA0982">\</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">$API</span><span style="--0:#ECC48D;--1:#3B61B0">/hopbox.v1.OrgService/CreateInvitation</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="browser -d &#x27;{&quot;orgId&quot;:&quot;01a14565-a2df-75a1-9401-ed28dfa37fc4&quot;,&quot;email&quot;:&quot;bob@example.org&quot;,&quot;role&quot;:&quot;ORG_ROLE_ADMIN&quot;}&#x27; \  $API/hopbox.v1.OrgService/CreateInvitation"><div></div></button></div></figure></div>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="json"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">{</span><span style="--0:#7FDBCA;--1:#096E72">"invitation"</span><span style="--0:#D6DEEB;--1:#403F53">:{</span><span style="--0:#7FDBCA;--1:#096E72">"id"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">01a14565-a316-74dd-968e-fac72d706827</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"orgId"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">01a14565-a2df-75a1-9401-ed28dfa37fc4</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"email"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">bob@example.org</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"role"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">ORG_ROLE_ADMIN</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"inviterAccountId"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">01a14565-8448-774f-9317-ea6348e9a930</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"createTime"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">2026-10-16T15:47:31.221754Z</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"expireTime"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">2026-10-23T15:47:31.221754Z</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">},</span><span style="--0:#7FDBCA;--1:#096E72">"url"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">https://example.com/invite#token=vH_2434xeosR22NllAU0tHE8LoqC08ZYHX1JhHZK4UA</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"emailSent"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#FF6A83;--1:#A24848">true</span><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="{&quot;invitation&quot;:{&quot;id&quot;:&quot;01a14565-a316-74dd-968e-fac72d706827&quot;,&quot;orgId&quot;:&quot;01a14565-a2df-75a1-9401-ed28dfa37fc4&quot;,&quot;email&quot;:&quot;bob@example.org&quot;,&quot;role&quot;:&quot;ORG_ROLE_ADMIN&quot;,&quot;inviterAccountId&quot;:&quot;01a14565-8448-774f-9317-ea6348e9a930&quot;,&quot;createTime&quot;:&quot;2026-10-16T15:47:31.221754Z&quot;,&quot;expireTime&quot;:&quot;2026-10-23T15:47:31.221754Z&quot;},&quot;url&quot;:&quot;https://example.com/invite#token=vH_2434xeosR22NllAU0tHE8LoqC08ZYHX1JhHZK4UA&quot;,&quot;emailSent&quot;:true}"><div></div></button></div></figure></div>
+<div class="sl-heading-wrapper level-h3"><h3 id="listinvitations">ListInvitations</h3><a class="sl-anchor-link" href="#listinvitations"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “ListInvitations”</span></a></div>
+<p>Lists the open invitations of an org, oldest first. An open invitation is not used, not revoked, and not expired.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Procedure</td>
+<td><code dir="auto">/hopbox.v1.OrgService/ListInvitations</code></td>
+</tr>
+<tr>
+<td>Policy action</td>
+<td><code dir="auto">org.invitation_list</code>: a <code dir="auto">session</code>, <code dir="auto">cli_token</code>, or <code dir="auto">member_key</code> with the role <code dir="auto">admin</code> or <code dir="auto">owner</code></td>
+</tr>
+<tr>
+<td>Idempotent option</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Audit entry</td>
+<td>none</td>
+</tr>
+</tbody>
+</table>
+<p>The request <code dir="auto">ListInvitationsRequest</code> has the field <code dir="auto">org_id</code>. The response <code dir="auto">ListInvitationsResponse</code> has the field <code dir="auto">invitations</code>, a repeated <code dir="auto">Invitation</code>. It never holds a link.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="revokeinvitation">RevokeInvitation</h3><a class="sl-anchor-link" href="#revokeinvitation"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “RevokeInvitation”</span></a></div>
+<p>Ends an open invitation, so its link stops working.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Procedure</td>
+<td><code dir="auto">/hopbox.v1.OrgService/RevokeInvitation</code></td>
+</tr>
+<tr>
+<td>Policy action</td>
+<td><code dir="auto">org.invitation_revoke</code>: a <code dir="auto">session</code>, <code dir="auto">cli_token</code>, or <code dir="auto">member_key</code> with the role <code dir="auto">admin</code> or <code dir="auto">owner</code>. An admin also revokes an invitation that gives the role <code dir="auto">owner</code>, because a revoke gives nobody a right.</td>
+</tr>
+<tr>
+<td>Idempotent option</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Audit entry</td>
+<td>action <code dir="auto">org.invitation_revoke</code>, target kind <code dir="auto">invitation</code>, details <code dir="auto">email</code> and <code dir="auto">role</code></td>
+</tr>
+</tbody>
+</table>
+<p>The request <code dir="auto">RevokeInvitationRequest</code> has the fields <code dir="auto">org_id</code> and <code dir="auto">id</code>, the UUID of the invitation. The response <code dir="auto">RevokeInvitationResponse</code> has no fields. An invitation that the org does not have open gets <code dir="auto">not_found</code> with the message <code dir="auto">not found: the org has no open invitation &lt;id&gt;</code>.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="acceptinvitation">AcceptInvitation</h3><a class="sl-anchor-link" href="#acceptinvitation"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “AcceptInvitation”</span></a></div>
+<p>Joins the org of an invitation with its role. The account of the caller must hold the email of the invitation as a verified email.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Procedure</td>
+<td><code dir="auto">/hopbox.v1.OrgService/AcceptInvitation</code></td>
+</tr>
+<tr>
+<td>Policy action</td>
+<td><code dir="auto">org.invitation_accept</code>: <code dir="auto">session</code> and <code dir="auto">cli_token</code></td>
+</tr>
+<tr>
+<td>Idempotent option</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Audit entry</td>
+<td>action <code dir="auto">org.invitation_accept</code>, org the org, target kind <code dir="auto">invitation</code>, details <code dir="auto">email</code> and <code dir="auto">role</code></td>
+</tr>
+</tbody>
+</table>
+<p>The request <code dir="auto">AcceptInvitationRequest</code> has the field <code dir="auto">token</code>: the value after <code dir="auto">#token=</code> in the link. The response <code dir="auto">AcceptInvitationResponse</code> has the field <code dir="auto">org</code>, the <code dir="auto">Org</code> with the new role of the caller.</p>
+<p>The call locks the row of the org, then the row of the invitation, in the order that <code dir="auto">CreateInvitation</code> takes them. So two accepts of one link at the same time make one membership. A refused try that is not a used, revoked, or expired link leaves the invitation open, so the right person can still accept it.</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The token is unknown, used, revoked, or expired: <code dir="auto">not found: the invitation is not valid: it is unknown, used, revoked, or expired. Ask for a new one</code></td>
+<td><code dir="auto">not_found</code></td>
+</tr>
+<tr>
+<td>The account has no verified email of the invitation: <code dir="auto">failed precondition: the invitation is for bob@example.org, and the account has no verified email bob@example.org. Sign in with that email, then open the link again</code></td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+<tr>
+<td>The account is a member already: <code dir="auto">failed precondition: the account is a member of the org already, as &lt;role&gt;</code></td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+<tr>
+<td>A suspended org: <code dir="auto">failed precondition: org suspended: an instance admin suspended the org, so it takes no new members</code></td>
+<td><code dir="auto">failed_precondition</code></td>
+</tr>
+</tbody>
+</table>
+<p>The server logs a refused token as <code dir="auto">invitation refused</code> at level info, with <code dir="auto">component=service</code>, and never the token.</p>
+<div class="expressive-code"><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="sh"><code><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">browser</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">-d</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">{"token":"vH_2434xeosR22NllAU0tHE8LoqC08ZYHX1JhHZK4UA"}</span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C5E478;--1:#3B61B0">$API</span><span style="--0:#ECC48D;--1:#3B61B0">/hopbox.v1.OrgService/AcceptInvitation</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="browser -d &#x27;{&quot;token&quot;:&quot;vH_2434xeosR22NllAU0tHE8LoqC08ZYHX1JhHZK4UA&quot;}&#x27; $API/hopbox.v1.OrgService/AcceptInvitation"><div></div></button></div></figure></div>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="json"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">{</span><span style="--0:#7FDBCA;--1:#096E72">"org"</span><span style="--0:#D6DEEB;--1:#403F53">:{</span><span style="--0:#7FDBCA;--1:#096E72">"id"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">01a14565-a2df-75a1-9401-ed28dfa37fc4</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"name"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">Team</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"role"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">ORG_ROLE_ADMIN</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"version"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">1</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span><span style="--0:#7FDBCA;--1:#096E72">"createTime"</span><span style="--0:#D6DEEB;--1:#403F53">:</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">2026-10-16T15:47:31.166821Z</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">}}</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="{&quot;org&quot;:{&quot;id&quot;:&quot;01a14565-a2df-75a1-9401-ed28dfa37fc4&quot;,&quot;name&quot;:&quot;Team&quot;,&quot;role&quot;:&quot;ORG_ROLE_ADMIN&quot;,&quot;version&quot;:&quot;1&quot;,&quot;createTime&quot;:&quot;2026-10-16T15:47:31.166821Z&quot;}}"><div></div></button></div></figure></div>
+<div class="sl-heading-wrapper level-h2"><h2 id="usage-limits">Usage limits</h2><a class="sl-anchor-link" href="#usage-limits"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Usage limits”</span></a></div>
+<p>Each org has usage limits on machines, vCPUs, RAM, and disk. The install has default limits for every org. An instance admin can change the defaults, and set limits for one org that replace the defaults (<a href="/reference/admin-api/#setorglimits">admin-api.md</a>).</p>
+<table>
+<thead>
+<tr>
+<th>Limit</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Machines</td>
+<td>3</td>
+</tr>
+<tr>
+<td>vCPUs</td>
+<td>6</td>
+</tr>
+<tr>
+<td>RAM</td>
+<td>24 GiB (25769803776 bytes)</td>
+</tr>
+<tr>
+<td>Disk</td>
+<td>300 GB (300000000000 bytes)</td>
+</tr>
+</tbody>
+</table>
+<p>The defaults fit three machines of the default size (<a href="/reference/domain-rules/#sizes">domain-rules.md</a>). A limit of 0 allows nothing. <a href="/reference/domain-rules/#usage-limits">domain-rules.md</a> gives the rules of the check.</p>
+<table>
+<thead>
+<tr>
+<th>Usage</th>
+<th>The machines that count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Machines and disk</td>
+<td>every machine that is not deleted</td>
+</tr>
+<tr>
+<td>vCPUs and RAM</td>
+<td>the machines whose target state is <code dir="auto">running</code> or <code dir="auto">standby</code></td>
+</tr>
+</tbody>
+</table>
+<p>So a stopped machine keeps its disk and its place in the machine count, but frees its vCPUs and its RAM. A machine whose target is <code dir="auto">deleted</code> counts no more, also while its executor still deletes it. <code dir="auto">CreateMachine</code> and <code dir="auto">StartMachine</code> check the limits (<a href="/reference/machine-api/#usage-and-limits">machine-api.md</a>). A start adds only the vCPUs and the RAM of a machine that does not count already, so a start never counts a machine twice. A new limit below the usage stops nothing: the org then creates and starts no more machines until its usage fits.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="suspension">Suspension</h2><a class="sl-anchor-link" href="#suspension"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Suspension”</span></a></div>
+<p>An instance admin can suspend an org, for example to handle abuse. The calls are on the admin API (<a href="/reference/admin-api/#suspendorg">admin-api.md</a>). The members of the org see the suspension in <code dir="auto">GetOrg</code>. Its owners and admins see its audit entry in the audit log of the org.</p>
+<table>
+<thead>
+<tr>
+<th>Effect</th>
+<th>Since</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Reads still work.</td>
+<td>now</td>
+</tr>
+<tr>
+<td>The org sends no invitations. <code dir="auto">CreateInvitation</code> fails with <code dir="auto">failed_precondition</code>.</td>
+<td>now</td>
+</tr>
+<tr>
+<td>The org takes no new members. <code dir="auto">AcceptInvitation</code> fails with <code dir="auto">failed_precondition</code>.</td>
+<td>now</td>
+</tr>
+<tr>
+<td>Owners can still change roles and rename the org.</td>
+<td>now</td>
+</tr>
+<tr>
+<td>Nothing deletes the data of the org, for example the evidence of abuse. <code dir="auto">DeleteOrg</code>, <code dir="auto">LeaveOrg</code>, and <code dir="auto">RemoveOrgMember</code> in the org fail with <code dir="auto">failed_precondition</code>. So does <code dir="auto">DeleteAccount</code> of a member of the org, or of the account of a suspended personal org.</td>
+<td>now</td>
+</tr>
+<tr>
+<td>The env vars and secrets of the org do not change. <code dir="auto">SetVar</code> and <code dir="auto">DeleteVar</code> fail with <code dir="auto">failed_precondition</code> (<a href="/reference/vars-api/#suspension">vars-api.md</a>).</td>
+<td>now</td>
+</tr>
+<tr>
+<td>The members cannot delete a machine of the org. <code dir="auto">DeleteMachine</code> fails with <code dir="auto">failed_precondition</code> (<a href="/reference/domain-rules/#org-suspension">domain-rules.md</a>).</td>
+<td>now</td>
+</tr>
+<tr>
+<td>The machines of the org stop. A hibernated machine stays hibernated (<a href="/reference/domain-rules/#org-suspension">domain-rules.md</a>).</td>
+<td>now, through <code dir="auto">OrgSuspending</code></td>
+</tr>
+<tr>
+<td>The org cannot create, start, or reboot a machine. <code dir="auto">CreateMachine</code>, <code dir="auto">StartMachine</code>, and <code dir="auto">RebootMachine</code> fail with <code dir="auto">failed_precondition</code> (<a href="/reference/machine-api/#suspension">machine-api.md</a>).</td>
+<td>now</td>
+</tr>
+<tr>
+<td>The org cannot resume, wake, fork, or restore a machine.</td>
+<td>with the calls of these actions, in phase 3</td>
+</tr>
+<tr>
+<td>The auto-delete of the leader skips the machines of the org.</td>
+<td>now</td>
+</tr>
+<tr>
+<td>Instance admins can still stop and delete any machine of the org (<a href="/reference/admin-api/#machineservice">admin-api.md</a>).</td>
+<td>now</td>
+</tr>
+<tr>
+<td>Exec and file copy are blocked (<a href="/reference/machine-api/#suspension">machine-api.md</a>).</td>
+<td>now</td>
+</tr>
+<tr>
+<td>The machine URLs are blocked. The edge answers <code dir="auto">403</code>, and <code dir="auto">GET /auth/machine</code> gives no code (<a href="/reference/edge/#private-machine-urls">edge.md</a>).</td>
+<td>now</td>
+</tr>
+<tr>
+<td>SSH is blocked. The SSH front door refuses every key, and ends the open SSH connections of the org (<a href="/reference/ssh-front-door/#checks-of-an-open-connection">ssh-front-door.md</a>).</td>
+<td>now</td>
+</tr>
+</tbody>
+</table>
+<p>The end of the suspension starts no machine. The users of the org start them again.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="audit-entries">Audit entries</h2><a class="sl-anchor-link" href="#audit-entries"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Audit entries”</span></a></div>
+<p>The org calls write these entries in the transaction of the change. Their org is the org of the change, so its owners and admins read them with <code dir="auto">ListAuditEntries</code> (<a href="/reference/auth-api/#listauditentries">auth-api.md</a>). The actor is the caller.</p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Call</th>
+<th>Target</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">org.create</code></td>
+<td><code dir="auto">CreateOrg</code></td>
+<td>the org</td>
+<td><code dir="auto">name</code></td>
+</tr>
+<tr>
+<td><code dir="auto">org.update</code></td>
+<td><code dir="auto">UpdateOrg</code></td>
+<td>the org</td>
+<td><code dir="auto">name</code>, <code dir="auto">old_name</code></td>
+</tr>
+<tr>
+<td><code dir="auto">org.delete</code></td>
+<td><code dir="auto">DeleteOrg</code></td>
+<td>the org</td>
+<td><code dir="auto">name</code></td>
+</tr>
+<tr>
+<td><code dir="auto">org.member_set_role</code></td>
+<td><code dir="auto">SetOrgMemberRole</code></td>
+<td>the account</td>
+<td><code dir="auto">role</code>, <code dir="auto">old_role</code></td>
+</tr>
+<tr>
+<td><code dir="auto">org.member_remove</code></td>
+<td><code dir="auto">RemoveOrgMember</code>, and <code dir="auto">DeleteAccount</code> for each org of the account</td>
+<td>the account</td>
+<td><code dir="auto">role</code>, <code dir="auto">reason</code> (<code dir="auto">removed</code> or <code dir="auto">account deleted</code>)</td>
+</tr>
+<tr>
+<td><code dir="auto">org.leave</code></td>
+<td><code dir="auto">LeaveOrg</code></td>
+<td>the account</td>
+<td><code dir="auto">role</code></td>
+</tr>
+<tr>
+<td><code dir="auto">org.invitation_create</code></td>
+<td><code dir="auto">CreateInvitation</code></td>
+<td>the invitation</td>
+<td><code dir="auto">email</code>, <code dir="auto">role</code></td>
+</tr>
+<tr>
+<td><code dir="auto">org.invitation_revoke</code></td>
+<td><code dir="auto">RevokeInvitation</code>, <code dir="auto">CreateInvitation</code> for the invitation that it replaces, and a leave, a removal, an account delete, or a role change of the inviter</td>
+<td>the invitation</td>
+<td><code dir="auto">email</code>, <code dir="auto">role</code>, and for a revoke by another call <code dir="auto">reason</code>: <code dir="auto">replaced</code>, <code dir="auto">inviter left</code>, or <code dir="auto">inviter role changed</code></td>
+</tr>
+<tr>
+<td><code dir="auto">org.invitation_accept</code></td>
+<td><code dir="auto">AcceptInvitation</code></td>
+<td>the invitation</td>
+<td><code dir="auto">email</code>, <code dir="auto">role</code></td>
+</tr>
+</tbody>
+</table>
+<p>The admin calls on orgs add <code dir="auto">org.suspend</code>, <code dir="auto">org.unsuspend</code>, and <code dir="auto">org.set_limits</code> to the audit log of the org (<a href="/reference/admin-api/#orgservice">admin-api.md</a>). The machine calls write their own entries in the audit log of the org (<a href="/reference/machine-api/#audit-entries">machine-api.md</a>).</p>
+</div><footer class="sl-flex astro-fzngq47q"><div class="meta sl-flex astro-fzngq47q"></div><div class="pagination-links print:hidden astro-7jhddma2" dir="ltr"><a href="/reference/api/" rel="prev" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-7jhddma2">Previous<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">The API server</span></span></a><a href="/reference/vars-api/" rel="next" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-7jhddma2">Next<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">The env var API</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>

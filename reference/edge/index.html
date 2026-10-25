@@ -1,0 +1,813 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-toc data-has-sidebar class="astro-g6oqdoeg"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>The edge role | hopbox docs</title><link rel="canonical" href="https://docs.hopbox.dev/reference/edge/"/><link rel="sitemap" href="/sitemap-index.xml"/><link rel="shortcut icon" href="/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.3.8"/><meta name="generator" content="Starlight v0.42.6"/><meta property="og:title" content="The edge role"/><meta property="og:type" content="article"/><meta property="og:url" content="https://docs.hopbox.dev/reference/edge/"/><meta property="og:locale" content="en"/><meta property="og:description" content="The edge role: its listeners, TLS, routing, and forwarded requests. Also the machine URLs, their sign-in, EdgeService, metrics, and logs."/><meta property="og:site_name" content="hopbox docs"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="The edge role: its listeners, TLS, routing, and forwarded requests. Also the machine URLs, their sign-in, EdgeService, metrics, and logs."/><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/_astro/print.ehPL0gv-.css" media="print"><link rel="stylesheet" href="/_astro/middleware.DkUYdNkX.css"><script type="module" src="/_astro/page.cNngjUgL.js"></script></head><body class="astro-g6oqdoeg"><a class="sl-skip-link astro-ktawktwe" href="#_top">Skip to content</a><div class="page sl-flex astro-vlwsw6sx"><header class="header astro-vlwsw6sx"><div class="header astro-qe7tu4yu"><div class="title-wrapper sl-flex astro-qe7tu4yu"><a href="/" class="site-title sl-flex astro-42muqipg"><span class="astro-42muqipg" translate="no">hopbox docs</span></a></div><div class="sl-flex print:hidden astro-qe7tu4yu"><site-search class="astro-qe7tu4yu astro-yp365hkw" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"><button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-yp365hkw"><svg aria-hidden="true" class="astro-yp365hkw astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg><span class="sl-hidden md:sl-block astro-yp365hkw" aria-hidden="true">Search</span><kbd class="sl-hidden md:sl-flex astro-yp365hkw" style="display: none;"><kbd class="astro-yp365hkw">Ctrl</kbd><kbd class="astro-yp365hkw">K</kbd></kbd></button><dialog style="padding:0" aria-label="Search" class="astro-yp365hkw"><div class="dialog-frame sl-flex astro-yp365hkw"><button data-close-modal class="sl-flex md:sl-hidden astro-yp365hkw">Cancel</button><div class="search-container astro-yp365hkw"><div id="starlight__search" class="astro-yp365hkw"></div></div></div></dialog></site-search><script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script><script type="module" src="/_astro/Search.astro_astro_type_script_index_0_lang.g9hoxVJg.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-qe7tu4yu"><div class="sl-flex social-icons astro-qe7tu4yu"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script><script type="module">var e=`starlight-theme`,t=e=>e===`auto`||e===`dark`||e===`light`?e:`auto`,n=()=>t(typeof localStorage<`u`&&localStorage.getItem(e));function r(t){typeof localStorage<`u`&&localStorage.setItem(e,t===`light`||t===`dark`?t:``)}var i=()=>matchMedia(`(prefers-color-scheme: light)`).matches?`light`:`dark`;function a(e){StarlightThemeProvider.updatePickers(e),document.documentElement.dataset.theme=e===`auto`?i():e,r(e)}matchMedia(`(prefers-color-scheme: light)`).addEventListener(`change`,()=>{n()===`auto`&&a(`auto`)});var o=class extends HTMLElement{constructor(){super(),a(n()),this.querySelector(`select`)?.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&a(t(e.currentTarget.value))})}};customElements.define(`starlight-theme-select`,o);</script><script type="module">var e=class extends HTMLElement{constructor(){super();let e=this.querySelector(`select`);e&&(e.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=e.currentTarget.value)}),window.addEventListener(`pageshow`,t=>{if(!t.persisted)return;let n=e.querySelector(`option[selected]`)?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}};customElements.define(`starlight-lang-select`,e);</script></div></div></header><nav class="sidebar print:hidden astro-vlwsw6sx" aria-label="Main"><button popovertarget="starlight__sidebar" class="sl-menu-button sl-flex md:sl-hidden print:hidden astro-ibd3qwco"><svg aria-hidden="true" class="open-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg><span class="sr-only astro-ibd3qwco">Menu</span></button><script type="module">var e=class extends HTMLElement{constructor(){super();let e=matchMedia(`(min-width: 50em)`),t=()=>{this.popover=e.matches?null:`auto`};t(),e.addEventListener(`change`,()=>t()),this.addEventListener(`toggle`,({newState:e})=>this.trapFocus(e===`open`))}trapFocus(e){document.querySelectorAll(`.main-frame, .sl-skip-link`).forEach(t=>{t.toggleAttribute(`inert`,e)})}};customElements.define(`sl-sidebar-pane`,e);</script><sl-sidebar-pane popover id="starlight__sidebar" class="sidebar-pane astro-vlwsw6sx"><div class="sidebar-content sl-flex astro-vlwsw6sx"><sl-sidebar-state-persist data-hash="0qsyok1" class="astro-oblzz35h"><script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script><ul class="top-level astro-twzrdani"><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Guides</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/guide/run-hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">Run the control role on a laptop</span></a></li><li class="astro-twzrdani"><a href="/guide/install-on-ovhcloud/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on an OVHcloud server with Terraform</span></a></li><li class="astro-twzrdani"><a href="/guide/enroll-node/" class="astro-twzrdani"><span class="astro-twzrdani">Enroll the node role on one server</span></a></li><li class="astro-twzrdani"><a href="/guide/dns-role/" class="astro-twzrdani"><span class="astro-twzrdani">Serve the domain of an install with the DNS role</span></a></li><li class="astro-twzrdani"><a href="/guide/acme-certificate/" class="astro-twzrdani"><span class="astro-twzrdani">Get the wildcard certificate of an install</span></a></li><li class="astro-twzrdani"><a href="/guide/machine-urls/" class="astro-twzrdani"><span class="astro-twzrdani">Run the edge role and open machine URLs</span></a></li><li class="astro-twzrdani"><a href="/guide/first-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">First sign-in on a new install</span></a></li><li class="astro-twzrdani"><a href="/guide/github-google-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/guide/orgs/" class="astro-twzrdani"><span class="astro-twzrdani">Work in a team org</span></a></li><li class="astro-twzrdani"><a href="/guide/env-vars/" class="astro-twzrdani"><span class="astro-twzrdani">Set env vars and secrets</span></a></li><li class="astro-twzrdani"><a href="/guide/machines/" class="astro-twzrdani"><span class="astro-twzrdani">Create and manage machines</span></a></li><li class="astro-twzrdani"><a href="/guide/firecracker-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Run machines with Firecracker</span></a></li><li class="astro-twzrdani"><a href="/guide/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">Check the network of a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/cli/" class="astro-twzrdani"><span class="astro-twzrdani">Use the hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Use machines from the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-prompt/" class="astro-twzrdani"><span class="astro-twzrdani">Work in the prompt of the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/ssh/" class="astro-twzrdani"><span class="astro-twzrdani">Reach a machine over SSH</span></a></li><li class="astro-twzrdani"><a href="/guide/exec-and-files/" class="astro-twzrdani"><span class="astro-twzrdani">Run commands and copy files in a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">Connect an AI agent to hopbox with MCP</span></a></li><li class="astro-twzrdani"><a href="/guide/console/" class="astro-twzrdani"><span class="astro-twzrdani">Use the console</span></a></li><li class="astro-twzrdani"><a href="/guide/typescript-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">Call the API from TypeScript</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-and-keys/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in the CLI, and make API keys and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/guide/install-debian/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on a Debian 13 server by hand</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Reference</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="1"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/reference/hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/release-bundle/" class="astro-twzrdani"><span class="astro-twzrdani">Release bundle</span></a></li><li class="astro-twzrdani"><a href="/reference/server-layout/" class="astro-twzrdani"><span class="astro-twzrdani">Server layout</span></a></li><li class="astro-twzrdani"><a href="/reference/hopboxd-config/" class="astro-twzrdani"><span class="astro-twzrdani">The bootstrap config of hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/api/" class="astro-twzrdani"><span class="astro-twzrdani">The API server</span></a></li><li class="astro-twzrdani"><a href="/reference/org-api/" class="astro-twzrdani"><span class="astro-twzrdani">The org API</span></a></li><li class="astro-twzrdani"><a href="/reference/vars-api/" class="astro-twzrdani"><span class="astro-twzrdani">The env var API</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-api/" class="astro-twzrdani"><span class="astro-twzrdani">The machine API</span></a></li><li class="astro-twzrdani"><a href="/reference/placement/" class="astro-twzrdani"><span class="astro-twzrdani">Placement</span></a></li><li class="astro-twzrdani"><a href="/reference/auth-api/" class="astro-twzrdani"><span class="astro-twzrdani">The sign-in, account, and audit API</span></a></li><li class="astro-twzrdani"><a href="/reference/credentials/" class="astro-twzrdani"><span class="astro-twzrdani">CLI tokens, API keys, admin API keys, and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/reference/sessions/" class="astro-twzrdani"><span class="astro-twzrdani">Sessions, cookies, and sign-in links</span></a></li><li class="astro-twzrdani"><a href="/reference/smtp/" class="astro-twzrdani"><span class="astro-twzrdani">SMTP config</span></a></li><li class="astro-twzrdani"><a href="/reference/mail/" class="astro-twzrdani"><span class="astro-twzrdani">Mail</span></a></li><li class="astro-twzrdani"><a href="/reference/oauth/" class="astro-twzrdani"><span class="astro-twzrdani">Sign-in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/reference/metrics/" class="astro-twzrdani"><span class="astro-twzrdani">Metrics</span></a></li><li class="astro-twzrdani"><a href="/reference/admin-api/" class="astro-twzrdani"><span class="astro-twzrdani">The admin API</span></a></li><li class="astro-twzrdani"><a href="/reference/internal-listener/" class="astro-twzrdani"><span class="astro-twzrdani">The internal listener</span></a></li><li class="astro-twzrdani"><a href="/reference/enrollment/" class="astro-twzrdani"><span class="astro-twzrdani">Enrollment and the install PKI</span></a></li><li class="astro-twzrdani"><a href="/reference/control-channel/" class="astro-twzrdani"><span class="astro-twzrdani">The control channel</span></a></li><li class="astro-twzrdani"><a href="/reference/dns/" class="astro-twzrdani"><span class="astro-twzrdani">The DNS role</span></a></li><li class="astro-twzrdani"><a href="/reference/edge/" aria-current="page" class="astro-twzrdani"><span class="astro-twzrdani">The edge role</span></a></li><li class="astro-twzrdani"><a href="/reference/ssh-front-door/" class="astro-twzrdani"><span class="astro-twzrdani">The SSH front door</span></a></li><li class="astro-twzrdani"><a href="/reference/acme/" class="astro-twzrdani"><span class="astro-twzrdani">The certificate of the install</span></a></li><li class="astro-twzrdani"><a href="/reference/executor-protocol/" class="astro-twzrdani"><span class="astro-twzrdani">The executor protocol</span></a></li><li class="astro-twzrdani"><a href="/reference/executor/" class="astro-twzrdani"><span class="astro-twzrdani">The node executor</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-logs/" class="astro-twzrdani"><span class="astro-twzrdani">Machine logs</span></a></li><li class="astro-twzrdani"><a href="/reference/vmm/" class="astro-twzrdani"><span class="astro-twzrdani">The VMM driver interface</span></a></li><li class="astro-twzrdani"><a href="/reference/firecracker-driver/" class="astro-twzrdani"><span class="astro-twzrdani">The Firecracker driver</span></a></li><li class="astro-twzrdani"><a href="/reference/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">The node network</span></a></li><li class="astro-twzrdani"><a href="/reference/preflight/" class="astro-twzrdani"><span class="astro-twzrdani">The preflight check</span></a></li><li class="astro-twzrdani"><a href="/reference/cli/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/reference/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">The MCP server</span></a></li><li class="astro-twzrdani"><a href="/reference/console/" class="astro-twzrdani"><span class="astro-twzrdani">Console</span></a></li><li class="astro-twzrdani"><a href="/reference/go-client/" class="astro-twzrdani"><span class="astro-twzrdani">Go client</span></a></li><li class="astro-twzrdani"><a href="/reference/ts-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">TypeScript SDK</span></a></li><li class="astro-twzrdani"><a href="/reference/hopbox-guest/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox-guest</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-link/" class="astro-twzrdani"><span class="astro-twzrdani">Guest link</span></a></li><li class="astro-twzrdani"><a href="/reference/terraform-provider/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox Terraform provider</span></a></li><li class="astro-twzrdani"><a href="/reference/version/" class="astro-twzrdani"><span class="astro-twzrdani">The version command</span></a></li><li class="astro-twzrdani"><a href="/reference/api-definitions/" class="astro-twzrdani"><span class="astro-twzrdani">API definitions</span></a></li><li class="astro-twzrdani"><a href="/reference/postgres/" class="astro-twzrdani"><span class="astro-twzrdani">The bundled Postgres</span></a></li><li class="astro-twzrdani"><a href="/reference/domain-rules/" class="astro-twzrdani"><span class="astro-twzrdani">Domain rules</span></a></li><li class="astro-twzrdani"><a href="/reference/control-store/" class="astro-twzrdani"><span class="astro-twzrdani">Control store tables</span></a></li><li class="astro-twzrdani"><a href="/reference/sealing/" class="astro-twzrdani"><span class="astro-twzrdani">Sealing</span></a></li><li class="astro-twzrdani"><a href="/reference/host-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Host kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Guest kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/default-image/" class="astro-twzrdani"><span class="astro-twzrdani">Default image</span></a></li><li class="astro-twzrdani"><a href="/reference/artifact-format/" class="astro-twzrdani"><span class="astro-twzrdani">Artifact format</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Releases</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="2"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/releases/v0.1.0/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox v0.1.0</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="3"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Public API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="4"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="5"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicecreatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">CreateMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicegetmachine/" class="astro-twzrdani"><span class="astro-twzrdani">GetMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachinesizes/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachineSizes</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerebootmachine/" class="astro-twzrdani"><span class="astro-twzrdani">RebootMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerenamemachine/" class="astro-twzrdani"><span class="astro-twzrdani">RenameMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlport/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLPort</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlvisibility/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLVisibility</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">ShareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestartmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StartMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceunsharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UnshareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceupdatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.InstallService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="6"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1installservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1installservicegetinstallinfo/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallInfo</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="7"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicedeleteaccount/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceendclisignin/" class="astro-twzrdani"><span class="astro-twzrdani">EndCLISignIn</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicegetaccount/" class="astro-twzrdani"><span class="astro-twzrdani">GetAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistclisignins/" class="astro-twzrdani"><span class="astro-twzrdani">ListCLISignIns</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceremovesigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSignInMethod</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceupdateaccount/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateAccount</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.APIKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="8"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1apikeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicecreateapikey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAPIKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicelistapikeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAPIKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicerevokeapikey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAPIKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuditService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="9"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1auditservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1auditservicelistauditentries/" class="astro-twzrdani"><span class="astro-twzrdani">ListAuditEntries</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuthService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="10"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1authservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceapprovedevice/" class="astro-twzrdani"><span class="astro-twzrdani">ApproveDevice</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicegetdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">GetDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicepolldeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">PollDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerefreshclitoken/" class="astro-twzrdani"><span class="astro-twzrdani">RefreshCLIToken</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerequestmagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">RequestMagicLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicesignout/" class="astro-twzrdani"><span class="astro-twzrdani">SignOut</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicestartdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">StartDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifyloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyLoginLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifymagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyMagicLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="11"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceacceptinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">AcceptInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">CreateInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateorg/" class="astro-twzrdani"><span class="astro-twzrdani">CreateOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicedeleteorg/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorg/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorgusage/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrgUsage</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceleaveorg/" class="astro-twzrdani"><span class="astro-twzrdani">LeaveOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistinvitations/" class="astro-twzrdani"><span class="astro-twzrdani">ListInvitations</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgmembers/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgMembers</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceremoveorgmember/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveOrgMember</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicerevokeinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicesetorgmemberrole/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgMemberRole</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceupdateorg/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.SSHKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="12"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1sshkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceaddsshkey/" class="astro-twzrdani"><span class="astro-twzrdani">AddSSHKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyservicelistsshkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListSSHKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceremovesshkey/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSSHKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.VarService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="13"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1varservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicedeletevar/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteVar</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicelistvars/" class="astro-twzrdani"><span class="astro-twzrdani">ListVars</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicesetvar/" class="astro-twzrdani"><span class="astro-twzrdani">SetVar</span></a></li></ul></details></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Admin API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="14"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="15"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountservicelistaccountsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListAccountSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountserviceremoveaccountsigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveAccountSignInMethod</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AdminKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="16"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1adminkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicecreateadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicelistadminkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAdminKeys</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyserviceregisteradminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicerevokeadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAdminKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.CertificateService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="17"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1certificateservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1certificateservicegetcertificate/" class="astro-twzrdani"><span class="astro-twzrdani">GetCertificate</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ImageService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="18"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1imageservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageservicelistimages/" class="astro-twzrdani"><span class="astro-twzrdani">ListImages</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageserviceregisterimage/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterImage</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstallConfigService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="19"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1installconfigservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">ClearOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">ClearSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetoauthconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetOAuthConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">SetOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">SetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceupdateinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateInstallConfig</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstanceAdminService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="20"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1instanceadminservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicegrantinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">GrantInstanceAdmin</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicelistinstanceadmins/" class="astro-twzrdani"><span class="astro-twzrdani">ListInstanceAdmins</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicerevokeinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInstanceAdmin</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.KeyringService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="21"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1keyringservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicelistkeks/" class="astro-twzrdani"><span class="astro-twzrdani">ListKEKs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerewrapsealedvalues/" class="astro-twzrdani"><span class="astro-twzrdani">RewrapSealedValues</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerotatekek/" class="astro-twzrdani"><span class="astro-twzrdani">RotateKEK</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.LoginLinkService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="22"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1loginlinkservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1loginlinkservicecreateloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">CreateLoginLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="23"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MailService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="24"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1mailservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicegetmailfile/" class="astro-twzrdani"><span class="astro-twzrdani">GetMailFile</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicelistmailfiles/" class="astro-twzrdani"><span class="astro-twzrdani">ListMailFiles</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="25"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicegetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">GetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">SuspendOrg</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgserviceunsuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">UnsuspendOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ServerService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="26"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1serverservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">CordonServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecreateenrollmenttoken/" class="astro-twzrdani"><span class="astro-twzrdani">CreateEnrollmentToken</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicedecommissionserver/" class="astro-twzrdani"><span class="astro-twzrdani">DecommissionServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicegetserver/" class="astro-twzrdani"><span class="astro-twzrdani">GetServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicelistservers/" class="astro-twzrdani"><span class="astro-twzrdani">ListServers</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicesetserverlabels/" class="astro-twzrdani"><span class="astro-twzrdani">SetServerLabels</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverserviceuncordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">UncordonServer</span></a></li></ul></details></li></ul></details></li></ul></details></li></ul><script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-jl756n3h"><div class="social-icons astro-jl756n3h"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script></div></div></div></sl-sidebar-pane></nav><div class="main-frame astro-vlwsw6sx"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-bfhpgjcp"><aside class="right-sidebar-container print:hidden astro-bfhpgjcp"><div class="right-sidebar astro-bfhpgjcp"><div class="lg:sl-hidden astro-6ky2bkwt"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-bwzeb267"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-bwzeb267"><details id="starlight__mobile-toc" class="astro-bwzeb267"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-bwzeb267"><span class="toggle sl-flex astro-bwzeb267">On this page<svg aria-hidden="true" class="caret astro-bwzeb267 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-bwzeb267"></span></summary><div class="dropdown astro-bwzeb267"><ul class="isMobile astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#listeners" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Listeners</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#clients-behind-one-network" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Clients behind one network</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#memory-of-stalled-requests" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Memory of stalled requests</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#tls" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">TLS</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#routing" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Routing</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#http-to-https" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">HTTP to HTTPS</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#forwarded-requests" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Forwarded requests</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#machine-urls" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Machine URLs</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#what-a-machine-gets" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">What a machine gets</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#private-machine-urls" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Private machine URLs</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#answers-of-a-private-url" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Answers of a private URL</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#requests-of-other-sites" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Requests of other sites</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#answers-of-authmachine" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Answers of /auth/machine</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#edgeservice" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">EdgeService</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#metrics" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Metrics</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#logs" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Logs</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#not-in-phase-1" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Not in phase 1</span></a></li></ul></div></details></nav></mobile-starlight-toc><script type="module" src="/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.C3fM4Kra.js"></script></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-6ky2bkwt"><div class="sl-container astro-6ky2bkwt"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#listeners" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Listeners</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#clients-behind-one-network" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Clients behind one network</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#memory-of-stalled-requests" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Memory of stalled requests</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#tls" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">TLS</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#routing" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Routing</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#http-to-https" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">HTTP to HTTPS</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#forwarded-requests" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Forwarded requests</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#machine-urls" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Machine URLs</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#what-a-machine-gets" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">What a machine gets</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#private-machine-urls" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Private machine URLs</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#answers-of-a-private-url" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Answers of a private URL</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#requests-of-other-sites" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Requests of other sites</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#answers-of-authmachine" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Answers of /auth/machine</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#edgeservice" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">EdgeService</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#metrics" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Metrics</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#logs" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Logs</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#not-in-phase-1" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Not in phase 1</span></a></li></ul></nav></starlight-toc><script type="module" src="/_astro/TableOfContents.astro_astro_type_script_index_0_lang.BpJaGz7G.js"></script></div></div></div></aside><div class="main-pane astro-bfhpgjcp"><main data-pagefind-body class="astro-g6oqdoeg" lang="en" dir="ltr"><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><h1 id="_top" class="astro-42k5req6">The edge role</h1></div></div><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><div class="sl-markdown-content"><p>The edge role is the HTTPS front of an install. It takes the HTTPS traffic of every client, and it routes each request by its host name. The domain of the install goes to the control role, which serves the API and the console. A machine URL, such as <code dir="auto">box1.example.com</code>, goes to its machine. A private machine URL needs a sign-in first. This page covers the listeners, TLS, the routing, and the forwarded requests. It also covers the machine URLs, the sign-in of a private machine URL, <code dir="auto">EdgeService</code>, the metrics, and the logs. The edge role also runs the SSH front door of the machines, which <a href="/reference/ssh-front-door/">ssh-front-door.md</a> covers.</p>
+<p>The edge role is in <code dir="auto">internal/edge</code>. The pushes of the control role are in <code dir="auto">internal/control/channel/edge.go</code>. The routes and the sign-in are in <code dir="auto">internal/service/edge.go</code>. <code dir="auto">EdgeService</code>, <code dir="auto">/auth/machine</code>, and the forwarded requests are in <code dir="auto">internal/api/edge.go</code>.</p>
+<p>In the examples, the domain of the install is <code dir="auto">example.com</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="listeners">Listeners</h2><a class="sl-anchor-link" href="#listeners"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Listeners”</span></a></div>
+<p>The edge role has two HTTP listeners, and the listener of the SSH front door (<a href="/reference/ssh-front-door/#listener">ssh-front-door.md</a>). Their addresses are in the section <code dir="auto">[edge]</code> of the bootstrap config (<a href="/reference/hopboxd-config/#keys">hopboxd-config.md</a>).</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTTPS listener</td>
+<td><code dir="auto">edge.https_listen</code>. Default: <code dir="auto">:443</code>, port 443 on every address.</td>
+</tr>
+<tr>
+<td>HTTP listener</td>
+<td><code dir="auto">edge.http_listen</code>. Default: <code dir="auto">:80</code>. It only sends each request to HTTPS (<a href="#http-to-https">HTTP to HTTPS</a>).</td>
+</tr>
+<tr>
+<td>Protocols</td>
+<td>HTTPS: HTTP/2 and HTTP/1.1, by ALPN. HTTP: HTTP/1.1.</td>
+</tr>
+<tr>
+<td>Open connections</td>
+<td>At most 16,384 on the HTTPS listener, and 65,536 on the HTTP listener, of the 1,048,576 file descriptors that <code dir="auto">hopboxd.service</code> allows. The bound of the HTTPS listener keeps the memory of its connections under 4 GiB (<a href="#memory-of-stalled-requests">Memory of stalled requests</a>). A connection past the bound of the listener gets no refusal. It waits in the backlog of the kernel until another one closes. So a full HTTPS listener stops new console sessions and new CLI connections, with no error page. The open connections go on. <code dir="auto">hopbox_edge_open_connections</code> and <code dir="auto">hopbox_edge_connection_limit</code> show how full each listener is (<a href="#metrics">Metrics</a>).</td>
+</tr>
+<tr>
+<td>Open connections of one client</td>
+<td>At most 256 on each listener. A client is an IPv4 address, or the /64 of an IPv6 address. The edge role closes a connection past this bound at once, so one client cannot hold every slot of a listener. Each one counts in <code dir="auto">hopbox_edge_client_connection_refusals_total{bound="client"}</code>.</td>
+</tr>
+<tr>
+<td>Open connections of one IPv6 network</td>
+<td>At most 1,024 on each listener, for all /64s of one IPv6 /48 together. The holder of a /48 has 65,536 /64s, enough to fill a listener alone. The edge role closes a connection past this bound at once. The count of its /64 does not matter. Each one counts in <code dir="auto">hopbox_edge_client_connection_refusals_total{bound="network"}</code>. An IPv4 address has no such bound (<a href="#clients-behind-one-network">Clients behind one network</a>).</td>
+</tr>
+<tr>
+<td>Request header</td>
+<td>At most 64 KiB, also on HTTP/2. A larger header gets <code dir="auto">431 Request Header Fields Too Large</code>.</td>
+</tr>
+<tr>
+<td>Header timeout</td>
+<td>10 s for the header of a request. A slow client then loses its connection.</td>
+</tr>
+<tr>
+<td>Idle timeout</td>
+<td>2 min without a request closes a connection.</td>
+</tr>
+<tr>
+<td>HTTP/2 streams</td>
+<td>At most 250 at once on one connection.</td>
+</tr>
+<tr>
+<td>HTTP/2 receive buffer</td>
+<td>256 KiB for each stream, and 250 times that for the connection. So a stream whose target reads nothing, such as an exec with unread input, stalls alone. The other streams of the connection go on.</td>
+</tr>
+<tr>
+<td>Open requests</td>
+<td>At most 16,384 at once on the HTTPS listener, streams and WebSockets included. A request past the bound gets <code dir="auto">503 Service Unavailable</code> with <code dir="auto">Retry-After: 1</code>.</td>
+</tr>
+<tr>
+<td>Open requests of one client</td>
+<td>At most 1,024 at once. A request past the bound gets <code dir="auto">429 Too Many Requests</code> with <code dir="auto">Retry-After: 1</code>, so one client cannot take every slot of the 16,384. A client is an IPv4 address or the /64 of an IPv6 address.</td>
+</tr>
+<tr>
+<td>Open requests of one IPv6 network</td>
+<td>At most 4,096 at once, for all /64s of one IPv6 /48 together. A request past the bound gets <code dir="auto">429 Too Many Requests</code> with <code dir="auto">Retry-After: 1</code>. The count of its /64 does not matter. So one /48 can take at most a quarter of the 16,384. Watch <code dir="auto">hopbox_edge_requests_total{to="refused"}</code> for the refusals of both bounds.</td>
+</tr>
+<tr>
+<td>HTTP/2 frames</td>
+<td>At most 16 KiB for each frame that a client sends.</td>
+</tr>
+<tr>
+<td>Request body on HTTP/1.1</td>
+<td>A body that sends nothing for 1 minute ends. The edge role then answers, and closes the connection. A body that keeps sending has no time limit.</td>
+</tr>
+<tr>
+<td>Answer, HTTP/2 streams, and WebSockets</td>
+<td>No timeout, so streams, downloads, and WebSockets can last.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="clients-behind-one-network">Clients behind one network</h3><a class="sl-anchor-link" href="#clients-behind-one-network"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Clients behind one network”</span></a></div>
+<p>The bounds of a client and of an IPv6 network count by address. So all people behind one address share its slots, also with their long streams, such as an office or a carrier with one NAT.</p>
+<table>
+<thead>
+<tr>
+<th>Network</th>
+<th>What it shares</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>One IPv4 address</td>
+<td>256 connections on each listener, and 1,024 open requests. A carrier NAT can put thousands of people behind one address. IPv4 has no bound of a wider network, because the next addresses often belong to other people.</td>
+</tr>
+<tr>
+<td>One IPv6 /64</td>
+<td>256 connections on each listener, and 1,024 open requests. One host usually holds a whole /64.</td>
+</tr>
+<tr>
+<td>One IPv6 /48</td>
+<td>1,024 connections on each listener, and 4,096 open requests, for all its /64s together. One site, such as an office or a server of a hosting provider, usually holds a /48. A carrier or a hosting provider can also give many customers a /64 each in one /48. These customers then share the bounds of the /48.</td>
+</tr>
+</tbody>
+</table>
+<p>Without the bound of a /48, 64 /64s of one /48 fill the 16,384 connections of the HTTPS listener. With it, a client needs 16 /48s. A lower bound for each /48 keeps the listener open for more networks, but it stops more users of a shared /48. The bound is 1,024 connections for each /48. If the users of a large network reach the bound, <code dir="auto">hopbox_edge_client_connection_refusals_total{bound="network"}</code> and <code dir="auto">hopbox_edge_requests_total{to="refused"}</code> grow.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="memory-of-stalled-requests">Memory of stalled requests</h3><a class="sl-anchor-link" href="#memory-of-stalled-requests"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Memory of stalled requests”</span></a></div>
+<p>A request can stall in two ways. Its target reads none of its body, or its client reads none of the answer. A stalled request holds memory in the edge until it ends, because no timeout ends an HTTP/2 stream. The bounds of open requests cap that memory. At the end of each request, the edge closes its body. So an HTTP/2 stream whose answer waits for the window of the client holds no body:</p>
+<table>
+<thead>
+<tr>
+<th>Buffer of one request</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The request header</td>
+<td>At most 64 KiB.</td>
+</tr>
+<tr>
+<td>The body on HTTP/2</td>
+<td>At most 256 KiB, the receive buffer of the stream.</td>
+</tr>
+<tr>
+<td>The answer of the control role</td>
+<td>At most 64 KiB, the receive buffer of the stream to the control role.</td>
+</tr>
+<tr>
+<td>The frame buffer of the body to the control role</td>
+<td>64 KiB, the largest frame that the internal listener reads (<a href="/reference/internal-listener/">internal-listener.md</a>).</td>
+</tr>
+<tr>
+<td>The copy buffers of the proxy</td>
+<td>32 KiB in each direction.</td>
+</tr>
+</tbody>
+</table>
+<p>So one request holds at most 512 KiB. A connection also holds memory without a request:</p>
+<table>
+<thead>
+<tr>
+<th>Buffer of one HTTPS connection</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The read buffer of the HTTP/2 framer</td>
+<td>At most 16 KiB, the largest frame.</td>
+</tr>
+<tr>
+<td>The write buffer of the HTTP/2 framer</td>
+<td>About 16 KiB.</td>
+</tr>
+<tr>
+<td>The TLS records</td>
+<td>About 17 KiB in each direction.</td>
+</tr>
+<tr>
+<td>The HPACK tables</td>
+<td>4 KiB in each direction.</td>
+</tr>
+<tr>
+<td>The save buffer of the HPACK decoder</td>
+<td>Up to about 64 KiB, for a header in CONTINUATION frames.</td>
+</tr>
+<tr>
+<td>The stacks of its goroutines</td>
+<td>16 KiB to 32 KiB each after the TLS handshake.</td>
+</tr>
+<tr>
+<td>The structs of the connection</td>
+<td>Some KiB.</td>
+</tr>
+</tbody>
+</table>
+<p>The edge counts 256 KiB for one HTTPS connection. A connection of the HTTP listener holds a read buffer and a write buffer of 4 KiB. It also holds a stack, its structs, and the wrappers of the listeners. An idle one takes about 20 KiB. The edge counts 32 KiB for it. So the bounds are these:</p>
+<table>
+<thead>
+<tr>
+<th>Who</th>
+<th>Most memory</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>One client</td>
+<td>584 MiB: 256 HTTPS connections of 256 KiB, 256 HTTP connections of 32 KiB, and 1,024 requests of 512 KiB.</td>
+</tr>
+<tr>
+<td>One IPv6 /48</td>
+<td>2.3 GiB: 1,024 HTTPS connections of 256 KiB, 1,024 HTTP connections of 32 KiB, and 4,096 requests of 512 KiB.</td>
+</tr>
+<tr>
+<td>The HTTPS listener</td>
+<td>12 GiB: 16,384 connections of 256 KiB, and 16,384 requests of 512 KiB.</td>
+</tr>
+<tr>
+<td>The HTTP listener</td>
+<td>2 GiB: 65,536 connections of 32 KiB.</td>
+</tr>
+</tbody>
+</table>
+<p>A test of <code dir="auto">internal/edge</code> checks these bounds against the defaults.</p>
+<p>The answer of a machine and the body of a request on HTTP/1.1 wait in the socket buffers of the kernel, not in <code dir="auto">hopboxd</code>. The kernel parameters <code dir="auto">net.ipv4.tcp_rmem</code>, <code dir="auto">net.ipv4.tcp_wmem</code>, and <code dir="auto">net.ipv4.tcp_mem</code> bound them. Each HTTP/1.1 connection to a machine also holds a read buffer and a write buffer of 4 KiB in the edge.</p>
+<p>The unit <code dir="auto">edge</code> of <code dir="auto">hopboxd run</code> opens the listeners at its start (<a href="/reference/hopboxd/#run">hopboxd.md</a>). If another program holds a port, the start fails, and <code dir="auto">hopboxd</code> exits with status 1. The error names the address, such as <code dir="auto">edge: listen on :443: bind: address already in use</code>. Ports 443 and 80 need root, and <code dir="auto">hopboxd.service</code> runs <code dir="auto">hopboxd</code> as root (<a href="/reference/server-layout/#hopboxdservice">server-layout.md</a>).</p>
+<p>At a stop, the unit ends the SSH connections, closes the listeners, gives the open requests 2 s, and then ends the rest: streams, WebSockets, and long calls. The whole stop takes at most 5 s.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="tls">TLS</h2><a class="sl-anchor-link" href="#tls"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “TLS”</span></a></div>
+<p>The edge role serves one certificate: the wildcard certificate of the install, for the domain and <code dir="auto">*.&lt;domain&gt;</code> (<a href="/reference/acme/">acme.md</a>). The control role pushes the certificate with its key over the control channel (<a href="/reference/control-channel/#edge-pushes">control-channel.md</a>). The edge role keeps it only in memory.</p>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TLS versions</td>
+<td>1.2 and 1.3. The cipher suites are the defaults of Go.</td>
+</tr>
+<tr>
+<td>Server name (SNI)</td>
+<td>Required. A handshake without a server name fails.</td>
+</tr>
+<tr>
+<td>Host names</td>
+<td>The domain, and each name under it. A handshake for another name fails.</td>
+</tr>
+<tr>
+<td>Before the first certificate</td>
+<td>Every handshake fails.</td>
+</tr>
+<tr>
+<td>Certificate of another domain</td>
+<td>When the domain of the install changes, the edge role refuses every handshake until the certificate of the new domain arrives. It never serves the certificate of the old domain.</td>
+</tr>
+</tbody>
+</table>
+<p>The edge role checks each certificate that the control role pushes before it serves it. It refuses a certificate in each of these cases, and keeps the certificate that it has:</p>
+<ul>
+<li>The domain of the message is not a domain in lowercase without a final dot.</li>
+<li>The leaf does not cover the domain, or a name under it.</li>
+<li>The leaf is not valid now.</li>
+<li>The key is not a PKCS #8 key, or it does not match the leaf.</li>
+</ul>
+<p>A handshake that fails counts in <code dir="auto">hopbox_edge_tls_refusals_total</code> (<a href="#metrics">Metrics</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="routing">Routing</h2><a class="sl-anchor-link" href="#routing"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Routing”</span></a></div>
+<p>The edge role routes each HTTPS request by its host. The host is the <code dir="auto">Host</code> header, or the <code dir="auto">:authority</code> of HTTP/2, in lowercase, without a port and without a final dot.</p>
+<table>
+<thead>
+<tr>
+<th>Request</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The host is not the server name of the TLS connection, and one of the two is not a name of the certificate: the domain, or one label under it</td>
+<td><code dir="auto">421 Misdirected Request</code>. A browser sends the requests of every name of a certificate on one HTTP/2 connection, so those pass. A host outside the certificate does not, also in a request in the absolute form, such as <code dir="auto">GET https://other.example/</code>.</td>
+</tr>
+<tr>
+<td>Method <code dir="auto">CONNECT</code></td>
+<td><code dir="auto">405 Method Not Allowed</code>. The edge role is not a proxy.</td>
+</tr>
+<tr>
+<td>Host <code dir="auto">example.com</code>, path under <code dir="auto">/hopbox.cluster.v1.</code></td>
+<td><code dir="auto">404 Not Found</code>. The cluster API is only for the servers of the install, on the internal listener.</td>
+</tr>
+<tr>
+<td>Host <code dir="auto">example.com</code></td>
+<td>Forwarded to the control role (<a href="#forwarded-requests">Forwarded requests</a>).</td>
+</tr>
+<tr>
+<td>Host <code dir="auto">&lt;name&gt;.example.com</code></td>
+<td>The machine <code dir="auto">&lt;name&gt;</code> (<a href="#machine-urls">Machine URLs</a>).</td>
+</tr>
+<tr>
+<td>Any other host under the domain, such as <code dir="auto">sub.box1.example.com</code></td>
+<td><code dir="auto">404 Not Found</code>. Subdomain routes come in phase 4.</td>
+</tr>
+</tbody>
+</table>
+<p>Each HTTPS answer carries the header <code dir="auto">Strict-Transport-Security: max-age=31536000; includeSubDomains</code> (HSTS). A browser then reaches the domain and every machine URL only over HTTPS for a year.</p>
+<p>An HTTP/1.1 request with the body encoding <code dir="auto">chunked</code> gets <code dir="auto">Connection: close</code> on its answer. Such a request can also have had a <code dir="auto">Content-Length</code> header, which the server drops. Two such headers can hide a second request behind the first one, so the connection ends after the answer (RFC 9112, section 6.1). The server of Go refuses the other ambiguous requests. Two different <code dir="auto">Content-Length</code> values, and a space before the colon of a header name, get <code dir="auto">400 Bad Request</code>. A <code dir="auto">Transfer-Encoding</code> other than <code dir="auto">chunked</code> gets <code dir="auto">501 Not Implemented</code>. A header line that continues on the next line reaches a machine as one line. The edge role builds a new request for each request that it forwards, so a forwarded request never carries the framing of the client.</p>
+<p>The pages of the edge role are plain text, with <code dir="auto">Cache-Control: no-store</code> and <code dir="auto">X-Content-Type-Options: nosniff</code>. They also carry <code dir="auto">Content-Security-Policy: default-src 'none'; frame-ancestors 'none'</code> and <code dir="auto">X-Frame-Options: DENY</code>, so no page shows them in a frame. So do the redirects of the sign-in, and the pages of <code dir="auto">/auth/machine</code>.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="http-to-https">HTTP to HTTPS</h3><a class="sl-anchor-link" href="#http-to-https"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “HTTP to HTTPS”</span></a></div>
+<p>The HTTP listener answers each request for the domain or a name under it with <code dir="auto">301 Moved Permanently</code> to the same host and path over HTTPS. For example, <code dir="auto">http://box1.example.com/a?b=1</code> goes to <code dir="auto">https://box1.example.com/a?b=1</code>. A request for another host, or before the edge role knows the domain, gets <code dir="auto">404 Not Found</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="forwarded-requests">Forwarded requests</h2><a class="sl-anchor-link" href="#forwarded-requests"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Forwarded requests”</span></a></div>
+<p>The edge role forwards each request of the domain to the internal listener of the control role, at <code dir="auto">channel.control_url</code> of the bootstrap config (<a href="/reference/internal-listener/#forwarded-requests">internal-listener.md</a>). This covers Connect, gRPC, gRPC-Web, streams in both directions, trailers, the sign-in pages under <code dir="auto">/auth/</code>, and the WebSocket of exec (<code dir="auto">/api/ws/exec</code>). The admin API is public behind the edge too, for admin API keys.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Transport</td>
+<td>Mutual TLS 1.3 with the server certificate of the edge server, against the install CA. HTTP/2 for every request but a WebSocket upgrade, which uses HTTP/1.1, because HTTP/2 cannot carry it.</td>
+</tr>
+<tr>
+<td>Host</td>
+<td>The host of the client request, such as <code dir="auto">example.com</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">Hopbox-Client-Addr</code></td>
+<td>The address of the client, <code dir="auto">IP:port</code>. The edge role sets it over any value that the client sent.</td>
+</tr>
+<tr>
+<td><code dir="auto">X-Forwarded-For</code></td>
+<td>The IP address of the client alone. The edge role drops the value that the client sent.</td>
+</tr>
+<tr>
+<td><code dir="auto">X-Forwarded-Host</code>, <code dir="auto">X-Forwarded-Proto</code></td>
+<td>The host of the request, and <code dir="auto">https</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">Forwarded</code></td>
+<td>Dropped.</td>
+</tr>
+<tr>
+<td>Flush</td>
+<td>Each write of the control role goes to the client at once, so streams do not wait.</td>
+</tr>
+<tr>
+<td>HTTP/2 receive buffer</td>
+<td>64 KiB for each stream, and 1 GiB for the connection, which holds the buffers of all 16,384 open requests. So an answer that one client does not read never stalls the answers of other clients.</td>
+</tr>
+<tr>
+<td>Failure</td>
+<td><code dir="auto">502 Bad Gateway</code> with a page that says that the control plane did not answer.</td>
+</tr>
+</tbody>
+</table>
+<p>The control role trusts <code dir="auto">Hopbox-Client-Addr</code> only on a connection whose certificate proves a server with the edge role. The rate limits of sign-in then count each client by its own address (<a href="/reference/sessions/#rate-limits">sessions.md</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="machine-urls">Machine URLs</h2><a class="sl-anchor-link" href="#machine-urls"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Machine URLs”</span></a></div>
+<p>The control role pushes the routes of the machine URLs over the control channel (<a href="/reference/control-channel/#edge-pushes">control-channel.md</a>). A route names a machine that holds its name and is not on its way out. A running machine has a target: the address of the machine on its node, its URL port, and its lease (<a href="/reference/control-store/#route_records">control-store.md</a>).</p>
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No machine has the name</td>
+<td>The same answers as a private URL without a sign-in (<a href="#answers-of-a-private-url">Answers of a private URL</a>). So a client cannot tell which names have a machine. After the sign-in, <code dir="auto">/auth/machine</code> answers <code dir="auto">404 Not Found</code>, also for a machine that the account does not see.</td>
+</tr>
+<tr>
+<td>A path under <code dir="auto">/__hopbox/</code> other than <code dir="auto">/__hopbox/auth</code></td>
+<td><code dir="auto">404 Not Found</code>. The edge role keeps these paths for itself and never forwards one to a machine.</td>
+</tr>
+<tr>
+<td>A private URL without a valid sign-in</td>
+<td>The sign-in (<a href="#private-machine-urls">Private machine URLs</a>). A private URL tells nothing else about its machine before the sign-in.</td>
+</tr>
+<tr>
+<td>An instance admin suspended the org of the machine</td>
+<td><code dir="auto">403 Forbidden</code></td>
+</tr>
+<tr>
+<td>The machine does not run</td>
+<td><code dir="auto">503 Service Unavailable</code>, with the state of the machine, such as <code dir="auto">The machine box1 is stopped. Start it, then retry.</code></td>
+</tr>
+<tr>
+<td>The lease of the target ended at the edge</td>
+<td><code dir="auto">503 Service Unavailable</code>. The node of the machine did not renew its lease lately, so the machine can run on another node now.</td>
+</tr>
+<tr>
+<td>The target has no address</td>
+<td><code dir="auto">503 Service Unavailable</code>, with the page <code dir="auto">The machine box1 runs, but it has no network address on its node, so its URL cannot reach it.</code> Each machine gets an address at its create, so only a machine without one gets it (<a href="/reference/node-network/#addresses">node-network.md</a>).</td>
+</tr>
+<tr>
+<td>The machine does not answer on its URL port</td>
+<td><code dir="auto">502 Bad Gateway</code>, with a page that says to check that a server listens on that port in the machine</td>
+</tr>
+<tr>
+<td>Otherwise</td>
+<td>Forwarded to the machine</td>
+</tr>
+</tbody>
+</table>
+<p>The edge role counts the lease of each target from the arrival of the routes. The control role sends the rest of the lease, less a tenth of the machine TTL. It also takes off the time that the routes waited in its queue. After each heartbeat of the edge server, it sends the changed routes, or only the rest of the lease of each target. So the lease of a live target never runs out. If the control channel of the edge server ends, the targets run out within the machine TTL of 30 s. The machine URLs then answer 503 until the channel is back.</p>
+<p>The edge role keeps each request that it forwards to a machine until it ends, such as a WebSocket or a long download. New routes end an open request at once in three cases: the machine has no route any more, its org is suspended, or its URL turned private. A request of a public URL has no sign-in, so it cannot stay open on a private URL.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="what-a-machine-gets">What a machine gets</h3><a class="sl-anchor-link" href="#what-a-machine-gets"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “What a machine gets”</span></a></div>
+<p>The edge role forwards a request to <code dir="auto">http://&lt;address&gt;:&lt;url port&gt;</code> over HTTP/1.1, without TLS. The address is the address of the machine on its node (<a href="/reference/node-network/">node-network.md</a>). In phase 1, the edge role runs on the node of the machine, so the traffic stays on that server.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Host</td>
+<td>The machine host, such as <code dir="auto">box1.example.com</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">X-Forwarded-For</code></td>
+<td>The IP address of the client alone.</td>
+</tr>
+<tr>
+<td><code dir="auto">X-Forwarded-Host</code>, <code dir="auto">X-Forwarded-Proto</code></td>
+<td>The machine host, and <code dir="auto">https</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">Forwarded</code>, <code dir="auto">Hopbox-Client-Addr</code></td>
+<td>Dropped. Only the control role reads <code dir="auto">Hopbox-Client-Addr</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">Cookie</code></td>
+<td>Each cookie of the client, except the cookies of hopbox: every name that starts with <code dir="auto">__Host-hopbox_</code>, in any case. The other cookies stay as the client sent them.</td>
+</tr>
+<tr>
+<td>WebSocket</td>
+<td>An upgrade over HTTP/1.1 passes.</td>
+</tr>
+<tr>
+<td>Answer header</td>
+<td>At most 64 KiB.</td>
+</tr>
+</tbody>
+</table>
+<p>So the code of a machine never gets the machine cookie, nor a session cookie of the console. The cookies of the console are host-only <code dir="auto">__Host-</code> cookies of the domain, so a browser never sends them to a machine host anyway (<a href="/reference/sessions/">sessions.md</a>).</p>
+<p>The edge role also drops these <code dir="auto">Set-Cookie</code> headers of an answer of a machine:</p>
+<ul>
+<li>A cookie whose name starts with <code dir="auto">__Host-hopbox_</code>, in any case.</li>
+<li>A cookie with a <code dir="auto">Domain</code> attribute other than the machine host. Such a cookie can reach the console and the other machines of the install, which are on the same site as the machine.</li>
+</ul>
+<p>A cookie without a <code dir="auto">Domain</code> attribute, or with the machine host as its domain, passes.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="private-machine-urls">Private machine URLs</h2><a class="sl-anchor-link" href="#private-machine-urls"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Private machine URLs”</span></a></div>
+<p>The URL of each machine is private by default. Only an account that uses the machine opens it: its creator, and every member of its org once the creator shares it. An org admin cannot open the private URL of a private machine of another member, as with a shell. The rule is the policy action <code dir="auto">machine.open_url</code> (<a href="/reference/api/">api.md</a>). The creator makes the URL public with <code dir="auto">SetMachineURLVisibility</code> (<a href="/reference/machine-api/">machine-api.md</a>). A public URL needs no sign-in.</p>
+<p>The sign-in of a private URL takes these steps. The machine is <code dir="auto">box1</code>.</p>
+<ol>
+<li>A browser asks for <code dir="auto">https://box1.example.com/page?x=1</code> without a machine cookie. The edge role answers <code dir="auto">303 See Other</code> to <code dir="auto">https://example.com/auth/machine?machine=box1&amp;path=%2Fpage%3Fx%3D1</code>. A path longer than 512 characters becomes <code dir="auto">/</code>.</li>
+<li>The control role reads the session cookie of the console at <code dir="auto">/auth/machine</code>. With a live session of an account that uses the machine, it makes a one-time code, and answers <code dir="auto">303 See Other</code> to <code dir="auto">https://box1.example.com/__hopbox/auth?code=&lt;code&gt;&amp;path=%2Fpage%3Fx%3D1</code>. Without a session, it answers <code dir="auto">401 Unauthorized</code> with a page that says to sign in to the console first.</li>
+<li>The edge role takes the code at <code dir="auto">/__hopbox/auth</code>, and trades it for a token with <code dir="auto">EdgeService.ExchangeMachineCode</code>. It sets the token in the cookie <code dir="auto">__Host-hopbox_machine</code>, and answers <code dir="auto">303 See Other</code> to the path. A path that is not a plain path on the host, such as <code dir="auto">//other.example</code>, becomes <code dir="auto">/</code>.</li>
+<li>The browser asks for <code dir="auto">https://box1.example.com/page?x=1</code> with the machine cookie. The edge role checks the token with <code dir="auto">EdgeService.AuthorizeMachineRequest</code>, takes the cookie out of the request, and forwards the request to the machine.</li>
+</ol>
+<p>The code never reaches the machine. The answers of steps 2 and 3 carry <code dir="auto">Cache-Control: no-store</code> and <code dir="auto">Referrer-Policy: no-referrer</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Code</td>
+<td>32 random bytes in base64url, 43 characters. The control store keeps only its SHA-256.</td>
+</tr>
+<tr>
+<td>Code lifetime</td>
+<td>60 s, one use, and only for the machine that it names.</td>
+</tr>
+<tr>
+<td>Codes of one session</td>
+<td>At most 30 in a minute. The next one gets <code dir="auto">429 Too Many Requests</code>.</td>
+</tr>
+<tr>
+<td>Token</td>
+<td>32 random bytes in base64url. The control store keeps only its SHA-256. A new token of the same browser and machine replaces the older one.</td>
+</tr>
+<tr>
+<td>Token lifetime</td>
+<td>The life of the console session that made it: 7 days without a use, and 30 days at most. A sign-out ends it at once. Each check of a token keeps its session alive, as a call of the console does.</td>
+</tr>
+<tr>
+<td>Cookie</td>
+<td><code dir="auto">__Host-hopbox_machine=&lt;token&gt;; Path=/; Secure; HttpOnly; SameSite=Lax</code>. The cookie is host-only, and it has no <code dir="auto">Max-Age</code>. When the browser closes, it drops the cookie.</td>
+</tr>
+<tr>
+<td>Kept answers</td>
+<td>The edge role keeps each answer that allows a token on a machine. It keeps an answer for at most 1 minute, and never past the end of the console session. It keeps no refusal, so a new grant works at once. It keeps at most 10,000 answers. When it is full, it starts again empty.</td>
+</tr>
+</tbody>
+</table>
+<p>The control role tells the edge servers about each change that can end an access. A change event of a machine, such as an unshare or a delete, is about that machine. An event <code dir="auto">edge.access_changed</code> is about every machine (<a href="/reference/control-store/#the-event-edgeaccess_changed">control-store.md</a>). A sign-out, a member that leaves an org or that an admin removes, a deleted account, and a suspension of an org publish it. A change can arrive while an edge server has no channel. So each new control channel also brings a change of every machine.</p>
+<p>At a change, the edge role drops the answers that it keeps for the machines of the change. It also checks each open request of their private URLs again in the background, such as a WebSocket or a long download. A token that lost its access ends its open requests at once. The edge role also checks every open request again each minute, because a console session can end by time, without a change event. So an open request never keeps an access for more than about a minute after its end.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="answers-of-a-private-url">Answers of a private URL</h3><a class="sl-anchor-link" href="#answers-of-a-private-url"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Answers of a private URL”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A top-level navigation by <code dir="auto">GET</code> or <code dir="auto">HEAD</code> without a valid machine cookie</td>
+<td><code dir="auto">303 See Other</code> to <code dir="auto">/auth/machine</code> (step 1)</td>
+</tr>
+<tr>
+<td>Any other request without a valid machine cookie</td>
+<td><code dir="auto">401 Unauthorized</code>. A browser does not follow a redirect for these, so the page says to open the URL in a browser first.</td>
+</tr>
+<tr>
+<td>A request from a page of another origin, other than a top-level navigation by <code dir="auto">GET</code> or <code dir="auto">HEAD</code></td>
+<td><code dir="auto">401 Unauthorized</code>. It counts as a request without a machine cookie (<a href="#requests-of-other-sites">Requests of other sites</a>).</td>
+</tr>
+<tr>
+<td>A WebSocket upgrade whose <code dir="auto">Origin</code> is not the machine host</td>
+<td><code dir="auto">403 Forbidden</code></td>
+</tr>
+<tr>
+<td>Two different machine cookies</td>
+<td>It counts as a request without a machine cookie. The edge role sets one machine cookie on a host, so it cannot tell which one it set.</td>
+</tr>
+<tr>
+<td>A token that names no live sign-in, such as after a sign-out</td>
+<td>The edge role clears the machine cookie with <code dir="auto">Max-Age=0</code>, and starts the sign-in again.</td>
+</tr>
+<tr>
+<td>The account has no access to the machine now</td>
+<td><code dir="auto">403 Forbidden</code></td>
+</tr>
+<tr>
+<td>The org of the machine is suspended</td>
+<td><code dir="auto">403 Forbidden</code></td>
+</tr>
+<tr>
+<td>A code that is unknown, used, expired, or for another machine</td>
+<td><code dir="auto">403 Forbidden</code> with a page that says to open the URL again</td>
+</tr>
+<tr>
+<td>The control role does not answer</td>
+<td><code dir="auto">502 Bad Gateway</code></td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="requests-of-other-sites">Requests of other sites</h3><a class="sl-anchor-link" href="#requests-of-other-sites"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Requests of other sites”</span></a></div>
+<p>The machine hosts of an install share one site, such as <code dir="auto">example.com</code>. A browser sends a <code dir="auto">SameSite=Lax</code> cookie with each request inside a site. Without a check, a page of <code dir="auto">box1</code> can send a fetch, a form <code dir="auto">POST</code>, or a WebSocket to <code dir="auto">box2</code>. The browser then adds the machine cookie of <code dir="auto">box2</code>. So the code of one machine can act in the private URL of another account. The edge role reads the fetch metadata of the browser:</p>
+<ul>
+<li>A request with <code dir="auto">Sec-Fetch-Site: same-site</code> or <code dir="auto">cross-site</code> counts as a request without a machine cookie. Only a top-level navigation passes: <code dir="auto">GET</code> or <code dir="auto">HEAD</code> with <code dir="auto">Sec-Fetch-Mode: navigate</code>, and <code dir="auto">Sec-Fetch-Dest: document</code> or no <code dir="auto">Sec-Fetch-Dest</code>. A link from another page then still opens the URL. A frame in a page of another machine has <code dir="auto">Sec-Fetch-Dest: iframe</code>, so it shows the URL without the cookie.</li>
+<li>A WebSocket upgrade needs no <code dir="auto">Origin</code>, or the origin <code dir="auto">https://&lt;machine host&gt;</code>. A browser always sends the origin of its page with a WebSocket.</li>
+<li><code dir="auto">/__hopbox/auth</code> takes only a top-level navigation by <code dir="auto">GET</code>. A request with another <code dir="auto">Sec-Fetch-Mode</code> gets <code dir="auto">405 Method Not Allowed</code>, so a page cannot plant a cookie with a code of its own.</li>
+</ul>
+<p>A request from the page of the machine itself has <code dir="auto">Sec-Fetch-Site: same-origin</code>, and uses the cookie. A client without fetch metadata, such as curl, also uses it.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="answers-of-authmachine">Answers of <code dir="auto">/auth/machine</code></h3><a class="sl-anchor-link" href="#answers-of-authmachine"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Answers of /auth/machine”</span></a></div>
+<p><code dir="auto">GET /auth/machine</code> is a plain HTTP endpoint of the public API on the domain of the install, outside of the Connect chain. Its parameters are <code dir="auto">machine</code>, the name of the machine, and <code dir="auto">path</code>, the path to return to. A path that is not a plain path on the host becomes <code dir="auto">/</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A code</td>
+<td><code dir="auto">303 See Other</code> to the machine host (step 2)</td>
+</tr>
+<tr>
+<td>No live console session</td>
+<td><code dir="auto">401 Unauthorized</code></td>
+</tr>
+<tr>
+<td>An account that uses no such machine, or no such machine</td>
+<td><code dir="auto">404 Not Found</code></td>
+</tr>
+<tr>
+<td>An account that sees the machine, but does not use it, such as an org admin on a private machine of another member</td>
+<td><code dir="auto">403 Forbidden</code></td>
+</tr>
+<tr>
+<td>More than 30 codes of the session in a minute</td>
+<td><code dir="auto">429 Too Many Requests</code></td>
+</tr>
+<tr>
+<td>The org of the machine is suspended, or the install has no domain</td>
+<td><code dir="auto">409 Conflict</code></td>
+</tr>
+</tbody>
+</table>
+<p>The answer is a plain text page with the reason and the request ID.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="edgeservice">EdgeService</h2><a class="sl-anchor-link" href="#edgeservice"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “EdgeService”</span></a></div>
+<p><code dir="auto">hopbox.cluster.v1.EdgeService</code> serves the edge servers on the internal listener (<a href="/reference/internal-listener/">internal-listener.md</a>). Every call needs the certificate of a server with the edge role. Another server gets <code dir="auto">permission_denied</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Call</th>
+<th>Request</th>
+<th>Response</th>
+<th>Errors</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">ExchangeMachineCode</code></td>
+<td><code dir="auto">machine</code>: the name of the machine of the host. <code dir="auto">code</code>: the code of the query.</td>
+<td><code dir="auto">token</code>: the value of the machine cookie.</td>
+<td><code dir="auto">unauthenticated</code> for a code that is unknown, used, expired, malformed, or for another machine. <code dir="auto">invalid_argument</code> for a name that breaks the name rules.</td>
+</tr>
+<tr>
+<td><code dir="auto">AuthorizeMachineRequest</code></td>
+<td><code dir="auto">machine</code>: the name of the machine of the host. <code dir="auto">token</code>: the value of the machine cookie.</td>
+<td><code dir="auto">machine_id</code> and <code dir="auto">account_id</code>, UUIDs. <code dir="auto">valid_for</code>: how long the edge can keep the answer, at most 1 minute.</td>
+<td><code dir="auto">unauthenticated</code> for a token that is unknown, malformed, for another machine, or of an ended console session. <code dir="auto">permission_denied</code> for an account without access. <code dir="auto">failed_precondition</code> for a suspended org.</td>
+</tr>
+<tr>
+<td><code dir="auto">AuthorizeSSH</code></td>
+<td><code dir="auto">ssh_port</code>, <code dir="auto">public_key</code>, and <code dir="auto">linux_user</code> of an SSH connection (<a href="/reference/ssh-front-door/#edgeserviceauthorizessh">ssh-front-door.md</a>).</td>
+<td><code dir="auto">machine_id</code>, <code dir="auto">machine_name</code>, <code dir="auto">account_id</code>, and <code dir="auto">valid_for</code>.</td>
+<td><code dir="auto">permission_denied</code> for every key, port, or user that opens nothing, with one message.</td>
+</tr>
+</tbody>
+</table>
+<p>The edge role calls each one with a timeout of 10 s.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="metrics">Metrics</h2><a class="sl-anchor-link" href="#metrics"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Metrics”</span></a></div>
+<p>The edge role serves these metrics on the metrics listener of <code dir="auto">hopboxd</code> (<a href="/reference/metrics/">metrics.md</a>).</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Type</th>
+<th>Labels</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">hopbox_edge_requests_total</code></td>
+<td>counter</td>
+<td><code dir="auto">to</code>: <code dir="auto">api</code>, <code dir="auto">machine</code>, <code dir="auto">redirect</code>, or <code dir="auto">refused</code></td>
+<td>The HTTP requests of the edge role, by where they went. A redirect goes to HTTPS, to a sign-in, or back from a sign-in. A refusal got a page of the edge role, also a refusal past the bounds of open requests.</td>
+</tr>
+<tr>
+<td><code dir="auto">hopbox_edge_tls_refusals_total</code></td>
+<td>counter</td>
+<td><code dir="auto">reason</code>: <code dir="auto">no_sni</code>, <code dir="auto">unknown_host</code>, or <code dir="auto">no_certificate</code></td>
+<td>The TLS handshakes that the edge role refused.</td>
+</tr>
+<tr>
+<td><code dir="auto">hopbox_edge_client_connection_refusals_total</code></td>
+<td>counter</td>
+<td><code dir="auto">listener</code>: <code dir="auto">https</code> or <code dir="auto">http</code>. <code dir="auto">bound</code>: <code dir="auto">client</code> or <code dir="auto">network</code></td>
+<td>The connections that the edge role closed at once. <code dir="auto">client</code>: their IPv4 address or IPv6 /64 held 256 open connections on the listener. <code dir="auto">network</code>: their IPv6 /48 held 1,024.</td>
+</tr>
+<tr>
+<td><code dir="auto">hopbox_edge_open_connections</code></td>
+<td>gauge</td>
+<td><code dir="auto">listener</code>: <code dir="auto">https</code> or <code dir="auto">http</code></td>
+<td>The connections that the listener holds now.</td>
+</tr>
+<tr>
+<td><code dir="auto">hopbox_edge_connection_limit</code></td>
+<td>gauge</td>
+<td><code dir="auto">listener</code>: <code dir="auto">https</code> or <code dir="auto">http</code></td>
+<td>The most connections that the listener holds at once: 16,384 for <code dir="auto">https</code>, and 65,536 for <code dir="auto">http</code>. A connection past it waits in the backlog of the kernel.</td>
+</tr>
+<tr>
+<td><code dir="auto">hopbox_edge_routes</code></td>
+<td>gauge</td>
+<td>none</td>
+<td>The machines that the routes name.</td>
+</tr>
+<tr>
+<td><code dir="auto">hopbox_edge_certificate_not_after_seconds</code></td>
+<td>gauge</td>
+<td>none</td>
+<td>The end of the certificate that the edge role serves, in seconds since the Unix epoch, or 0 before the first certificate.</td>
+</tr>
+</tbody>
+</table>
+<p>The metrics of the SSH front door start with <code dir="auto">hopbox_edge_ssh_</code> (<a href="/reference/ssh-front-door/#metrics">ssh-front-door.md</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="logs">Logs</h2><a class="sl-anchor-link" href="#logs"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Logs”</span></a></div>
+<p>The edge role logs with <code dir="auto">component=edge</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Level</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">edge listening</code></td>
+<td>info</td>
+<td>The listeners are open, with <code dir="auto">https</code> and <code dir="auto">http</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">serving a certificate</code></td>
+<td>info</td>
+<td>A new certificate, with <code dir="auto">domain</code>, <code dir="auto">not_after</code>, and <code dir="auto">serial</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">serving the machine URLs of a domain</code></td>
+<td>info</td>
+<td>The first routes, or the routes of a new domain, with <code dir="auto">domain</code> and <code dir="auto">machines</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">forwarding a request to the control plane failed</code></td>
+<td>warn</td>
+<td>A forwarded request failed, with <code dir="auto">path</code> and <code dir="auto">err</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">forwarding a request to a machine failed</code></td>
+<td>info</td>
+<td>A machine did not answer, with <code dir="auto">host</code> and <code dir="auto">err</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">checking a machine URL sign-in failed</code></td>
+<td>warn</td>
+<td><code dir="auto">AuthorizeMachineRequest</code> failed without an answer, with <code dir="auto">machine</code> and <code dir="auto">err</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">trading a machine URL code failed</code></td>
+<td>warn</td>
+<td><code dir="auto">ExchangeMachineCode</code> failed without an answer, with <code dir="auto">machine</code> and <code dir="auto">err</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">ended the open requests of a machine URL sign-in that lost its access</code></td>
+<td>info</td>
+<td>A check refused a token with open requests. The fields are <code dir="auto">machine</code>, <code dir="auto">open_requests</code>, and <code dir="auto">code</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">ended the open requests of machine URLs that changed</code></td>
+<td>info</td>
+<td>New routes ended open requests, with <code dir="auto">open_requests</code> (<a href="#machine-urls">Machine URLs</a>).</td>
+</tr>
+</tbody>
+</table>
+<p>The edge role can refuse a certificate or routes that the control role pushed. The agent of the control channel then logs <code dir="auto">the edge role refused a push of the control plane, and keeps what it has</code> at error level, with <code dir="auto">push</code> and <code dir="auto">err</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="not-in-phase-1">Not in phase 1</h2><a class="sl-anchor-link" href="#not-in-phase-1"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Not in phase 1”</span></a></div>
+<p>These parts of the edge role come later:</p>
+<ul>
+<li>A machine in standby or hibernated wakes at the first request (phase 3). Until then, its URL answers 503.</li>
+<li>Subdomain routes, such as <code dir="auto">sub.box1.example.com</code> (phase 4).</li>
+<li>Custom domains and org domains (phase 4).</li>
+<li>Raw TCP and UDP ports (phase 4).</li>
+</ul>
+</div><footer class="sl-flex astro-fzngq47q"><div class="meta sl-flex astro-fzngq47q"></div><div class="pagination-links print:hidden astro-7jhddma2" dir="ltr"><a href="/reference/dns/" rel="prev" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-7jhddma2">Previous<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">The DNS role</span></span></a><a href="/reference/ssh-front-door/" rel="next" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-7jhddma2">Next<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">The SSH front door</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>

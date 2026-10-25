@@ -1,0 +1,1099 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-toc data-has-sidebar class="astro-g6oqdoeg"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>hopbox Terraform provider | hopbox docs</title><link rel="canonical" href="https://docs.hopbox.dev/reference/terraform-provider/"/><link rel="sitemap" href="/sitemap-index.xml"/><link rel="shortcut icon" href="/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.3.8"/><meta name="generator" content="Starlight v0.42.6"/><meta property="og:title" content="hopbox Terraform provider"/><meta property="og:type" content="article"/><meta property="og:url" content="https://docs.hopbox.dev/reference/terraform-provider/"/><meta property="og:locale" content="en"/><meta property="og:description" content="The hopbox Terraform provider, its provider block, the OVHcloud API rights, the resource hopbox_server, its steps and errors, and the binary."/><meta property="og:site_name" content="hopbox docs"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="The hopbox Terraform provider, its provider block, the OVHcloud API rights, the resource hopbox_server, its steps and errors, and the binary."/><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/_astro/print.ehPL0gv-.css" media="print"><link rel="stylesheet" href="/_astro/middleware.DkUYdNkX.css"><script type="module" src="/_astro/page.cNngjUgL.js"></script></head><body class="astro-g6oqdoeg"><a class="sl-skip-link astro-ktawktwe" href="#_top">Skip to content</a><div class="page sl-flex astro-vlwsw6sx"><header class="header astro-vlwsw6sx"><div class="header astro-qe7tu4yu"><div class="title-wrapper sl-flex astro-qe7tu4yu"><a href="/" class="site-title sl-flex astro-42muqipg"><span class="astro-42muqipg" translate="no">hopbox docs</span></a></div><div class="sl-flex print:hidden astro-qe7tu4yu"><site-search class="astro-qe7tu4yu astro-yp365hkw" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"><button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-yp365hkw"><svg aria-hidden="true" class="astro-yp365hkw astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg><span class="sl-hidden md:sl-block astro-yp365hkw" aria-hidden="true">Search</span><kbd class="sl-hidden md:sl-flex astro-yp365hkw" style="display: none;"><kbd class="astro-yp365hkw">Ctrl</kbd><kbd class="astro-yp365hkw">K</kbd></kbd></button><dialog style="padding:0" aria-label="Search" class="astro-yp365hkw"><div class="dialog-frame sl-flex astro-yp365hkw"><button data-close-modal class="sl-flex md:sl-hidden astro-yp365hkw">Cancel</button><div class="search-container astro-yp365hkw"><div id="starlight__search" class="astro-yp365hkw"></div></div></div></dialog></site-search><script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script><script type="module" src="/_astro/Search.astro_astro_type_script_index_0_lang.g9hoxVJg.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-qe7tu4yu"><div class="sl-flex social-icons astro-qe7tu4yu"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script><script type="module">var e=`starlight-theme`,t=e=>e===`auto`||e===`dark`||e===`light`?e:`auto`,n=()=>t(typeof localStorage<`u`&&localStorage.getItem(e));function r(t){typeof localStorage<`u`&&localStorage.setItem(e,t===`light`||t===`dark`?t:``)}var i=()=>matchMedia(`(prefers-color-scheme: light)`).matches?`light`:`dark`;function a(e){StarlightThemeProvider.updatePickers(e),document.documentElement.dataset.theme=e===`auto`?i():e,r(e)}matchMedia(`(prefers-color-scheme: light)`).addEventListener(`change`,()=>{n()===`auto`&&a(`auto`)});var o=class extends HTMLElement{constructor(){super(),a(n()),this.querySelector(`select`)?.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&a(t(e.currentTarget.value))})}};customElements.define(`starlight-theme-select`,o);</script><script type="module">var e=class extends HTMLElement{constructor(){super();let e=this.querySelector(`select`);e&&(e.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=e.currentTarget.value)}),window.addEventListener(`pageshow`,t=>{if(!t.persisted)return;let n=e.querySelector(`option[selected]`)?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}};customElements.define(`starlight-lang-select`,e);</script></div></div></header><nav class="sidebar print:hidden astro-vlwsw6sx" aria-label="Main"><button popovertarget="starlight__sidebar" class="sl-menu-button sl-flex md:sl-hidden print:hidden astro-ibd3qwco"><svg aria-hidden="true" class="open-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg><span class="sr-only astro-ibd3qwco">Menu</span></button><script type="module">var e=class extends HTMLElement{constructor(){super();let e=matchMedia(`(min-width: 50em)`),t=()=>{this.popover=e.matches?null:`auto`};t(),e.addEventListener(`change`,()=>t()),this.addEventListener(`toggle`,({newState:e})=>this.trapFocus(e===`open`))}trapFocus(e){document.querySelectorAll(`.main-frame, .sl-skip-link`).forEach(t=>{t.toggleAttribute(`inert`,e)})}};customElements.define(`sl-sidebar-pane`,e);</script><sl-sidebar-pane popover id="starlight__sidebar" class="sidebar-pane astro-vlwsw6sx"><div class="sidebar-content sl-flex astro-vlwsw6sx"><sl-sidebar-state-persist data-hash="0qsyok1" class="astro-oblzz35h"><script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script><ul class="top-level astro-twzrdani"><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Guides</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/guide/run-hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">Run the control role on a laptop</span></a></li><li class="astro-twzrdani"><a href="/guide/install-on-ovhcloud/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on an OVHcloud server with Terraform</span></a></li><li class="astro-twzrdani"><a href="/guide/enroll-node/" class="astro-twzrdani"><span class="astro-twzrdani">Enroll the node role on one server</span></a></li><li class="astro-twzrdani"><a href="/guide/dns-role/" class="astro-twzrdani"><span class="astro-twzrdani">Serve the domain of an install with the DNS role</span></a></li><li class="astro-twzrdani"><a href="/guide/acme-certificate/" class="astro-twzrdani"><span class="astro-twzrdani">Get the wildcard certificate of an install</span></a></li><li class="astro-twzrdani"><a href="/guide/machine-urls/" class="astro-twzrdani"><span class="astro-twzrdani">Run the edge role and open machine URLs</span></a></li><li class="astro-twzrdani"><a href="/guide/first-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">First sign-in on a new install</span></a></li><li class="astro-twzrdani"><a href="/guide/github-google-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/guide/orgs/" class="astro-twzrdani"><span class="astro-twzrdani">Work in a team org</span></a></li><li class="astro-twzrdani"><a href="/guide/env-vars/" class="astro-twzrdani"><span class="astro-twzrdani">Set env vars and secrets</span></a></li><li class="astro-twzrdani"><a href="/guide/machines/" class="astro-twzrdani"><span class="astro-twzrdani">Create and manage machines</span></a></li><li class="astro-twzrdani"><a href="/guide/firecracker-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Run machines with Firecracker</span></a></li><li class="astro-twzrdani"><a href="/guide/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">Check the network of a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/cli/" class="astro-twzrdani"><span class="astro-twzrdani">Use the hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Use machines from the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-prompt/" class="astro-twzrdani"><span class="astro-twzrdani">Work in the prompt of the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/ssh/" class="astro-twzrdani"><span class="astro-twzrdani">Reach a machine over SSH</span></a></li><li class="astro-twzrdani"><a href="/guide/exec-and-files/" class="astro-twzrdani"><span class="astro-twzrdani">Run commands and copy files in a machine</span></a></li><li class="astro-twzrdani"><a href="/guide/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">Connect an AI agent to hopbox with MCP</span></a></li><li class="astro-twzrdani"><a href="/guide/console/" class="astro-twzrdani"><span class="astro-twzrdani">Use the console</span></a></li><li class="astro-twzrdani"><a href="/guide/typescript-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">Call the API from TypeScript</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-and-keys/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in the CLI, and make API keys and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/guide/install-debian/" class="astro-twzrdani"><span class="astro-twzrdani">Install hopbox on a Debian 13 server by hand</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Reference</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="1"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/reference/hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/release-bundle/" class="astro-twzrdani"><span class="astro-twzrdani">Release bundle</span></a></li><li class="astro-twzrdani"><a href="/reference/server-layout/" class="astro-twzrdani"><span class="astro-twzrdani">Server layout</span></a></li><li class="astro-twzrdani"><a href="/reference/hopboxd-config/" class="astro-twzrdani"><span class="astro-twzrdani">The bootstrap config of hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/api/" class="astro-twzrdani"><span class="astro-twzrdani">The API server</span></a></li><li class="astro-twzrdani"><a href="/reference/org-api/" class="astro-twzrdani"><span class="astro-twzrdani">The org API</span></a></li><li class="astro-twzrdani"><a href="/reference/vars-api/" class="astro-twzrdani"><span class="astro-twzrdani">The env var API</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-api/" class="astro-twzrdani"><span class="astro-twzrdani">The machine API</span></a></li><li class="astro-twzrdani"><a href="/reference/placement/" class="astro-twzrdani"><span class="astro-twzrdani">Placement</span></a></li><li class="astro-twzrdani"><a href="/reference/auth-api/" class="astro-twzrdani"><span class="astro-twzrdani">The sign-in, account, and audit API</span></a></li><li class="astro-twzrdani"><a href="/reference/credentials/" class="astro-twzrdani"><span class="astro-twzrdani">CLI tokens, API keys, admin API keys, and SSH keys</span></a></li><li class="astro-twzrdani"><a href="/reference/sessions/" class="astro-twzrdani"><span class="astro-twzrdani">Sessions, cookies, and sign-in links</span></a></li><li class="astro-twzrdani"><a href="/reference/smtp/" class="astro-twzrdani"><span class="astro-twzrdani">SMTP config</span></a></li><li class="astro-twzrdani"><a href="/reference/mail/" class="astro-twzrdani"><span class="astro-twzrdani">Mail</span></a></li><li class="astro-twzrdani"><a href="/reference/oauth/" class="astro-twzrdani"><span class="astro-twzrdani">Sign-in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/reference/metrics/" class="astro-twzrdani"><span class="astro-twzrdani">Metrics</span></a></li><li class="astro-twzrdani"><a href="/reference/admin-api/" class="astro-twzrdani"><span class="astro-twzrdani">The admin API</span></a></li><li class="astro-twzrdani"><a href="/reference/internal-listener/" class="astro-twzrdani"><span class="astro-twzrdani">The internal listener</span></a></li><li class="astro-twzrdani"><a href="/reference/enrollment/" class="astro-twzrdani"><span class="astro-twzrdani">Enrollment and the install PKI</span></a></li><li class="astro-twzrdani"><a href="/reference/control-channel/" class="astro-twzrdani"><span class="astro-twzrdani">The control channel</span></a></li><li class="astro-twzrdani"><a href="/reference/dns/" class="astro-twzrdani"><span class="astro-twzrdani">The DNS role</span></a></li><li class="astro-twzrdani"><a href="/reference/edge/" class="astro-twzrdani"><span class="astro-twzrdani">The edge role</span></a></li><li class="astro-twzrdani"><a href="/reference/ssh-front-door/" class="astro-twzrdani"><span class="astro-twzrdani">The SSH front door</span></a></li><li class="astro-twzrdani"><a href="/reference/acme/" class="astro-twzrdani"><span class="astro-twzrdani">The certificate of the install</span></a></li><li class="astro-twzrdani"><a href="/reference/executor-protocol/" class="astro-twzrdani"><span class="astro-twzrdani">The executor protocol</span></a></li><li class="astro-twzrdani"><a href="/reference/executor/" class="astro-twzrdani"><span class="astro-twzrdani">The node executor</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-logs/" class="astro-twzrdani"><span class="astro-twzrdani">Machine logs</span></a></li><li class="astro-twzrdani"><a href="/reference/vmm/" class="astro-twzrdani"><span class="astro-twzrdani">The VMM driver interface</span></a></li><li class="astro-twzrdani"><a href="/reference/firecracker-driver/" class="astro-twzrdani"><span class="astro-twzrdani">The Firecracker driver</span></a></li><li class="astro-twzrdani"><a href="/reference/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">The node network</span></a></li><li class="astro-twzrdani"><a href="/reference/preflight/" class="astro-twzrdani"><span class="astro-twzrdani">The preflight check</span></a></li><li class="astro-twzrdani"><a href="/reference/cli/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/reference/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">The MCP server</span></a></li><li class="astro-twzrdani"><a href="/reference/console/" class="astro-twzrdani"><span class="astro-twzrdani">Console</span></a></li><li class="astro-twzrdani"><a href="/reference/go-client/" class="astro-twzrdani"><span class="astro-twzrdani">Go client</span></a></li><li class="astro-twzrdani"><a href="/reference/ts-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">TypeScript SDK</span></a></li><li class="astro-twzrdani"><a href="/reference/hopbox-guest/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox-guest</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-link/" class="astro-twzrdani"><span class="astro-twzrdani">Guest link</span></a></li><li class="astro-twzrdani"><a href="/reference/terraform-provider/" aria-current="page" class="astro-twzrdani"><span class="astro-twzrdani">hopbox Terraform provider</span></a></li><li class="astro-twzrdani"><a href="/reference/version/" class="astro-twzrdani"><span class="astro-twzrdani">The version command</span></a></li><li class="astro-twzrdani"><a href="/reference/api-definitions/" class="astro-twzrdani"><span class="astro-twzrdani">API definitions</span></a></li><li class="astro-twzrdani"><a href="/reference/postgres/" class="astro-twzrdani"><span class="astro-twzrdani">The bundled Postgres</span></a></li><li class="astro-twzrdani"><a href="/reference/domain-rules/" class="astro-twzrdani"><span class="astro-twzrdani">Domain rules</span></a></li><li class="astro-twzrdani"><a href="/reference/control-store/" class="astro-twzrdani"><span class="astro-twzrdani">Control store tables</span></a></li><li class="astro-twzrdani"><a href="/reference/sealing/" class="astro-twzrdani"><span class="astro-twzrdani">Sealing</span></a></li><li class="astro-twzrdani"><a href="/reference/host-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Host kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Guest kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/default-image/" class="astro-twzrdani"><span class="astro-twzrdani">Default image</span></a></li><li class="astro-twzrdani"><a href="/reference/artifact-format/" class="astro-twzrdani"><span class="astro-twzrdani">Artifact format</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Releases</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="2"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/releases/v0.1.0/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox v0.1.0</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="3"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Public API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="4"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="5"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicecreatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">CreateMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicegetmachine/" class="astro-twzrdani"><span class="astro-twzrdani">GetMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachinesizes/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachineSizes</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerebootmachine/" class="astro-twzrdani"><span class="astro-twzrdani">RebootMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerenamemachine/" class="astro-twzrdani"><span class="astro-twzrdani">RenameMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlport/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLPort</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlvisibility/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLVisibility</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">ShareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestartmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StartMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceunsharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UnshareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceupdatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.InstallService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="6"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1installservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1installservicegetinstallinfo/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallInfo</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="7"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicedeleteaccount/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceendclisignin/" class="astro-twzrdani"><span class="astro-twzrdani">EndCLISignIn</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicegetaccount/" class="astro-twzrdani"><span class="astro-twzrdani">GetAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistclisignins/" class="astro-twzrdani"><span class="astro-twzrdani">ListCLISignIns</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceremovesigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSignInMethod</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceupdateaccount/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateAccount</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.APIKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="8"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1apikeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicecreateapikey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAPIKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicelistapikeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAPIKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicerevokeapikey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAPIKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuditService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="9"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1auditservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1auditservicelistauditentries/" class="astro-twzrdani"><span class="astro-twzrdani">ListAuditEntries</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuthService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="10"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1authservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceapprovedevice/" class="astro-twzrdani"><span class="astro-twzrdani">ApproveDevice</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicegetdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">GetDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicepolldeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">PollDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerefreshclitoken/" class="astro-twzrdani"><span class="astro-twzrdani">RefreshCLIToken</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerequestmagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">RequestMagicLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicesignout/" class="astro-twzrdani"><span class="astro-twzrdani">SignOut</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicestartdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">StartDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifyloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyLoginLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifymagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyMagicLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="11"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceacceptinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">AcceptInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">CreateInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateorg/" class="astro-twzrdani"><span class="astro-twzrdani">CreateOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicedeleteorg/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorg/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorgusage/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrgUsage</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceleaveorg/" class="astro-twzrdani"><span class="astro-twzrdani">LeaveOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistinvitations/" class="astro-twzrdani"><span class="astro-twzrdani">ListInvitations</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgmembers/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgMembers</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceremoveorgmember/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveOrgMember</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicerevokeinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicesetorgmemberrole/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgMemberRole</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceupdateorg/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.SSHKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="12"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1sshkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceaddsshkey/" class="astro-twzrdani"><span class="astro-twzrdani">AddSSHKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyservicelistsshkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListSSHKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceremovesshkey/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSSHKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.VarService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="13"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1varservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicedeletevar/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteVar</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicelistvars/" class="astro-twzrdani"><span class="astro-twzrdani">ListVars</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicesetvar/" class="astro-twzrdani"><span class="astro-twzrdani">SetVar</span></a></li></ul></details></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Admin API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="14"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="15"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountservicelistaccountsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListAccountSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountserviceremoveaccountsigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveAccountSignInMethod</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AdminKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="16"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1adminkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicecreateadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicelistadminkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAdminKeys</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyserviceregisteradminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicerevokeadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAdminKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.CertificateService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="17"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1certificateservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1certificateservicegetcertificate/" class="astro-twzrdani"><span class="astro-twzrdani">GetCertificate</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ImageService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="18"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1imageservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageservicelistimages/" class="astro-twzrdani"><span class="astro-twzrdani">ListImages</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageserviceregisterimage/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterImage</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstallConfigService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="19"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1installconfigservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">ClearOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">ClearSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetoauthconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetOAuthConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">SetOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">SetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceupdateinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateInstallConfig</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstanceAdminService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="20"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1instanceadminservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicegrantinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">GrantInstanceAdmin</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicelistinstanceadmins/" class="astro-twzrdani"><span class="astro-twzrdani">ListInstanceAdmins</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicerevokeinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInstanceAdmin</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.KeyringService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="21"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1keyringservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicelistkeks/" class="astro-twzrdani"><span class="astro-twzrdani">ListKEKs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerewrapsealedvalues/" class="astro-twzrdani"><span class="astro-twzrdani">RewrapSealedValues</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerotatekek/" class="astro-twzrdani"><span class="astro-twzrdani">RotateKEK</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.LoginLinkService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="22"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1loginlinkservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1loginlinkservicecreateloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">CreateLoginLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="23"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MailService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="24"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1mailservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicegetmailfile/" class="astro-twzrdani"><span class="astro-twzrdani">GetMailFile</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicelistmailfiles/" class="astro-twzrdani"><span class="astro-twzrdani">ListMailFiles</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="25"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicegetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">GetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">SuspendOrg</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgserviceunsuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">UnsuspendOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ServerService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="26"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1serverservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">CordonServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecreateenrollmenttoken/" class="astro-twzrdani"><span class="astro-twzrdani">CreateEnrollmentToken</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicedecommissionserver/" class="astro-twzrdani"><span class="astro-twzrdani">DecommissionServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicegetserver/" class="astro-twzrdani"><span class="astro-twzrdani">GetServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicelistservers/" class="astro-twzrdani"><span class="astro-twzrdani">ListServers</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicesetserverlabels/" class="astro-twzrdani"><span class="astro-twzrdani">SetServerLabels</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverserviceuncordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">UncordonServer</span></a></li></ul></details></li></ul></details></li></ul></details></li></ul><script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-jl756n3h"><div class="social-icons astro-jl756n3h"><a href="https://hopbox.dev" rel="me" class="sl-flex astro-5yiqsyrb"><span class="sr-only astro-5yiqsyrb">hopbox.dev</span><svg aria-hidden="true" class="astro-5yiqsyrb astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script></div></div></div></sl-sidebar-pane></nav><div class="main-frame astro-vlwsw6sx"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-bfhpgjcp"><aside class="right-sidebar-container print:hidden astro-bfhpgjcp"><div class="right-sidebar astro-bfhpgjcp"><div class="lg:sl-hidden astro-6ky2bkwt"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-bwzeb267"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-bwzeb267"><details id="starlight__mobile-toc" class="astro-bwzeb267"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-bwzeb267"><span class="toggle sl-flex astro-bwzeb267">On this page<svg aria-hidden="true" class="caret astro-bwzeb267 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-bwzeb267"></span></summary><div class="dropdown astro-bwzeb267"><ul class="isMobile astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#provider-address" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Provider address</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#provider-block" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Provider block</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#ovhcloud-api-rights" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">OVHcloud API rights</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#resource-hopbox_server" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Resource hopbox_server</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#arguments" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Arguments</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#attributes-the-provider-sets" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Attributes the provider sets</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#the-tested-os-and-kernel" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">The tested OS and kernel</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#create" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Create</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#uploads" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Uploads</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#order" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Order</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#update" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Update</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#delete" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Delete</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#read" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Read</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#import" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Import</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#host-key-trust" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Host key trust</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#timeouts" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Timeouts</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#errors" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Errors</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#commands-of-the-binary" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Commands of the binary</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#flags-of-serve" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Flags of serve</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#exit-status" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Exit status</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#tests" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Tests</span></a></li></ul></div></details></nav></mobile-starlight-toc><script type="module" src="/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.C3fM4Kra.js"></script></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-6ky2bkwt"><div class="sl-container astro-6ky2bkwt"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#provider-address" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Provider address</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#provider-block" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Provider block</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#ovhcloud-api-rights" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">OVHcloud API rights</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#resource-hopbox_server" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Resource hopbox_server</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#arguments" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Arguments</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#attributes-the-provider-sets" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Attributes the provider sets</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#the-tested-os-and-kernel" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">The tested OS and kernel</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#create" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Create</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#uploads" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Uploads</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#order" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Order</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#update" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Update</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#delete" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Delete</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#read" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Read</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#import" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Import</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#host-key-trust" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Host key trust</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#timeouts" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Timeouts</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#errors" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Errors</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#commands-of-the-binary" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Commands of the binary</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#flags-of-serve" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Flags of serve</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#exit-status" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Exit status</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#tests" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Tests</span></a></li></ul></nav></starlight-toc><script type="module" src="/_astro/TableOfContents.astro_astro_type_script_index_0_lang.BpJaGz7G.js"></script></div></div></div></aside><div class="main-pane astro-bfhpgjcp"><main data-pagefind-body class="astro-g6oqdoeg" lang="en" dir="ltr"><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><h1 id="_top" class="astro-42k5req6">hopbox Terraform provider</h1></div></div><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><div class="sl-markdown-content"><p><code dir="auto">terraform-provider-hopbox</code> is the hopbox Terraform provider. Terraform runs it as a plugin. It adopts OVHcloud dedicated servers into an install, or orders new ones. It reinstalls each server with the tested OS. Over SSH, it installs the tested host kernel and <code dir="auto">hopboxd</code>, and enrolls the server. Then it manages the server through the admin API. The code is in <code dir="auto">internal/tfprovider</code>. <a href="/guide/install-on-ovhcloud/">guide/install-on-ovhcloud.md</a> walks through a first install.</p>
+<p>The provider has one resource, <a href="#resource-hopbox_server"><code dir="auto">hopbox_server</code></a>, and no data sources.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="provider-address">Provider address</h2><a class="sl-anchor-link" href="#provider-address"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Provider address”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Source address</td>
+<td><code dir="auto">registry.terraform.io/hopboxdev/hopbox</code></td>
+</tr>
+<tr>
+<td>Short source</td>
+<td><code dir="auto">hopboxdev/hopbox</code></td>
+</tr>
+<tr>
+<td>Local name</td>
+<td><code dir="auto">hopbox</code></td>
+</tr>
+<tr>
+<td>Plugin protocol</td>
+<td>6</td>
+</tr>
+</tbody>
+</table>
+<p>The provider is not in a registry yet. To use a local build, give Terraform the dir of the binary in a <code dir="auto">dev_overrides</code> block of a Terraform CLI configuration file (the build guide of the repo has an example).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="provider-block">Provider block</h2><a class="sl-anchor-link" href="#provider-block"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Provider block”</span></a></div>
+<div class="expressive-code"><link rel="stylesheet" href="/_astro/ec.w36nc.css"><script type="module" src="/_astro/ec.0vx5m.js"></script><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="hcl"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">terraform {</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">  </span></span><span style="--0:#D6DEEB;--1:#403F53">required_providers {</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#C5E478;--1:#3B61B0">hopbox </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#C5E478;--1:#3B61B0"> </span><span style="--0:#D6DEEB;--1:#403F53">{</span></div></div><div class="ec-line"><div class="code"><span class="indent">      </span><span style="--0:#C5E478;--1:#3B61B0">source</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">hopboxdev/hopbox</span><span style="--0:#D9F5DD;--1:#111111">"</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">  </span></span><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">provider </span><span style="--0:#C5E478;--1:#3B61B0">"hopbox"</span><span style="--0:#D6DEEB;--1:#403F53"> {</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">ssh_private_key </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--1:#3B61B0"><span style="--0:#C5E478"> file</span><span style="--0:#82AAFF">(</span></span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">~/.ssh/id_ed25519</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#82AAFF;--1:#3B61B0">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="terraform {  required_providers {    hopbox = {      source = &quot;hopboxdev/hopbox&quot;    }  }}provider &quot;hopbox&quot; {  ssh_private_key = file(&quot;~/.ssh/id_ed25519&quot;)}"><div></div></button></div></figure></div>
+<p>Every attribute is optional. An attribute that you leave out takes the value of its environment variable.</p>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Environment variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">ssh_private_key</code></td>
+<td>string, sensitive</td>
+<td><code dir="auto">HOPBOX_SSH_PRIVATE_KEY</code></td>
+<td>The SSH private key of the operator, in the OpenSSH or PEM format. A key with a passphrase does not work. The provider authorizes its public key on each server that it reinstalls, and logs in with it for every step after the first login. A create, an update, a delete, and an import need it.</td>
+</tr>
+<tr>
+<td><code dir="auto">install_url</code></td>
+<td>string</td>
+<td><code dir="auto">HOPBOX_INSTALL_URL</code></td>
+<td>The URL of the install, such as <code dir="auto">https://example.com</code>. The provider calls the admin API there with <code dir="auto">admin_api_key</code>. It must be an <code dir="auto">https</code> URL. Only a loopback address can use <code dir="auto">http</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">admin_api_key</code></td>
+<td>string, sensitive</td>
+<td><code dir="auto">HOPBOX_ADMIN_API_KEY</code></td>
+<td>An admin API key, <code dir="auto">hbxadm_...</code> (<a href="/reference/credentials/">credentials.md</a>). The provider sends it as <code dir="auto">Authorization: Bearer &lt;key&gt;</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">control_url</code></td>
+<td>string</td>
+<td><code dir="auto">HOPBOX_CONTROL_URL</code></td>
+<td>The URL of the internal listener of the control role, such as <code dir="auto">https://10.0.0.1:7443</code>. A new server that is not the first one enrolls there, as <code dir="auto">channel.control_url</code> (<a href="/reference/hopboxd-config/#keys">hopboxd-config.md</a>). It must be an <code dir="auto">https</code> URL.</td>
+</tr>
+</tbody>
+</table>
+<p>The servers that are not the first one need <code dir="auto">install_url</code>, <code dir="auto">admin_api_key</code>, and <code dir="auto">control_url</code>. The first server needs none of them: the provider reaches its admin API over SSH. The admin API is public behind the edge role, so <code dir="auto">install_url</code> can be <code dir="auto">https://&lt;domain&gt;</code> (<a href="/reference/admin-api/#where-the-admin-api-is-served">admin-api.md</a>). But the internal listener of the first server listens only on <code dir="auto">127.0.0.1</code> (<a href="/reference/hopboxd-config/#keys">hopboxd-config.md</a>), so a new server cannot reach <code dir="auto">control_url</code>. So in phase 1, an install has only its first server. Phase 2 puts the internal listener on the vRack.</p>
+<p>The provider reads the OVHcloud credentials only from the environment. They never appear in the Terraform files or in the state.</p>
+<table>
+<thead>
+<tr>
+<th>Environment variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">OVH_ENDPOINT</code></td>
+<td><code dir="auto">ovh-eu</code></td>
+<td>The OVHcloud API: <code dir="auto">ovh-eu</code> (<code dir="auto">https://eu.api.ovh.com/1.0</code>), <code dir="auto">ovh-ca</code> (<code dir="auto">https://ca.api.ovh.com/1.0</code>), or <code dir="auto">ovh-us</code> (<code dir="auto">https://api.us.ovhcloud.com/1.0</code>). An <code dir="auto">https</code> URL works too.</td>
+</tr>
+<tr>
+<td><code dir="auto">OVH_APPLICATION_KEY</code></td>
+<td>none</td>
+<td>The application key of an OVHcloud API application.</td>
+</tr>
+<tr>
+<td><code dir="auto">OVH_APPLICATION_SECRET</code></td>
+<td>none</td>
+<td>The application secret.</td>
+</tr>
+<tr>
+<td><code dir="auto">OVH_CONSUMER_KEY</code></td>
+<td>none</td>
+<td>The consumer key, with the rights below.</td>
+</tr>
+</tbody>
+</table>
+<p>Give all three keys or none. Without them, the provider can plan, but a create, a refresh, and an import fail with <code dir="auto">the provider has no OVHcloud credentials</code>.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="ovhcloud-api-rights">OVHcloud API rights</h3><a class="sl-anchor-link" href="#ovhcloud-api-rights"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “OVHcloud API rights”</span></a></div>
+<p>The consumer key needs these rights. The provider makes no other call.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">GET</code></td>
+<td><code dir="auto">/dedicated/server/*</code></td>
+<td>Reads the server, its hardware, its IP blocks, and the task of a reinstall: <code dir="auto">/dedicated/server/{serviceName}</code>, <code dir="auto">/dedicated/server/{serviceName}/specifications/hardware</code>, <code dir="auto">/dedicated/server/{serviceName}/ips</code>, and <code dir="auto">/dedicated/server/{serviceName}/task/{taskId}</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">POST</code></td>
+<td><code dir="auto">/dedicated/server/*/reinstall</code></td>
+<td>Reinstalls the server.</td>
+</tr>
+</tbody>
+</table>
+<p>To order servers with <code dir="auto">ovh_plan</code>, the consumer key also needs these rights. A provider that only adopts servers does not need them.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">GET</code></td>
+<td><code dir="auto">/me</code></td>
+<td>Reads the OVHcloud subsidiary of the account, such as <code dir="auto">FR</code>, for the cart.</td>
+</tr>
+<tr>
+<td><code dir="auto">GET</code></td>
+<td><code dir="auto">/order/cart</code></td>
+<td>Finds the carts of an order key: <code dir="auto">/order/cart?description=hopbox_server &lt;key&gt;</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">POST</code></td>
+<td><code dir="auto">/order/cart</code></td>
+<td>Makes a cart.</td>
+</tr>
+<tr>
+<td><code dir="auto">GET</code></td>
+<td><code dir="auto">/order/cart/*</code></td>
+<td>Reads a cart, the options of a plan, the config that an item needs, and the price: <code dir="auto">/order/cart/{cartId}</code>, <code dir="auto">/order/cart/{cartId}/baremetalServers/options</code>, <code dir="auto">/order/cart/{cartId}/item/{itemId}/requiredConfiguration</code>, and <code dir="auto">/order/cart/{cartId}/checkout</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">POST</code></td>
+<td><code dir="auto">/order/cart/*</code></td>
+<td>Fills the cart and orders: <code dir="auto">/order/cart/{cartId}/assign</code>, <code dir="auto">/order/cart/{cartId}/baremetalServers</code>, <code dir="auto">/order/cart/{cartId}/baremetalServers/options</code>, <code dir="auto">/order/cart/{cartId}/item/{itemId}/configuration</code>, and <code dir="auto">/order/cart/{cartId}/checkout</code>. The checkout pays for the server.</td>
+</tr>
+<tr>
+<td><code dir="auto">DELETE</code></td>
+<td><code dir="auto">/order/cart/*</code></td>
+<td>Deletes a cart without a checkout, and the cart of an order once the state holds the order.</td>
+</tr>
+<tr>
+<td><code dir="auto">GET</code></td>
+<td><code dir="auto">/me/order/*</code></td>
+<td>Follows an order: <code dir="auto">/me/order/{orderId}/status</code>, <code dir="auto">/me/order/{orderId}/details</code>, <code dir="auto">/me/order/{orderId}/details/{orderDetailId}</code>, and <code dir="auto">/me/order/{orderId}/details/{orderDetailId}/extension</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The provider never calls a path that cancels an order or ends the rental of a server.</p>
+<p>The provider also calls <code dir="auto">GET /auth/time</code>, which needs no right, to sign each call with the clock of the API. Each call carries the headers <code dir="auto">X-Ovh-Application</code>, <code dir="auto">X-Ovh-Consumer</code>, <code dir="auto">X-Ovh-Timestamp</code>, and <code dir="auto">X-Ovh-Signature</code>. The signature is <code dir="auto">$1$</code> and a SHA-1. The SHA-1 covers six values, joined by <code dir="auto">+</code>: the application secret, the consumer key, the method, the full URL, the body, and the timestamp.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="resource-hopbox_server">Resource hopbox_server</h2><a class="sl-anchor-link" href="#resource-hopbox_server"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Resource hopbox_server”</span></a></div>
+<p>A <code dir="auto">hopbox_server</code> is one server of an install, on an OVHcloud dedicated server that the account rents.</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="hcl"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">resource </span><span style="--0:#C5E478;--1:#3B61B0">"hopbox_server"</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C5E478;--1:#3B61B0">"first"</span><span style="--0:#D6DEEB;--1:#403F53"> {</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">ovh_service_name </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#C5E478;--1:#3B61B0"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">ns1234567.ip-198-51-100.eu</span><span style="--0:#D9F5DD;--1:#111111">"</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">bootstrap        </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--1:#3B61B0"><span style="--0:#C5E478"> </span><span style="--0:#82AAFF">true</span></span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">domain           </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#C5E478;--1:#3B61B0"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">example.com</span><span style="--0:#D9F5DD;--1:#111111">"</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">labels           </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#C5E478;--1:#3B61B0"> </span><span style="--0:#D6DEEB;--1:#403F53">{ </span><span style="--0:#C5E478;--1:#3B61B0">zone</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">gra</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53"> }</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">bundle </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#C5E478;--1:#3B61B0"> </span><span style="--0:#D6DEEB;--1:#403F53">{</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#C5E478;--1:#3B61B0">source</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">bin/bundle/hopbox-v0.1.0-linux-amd64.tar.gz</span><span style="--0:#D9F5DD;--1:#111111">"</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#C5E478;--1:#3B61B0">sha256</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">3f6a...c1d2</span><span style="--0:#D9F5DD;--1:#111111">"</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">  </span></span><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">host_kernel </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#C5E478;--1:#3B61B0"> </span><span style="--0:#D6DEEB;--1:#403F53">{</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#C5E478;--1:#3B61B0">source</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">hostkernel-build/linux-image-6.18.57-hopbox1_6.18.57-1_amd64.deb</span><span style="--0:#D9F5DD;--1:#111111">"</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#C5E478;--1:#3B61B0">sha256</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">9b1e...77aa</span><span style="--0:#D9F5DD;--1:#111111">"</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">  </span></span><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">output </span><span style="--0:#C5E478;--1:#3B61B0">"admin_api_key"</span><span style="--0:#D6DEEB;--1:#403F53"> {</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">value     </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#C5E478;--1:#3B61B0"> </span><span style="--0:#D6DEEB;--1:#403F53">hopbox_server</span><span style="--0:#7FDBCA;--1:#096E72">.</span><span style="--0:#C5E478;--1:#3B61B0">first</span><span style="--0:#7FDBCA;--1:#096E72">.</span><span style="--0:#C5E478;--1:#3B61B0">admin_api_key</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">sensitive </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--1:#3B61B0"><span style="--0:#C5E478"> </span><span style="--0:#82AAFF">true</span></span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="resource &quot;hopbox_server&quot; &quot;first&quot; {  ovh_service_name = &quot;ns1234567.ip-198-51-100.eu&quot;  bootstrap        = true  domain           = &quot;example.com&quot;  labels           = { zone = &quot;gra&quot; }  bundle = {    source = &quot;bin/bundle/hopbox-v0.1.0-linux-amd64.tar.gz&quot;    sha256 = &quot;3f6a...c1d2&quot;  }  host_kernel = {    source = &quot;hostkernel-build/linux-image-6.18.57-hopbox1_6.18.57-1_amd64.deb&quot;    sha256 = &quot;9b1e...77aa&quot;  }}output &quot;admin_api_key&quot; {  value     = hopbox_server.first.admin_api_key  sensitive = true}"><div></div></button></div></figure></div>
+<p>The same server, ordered new from OVHcloud in place of a server that the account rents:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="hcl"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">resource </span><span style="--0:#C5E478;--1:#3B61B0">"hopbox_server"</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C5E478;--1:#3B61B0">"first"</span><span style="--0:#D6DEEB;--1:#403F53"> {</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">ovh_plan       </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#C5E478;--1:#3B61B0"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">24rise01</span><span style="--0:#D9F5DD;--1:#111111">"</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">ovh_datacenter </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#C5E478;--1:#3B61B0"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">gra</span><span style="--0:#D9F5DD;--1:#111111">"</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">ovh_options    </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#C5E478;--1:#3B61B0"> </span><span style="--0:#D6DEEB;--1:#403F53">[</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">ram-64g-ecc-3200-24rise</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">, </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">softraid-2x512nvme-24rise</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">, </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">bandwidth-500-24rise</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">]</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">ovh_order_key  </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#C5E478;--1:#3B61B0"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">hop-example-first</span><span style="--0:#D9F5DD;--1:#111111">"</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">bootstrap      </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--1:#3B61B0"><span style="--0:#C5E478"> </span><span style="--0:#82AAFF">true</span></span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">domain         </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#C5E478;--1:#3B61B0"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">example.com</span><span style="--0:#D9F5DD;--1:#111111">"</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">labels         </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#C5E478;--1:#3B61B0"> </span><span style="--0:#D6DEEB;--1:#403F53">{ </span><span style="--0:#C5E478;--1:#3B61B0">zone</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">gra</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53"> }</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">bundle </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#C5E478;--1:#3B61B0"> </span><span style="--0:#D6DEEB;--1:#403F53">{</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#C5E478;--1:#3B61B0">source</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">bin/bundle/hopbox-v0.1.0-linux-amd64.tar.gz</span><span style="--0:#D9F5DD;--1:#111111">"</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#C5E478;--1:#3B61B0">sha256</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">3f6a...c1d2</span><span style="--0:#D9F5DD;--1:#111111">"</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">  </span></span><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">host_kernel </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#C5E478;--1:#3B61B0"> </span><span style="--0:#D6DEEB;--1:#403F53">{</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#C5E478;--1:#3B61B0">source</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">hostkernel-build/linux-image-6.18.57-hopbox1_6.18.57-1_amd64.deb</span><span style="--0:#D9F5DD;--1:#111111">"</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#C5E478;--1:#3B61B0">sha256</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">9b1e...77aa</span><span style="--0:#D9F5DD;--1:#111111">"</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">  </span></span><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">  </span></span><span style="--0:#D6DEEB;--1:#403F53">lifecycle {</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#C5E478;--1:#3B61B0">prevent_destroy </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--1:#3B61B0"><span style="--0:#C5E478"> </span><span style="--0:#82AAFF">true</span></span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">  </span></span><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="resource &quot;hopbox_server&quot; &quot;first&quot; {  ovh_plan       = &quot;24rise01&quot;  ovh_datacenter = &quot;gra&quot;  ovh_options    = [&quot;ram-64g-ecc-3200-24rise&quot;, &quot;softraid-2x512nvme-24rise&quot;, &quot;bandwidth-500-24rise&quot;]  ovh_order_key  = &quot;hop-example-first&quot;  bootstrap      = true  domain         = &quot;example.com&quot;  labels         = { zone = &quot;gra&quot; }  bundle = {    source = &quot;bin/bundle/hopbox-v0.1.0-linux-amd64.tar.gz&quot;    sha256 = &quot;3f6a...c1d2&quot;  }  host_kernel = {    source = &quot;hostkernel-build/linux-image-6.18.57-hopbox1_6.18.57-1_amd64.deb&quot;    sha256 = &quot;9b1e...77aa&quot;  }  lifecycle {    prevent_destroy = true  }}"><div></div></button></div></figure></div>
+<p>The plan code and the option codes in this example are placeholders. Take the real ones from the OVHcloud manager or from the catalog of the OVHcloud API, as <a href="#order">Order</a> shows. <code dir="auto">prevent_destroy</code> makes Terraform refuse each plan that destroys or replaces the server. A replacement orders a new server (<a href="#rules-that-keep-a-plan-from-ordering">Rules that keep a plan from ordering</a>). Remove it before a destroy on purpose.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="arguments">Arguments</h3><a class="sl-anchor-link" href="#arguments"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Arguments”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Default</th>
+<th>Change</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">ovh_service_name</code></td>
+<td>string</td>
+<td>none</td>
+<td>replaces</td>
+<td>The service name of an OVHcloud dedicated server that the account rents, such as <code dir="auto">ns1234567.ip-198-51-100.eu</code>. The create erases the server. Give <code dir="auto">ovh_service_name</code> or <code dir="auto">ovh_plan</code>, not both. With <code dir="auto">ovh_plan</code>, the provider sets it at the delivery of the server.</td>
+</tr>
+<tr>
+<td><code dir="auto">ovh_plan</code></td>
+<td>string</td>
+<td>none</td>
+<td>refused</td>
+<td>The OVHcloud plan code of a new dedicated server to order, such as <code dir="auto">24rise01</code>. The create orders the server, and OVHcloud charges the account for it (<a href="#order">Order</a>). It needs <code dir="auto">ovh_datacenter</code>, <code dir="auto">ovh_options</code>, and <code dir="auto">ovh_order_key</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">ovh_datacenter</code></td>
+<td>string</td>
+<td>none</td>
+<td>refused</td>
+<td>The datacenter of the server to order, such as <code dir="auto">gra</code>. <a href="#datacenters">Datacenters</a> lists the datacenters that the provider knows. Only with <code dir="auto">ovh_plan</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">ovh_options</code></td>
+<td>set of string</td>
+<td>none</td>
+<td>refused</td>
+<td>The option plan codes of the server to order. Give one option for each mandatory family of the plan, such as the memory, the storage, and the bandwidth. An optional family, such as the vRack, takes one option or none. A family that is not exclusive takes more than one option. Pick a software RAID storage option, whose code starts with <code dir="auto">softraid-</code>. The provider refuses a code that starts with <code dir="auto">hardraid-</code>, because hopbox tests only software RAID. Only with <code dir="auto">ovh_plan</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">ovh_order_key</code></td>
+<td>string</td>
+<td>none</td>
+<td>refused</td>
+<td>A key of the order that is unique in the OVHcloud account, such as <code dir="auto">hop-example-first</code>. It has 1 to 63 characters. Each character is one of <code dir="auto">a-z</code>, <code dir="auto">0-9</code>, <code dir="auto">.</code>, <code dir="auto">_</code>, <code dir="auto">/</code>, and <code dir="auto">-</code>. The first one is a letter or a digit. The provider marks the cart of the order with it, so a later apply finds an order that an earlier apply lost (<a href="#lost-orders">Lost orders</a>). Only with <code dir="auto">ovh_plan</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">ovh_max_price</code></td>
+<td>number</td>
+<td>none</td>
+<td>in place, changes nothing</td>
+<td>The highest price with tax of the cart, in the currency of the OVHcloud account, such as <code dir="auto">90</code>. The provider compares it with the price with tax of the checkout preview. That price is the first invoice: the first month and any setup fee, not the monthly rent. If the checkout costs more, the create stops before the checkout, and orders nothing. A preview without a price with tax or without a currency also stops the create. Without <code dir="auto">ovh_max_price</code>, the create pays any price. Only with <code dir="auto">ovh_plan</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">ovh_order_id</code></td>
+<td>number</td>
+<td>none</td>
+<td>refused</td>
+<td>The ID of an OVHcloud order that exists already. The create then places no order. It waits for that order and sets up its server. Use it for an order that an apply lost. Only with <code dir="auto">ovh_plan</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">bootstrap</code></td>
+<td>bool</td>
+<td><code dir="auto">false</code></td>
+<td>replaces</td>
+<td>True for the first server of a new install. It gets the roles <code dir="auto">control</code>, <code dir="auto">node</code>, <code dir="auto">dns</code>, and <code dir="auto">edge</code>. It needs <code dir="auto">domain</code>, and the provider makes the first admin API key for it.</td>
+</tr>
+<tr>
+<td><code dir="auto">domain</code></td>
+<td>string</td>
+<td>none</td>
+<td>in place</td>
+<td>The domain of the install, such as <code dir="auto">example.com</code> (<a href="/reference/domain-rules/#install-domain">domain-rules.md</a>). Only the first server takes it, and it needs it. A change runs <code dir="auto">hopboxd admin config set --domain</code> on the server.</td>
+</tr>
+<tr>
+<td><code dir="auto">pool</code></td>
+<td>string</td>
+<td><code dir="auto">default</code></td>
+<td>replaces</td>
+<td>The pool that the server joins. It must be a lowercase DNS label. An install has only the pool <code dir="auto">default</code> today.</td>
+</tr>
+<tr>
+<td><code dir="auto">labels</code></td>
+<td>map of string</td>
+<td><code dir="auto">{}</code></td>
+<td>in place</td>
+<td>The labels of the server, such as <code dir="auto">zone = "gra"</code>. Placement filters use them. The rules of <code dir="auto">channel.labels</code> apply (<a href="/reference/hopboxd-config/#keys">hopboxd-config.md</a>). A server has at most 64 labels. A key has 1 to 63 characters of <code dir="auto">a-z</code>, <code dir="auto">0-9</code>, <code dir="auto">.</code>, <code dir="auto">_</code>, and <code dir="auto">-</code>, and starts with a letter. A value has at most 255 bytes. The provider sets them with <code dir="auto">SetServerLabels</code>, so the install ignores the labels of the bootstrap config of the server (<a href="/reference/admin-api/#setserverlabels">admin-api.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">roles</code></td>
+<td>list of string</td>
+<td><code dir="auto">["control", "node", "dns", "edge"]</code> with <code dir="auto">bootstrap</code>, else <code dir="auto">["node"]</code></td>
+<td>updates in place</td>
+<td>The roles of the server. In this release, only these two lists are valid, in any order. Leave it out. A refresh reads the roles that the server has: <code dir="auto">control</code> from its bootstrap config, and the others from the registry of the install.</td>
+</tr>
+<tr>
+<td><code dir="auto">bundle</code></td>
+<td>object</td>
+<td>none, required</td>
+<td>in place</td>
+<td>The release bundle that the server runs (<a href="/reference/release-bundle/">release-bundle.md</a>), with <code dir="auto">source</code> and <code dir="auto">sha256</code>. A change of <code dir="auto">sha256</code> upgrades <code dir="auto">hopboxd</code> on the server. A change of <code dir="auto">source</code> alone changes nothing on the server.</td>
+</tr>
+<tr>
+<td><code dir="auto">bundle.source</code></td>
+<td>string</td>
+<td>none, required</td>
+<td></td>
+<td>A local path, or an <code dir="auto">https</code> URL that the server downloads with <code dir="auto">curl</code>. The file name must be <code dir="auto">hopbox-&lt;version&gt;-linux-amd64.tar.gz</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">bundle.sha256</code></td>
+<td>string</td>
+<td>none, required</td>
+<td></td>
+<td>The sha256 of the bundle, in 64 lowercase hex digits, from the <code dir="auto">.sha256</code> file of <code dir="auto">make bundle</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">host_kernel</code></td>
+<td>object</td>
+<td>none, required</td>
+<td>in place</td>
+<td>The Debian package of the tested host kernel, <code dir="auto">linux-image-6.18.57-hopbox1_6.18.57-1_amd64.deb</code> from <code dir="auto">build/hostkernel/build.sh</code> (<a href="/reference/host-kernel/">host-kernel.md</a>), with <code dir="auto">source</code> and <code dir="auto">sha256</code> as for <code dir="auto">bundle</code>. The provider installs it only on a server that does not run the tested kernel.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="attributes-the-provider-sets">Attributes the provider sets</h3><a class="sl-anchor-link" href="#attributes-the-provider-sets"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Attributes the provider sets”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">id</code></td>
+<td>string</td>
+<td>The OVHcloud service name. Before OVHcloud delivers an ordered server, <code dir="auto">order-&lt;order ID&gt;</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">ovh_service_name</code></td>
+<td>string</td>
+<td>With <code dir="auto">ovh_plan</code>: the service name of the server that the order delivered.</td>
+</tr>
+<tr>
+<td><code dir="auto">ovh_order_id</code></td>
+<td>number</td>
+<td>With <code dir="auto">ovh_plan</code>: the ID of the OVHcloud order of the server. Without it: null.</td>
+</tr>
+<tr>
+<td><code dir="auto">server_id</code></td>
+<td>string</td>
+<td>The ID of the server in the install, a UUID.</td>
+</tr>
+<tr>
+<td><code dir="auto">admin_api_key</code></td>
+<td>string, sensitive</td>
+<td>Only on the first server: the first admin API key of the install, <code dir="auto">hbxadm_</code> and 43 characters. The provider makes it and passes only its SHA-256 to the install (<a href="/reference/server-layout/#the-bootstrap-admin-api-key">server-layout.md</a>). The state holds its only copy. The install registers it with the name <code dir="auto">bootstrap</code> and a lifetime of 90 days.</td>
+</tr>
+<tr>
+<td><code dir="auto">version</code></td>
+<td>string</td>
+<td>The version of <code dir="auto">hopboxd</code> on the server, such as <code dir="auto">v0.1.0</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">ipv4</code></td>
+<td>string</td>
+<td>The public IPv4 address of the server, from the OVHcloud API.</td>
+</tr>
+<tr>
+<td><code dir="auto">ssh_host_key</code></td>
+<td>string</td>
+<td>The SSH host key of the server, in the <code dir="auto">authorized_keys</code> format. The provider pins it at the first login after the reinstall, and refuses another key from then on.</td>
+</tr>
+<tr>
+<td><code dir="auto">ssh_user</code></td>
+<td>string</td>
+<td>The login user of the provider: <code dir="auto">debian</code> on the OVHcloud template of Debian 13, or <code dir="auto">root</code>. When it is not <code dir="auto">root</code>, each script runs with <code dir="auto">sudo -n</code>.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="the-tested-os-and-kernel">The tested OS and kernel</h3><a class="sl-anchor-link" href="#the-tested-os-and-kernel"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The tested OS and kernel”</span></a></div>
+<p>The OS and the kernel are constants of the provider. You cannot change them. hopbox tests one combination.</p>
+<table>
+<thead>
+<tr>
+<th>Constant</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OVHcloud template</td>
+<td><code dir="auto">debian13_64</code></td>
+</tr>
+<tr>
+<td>OS</td>
+<td>Debian 13 on <code dir="auto">amd64</code></td>
+</tr>
+<tr>
+<td>Host kernel release</td>
+<td><code dir="auto">6.18.57-hopbox1</code></td>
+</tr>
+<tr>
+<td>Host kernel package</td>
+<td><code dir="auto">linux-image-6.18.57-hopbox1</code>, version <code dir="auto">6.18.57-1</code>, for <code dir="auto">amd64</code></td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="create">Create</h3><a class="sl-anchor-link" href="#create"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Create”</span></a></div>
+<p>With <code dir="auto">ovh_plan</code>, a create first orders the server (<a href="#order">Order</a>). Then it takes the same steps as for a server that the account rents.</p>
+<p>A create takes these steps:</p>
+<ol>
+<li>
+<p>It reads each local file of <code dir="auto">bundle</code> and <code dir="auto">host_kernel</code>, and checks its sha256. A missing file or another sha256 stops the create before the reinstall, so the server is not erased. Then it reads the server, its IP blocks, and its hardware through the OVHcloud API.</p>
+</li>
+<li>
+<p>It makes an ephemeral ed25519 SSH key. It reinstalls the server with the template <code dir="auto">debian13_64</code> and the public key of the ephemeral key. The default disk group gets this layout:</p>
+<table>
+<thead>
+<tr>
+<th>Mount point</th>
+<th>File system</th>
+<th>Size</th>
+<th>RAID</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">/</code></td>
+<td>ext4</td>
+<td>100 GiB</td>
+<td>RAID1 over 2 disks, or none with 1 disk</td>
+</tr>
+<tr>
+<td><code dir="auto">/var/lib/hopbox</code></td>
+<td>XFS</td>
+<td>the rest of the disks</td>
+<td>the same</td>
+</tr>
+</tbody>
+</table>
+<p>A disk group behind a hardware RAID controller is refused. A server with more than two disks uses two of them.</p>
+</li>
+<li>
+<p>It polls the task of the reinstall every 30 seconds, for at most 2 hours. A task that ends as <code dir="auto">cancelled</code>, <code dir="auto">customerError</code>, or <code dir="auto">ovhError</code> fails the create.</p>
+</li>
+<li>
+<p>It logs in with the ephemeral key as <code dir="auto">debian</code>, then as <code dir="auto">root</code>, and retries every 10 seconds for at most 30 minutes. It pins the host key of this first login in <code dir="auto">ssh_host_key</code>. See <a href="#host-key-trust">Host key trust</a>.</p>
+</li>
+<li>
+<p>It adds the public key of <code dir="auto">ssh_private_key</code> to the <code dir="auto">authorized_keys</code> of the login user, and logs in again with that key. Then it removes the ephemeral key from the <code dir="auto">authorized_keys</code> of root and of the login user. The ephemeral key lives only in the memory of the provider.</p>
+</li>
+<li>
+<p>It checks that the server runs Debian 13 on <code dir="auto">amd64</code>.</p>
+</li>
+<li>
+<p>It checks that <code dir="auto">/var/lib/hopbox</code> is a file system of its own, on XFS with reflinks. If the XFS has no reflinks and holds no file, the provider makes the file system again. It runs <code dir="auto">mkfs.xfs -m reflink=1</code> with the same UUID, and the apply shows a warning. A file system with files is never made again.</p>
+</li>
+<li>
+<p>If the server does not run <code dir="auto">6.18.57-hopbox1</code>, it installs the host kernel. It puts the package on the server (<a href="#uploads">Uploads</a>), checks its sha256, and checks that the package is <code dir="auto">linux-image-6.18.57-hopbox1</code> version <code dir="auto">6.18.57-1</code> for <code dir="auto">amd64</code>. It runs <code dir="auto">dpkg -i</code>, pins the GRUB default to the new kernel in <code dir="auto">/etc/default/grub.d/20_hopbox_kernel.cfg</code>, and checks <code dir="auto">/boot/grub/grub.cfg</code>, as <code dir="auto">build/hostkernel/install.sh</code> does. Then it reboots the server from a systemd timer. It logs in again with the pinned host key until the boot ID changes, for at most 20 minutes. It checks that the new boot runs the tested kernel.</p>
+</li>
+<li>
+<p>On the first server, and on a server with the DNS role, it finds the public addresses of the server. It reads the global addresses of the network interfaces of the server with <code dir="auto">ip -j addr show scope global</code>. A public address is the address of a <code dir="auto">/32</code> or <code dir="auto">/128</code> IP block of step 1 that a network interface holds. An IPv6 address that is <code dir="auto">tentative</code> or <code dir="auto">dadfailed</code> does not count, because it does not answer yet. The list puts IPv4 first. A block that no interface holds stays out, such as an IPv6 block without a route. So DNS never points at an address that answers nothing. If no block passes, the create fails.</p>
+</li>
+<li>
+<p>On a server with the DNS role, it writes the bootstrap config <code dir="auto">/etc/hopbox/hopboxd.toml</code> before the install. The file holds the roles, and <code dir="auto">dns.listen</code> on port 53 of each public address (<a href="/reference/hopboxd-config/#keys">hopboxd-config.md</a>). The tested OS runs <code dir="auto">systemd-resolved</code>, which holds port 53 on <code dir="auto">127.0.0.53</code> and <code dir="auto">127.0.0.54</code>. So the default <code dir="auto">dns.listen</code> of every address fails to bind (<a href="/reference/dns/">dns.md</a>). <code dir="auto">hopboxd install</code> keeps the key. For example, OVHcloud reports <code dir="auto">203.0.113.10/32</code> and <code dir="auto">2001:db8::10/128</code> for a server, and a network interface of the server holds both. Then the file is:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="toml"><code><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># Written by the hopbox Terraform provider before the first hopboxd install.</span></div></div><div class="ec-line"><div class="code"><span style="--0:#C5E478;--1:#3B61B0">roles</span><span style="--0:#D6DEEB;--1:#403F53"> = [</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">control</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">, </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">node</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">, </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">dns</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">, </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">edge</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">]</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">[dns]</span></div></div><div class="ec-line"><div class="code"><span style="--0:#C5E478;--1:#3B61B0">listen</span><span style="--0:#D6DEEB;--1:#403F53"> = [</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">203.0.113.10:53</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">, </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">[2001:db8::10]:53</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">]</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="# Written by the hopbox Terraform provider before the first hopboxd install.roles = [&quot;control&quot;, &quot;node&quot;, &quot;dns&quot;, &quot;edge&quot;][dns]listen = [&quot;203.0.113.10:53&quot;, &quot;[2001:db8::10]:53&quot;]"><div></div></button></div></figure></div>
+</li>
+<li>
+<p>On the first server, it makes the admin API key and saves it in the state. On another server, it makes an enrollment token through the admin API, with an <code dir="auto">Idempotency-Key</code> header.</p>
+</li>
+<li>
+<p>It puts the bundle in <code dir="auto">/var/lib/hopbox-provider</code> and checks its sha256 there (<a href="#uploads">Uploads</a>). It unpacks the bundle and runs its <code dir="auto">hopboxd install --json</code> with these flags (<a href="/reference/hopboxd/#install">hopboxd.md</a>):</p>
+<table>
+<thead>
+<tr>
+<th>Server</th>
+<th>Flags</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>First server</td>
+<td><code dir="auto">--roles control,node,dns,edge --domain &lt;domain&gt; --bootstrap-admin-key-hash &lt;sha256 of the key&gt;</code></td>
+</tr>
+<tr>
+<td>Other server</td>
+<td><code dir="auto">--roles node --control-url &lt;control_url&gt;</code>, and the enrollment token in <code dir="auto">HOPBOX_ENROLLMENT_TOKEN</code></td>
+</tr>
+</tbody>
+</table>
+<p>The install runs in a transient systemd unit, under <code dir="auto">systemd-run --wait</code>, so a dropped SSH session does not stop it. The token reaches the unit through a file of mode 0600 in <code dir="auto">/var/lib/hopbox-provider</code>, never through a command line. The provider removes the bundle, the unpacked release, and the token file after the install.</p>
+</li>
+<li>
+<p>On the first server, it makes a token with <code dir="auto">hopboxd admin enrollment-token create --pool &lt;pool&gt; --roles node,dns,edge</code>. It gives the token to <code dir="auto">hopboxd install --roles control,node,dns,edge --json</code>. So the node role, the DNS role, and the edge role enroll with the control role of the same server (<a href="/reference/dns/">dns.md</a>, <a href="/reference/edge/">edge.md</a>). The token never leaves the server.</p>
+</li>
+<li>
+<p>It waits until the server is <code dir="auto">ready</code>, for at most 5 minutes. On the first server, it reads <code dir="auto">hopboxd admin server get --json</code> over SSH. On another server, it calls <code dir="auto">GetServer</code> of the admin API. A server that is ready but <code dir="auto">degraded</code> gives a warning with its problems.</p>
+</li>
+<li>
+<p>It sets the labels with <code dir="auto">SetServerLabels</code>, through <code dir="auto">hopboxd admin server set-labels</code> on the first server.</p>
+</li>
+<li>
+<p>On the first server, it sets the public addresses of the install to the public addresses of step 9, with <code dir="auto">hopboxd admin config set --public-address</code>. The zone of the DNS role then points the domain, <code dir="auto">ns1</code>, <code dir="auto">ns2</code>, and every machine host at the server (<a href="/reference/dns/#the-zone-of-the-install">dns.md</a>). The install runs at this step. So a failure gives the warning <code dir="auto">The provider did not set the public addresses of the install</code>, with the command to run on the server, and the create succeeds. A failed create taints the server, and the next apply then erases the install.</p>
+</li>
+</ol>
+<p>The state keeps what each step learned. If a step fails, Terraform marks the resource as tainted, and the next apply destroys it and creates it again, with a new reinstall. A failed preflight check of severity <code dir="auto">warn</code>, such as a kernel that is not the tested one, gives a warning on the apply.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="uploads">Uploads</h3><a class="sl-anchor-link" href="#uploads"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Uploads”</span></a></div>
+<p>The provider sends a local file of <code dir="auto">bundle</code> or <code dir="auto">host_kernel</code> over SSH in two scripts. The first script writes the file to a <code dir="auto">.part</code> file in <code dir="auto">/var/lib/hopbox-provider</code>. The second script checks the sha256 of the whole file, and moves it to its name. Both scripts take a lock on the part first, with <code dir="auto">flock</code> on a <code dir="auto">.part.lock</code> file. The first script holds the lock while it writes. The empty lock file stays in <code dir="auto">/var/lib/hopbox-provider</code>. A script that removes it lets a later script lock a new file while an old script still holds the removed one.</p>
+<p>sshd can drop the connection during a big upload. In a test, it dropped about one connection for each 1 to 2 GB that a laptop sent, with <code dir="auto">message authentication code incorrect</code> in its log. The 600 MB bundle then failed the create after the reinstall. When sshd drops a session, the script of the session goes on: it writes the data that was on its way, reads the end of its input, and exits. So the first script holds no check of its own, and removes nothing.</p>
+<p>When the connection breaks, the provider logs in again with the pinned host key, and resumes the upload:</p>
+<ol>
+<li>It takes the lock, so it waits until the old script is gone. Then it reads the size of the part.</li>
+<li>It sends the rest of the file, and appends it to the part.</li>
+<li>It checks the sha256 of the whole file. SSH delivers only authenticated data, so the part holds no corrupt byte. If the sha256 still differs, the provider sends the whole file again.</li>
+</ol>
+<p>The log shows <code dir="auto">the connection broke during an upload, so the provider resumes it</code>, or <code dir="auto">the part of an upload does not match after a resume, so the provider sends the file again</code>. Each resume and each new send counts as one try. After 6 tries, the step fails. A file from an <code dir="auto">https</code> URL downloads again from its start, in one script.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="order">Order</h3><a class="sl-anchor-link" href="#order"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Order”</span></a></div>
+<p>An apply that creates a server with <code dir="auto">ovh_plan</code> orders and pays for a new OVHcloud dedicated server. The plan says so with the warning <code dir="auto">Apply orders and pays for a new OVHcloud server</code>. With <code dir="auto">ovh_order_id</code>, the warning is <code dir="auto">Apply follows an existing OVHcloud order</code>, and the apply places no order.</p>
+<p>Before it orders, the create checks each item that can fail without OVHcloud:</p>
+<ul>
+<li>the OVHcloud credentials and the SSH key</li>
+<li>the admin API and <code dir="auto">control_url</code>, for a server that is not the first one</li>
+<li>the datacenter</li>
+<li>the files of <code dir="auto">bundle</code> and <code dir="auto">host_kernel</code>: it reads each local file and checks its sha256</li>
+</ul>
+<p>An error in this step orders nothing.</p>
+<p>The order takes these steps:</p>
+<ol>
+<li>It reads the subsidiary of the account with <code dir="auto">GET /me</code>.</li>
+<li>It looks for the carts of the order key, with the description <code dir="auto">hopbox_server &lt;ovh_order_key&gt;</code>. A checked-out cart means that an earlier apply ordered and lost the order. The create then stops (<a href="#lost-orders">Lost orders</a>). It deletes a cart without a checkout, because that cart holds no order.</li>
+<li>It makes a cart with that description, which expires after 7 days, and assigns it to the account. Then it lists the carts of the key again. A listed cart that is gone, such as an expired one, does not count. A second cart means that another apply orders with the same key at the same time, for example from another Terraform state. The create then deletes its cart and stops.</li>
+<li>It puts the plan in the cart, as a monthly rental without a commitment (duration <code dir="auto">P1M</code>, pricing mode <code dir="auto">default</code>). It reads the options of the plan, and checks <code dir="auto">ovh_options</code> against them. Each option exists, each exclusive family has at most one option, and each mandatory family has one. No option starts with <code dir="auto">hardraid-</code>. Then it puts the options in the cart.</li>
+<li>It sets the config of the server. <code dir="auto">dedicated_datacenter</code> gets <code dir="auto">ovh_datacenter</code>. If the plan needs them, <code dir="auto">dedicated_os</code> gets <code dir="auto">none_64.en</code>, and <code dir="auto">region</code> gets the region of the datacenter (<a href="#datacenters">Datacenters</a>). The OS of the order does not matter, because the create reinstalls the server. A plan that needs another config fails the create.</li>
+<li>It reads the price of the cart, and logs it as <code dir="auto">ordering a server</code>. If <code dir="auto">ovh_max_price</code> is set and the price with tax is higher, it deletes the cart and stops.</li>
+<li>It checks out the cart with <code dir="auto">autoPayWithPreferredPaymentMethod</code> true and <code dir="auto">waiveRetractationPeriod</code> false. OVHcloud charges the preferred payment method of the account. On a personal account, the withdrawal period can delay the delivery past the wait of 2 hours (<a href="#an-order-that-is-not-delivered-in-time">An order that is not delivered in time</a>). The provider saves the order ID in <code dir="auto">ovh_order_id</code>. The apply output shows the warning <code dir="auto">The apply ordered the OVHcloud server of the order &lt;id&gt;. Its checkout costs &lt;price&gt; with tax (&lt;price&gt; without tax), in &lt;currency&gt;.</code></li>
+<li>It polls the status of the order every minute, for at most 2 hours, until it is <code dir="auto">delivered</code>. Then it finds the service name of the server in the entries of the order, and waits until <code dir="auto">GET /dedicated/server/{serviceName}</code> answers.</li>
+</ol>
+<p>A step before the checkout that fails deletes the cart, and the error ends with <code dir="auto">No order was made</code>.</p>
+<p>The provider never cancels an order, and never ends the rental of a server. A destroy keeps the server rented, as for a server that the account rented already (<a href="#delete">Delete</a>). To stop paying, end the rental in the OVHcloud manager after the destroy.</p>
+<div class="sl-heading-wrapper level-h4"><h4 id="datacenters">Datacenters</h4><a class="sl-anchor-link" href="#datacenters"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Datacenters”</span></a></div>
+<p>The provider knows these datacenters, and the region that an order of each one gets. OVHcloud bills its datacenters in Asia and Oceania through the region <code dir="auto">canada</code>.</p>
+<table>
+<thead>
+<tr>
+<th><code dir="auto">ovh_datacenter</code></th>
+<th><code dir="auto">region</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">gra</code>, <code dir="auto">rbx</code>, <code dir="auto">sbg</code>, <code dir="auto">lon</code>, <code dir="auto">fra</code>, <code dir="auto">waw</code></td>
+<td><code dir="auto">europe</code></td>
+</tr>
+<tr>
+<td><code dir="auto">eu-west-par-a</code>, <code dir="auto">eu-west-par-b</code>, <code dir="auto">eu-west-par-c</code></td>
+<td><code dir="auto">europe</code></td>
+</tr>
+<tr>
+<td><code dir="auto">bhs</code>, <code dir="auto">ca-east-tor-a</code></td>
+<td><code dir="auto">canada</code></td>
+</tr>
+<tr>
+<td><code dir="auto">sgp</code>, <code dir="auto">syd</code>, <code dir="auto">ynm</code></td>
+<td><code dir="auto">canada</code></td>
+</tr>
+</tbody>
+</table>
+<p>A plan of OVHcloud sells only some of these datacenters. The OVHcloud manager shows them. OVHcloud refuses an order of a datacenter that the plan does not sell.</p>
+<div class="sl-heading-wrapper level-h4"><h4 id="rules-that-keep-a-plan-from-ordering">Rules that keep a plan from ordering</h4><a class="sl-anchor-link" href="#rules-that-keep-a-plan-from-ordering"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Rules that keep a plan from ordering”</span></a></div>
+<p>An order costs money, so these rules apply to every resource with <code dir="auto">ovh_plan</code>:</p>
+<ul>
+<li>Only a create orders. A refresh, an import, and an update never order.</li>
+<li>A plan that changes <code dir="auto">ovh_plan</code>, <code dir="auto">ovh_datacenter</code>, <code dir="auto">ovh_options</code>, <code dir="auto">ovh_order_key</code>, or <code dir="auto">ovh_order_id</code> after the create fails with <code dir="auto">The order of a server cannot change</code>. To change the model of a server, add a new resource and remove the old one. You can drop the order attributes and give <code dir="auto">ovh_service_name</code> of the same server instead. That changes nothing on the server.</li>
+<li>A plan that replaces the server fails with <code dir="auto">The change orders a new server</code>. A change of <code dir="auto">pool</code>, <code dir="auto">bootstrap</code>, or <code dir="auto">ovh_service_name</code> replaces a server. The replacement orders a new server, and the old server stays rented.</li>
+<li>A refresh never removes an ordered server from the state. Without the server in the state, the next plan orders again. If the account no longer rents the server, or the install lost it, the refresh fails and says what to do.</li>
+<li>In one run of Terraform, the second create with an <code dir="auto">ovh_order_key</code> fails with <code dir="auto">two hopbox_server resources have the ovh_order_key</code>. The key stays taken for the whole run, also after its order. Two Terraform states can order with one key at the same time. The later create then fails with <code dir="auto">another apply orders with the ovh_order_key</code>.</li>
+</ul>
+<p>These rules do not cover a replacement that Terraform decides by itself. <code dir="auto">terraform taint</code>, <code dir="auto">terraform apply -replace</code>, and <code dir="auto">create_before_destroy</code> replace a delivered server: the create of the replacement orders and pays for a new server, and the old server stays rented. Only during a pending setup does the delete refuse, and does the cart of the order block a second create. Give each resource with <code dir="auto">ovh_plan</code> the block <code dir="auto">lifecycle { prevent_destroy = true }</code>, as the example above does. Terraform then refuses each plan that destroys or replaces the server.</p>
+<div class="sl-heading-wrapper level-h4"><h4 id="an-order-that-is-not-delivered-in-time">An order that is not delivered in time</h4><a class="sl-anchor-link" href="#an-order-that-is-not-delivered-in-time"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “An order that is not delivered in time”</span></a></div>
+<p>If the order is not delivered after 2 hours, the create fails with <code dir="auto">the order &lt;id&gt; is not delivered after 2h0m0s</code>. OVHcloud goes on with the order. Terraform marks the resource as tainted, and keeps <code dir="auto">ovh_order_id</code> in the state. A step after the delivery that fails, such as the install, does the same.</p>
+<p>A tainted resource normally gets a delete and a new create on the next apply. The new create orders a second server. So the delete of an ordered server whose setup did not finish refuses with <code dir="auto">the setup of the server of the OVHcloud order &lt;id&gt; did not finish</code>. To go on with the same order, untaint the resource and apply:</p>
+<div class="expressive-code"><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="sh"><code><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">terraform</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">untaint</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">hopbox_server.first</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">terraform</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">apply</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="terraform untaint hopbox_server.firstterraform apply"><div></div></button></div></figure></div>
+<p>The apply waits for the order again, and then reinstalls and sets up the server. It orders nothing. Until the setup finishes, each refresh warns <code dir="auto">The setup of the server of the OVHcloud order &lt;id&gt; did not finish</code>.</p>
+<p>To give the server up instead, run <code dir="auto">terraform state rm</code> on the resource. Then remove the resource from the Terraform files, or replace its order attributes with <code dir="auto">ovh_service_name</code> of another server. Otherwise the next apply orders a new server. End the rental of the server in the OVHcloud manager.</p>
+<div class="sl-heading-wrapper level-h4"><h4 id="lost-orders">Lost orders</h4><a class="sl-anchor-link" href="#lost-orders"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Lost orders”</span></a></div>
+<p>An apply can lose an order before Terraform saves it: Terraform or the computer stops during the checkout, or the answer of the checkout gets lost. The cart of the order then stays checked out, with the description <code dir="auto">hopbox_server &lt;ovh_order_key&gt;</code>, for 7 days. The next create finds it and fails with <code dir="auto">an earlier apply checked out the OVHcloud cart &lt;cart ID&gt; for the ovh_order_key "&lt;key&gt;"</code>. It does not order again.</p>
+<p>Find the order of that cart in the OVHcloud manager, under the orders of the account. Then set its ID in the Terraform files, and apply:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="hcl"><code><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#C5E478;--1:#3B61B0">ovh_order_id </span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#C5E478;--1:#3B61B0"> </span><span style="--0:#F78C6C;--1:#AA0982">123456789</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="  ovh_order_id = 123456789"><div></div></button></div></figure></div>
+<p>The create follows that order. To order a new server instead, give another <code dir="auto">ovh_order_key</code>. An order lost more than 7 days ago has no cart left. Check the orders of the account before you apply again.</p>
+<p>The first refresh after the setup of the server finished deletes the cart of the order, because the state now holds the order. While the setup is pending, the cart stays. So a create beside the resource, such as with <code dir="auto">create_before_destroy</code>, finds the cart and refuses to order again.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="update">Update</h3><a class="sl-anchor-link" href="#update"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Update”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Change</th>
+<th>What the provider does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">bundle.sha256</code></td>
+<td>It puts the bundle on the server, checks its sha256, and runs <code dir="auto">hopboxd upgrade --bundle &lt;file&gt; --sha256 &lt;sha256&gt; --json</code> in a transient unit under <code dir="auto">systemd-run --wait</code>. Then it removes the bundle and sets <code dir="auto">version</code>. The machines keep running (<a href="/reference/hopboxd/#upgrade">hopboxd.md</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">labels</code></td>
+<td><code dir="auto">SetServerLabels</code>, through the admin API, or through <code dir="auto">hopboxd admin server set-labels</code> on the first server.</td>
+</tr>
+<tr>
+<td><code dir="auto">domain</code></td>
+<td><code dir="auto">hopboxd admin config set --domain &lt;domain&gt;</code> on the first server.</td>
+</tr>
+<tr>
+<td><code dir="auto">host_kernel.sha256</code></td>
+<td>If the server does not run the tested kernel, it installs the kernel and reboots. It first cordons the server, so no machine lands on it. It refuses a server that holds machines, because the reboot stops them. After the reboot, it waits until the server is <code dir="auto">ready</code>, and uncordons it. A server that an operator cordoned before stays cordoned, with a warning.</td>
+</tr>
+</tbody>
+</table>
+<p>A change of <code dir="auto">ovh_service_name</code>, <code dir="auto">pool</code>, or <code dir="auto">bootstrap</code> replaces the server: Terraform destroys it and creates it again. For a server with <code dir="auto">ovh_plan</code>, the plan refuses the replacement (<a href="#rules-that-keep-a-plan-from-ordering">Rules that keep a plan from ordering</a>).</p>
+<p>A role that a new release of the provider adds comes in place, on the first server only. For example, a first server from before the release that added the role <code dir="auto">edge</code> has the roles <code dir="auto">control</code>, <code dir="auto">node</code>, and <code dir="auto">dns</code>. The next plan updates it with the role <code dir="auto">edge</code>. The update makes a token for the server and the new roles alone with <code dir="auto">hopboxd admin enrollment-token create --server &lt;server_id&gt; --roles &lt;new roles&gt;</code>. It runs <code dir="auto">hopboxd install --roles &lt;every role&gt; --json</code> with the token, and waits until the server is <code dir="auto">ready</code>. The server keeps its ID (<a href="/reference/enrollment/#add-roles-to-an-enrolled-server">enrollment.md</a>). A role never goes: a plan that drops one fails with <code dir="auto">A role cannot go</code>. A plan that adds a role to another server fails with <code dir="auto">Roles of a node</code>.</p>
+<p>The provider keeps its own cordon of a reboot in the private state of the resource. A step after the cordon can fail, such as the reboot, the wait for <code dir="auto">ready</code>, or the uncordon. The error then ends with <code dir="auto">The server &lt;id&gt; stays cordoned. Run hopboxd admin server uncordon &lt;id&gt;, or apply again</code>. Terraform keeps the old state, so the next apply plans the same update. That update first lifts the cordon of the provider. A refresh or an update that finds the server uncordoned forgets that cordon. So after you uncordon by hand, a later cordon of yours stays.</p>
+<p>An import and <code dir="auto">terraform state rm</code> lose the private state, and so an open cordon of the provider. After either one, run <code dir="auto">hopboxd admin server get &lt;id&gt;</code> on the first server. If <code dir="auto">cordoned</code> is <code dir="auto">true</code> and no operator cordoned the server, run <code dir="auto">hopboxd admin server uncordon &lt;id&gt;</code>.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="delete">Delete</h3><a class="sl-anchor-link" href="#delete"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Delete”</span></a></div>
+<p>A delete of a server that never enrolled, after a failed create, changes nothing on the server and gives a warning. Otherwise it takes these steps:</p>
+<ol>
+<li>It reads the server from the install. A server that the install does not know, or a decommissioned one, goes straight to step 4.</li>
+<li>It refuses a server that holds machines, stopped ones included: <code dir="auto">the server &lt;id&gt; holds &lt;n&gt; machines. Delete them first</code>. The drain that moves machines comes in phase 2.</li>
+<li>On the first server, it refuses while another server of the install is not decommissioned, because the first server runs the control role. Then it calls <code dir="auto">DecommissionServer</code> (<a href="/reference/admin-api/#decommissionserver">admin-api.md</a>).</li>
+<li>It runs <code dir="auto">systemctl disable --now hopboxd.service</code> on the server. If that fails, the delete still succeeds, with a warning.</li>
+</ol>
+<p>The first server needs SSH with the pinned host key for each step, because the provider reaches its admin API over SSH. Another server goes out through the admin API. If the provider cannot log in to it, the decommission still happens, and a warning says that <code dir="auto">hopboxd</code> did not stop.</p>
+<p>The OVHcloud server stays rented, and its disks stay as they are, also a server that the provider ordered. To use it again, create a <code dir="auto">hopbox_server</code> for it with <code dir="auto">ovh_service_name</code>, which reinstalls it.</p>
+<p>The delete of an ordered server whose setup did not finish refuses. So Terraform cannot order a second server in its place (<a href="#an-order-that-is-not-delivered-in-time">An order that is not delivered in time</a>).</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="read">Read</h3><a class="sl-anchor-link" href="#read"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Read”</span></a></div>
+<p>Each refresh reads the server from the OVHcloud API. A service name that the account no longer rents removes the resource from the state. For a server with <code dir="auto">ovh_plan</code>, the refresh fails instead with <code dir="auto">the server &lt;name&gt; that this resource ordered is no longer in the OVHcloud account</code>. Without the server in the state, the next plan orders a new server.</p>
+<p>A create can fail before the enrollment. Its state then has no <code dir="auto">server_id</code>. The refresh keeps such a state as it is, so Terraform can destroy the server and create it again.</p>
+<p>Then the refresh reads the server from the install. It uses SSH on the first server and the admin API on the others. It sets <code dir="auto">labels</code>, <code dir="auto">pool</code>, and <code dir="auto">version</code> from the install. On the first server, it also sets <code dir="auto">domain</code> from <code dir="auto">hopboxd admin config get</code>. So the plan shows a real change of the domain. If the install does not answer, the refresh keeps the state as it was, with a warning.</p>
+<p>The install can lose a server that is not the first one, or decommission it. The refresh then removes that server from the state. For a server with <code dir="auto">ovh_plan</code>, the refresh fails instead, and says how to set up the same OVHcloud server again with <code dir="auto">ovh_service_name</code>. The first server never leaves the state this way. A new create reinstalls the server, and that erases the control store of the whole install. So the refresh fails with <code dir="auto">the first server &lt;id&gt; is decommissioned or unknown to its install, but Terraform did not destroy it</code>. To accept a new install, run <code dir="auto">terraform state rm</code> on the resource, and apply.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="import">Import</h3><a class="sl-anchor-link" href="#import"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Import”</span></a></div>
+<div class="expressive-code"><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="sh"><code><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">terraform</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">import</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">hopbox_server.first</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">ns1234567.ip-198-51-100.eu</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="terraform import hopbox_server.first ns1234567.ip-198-51-100.eu"><div></div></button></div></figure></div>
+<p>The import takes the OVHcloud service name. The refresh after it logs in with <code dir="auto">ssh_private_key</code> as <code dir="auto">debian</code>, then as <code dir="auto">root</code>, and pins the host key. It reads the release in <code dir="auto">/opt/hopbox/current</code>, the roles of <code dir="auto">/etc/hopbox/hopboxd.toml</code>, and the server ID from the certificate of the server. It reads only the certificate, never the private key. A server with the role <code dir="auto">control</code> imports with <code dir="auto">bootstrap = true</code>, and the refresh reads its <code dir="auto">domain</code> from the install.</p>
+<p>An import of a server that the provider ordered works the same way. It cannot recover the order attributes. If the Terraform files have <code dir="auto">ovh_plan</code>, the first apply after the import writes the order attributes into the state. That apply changes nothing on the server. From then on, the rules of an ordered server apply.</p>
+<p>An import cannot recover <code dir="auto">bundle</code>, <code dir="auto">host_kernel</code>, or <code dir="auto">admin_api_key</code>. The next plan shows an update of <code dir="auto">bundle</code> from your Terraform files. If the file name of the bundle names the version that the server runs, the apply does not upgrade. The state of an imported first server has no <code dir="auto">admin_api_key</code>.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="host-key-trust">Host key trust</h3><a class="sl-anchor-link" href="#host-key-trust"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Host key trust”</span></a></div>
+<p>The provider trusts the host key of the first login after a reinstall, and of the first login of an import. This is trust on first use: no other source tells the provider the key of the new server. From then on, it accepts only the pinned key, and it asks the server for the key type of the pin.</p>
+<p>The risk is a machine that sits between the provider and the server at that first login. Such a machine can play the server. It then gets the commands of the install, the bundle, and the hash of the first admin API key. For a server that is not the first one, it also gets an enrollment token. That token works once, for 1 hour, and only against a control role with the CA in the token. It never gets the private key of the operator, because SSH never sends it. To lower the risk, check <code dir="auto">ssh_host_key</code> against the console of the server in the OVHcloud manager after the first apply.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="timeouts">Timeouts</h3><a class="sl-anchor-link" href="#timeouts"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Timeouts”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Limit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The reinstall task</td>
+<td>2 hours, polled every 30 s</td>
+</tr>
+<tr>
+<td>The first SSH login</td>
+<td>30 minutes, tried every 10 s</td>
+</tr>
+<tr>
+<td>The reboot into the host kernel</td>
+<td>20 minutes</td>
+</tr>
+<tr>
+<td><code dir="auto">ready</code> after the install</td>
+<td>5 minutes, polled every 2 s</td>
+</tr>
+<tr>
+<td>Each OVHcloud API call</td>
+<td>1 minute</td>
+</tr>
+<tr>
+<td>The delivery of an order</td>
+<td>2 hours, polled every minute</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="errors">Errors</h3><a class="sl-anchor-link" href="#errors"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Errors”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">Give ovh_service_name, the service name of an OVHcloud dedicated server that the account rents, or ovh_plan to order a new one.</code></td>
+<td>Neither <code dir="auto">ovh_service_name</code> nor <code dir="auto">ovh_plan</code> is set.</td>
+</tr>
+<tr>
+<td><code dir="auto">Give ovh_service_name to adopt a server that the account rents, or ovh_plan to order a new one, not both.</code></td>
+<td>Both are set.</td>
+</tr>
+<tr>
+<td><code dir="auto">An order with ovh_plan needs &lt;attribute&gt;.</code></td>
+<td><code dir="auto">ovh_plan</code> without <code dir="auto">ovh_datacenter</code>, <code dir="auto">ovh_options</code>, or <code dir="auto">ovh_order_key</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">&lt;attribute&gt; goes only with ovh_plan, which orders a new server.</code></td>
+<td>An order attribute with <code dir="auto">ovh_service_name</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">The provider does not know the datacenter "&lt;value&gt;". It knows ...</code></td>
+<td>An <code dir="auto">ovh_datacenter</code> that is not in the list.</td>
+</tr>
+<tr>
+<td><code dir="auto">the order key "&lt;value&gt;" must have 1 to 63 characters ...</code></td>
+<td>A bad <code dir="auto">ovh_order_key</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">ovh_order_id must be the ID of an OVHcloud order, a number above 0.</code></td>
+<td>A bad <code dir="auto">ovh_order_id</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">ovh_max_price must be a price above 0.</code></td>
+<td>A bad <code dir="auto">ovh_max_price</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">the cart &lt;cart ID&gt; has no price with tax to compare with ovh_max_price. No order was made</code></td>
+<td>The checkout preview has no price with tax, or no currency, and <code dir="auto">ovh_max_price</code> is set.</td>
+</tr>
+<tr>
+<td><code dir="auto">the cart costs &lt;price&gt; with tax, above ovh_max_price &lt;value&gt; &lt;currency&gt;. No order was made</code></td>
+<td>The checkout costs more than <code dir="auto">ovh_max_price</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">The order of a server cannot change</code></td>
+<td>A change of an order attribute after the create.</td>
+</tr>
+<tr>
+<td><code dir="auto">The change orders a new server</code></td>
+<td>A change of <code dir="auto">pool</code>, <code dir="auto">bootstrap</code>, or <code dir="auto">ovh_service_name</code> on a server with <code dir="auto">ovh_plan</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">two hopbox_server resources have the ovh_order_key "&lt;key&gt;". Give each one its own key</code></td>
+<td>Two resources with one key in one run of Terraform.</td>
+</tr>
+<tr>
+<td><code dir="auto">another apply orders with the ovh_order_key "&lt;key&gt;" now, in the cart &lt;cart ID&gt; ...</code></td>
+<td>Another apply makes an order with the same key at the same time, for example from another Terraform state. No order was made. Give each resource its own key.</td>
+</tr>
+<tr>
+<td><code dir="auto">the ovh_options of the plan &lt;plan&gt;: ...</code></td>
+<td>An option that the plan does not have, two options of an exclusive family, a mandatory family without an option, or a <code dir="auto">hardraid-</code> storage option. No order was made.</td>
+</tr>
+<tr>
+<td><code dir="auto">the order of the plan &lt;plan&gt; needs the config &lt;label&gt;, which the provider does not set</code></td>
+<td>A plan that needs a config that the provider does not know. No order was made.</td>
+</tr>
+<tr>
+<td><code dir="auto">&lt;bundle or host_kernel&gt;: &lt;file&gt; has the sha256 &lt;got&gt;, not &lt;want&gt;</code></td>
+<td>A local file that differs from its <code dir="auto">sha256</code>, before an order. No order was made.</td>
+</tr>
+<tr>
+<td><code dir="auto">an earlier apply checked out the OVHcloud cart &lt;cart ID&gt; for the ovh_order_key "&lt;key&gt;" ...</code></td>
+<td>An order that an earlier apply lost. See <a href="#lost-orders">Lost orders</a>.</td>
+</tr>
+<tr>
+<td><code dir="auto">check out the cart &lt;cart ID&gt;: ... If OVHcloud made the order anyway, the next apply finds the cart and does not order again</code></td>
+<td>The checkout failed, or its answer got lost.</td>
+</tr>
+<tr>
+<td><code dir="auto">the order &lt;id&gt; is not delivered after &lt;time&gt; ...</code></td>
+<td>OVHcloud did not deliver the server in 2 hours. The message adds <code dir="auto">Pay it in the OVHcloud manager</code> for an order that is <code dir="auto">notPaid</code>, and asks for the documents for an order that is <code dir="auto">documentsRequested</code>. See <a href="#an-order-that-is-not-delivered-in-time">An order that is not delivered in time</a>.</td>
+</tr>
+<tr>
+<td><code dir="auto">the order &lt;id&gt; is cancelled at OVHcloud, so no server comes from it ...</code></td>
+<td>OVHcloud or the account cancelled the order. Run <code dir="auto">terraform state rm</code> on the resource. The next apply orders a new server.</td>
+</tr>
+<tr>
+<td><code dir="auto">the setup of the server of the OVHcloud order &lt;id&gt; did not finish, so the provider keeps the resource ...</code></td>
+<td>A delete of an ordered server whose setup did not finish, such as the replacement of a tainted resource. Run <code dir="auto">terraform untaint</code> on the resource and apply. To give the server up, run <code dir="auto">terraform state rm</code>, and remove the resource or its order attributes from the Terraform files.</td>
+</tr>
+<tr>
+<td><code dir="auto">the server &lt;name&gt; that this resource ordered is no longer in the OVHcloud account ...</code></td>
+<td>The account no longer rents an ordered server. Run <code dir="auto">terraform state rm</code> on the resource to order a new one.</td>
+</tr>
+<tr>
+<td><code dir="auto">the server &lt;id&gt; (&lt;name&gt;) that this resource ordered is decommissioned or unknown to its install ...</code></td>
+<td>The install lost an ordered server that is not the first one. Run <code dir="auto">terraform state rm</code> on the resource, and give <code dir="auto">ovh_service_name</code> of the same server to set it up again.</td>
+</tr>
+<tr>
+<td><code dir="auto">The first server of an install (bootstrap = true) needs the domain of the install.</code></td>
+<td><code dir="auto">bootstrap = true</code> without <code dir="auto">domain</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">Only the first server of an install (bootstrap = true) takes the domain.</code></td>
+<td><code dir="auto">domain</code> without <code dir="auto">bootstrap</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">In this release, the first server has the roles control, node, dns, edge, and every other server has the role node.</code></td>
+<td>Another list in <code dir="auto">roles</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">the sha256 "&lt;value&gt;" is not 64 lowercase hex digits</code></td>
+<td>A bad <code dir="auto">sha256</code> in <code dir="auto">bundle</code> or <code dir="auto">host_kernel</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">the source "&lt;value&gt;" is a URL, but only https URLs work</code></td>
+<td>A <code dir="auto">source</code> with <code dir="auto">http://</code> or another scheme.</td>
+</tr>
+<tr>
+<td><code dir="auto">the provider has no OVHcloud credentials. Set OVH_APPLICATION_KEY, OVH_APPLICATION_SECRET, and OVH_CONSUMER_KEY</code></td>
+<td>The environment has no OVHcloud credentials.</td>
+</tr>
+<tr>
+<td><code dir="auto">the provider has no SSH key. Set ssh_private_key in the provider block, or HOPBOX_SSH_PRIVATE_KEY</code></td>
+<td>No <code dir="auto">ssh_private_key</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">a server that is not the first one needs the admin API: set install_url and admin_api_key ...</code></td>
+<td>A server without <code dir="auto">bootstrap</code>, and no admin API.</td>
+</tr>
+<tr>
+<td><code dir="auto">ovh: GET /dedicated/server/&lt;name&gt;: HTTP 404 Client::NotFound: ...</code></td>
+<td>The account does not rent the server.</td>
+</tr>
+<tr>
+<td><code dir="auto">ovh: the task &lt;id&gt; (reinstallServer) of the server &lt;name&gt; ended with the status &lt;status&gt;: ...</code></td>
+<td>The reinstall failed at OVHcloud.</td>
+</tr>
+<tr>
+<td><code dir="auto">the disk group &lt;n&gt; sits behind the hardware RAID controller "&lt;name&gt;", and hopbox tests only software RAID</code></td>
+<td>A server with hardware RAID.</td>
+</tr>
+<tr>
+<td><code dir="auto">remote: the host key of the server is not the pinned one: ...</code></td>
+<td>The server shows another host key than <code dir="auto">ssh_host_key</code>. Either it was reinstalled outside Terraform, or a machine sits between you and the server. Check the key before you do anything else. To accept a reinstall of a server that is not the first one, taint the resource. For the first server, run <code dir="auto">terraform state rm</code> on the resource and apply. For a server with <code dir="auto">ovh_plan</code>, first replace the order attributes with <code dir="auto">ovh_service_name</code> of the same server. Otherwise the taint or the new create orders a new server.</td>
+</tr>
+<tr>
+<td><code dir="auto">the server runs &lt;os&gt; &lt;version&gt;, but hopbox tests only Debian 13 ...</code></td>
+<td>The reinstall installed another OS.</td>
+</tr>
+<tr>
+<td><code dir="auto">/var/lib/hopbox is on XFS without reflinks, and it holds files, so the provider does not make it again</code></td>
+<td>Files in a data dir without reflinks.</td>
+</tr>
+<tr>
+<td><code dir="auto">the host kernel package is &lt;package&gt; &lt;version&gt; for &lt;arch&gt;, but the provider installs linux-image-6.18.57-hopbox1 6.18.57-1 for amd64</code></td>
+<td>The wrong package in <code dir="auto">host_kernel</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">&lt;file&gt; has the sha256 &lt;got&gt;, not &lt;want&gt;</code></td>
+<td>A file on the server differs from its <code dir="auto">sha256</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">the server booted &lt;release&gt; after the install of 6.18.57-hopbox1. Check the GRUB default on the server</code></td>
+<td>GRUB booted another kernel.</td>
+</tr>
+<tr>
+<td><code dir="auto">read the IP addresses of the server &lt;name&gt;: ...</code></td>
+<td>The OVHcloud API did not give the IP blocks of the server. The create stops before the reinstall.</td>
+</tr>
+<tr>
+<td><code dir="auto">the server &lt;name&gt; holds none of its IP addresses &lt;blocks&gt; on a network interface</code></td>
+<td>No <code dir="auto">/32</code> or <code dir="auto">/128</code> block of the server is on a network interface after the reinstall.</td>
+</tr>
+<tr>
+<td><code dir="auto">write the bootstrap config: ...</code></td>
+<td>The provider cannot write <code dir="auto">/etc/hopbox/hopboxd.toml</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">the server &lt;id&gt; did not become ready: ...</code></td>
+<td>The server did not send a heartbeat in 5 minutes. Read <code dir="auto">journalctl -u hopboxd</code> on the server.</td>
+</tr>
+<tr>
+<td><code dir="auto">the server &lt;id&gt; holds &lt;n&gt; machines. Delete them first ...</code></td>
+<td>A delete of a server with machines.</td>
+</tr>
+<tr>
+<td><code dir="auto">the server &lt;id&gt; runs &lt;release&gt; and holds &lt;n&gt; machines. The install of the host kernel reboots it, so delete the machines first</code></td>
+<td>A change of <code dir="auto">host_kernel</code> on a server with machines that does not run the tested kernel.</td>
+</tr>
+<tr>
+<td><code dir="auto">the first server &lt;id&gt; is decommissioned or unknown to its install, but Terraform did not destroy it. ...</code></td>
+<td>Someone decommissioned the first server outside Terraform. Run <code dir="auto">terraform state rm</code> on the resource to accept a new install, which erases the server. For a server with <code dir="auto">ovh_plan</code>, the error says <code dir="auto">that this resource ordered</code> and gives the service name: replace the order attributes with <code dir="auto">ovh_service_name</code> of the same server before you apply, or the apply orders a new server. A <code dir="auto">terraform destroy</code> can also decommission the server and then lose the answer. Then the next destroy fails on this error at its refresh. Run <code dir="auto">terraform destroy -refresh=false</code> to finish the destroy, or <code dir="auto">terraform state rm</code> on the resource.</td>
+</tr>
+<tr>
+<td><code dir="auto">log in to the first server &lt;name&gt; to decommission it: remote: the host key of the server is not the pinned one: ... run terraform state rm on the resource</code></td>
+<td>A delete of a first server that someone reinstalled outside Terraform. Its install is gone. For a server with <code dir="auto">ovh_plan</code>, the error adds that the order attributes must give way to <code dir="auto">ovh_service_name</code> before the next apply.</td>
+</tr>
+<tr>
+<td><code dir="auto">/var/lib/hopbox-provider is not a dir of root with mode 0700. Remove it</code></td>
+<td>Another user made the work dir of the provider.</td>
+</tr>
+<tr>
+<td><code dir="auto">the first server runs the control role of the install, and the servers &lt;ids&gt; still belong to it. Destroy them first</code></td>
+<td>A delete of the first server before the others.</td>
+</tr>
+</tbody>
+</table>
+<p>A failed script on the server gives <code dir="auto">the script exited with status &lt;n&gt;:</code> and the end of its error output. A connection that breaks during a script gives <code dir="auto">remote: the connection broke: ...</code>. The provider resumes an upload after it (<a href="#uploads">Uploads</a>), and fails every other step.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="commands-of-the-binary">Commands of the binary</h2><a class="sl-anchor-link" href="#commands-of-the-binary"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Commands of the binary”</span></a></div>
+<p>Terraform starts the binary without arguments. So <code dir="auto">serve</code> is the default command.</p>
+<div class="expressive-code"><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="sh"><code><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">terraform-provider-hopbox</span><span style="--0:#D6DEEB;--1:#403F53"> [serve] [--debug]</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">terraform-provider-hopbox</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">version</span><span style="--0:#D6DEEB;--1:#403F53"> [--json]</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="terraform-provider-hopbox [serve] [--debug]terraform-provider-hopbox version [--json]"><div></div></button></div></figure></div>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">serve</code></td>
+<td>Serves the provider to Terraform over the plugin protocol. It is the default command. When a person starts it outside Terraform, it prints a note that the binary is a plugin, and exits with status 1.</td>
+</tr>
+<tr>
+<td><code dir="auto">version</code></td>
+<td>Prints the version of the provider. See <a href="/reference/version/">version.md</a>.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="flags-of-serve">Flags of serve</h3><a class="sl-anchor-link" href="#flags-of-serve"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Flags of serve”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">--debug</code></td>
+<td>bool</td>
+<td><code dir="auto">false</code></td>
+<td>Serves the provider in debug mode, for a Go debugger such as <code dir="auto">dlv</code>. The provider prints a <code dir="auto">TF_REATTACH_PROVIDERS</code> value. Set that value in the environment of Terraform, and Terraform then uses the running provider.</td>
+</tr>
+<tr>
+<td><code dir="auto">-h</code>, <code dir="auto">--help</code></td>
+<td>bool</td>
+<td><code dir="auto">false</code></td>
+<td>Prints the help and exits.</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="expressive-code"><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="sh"><code><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">terraform-provider-hopbox</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">--debug</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="terraform-provider-hopbox --debug"><div></div></button></div></figure></div>
+<p>The provider reports the version from the <code dir="auto">version</code> command to Terraform.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="exit-status">Exit status</h2><a class="sl-anchor-link" href="#exit-status"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Exit status”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>The command succeeded.</td>
+</tr>
+<tr>
+<td>1</td>
+<td>The command failed, or <code dir="auto">serve</code> ran outside Terraform.</td>
+</tr>
+<tr>
+<td>80</td>
+<td>The command line is not valid, for example an unknown command or flag.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h2"><h2 id="tests">Tests</h2><a class="sl-anchor-link" href="#tests"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Tests”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Where it runs</th>
+<th>What it checks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">internal/tfprovider/ovh</code></td>
+<td><code dir="auto">make test</code></td>
+<td>The signature of a known example, and each call against a fake OVHcloud API in <code dir="auto">ovh/ovhtest</code>. The fake checks the keys, the timestamp, and the signature as the real API does.</td>
+</tr>
+<tr>
+<td><code dir="auto">internal/tfprovider/remote</code></td>
+<td><code dir="auto">make test</code></td>
+<td>The host key pin, the login users, and scripts with their input and exit status, against an SSH server in the test.</td>
+</tr>
+<tr>
+<td><code dir="auto">internal/tfprovider/hostsetup</code></td>
+<td><code dir="auto">make test</code></td>
+<td>The scripts of each step, and that no token or private key appears in them.</td>
+</tr>
+<tr>
+<td><code dir="auto">TestResumeAfterADroppedUpload</code></td>
+<td><code dir="auto">make test-linux</code></td>
+<td>The upload scripts with a real <code dir="auto">sh</code>, as root in a private mount namespace. A dropped upload goes on in the background, and a slow resume runs beside it. The resume waits for the lock, appends the rest, and the old script removes nothing.</td>
+</tr>
+<tr>
+<td><code dir="auto">TestInstallKernelPinsTheRelease</code></td>
+<td><code dir="auto">make test-linux</code></td>
+<td>The kernel step of the create, as root in a private mount namespace, with stubs of <code dir="auto">dpkg -i</code> and <code dir="auto">update-grub</code>. The GRUB pin names the kernel release <code dir="auto">6.18.57-hopbox1</code>, not the package version <code dir="auto">6.18.57-1</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">TestCreateBootstrap</code>, <code dir="auto">TestCreateNode</code>, <code dir="auto">TestCreateRefuses</code>, <code dir="auto">TestUpdate</code>, <code dir="auto">TestRemove</code>, <code dir="auto">TestRead</code></td>
+<td><code dir="auto">make test</code></td>
+<td>The flow of the resource against the fake OVHcloud API and a fake server.</td>
+</tr>
+<tr>
+<td><code dir="auto">TestProvisionOrders</code>, <code dir="auto">TestProvisionRefusesBeforePaying</code>, <code dir="auto">TestProvisionFindsALostOrder</code>, <code dir="auto">TestProvisionDeletesAStaleCart</code>, <code dir="auto">TestProvisionWaitsForTheDelivery</code>, <code dir="auto">TestProvisionCancelledOrder</code>, <code dir="auto">TestReadKeepsAnOrderedServer</code>, <code dir="auto">TestReadKeepsAnOrderedNode</code>, <code dir="auto">TestRemoveRefusesAPendingOrder</code>, <code dir="auto">TestOrderKeyTakenForTheRun</code>, <code dir="auto">TestOrderRefusesASecondCartOfTheKey</code>, <code dir="auto">TestLostOrderAfterTheCartExpired</code></td>
+<td><code dir="auto">make test</code></td>
+<td>The order flow against the fake OVHcloud API, which sells plans from a stock, checks each cart, and can lose the answer of a checkout. Each test counts the orders, so that no path orders twice. No test calls the real OVHcloud API.</td>
+</tr>
+<tr>
+<td><code dir="auto">TestOrderedServerLifecycle</code>, <code dir="auto">TestOrderedServerResumes</code>, <code dir="auto">TestPendingOrderBlocksASecondCreate</code>, <code dir="auto">TestOrderFollowPlan</code></td>
+<td><code dir="auto">make test</code></td>
+<td>Terraform orders a server, updates it, refuses the changes that order again, imports it, and destroys it. Over the plugin protocol: a tainted order whose delete refuses, and an untaint that goes on with the same order. A second create beside a pending order refuses to order.</td>
+</tr>
+<tr>
+<td><code dir="auto">TestServerResourceLifecycle</code>, <code dir="auto">TestServerResourceValidation</code></td>
+<td><code dir="auto">make test</code></td>
+<td>Terraform itself runs a create, an update, an import, and a destroy, and plans bad Terraform files. They need the <code dir="auto">terraform</code> binary on <code dir="auto">PATH</code>, or in <code dir="auto">TF_ACC_TERRAFORM_PATH</code>. Without it, terraform-plugin-testing downloads one.</td>
+</tr>
+<tr>
+<td><code dir="auto">TestInstallOverSSH</code></td>
+<td><code dir="auto">make test-provider</code>, and the CI job <code dir="auto">install</code></td>
+<td>The scripts of the provider over real SSH, in a Debian 13 container with systemd and sshd. The test covers the key swap and the data dir without reflinks. It covers the refusal of a wrong kernel package, and the install and enrollment of a first server, with <code dir="auto">dns.listen</code> and the public addresses. It also covers a call with the first admin API key, the labels, an import, an upgrade, and the decommission. The container runs the kernel of the host, so the test does not reboot. A real run on the <a href="/reference/preflight/#the-tested-server">tested server</a> covers the reboot. The test does not pass on an Arm Mac with Docker Desktop. Its VM has no <code dir="auto">/dev/kvm</code>, so the preflight check of the install fails. Under the amd64 emulation, the system services of the container fail to start, such as sshd. Run it on a Linux host for amd64 with KVM.</td>
+</tr>
+<tr>
+<td><code dir="auto">TestAccServer</code></td>
+<td>by hand, with <code dir="auto">TF_ACC=1</code></td>
+<td>A create and a destroy on a real OVHcloud server that the account rents, with the credentials of the owner. No test orders a real server, because an order costs money. It erases the server. So the test skips unless <code dir="auto">HOPBOX_ACC_ERASE</code> names the same server as <code dir="auto">HOPBOX_ACC_SERVICE_NAME</code>. It also needs <code dir="auto">HOPBOX_ACC_DOMAIN</code>, <code dir="auto">HOPBOX_ACC_BUNDLE</code>, <code dir="auto">HOPBOX_ACC_BUNDLE_SHA256</code>, <code dir="auto">HOPBOX_ACC_KERNEL</code>, <code dir="auto">HOPBOX_ACC_KERNEL_SHA256</code>, the OVHcloud variables, and <code dir="auto">HOPBOX_SSH_PRIVATE_KEY</code>.</td>
+</tr>
+</tbody>
+</table>
+</div><footer class="sl-flex astro-fzngq47q"><div class="meta sl-flex astro-fzngq47q"></div><div class="pagination-links print:hidden astro-7jhddma2" dir="ltr"><a href="/reference/guest-link/" rel="prev" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-7jhddma2">Previous<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">Guest link</span></span></a><a href="/reference/version/" rel="next" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-7jhddma2">Next<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">The version command</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>
