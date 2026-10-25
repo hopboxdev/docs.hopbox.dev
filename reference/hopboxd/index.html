@@ -522,7 +522,7 @@
 <p>If <code dir="auto">run</code> gets <code dir="auto">SIGINT</code> or <code dir="auto">SIGTERM</code> while a unit starts, it stops the units that started, in the reverse order, and exits with status 0.</p>
 <p>If a unit fails to start, <code dir="auto">run</code> stops the units that started, in the reverse order, and exits with status 1. If a unit fails while it runs, for example when the API listener stops, <code dir="auto">run</code> stops every unit and exits with status 1. A supervisor such as systemd then restarts <code dir="auto">hopboxd</code>. A crash of Postgres alone does not stop <code dir="auto">hopboxd</code>, because the supervisor of Postgres restarts it (<a href="/reference/postgres/#start-restart-and-stop">postgres.md</a>).</p>
 <div class="sl-heading-wrapper level-h3"><h3 id="leader-jobs">Leader jobs</h3><a class="sl-anchor-link" href="#leader-jobs"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Leader jobs”</span></a></div>
-<p>The leader of the control role runs these jobs. The sweep runs once at the start of each term of the leader, and then every 10 minutes. The check of silent servers runs every 5 s. The auto-delete of idle machines runs every minute. The check of silent servers skips the first 20 s of each term. In that time, the servers can dial again after a stop of the control role, before the leader marks any of them.</p>
+<p>The leader of the control role runs these jobs. The sweep runs once at the start of each term of the leader, and then every 10 minutes. The check of silent servers runs every 5 s. The auto-delete of idle machines and the return of SSH host keys run every minute. The check of silent servers skips the first 20 s of each term. In that time, the servers can dial again after a stop of the control role, before the leader marks any of them.</p>
 <table>
 <thead>
 <tr>
@@ -576,6 +576,11 @@
 <td>Auto-delete of idle machines</td>
 <td>1 min</td>
 <td>Deletes each machine whose last recorded use is older than its auto-delete timeout plus 1 minute. A use is recorded at most once a minute (<a href="/reference/machine-api/#auto-delete">machine-api.md</a>). It takes at most 100 machines per run, the oldest last use first. The next run takes the rest. It skips the machines of a suspended org. Each machine goes in a transaction of its own, which checks the leader lease, so a leader that lost its lease deletes nothing. The delete reserves the name and the SSH port, as <code dir="auto">DeleteMachine</code> does. Each delete gets an audit entry <code dir="auto">machine.delete</code> with the actor <code dir="auto">system</code> and the detail <code dir="auto">reason</code> (<code dir="auto">auto-delete</code>), and the log record <code dir="auto">deleted an idle machine</code>. A machine whose delete fails gets the log record <code dir="auto">deleting an idle machine failed</code>, and the job goes on with the next one. Only a lost leader lease stops the run.</td>
+</tr>
+<tr>
+<td>Return of SSH host keys</td>
+<td>1 min</td>
+<td>Gives each SSH host key that a route record claims, and that no record lists, to the oldest record that claims it. A report that lets a key go gives it at once, but it skips a record that another transaction locks, and a <code dir="auto">hopboxd</code> of v0.1.0 gives no key. It takes at most 100 keys per run, and each key goes in a transaction of its own. The write needs no leader lease, because a report makes the same write. Each key gets the log record <code dir="auto">a machine got an SSH host key that no other machine holds</code> at level info, with <code dir="auto">machine</code> (<a href="/reference/control-store/#route_host_keys">control-store.md</a>).</td>
 </tr>
 </tbody>
 </table>
@@ -2890,6 +2895,11 @@
 <td><code dir="auto">deleting idle machines failed</code></td>
 <td>warn</td>
 <td><code dir="auto">component=leader</code>, <code dir="auto">err</code>. The auto-delete run stopped, for example after the loss of the leader lease.</td>
+</tr>
+<tr>
+<td><code dir="auto">giving back SSH host keys failed</code></td>
+<td>warn</td>
+<td><code dir="auto">component=leader</code>, <code dir="auto">err</code>. The return of SSH host keys stopped. The next run takes the rest.</td>
 </tr>
 <tr>
 <td><code dir="auto">marking silent servers unresponsive failed</code></td>

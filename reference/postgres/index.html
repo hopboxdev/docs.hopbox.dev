@@ -814,31 +814,12 @@
 <tr>
 <td><code dir="auto">LockKeyRetiredGuestHostKeys</code></td>
 <td><code dir="auto">0x686f70626f780017</code></td>
-<td>Retired, do not reuse. Up to v0.1.0, a report of <code dir="auto">running</code> with SSH host keys took it as a transaction lock. Each host key now has its own lock in the class <code dir="auto">LockClassGuestHostKey</code>. A <code dir="auto">hopboxd</code> of v0.1.0 can still take this key during an upgrade.</td>
+<td>Retired, do not reuse. Up to v0.1.0, a report of <code dir="auto">running</code> with SSH host keys took it as an exclusive transaction lock. A <code dir="auto">hopboxd</code> of v0.1.0 can still take it during an upgrade. So in the release after v0.1.0, each report takes it as a shared transaction lock, and migration <code dir="auto">0041_route_host_keys.sql</code> takes it exclusively for its fill. The table <code dir="auto">route_host_keys</code> now keeps each key in one route record (<a href="/reference/control-store/#route_host_keys">control-store.md</a>). The release after that drops the shared lock.</td>
 </tr>
 <tr>
 <td><code dir="auto">LockKeyNodeSubnets</code></td>
 <td><code dir="auto">0x686f70626f780018</code></td>
 <td>A transaction lock of each claim of a node subnet. So two nodes that get their first machine at once never pick the same subnet (<a href="/reference/control-store/#node_subnets">control-store.md</a>).</td>
-</tr>
-</tbody>
-</table>
-<p>A lock of one object, such as one SSH host key, uses the two-key form <code dir="auto">pg_advisory_xact_lock(class, key)</code>. Postgres keeps this form apart from the keys above. The same file holds each class. Each class has <code dir="auto">hop</code> in ASCII in its top three bytes, then an 8-bit purpose number. A test checks the prefix.</p>
-<table>
-<thead>
-<tr>
-<th>Class</th>
-<th>Value</th>
-<th>Key</th>
-<th>Holder</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code dir="auto">LockClassGuestHostKey</code></td>
-<td><code dir="auto">0x686f7001</code></td>
-<td>The FNV-1a hash of the SSH host key, from <code dir="auto">GuestHostKeyLock</code></td>
-<td>A report of <code dir="auto">running</code> with SSH host keys takes a transaction lock of each key, in the order of the hashes. So two reports with one key cannot both pass the check that no other route record holds it. Reports with other keys do not wait. Two keys with one hash share a lock, so a report waits for the other one (<a href="/reference/executor-protocol/#machinereport">executor-protocol.md</a>).</td>
 </tr>
 </tbody>
 </table>
