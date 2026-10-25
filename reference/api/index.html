@@ -497,7 +497,7 @@
 <td><code dir="auto">auth.approve_device</code></td>
 <td><code dir="auto">AuthService.ApproveDevice</code></td>
 <td>the install</td>
-<td><code dir="auto">session</code></td>
+<td><code dir="auto">session</code>, with a sign-in within the last 10 minutes (<a href="/reference/sessions/#recent-sign-in">sessions.md</a>)</td>
 </tr>
 <tr>
 <td><code dir="auto">auth.poll_device_authorization</code></td>
@@ -1118,6 +1118,11 @@ For an org, the service layer reads the role of the caller in the org before the
 </tr>
 <tr>
 <td>A caller that the policy refuses</td>
+<td><code dir="auto">permission_denied</code></td>
+<td>403</td>
+</tr>
+<tr>
+<td>A call that needs a recent sign-in, from a session whose sign-in is more than 10 minutes old (<a href="/reference/sessions/#recent-sign-in">sessions.md</a>). The message starts with <code dir="auto">permission denied: this action needs a sign-in within the last 10 minutes</code>, and the error has the detail <code dir="auto">hopbox.v1.RecentSignInRequired</code>. Other callers of such a call get the result of its policy check, without the detail.</td>
 <td><code dir="auto">permission_denied</code></td>
 <td>403</td>
 </tr>

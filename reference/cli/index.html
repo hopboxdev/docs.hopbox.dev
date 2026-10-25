@@ -486,7 +486,7 @@
 <li>It calls <code dir="auto">StartDeviceAuthorization</code> with the client name <code dir="auto">hopbox CLI on &lt;host name of the laptop&gt;</code>, cut to 64 characters.</li>
 <li>It prints the user code and the page <code dir="auto">https://&lt;domain&gt;/device?code=&lt;user code&gt;</code> to stderr.</li>
 <li>It polls <code dir="auto">PollDeviceAuthorization</code> after each interval of the response, 5 s at first. A <code dir="auto">SLOW_DOWN</code> answer makes the interval longer.</li>
-<li>When a person approves the code in the console, the poll gets the CLI tokens. The CLI stores them in <code dir="auto">credentials.toml</code>, sets the URL of the profile, and makes the profile active.</li>
+<li>When a person approves the code in the console, the poll gets the CLI tokens. The CLI stores them in <code dir="auto">credentials.toml</code>, sets the URL of the profile, and makes the profile active. The approval needs a sign-in to the console within the last 10 minutes (<a href="/reference/sessions/#recent-sign-in">sessions.md</a>).</li>
 <li>If the profile had a CLI sign-in before, the CLI ends it with <code dir="auto">SignOut</code> and its old tokens.</li>
 </ol>
 <p>Each command then calls the API with the access token. The CLI refreshes the tokens with <code dir="auto">RefreshCLIToken</code> in two cases:</p>

@@ -129,7 +129,7 @@
 <tr>
 <td><code dir="auto">/signin?return_to=&lt;path&gt;</code></td>
 <td>no</td>
-<td>Shows the sign-in methods of the install. A browser with a live session goes on to <code dir="auto">return_to</code>, or <code dir="auto">/</code>.</td>
+<td>Shows the sign-in methods of the install. A browser with a live session goes on to <code dir="auto">return_to</code>, or <code dir="auto">/</code>. With <code dir="auto">again=1</code>, the page stays for a live session too, with the title “Sign in again” (<a href="#sign-in">Sign-in</a>).</td>
 <td><code dir="auto">GetInstallInfo</code>, <code dir="auto">GetAccount</code>, <code dir="auto">RequestMagicLink</code></td>
 </tr>
 <tr>
@@ -153,7 +153,7 @@
 <tr>
 <td><code dir="auto">/device?code=&lt;user code&gt;</code></td>
 <td>yes</td>
-<td>Approves a sign-in of the hopbox CLI (<a href="/reference/credentials/">credentials.md</a>). It shows the name, the IP address, and the start of the client. It asks the person to compare the code with the code in the terminal (RFC 8628 section 5.4). It approves exactly that client. Without <code dir="auto">code</code>, it asks for the code.</td>
+<td>Approves a sign-in of the hopbox CLI (<a href="/reference/credentials/">credentials.md</a>). It shows the name, the IP address, and the start of the client. It asks the person to compare the code with the code in the terminal (RFC 8628 section 5.4). It approves exactly that client. Without <code dir="auto">code</code>, it asks for the code. The approval needs a sign-in within the last 10 minutes. After an older sign-in, the page says so, and its button “Sign in again” opens <code dir="auto">/signin?again=1&amp;return_to=/device?code=&lt;code&gt;</code>.</td>
 <td><code dir="auto">GetDeviceAuthorization</code>, <code dir="auto">ApproveDevice</code></td>
 </tr>
 <tr>
@@ -224,13 +224,18 @@
 <div class="sl-heading-wrapper level-h2"><h2 id="sign-in">Sign-in</h2><a class="sl-anchor-link" href="#sign-in"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Sign-in”</span></a></div>
 <p>The sign-in page asks <code dir="auto">GetInstallInfo</code> for the sign-in methods:</p>
 <ul>
-<li>For GitHub and Google, it shows a link to <code dir="auto">/auth/&lt;provider&gt;/start?return_to=&lt;path&gt;</code>. The browser opens that link, and the API sends it on to the provider (<a href="/reference/oauth/#start">oauth.md</a>). The console encodes the path once with <code dir="auto">encodeURIComponent</code>, and never decodes it (<a href="/reference/oauth/#return-path">oauth.md</a>).</li>
-<li>For magic links, it shows an email form, which calls <code dir="auto">RequestMagicLink</code>. After the call, it says that the link went to the email. With <code dir="auto">mail_to_files</code> in <code dir="auto">GetInstallInfo</code>, it says instead that the install writes each email to a file on its server. An operator then reads the link with <code dir="auto">sudo hopboxd admin mail show</code> (<a href="/reference/mail/#read-the-mail">mail.md</a>).</li>
+<li>
+<p>For GitHub and Google, it shows a link to <code dir="auto">/auth/&lt;provider&gt;/start?return_to=&lt;path&gt;</code>. The browser opens that link, and the API sends it on to the provider (<a href="/reference/oauth/#start">oauth.md</a>). The console encodes the path once with <code dir="auto">encodeURIComponent</code>, and never decodes it (<a href="/reference/oauth/#return-path">oauth.md</a>).</p>
+</li>
+<li>
+<p>For magic links, it shows an email form, which calls <code dir="auto">RequestMagicLink</code>. After the call, it says that the link went to the email. With <code dir="auto">mail_to_files</code> in <code dir="auto">GetInstallInfo</code>, it says instead that the install writes each email to a file on its server. An operator then reads the link with <code dir="auto">sudo hopboxd admin mail show</code> (<a href="/reference/mail/#read-the-mail">mail.md</a>).</p>
+</li>
+<li>
+<p>Without a method, it shows the command that makes a first-admin login link: <code dir="auto">sudo hopboxd admin login-link --email &lt;email&gt;</code>.</p>
+</li>
 </ul>
 <p>A magic link or a login link opens its own page, often in a new tab. So the sign-in page keeps its return path in the local storage of the browser for 15 minutes, the lifetime of a link. The page of the link then opens that path.</p>
-<ul>
-<li>Without a method, it shows the command that makes a first-admin login link: <code dir="auto">sudo hopboxd admin login-link --email &lt;email&gt;</code>.</li>
-</ul>
+<p>Some steps need a recent sign-in, at most 10 minutes old (<a href="/reference/sessions/#recent-sign-in">sessions.md</a>). In the console, the approval of a CLI sign-in on <code dir="auto">/device</code> is such a step. A call of such a step with an older session fails with <code dir="auto">permission_denied</code> and the detail <code dir="auto">RecentSignInRequired</code>. The page then links to <code dir="auto">/signin?again=1&amp;return_to=&lt;path of the page&gt;</code>. With <code dir="auto">again=1</code>, the sign-in page shows the methods to a person who is signed in already. The new sign-in replaces the session of the browser, and the page of the step opens again.</p>
 <p>The console checks a return path with the rules of the server. A good path has these properties:</p>
 <ul>
 <li>It is one path on the install, with at most 512 characters.</li>
@@ -485,9 +490,10 @@
 <li>Checks that a click on the backdrop and the Escape key close a dialog, and that a click or a drag inside it does not.</li>
 <li>Creates an org, and finds it in the org switcher.</li>
 <li>Signs out, and checks that each page then asks for a sign-in.</li>
-<li>Opens <code dir="auto">/device?code=&lt;code&gt;</code> without a session, signs in with a second login link, comes back to the code, and approves it. After the run, the Go test polls the device sign-in and gets the CLI tokens of the account.</li>
+<li>Opens <code dir="auto">/device?code=&lt;code&gt;</code> without a session, signs in with a second login link, comes back to the code, and approves it.</li>
+<li>Makes the session 11 minutes old, and opens <code dir="auto">/device?code=&lt;code&gt;</code> with a second code. The approval fails and asks for a sign-in again. The suite signs in with a third login link, comes back to the code, and approves it. After the run, the Go test polls both device sign-ins and gets the CLI tokens of the account.</li>
 <li>Checks that no page error and no policy violation happened.</li>
 </ol>
-<p><code dir="auto">TestConsole</code> gives Playwright the install in env vars, so you do not set them yourself. <code dir="auto">HOPBOX_E2E_PROXY</code> is the proxy that serves the console and the API. <code dir="auto">HOPBOX_E2E_LOGIN_LINK</code> and <code dir="auto">HOPBOX_E2E_LOGIN_LINK_2</code> are the two login links. <code dir="auto">HOPBOX_E2E_USER_CODE</code> is the code of the device sign-in. <code dir="auto">HOPBOX_E2E_TEAM_ORG</code> is the ID of the org <code dir="auto">Team</code>, where <code dir="auto">bob@example.org</code> is a member of the account of the suite. The others are <code dir="auto">HOPBOX_E2E_URL</code>, <code dir="auto">HOPBOX_E2E_SSH_KEY</code>, and <code dir="auto">HOPBOX_E2E_MACHINE</code>.</p>
+<p><code dir="auto">TestConsole</code> gives Playwright the install in env vars, so you do not set them yourself. <code dir="auto">HOPBOX_E2E_PROXY</code> is the proxy that serves the console and the API. <code dir="auto">HOPBOX_E2E_LOGIN_LINK</code>, <code dir="auto">HOPBOX_E2E_LOGIN_LINK_2</code>, and <code dir="auto">HOPBOX_E2E_LOGIN_LINK_3</code> are the three login links. <code dir="auto">HOPBOX_E2E_USER_CODE</code> and <code dir="auto">HOPBOX_E2E_USER_CODE_2</code> are the codes of the two device sign-ins. A <code dir="auto">POST</code> to <code dir="auto">HOPBOX_E2E_AGE_SESSIONS</code>, a URL on loopback, makes every session of the install 11 minutes old. <code dir="auto">HOPBOX_E2E_TEAM_ORG</code> is the ID of the org <code dir="auto">Team</code>, where <code dir="auto">bob@example.org</code> is a member of the account of the suite. The others are <code dir="auto">HOPBOX_E2E_URL</code>, <code dir="auto">HOPBOX_E2E_SSH_KEY</code>, and <code dir="auto">HOPBOX_E2E_MACHINE</code>.</p>
 <p>Without <code dir="auto">HOPBOX_TEST_CONSOLE</code>, <code dir="auto">TestConsole</code> skips. <code dir="auto">make test-console</code> sets the variable, and <code dir="auto">make test</code> does not, so <code dir="auto">make test</code> needs no browser. The test needs <code dir="auto">corepack pnpm install</code>, a build of the console, and the Chromium of Playwright: run <code dir="auto">web/apps/console/node_modules/.bin/playwright install chromium</code> once. If one of them is missing, the test fails.</p>
 </div><footer class="sl-flex astro-fzngq47q"><div class="meta sl-flex astro-fzngq47q"></div><div class="pagination-links print:hidden astro-7jhddma2" dir="ltr"><a href="/reference/mcp/" rel="prev" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-7jhddma2">Previous<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">The MCP server</span></span></a><a href="/reference/go-client/" rel="next" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-7jhddma2">Next<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">Go client</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>
