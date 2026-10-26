@@ -2,7 +2,7 @@
 
 > The Prometheus metrics listener of hopboxd and every metric that it serves.
 
-`hopboxd` serves Prometheus metrics on a loopback listener. The code is in `internal/obs`, `internal/api`, `internal/placement`, `internal/node/executor`, `internal/node/netcfg`, and `internal/dns`.
+`hopboxd` serves Prometheus metrics on a loopback listener. The code is in `internal/obs`, `internal/api`, `internal/placement`, `internal/node/executor`, `internal/node/netcfg`, `internal/mesh`, and `internal/dns`.
 
 ## Listener
 
@@ -163,6 +163,22 @@ A server with the node role serves the traffic counters of each machine with net
 
 ```sh
 curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(machine|node_network)_'
+```
+
+## Metrics of the mesh
+
+A server with the mesh device `hbm0` serves these metrics ([the mesh](/reference/mesh/index.html.md#metrics)). The device reads the counters of WireGuard at each scrape. A server outside the mesh serves none of them. The label `server` is the ID of the peer.
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_mesh_peers` | gauge | none | The peers of the mesh device. |
+| `hopbox_mesh_peer_last_handshake_seconds` | gauge | `server` | The Unix time of the last WireGuard handshake with the peer, or 0 before the first one. |
+| `hopbox_mesh_peer_receive_bytes_total` | counter | `server` | The bytes that the mesh device got from the peer. |
+| `hopbox_mesh_peer_transmit_bytes_total` | counter | `server` | The bytes that the mesh device sent to the peer. |
+| `hopbox_mesh_repairs_total` | counter | none | The changes to the mesh device after it lost a part outside `hopboxd` ([the mesh](/reference/mesh/index.html.md#a-restart-a-stop-and-a-reboot)). |
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_mesh_'
 ```
 
 ## Metrics of the process

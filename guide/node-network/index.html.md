@@ -2,7 +2,7 @@
 
 > How to check the network of a machine: its address, its egress, what it cannot reach, and its traffic counters.
 
-This guide follows the network of one machine on a server with the node role. It finds the address of the machine, checks its egress and the destinations that it cannot reach, and reads its traffic counters. [The node network](/reference/node-network/index.html.md) describes each part.
+This guide follows the network of one machine on a server with the node role. It finds the address of the machine, checks its egress and the destinations that it cannot reach, and reads its traffic counters. On an install with several servers on the vRack, it also checks the mesh between the servers. [The node network](/reference/node-network/index.html.md) and [the mesh](/reference/mesh/index.html.md) describe each part.
 
 ## What you need
 
@@ -126,6 +126,45 @@ hopbox_machine_inbound_packets_total{machine="01a1610f-26b5-71c8-abbd-93be11b94c
 
 The inbound counter grows only with the connections that the node opened, such as a request through the machine URL. The answers to the egress of the machine do not count. Each heartbeat tells the control role which machines got inbound traffic, so these machines count as used for their auto-delete timeout.
 
+## Check the mesh
+
+This part needs an install with several servers on the vRack: each server has one address in `172.31.0.0/16`. A server without such an address, such as a server alone on ks, stays out of the mesh. Its log then has `this server has no address on the vRack, so it stays out of the mesh`.
+
+Each enrolled server on the vRack has the WireGuard device `hbm0`, with a mesh address in `10.239.0.0/16`. The admin API shows the mesh part of each server. Run this command on a control server, with the ID of a server from `sudo hopboxd admin server list`:
+
+```sh
+sudo hopboxd admin server get <id> | grep '^mesh_'
+```
+
+```text
+mesh_address	10.239.0.2
+mesh_vrack_address	172.31.0.12
+mesh_public_key	gN65BkIKy1eCE9pP1wdc8ROUtkHLF2PfAqYdO0JbmjI=
+```
+
+On a server of the mesh, `wg show` lists one peer for each other server, at its vRack address. Install the tool first with `sudo apt install wireguard-tools`. `hopboxd` does not need it.
+
+```sh
+sudo wg show hbm0
+ip route show proto 104
+```
+
+A node has the subnets of the other nodes as routes over `hbm0`. An edge server has the subnet of each node. From an edge server, a TCP connection to a machine on another node goes over the mesh. Run this command on an edge server, with the address of a machine that listens on port 8000:
+
+```sh
+curl -m 3 http://10.240.0.1:8000/
+```
+
+The machine sees the mesh address of the edge server as the source. A server without the edge role cannot open a connection to a machine, and the command times out there.
+
+On the vRack itself, only WireGuard packets on UDP port 51820 go between the servers of the mesh, apart from the control channel. The metrics of the mesh show the handshake and the bytes of each peer:
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_mesh_'
+```
+
+A restart or an upgrade of `hopboxd` keeps the device, so the mesh traffic goes on. Do not manage `hbm0` with another tool, such as `wg-quick`. `hopboxd` sets the device back within 2 s.
+
 ## Docker on the server
 
 A server with Docker drops each forwarded packet that Docker does not know, so the egress of the machines times out. Accept the tap devices in the chain `DOCKER-USER`:
@@ -153,3 +192,6 @@ sudo systemctl restart hopboxd
 | The egress of a machine times out, but the edge reaches the machine | A host with Docker drops forwarded packets in the chain `FORWARD` of iptables. Accept the tap devices in the chain `DOCKER-USER`, as in [Docker on the server](#docker-on-the-server), or run the node without Docker. |
 | The log of `hopboxd` has `the nftables table inet hopbox_node lost a part outside hopboxd` | Something flushed the ruleset, such as a restart of `nftables.service`. `hopboxd` installed the table again. Find what flushed it, and stop it. |
 | `no capacity: the subnet ... has no free machine address` | The node holds 4094 machines and held addresses. Delete a machine, and wait 5 minutes for the hold of its address. |
+| The log of `hopboxd` has `this server has more than one address on the vRack, so it stays out of the mesh` | Two addresses of the server are in `172.31.0.0/16`. Remove the address that the provider did not set. |
+| The log of `hopboxd` has `cannot set up the mesh device. The next check tries again` | The kernel has no module `wireguard`, or another device has the name `hbm0`. Load the module with `sudo modprobe wireguard`, or remove the other device. |
+| `wg show hbm0` lists no peer | The control role sends the mesh only to a server whose heartbeat carries its part of the mesh. Check that `hopboxd admin server get` shows `mesh_address` for the server. |

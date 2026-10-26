@@ -122,7 +122,7 @@ First, `run` starts the metrics listener. Then it starts the units of the contro
 | 8 | `dns` | The DNS role ([the DNS role](/reference/dns/index.html.md)). At its start, it opens a UDP socket and a TCP socket at each address of `dns.listen`. So a port that another program holds fails the start. It answers `SERVFAIL` to each query until the first zones arrive over the control channel. | 1 s |
 | 9 | `edge` | The edge role ([the edge role](/reference/edge/index.html.md)). At its start, it opens the HTTPS listener at `edge.https_listen` and the HTTP listener at `edge.http_listen`. So a port that another program holds fails the start. It refuses each TLS handshake until the first certificate arrives over the control channel. At its stop, it closes the listeners, gives the open requests 2 s, and then ends the rest, also the streams and the WebSockets. | 5 s |
 | 10 | `machines` | The node role. It first sets up the node network: it replaces the nftables table `inet hopbox_node` with one that holds the tap devices of the machines that run, and turns on IPv4 forwarding ([the node network](/reference/node-network/index.html.md#at-the-start-and-at-the-stop-of-hopboxd)). Until its stop, it watches the table, and installs it again after a flush. It adds the guest kernel of `vmm.kernel` to the kernel cache. It starts the executors of the machines with the Firecracker driver ([the node executor](/reference/executor/index.html.md), [the Firecracker driver](/reference/firecracker-driver/index.html.md)). It also starts the store of the machine logs ([Machine logs](/reference/machine-logs/index.html.md)). At its start, the executors attach to the microVMs that run. At its stop, the executors end their actions at once. Every microVM keeps running, because it runs in a systemd unit of its own. The unit of each machine runs [stop-guest](#stop-guest) at its stop, and is ordered before `hopboxd.service`. | 10 s |
-| 11 | `channel` | Keeps the control channel of this server to one of `channel.control_urls`, over mutual TLS. After a lost or refused channel, it dials the next URL ([the control channel](/reference/control-channel/index.html.md#the-agent)). If the control role runs in the same `hopboxd`, the channel still goes over TLS ([the control channel](/reference/control-channel/index.html.md)). It hands the zones that the control role sends to the `dns` unit. It hands the certificate, the routes, and the access changes to the `edge` unit. It hands the specs of the machines to the executors of the `machines` unit, and the machine streams to its handlers. Its start returns at once. Before the enrollment of the server, it waits for the identity in `<data_dir>/server`. So `run` can start before [enroll](#enroll). | 5 s |
+| 11 | `channel` | Keeps the control channel of this server to one of `channel.control_urls`, over mutual TLS. After a lost or refused channel, it dials the next URL ([the control channel](/reference/control-channel/index.html.md#the-agent)). If the control role runs in the same `hopboxd`, the channel still goes over TLS ([the control channel](/reference/control-channel/index.html.md)). It hands the zones that the control role sends to the `dns` unit. It hands the certificate, the routes, and the access changes to the `edge` unit. It hands the specs of the machines to the executors of the `machines` unit, and the machine streams to its handlers. It also keeps the mesh device `hbm0` ([the mesh](/reference/mesh/index.html.md)). It checks the device at its start, before the first heartbeat, and then every 2 s. It hands the device the mesh that the control role sends. Its start returns after that first check. Before the enrollment of the server, it waits for the identity in `<data_dir>/server`. So `run` can start before [enroll](#enroll). | 5 s |
 
 Units 1 to 7 belong to the control role and unit 8 to the DNS role. Unit 9 belongs to the edge role and unit 10 to the node role. Unit 11 runs on a server that enrolls: one with a role other than `control`. Unit 12, `systemd notify`, runs for every role:
 
@@ -134,7 +134,7 @@ On a server with only the node role, `run` starts the metrics listener, the `mac
 
 `run` stops the units in the reverse order. First it stops `systemd notify`, then `channel`, `machines`, `edge`, and `dns`. Then it stops the units of the control role, from the admin socket to Postgres, and last the metrics listener. So no unit stops before a unit that needs it. A server can have the control role and a role that enrolls. Then the control role sees the channel of its own server close before its listeners stop. Each stop has the timeout in the table:
 
-- The `channel` unit closes the control channel and waits for its loop to end.
+- The `channel` unit closes the control channel and waits for its loop and the checks of the mesh device to end. It keeps the device `hbm0`, so the mesh traffic goes on while `hopboxd` is down.
 - The `machines` unit ends the actions of the executors, closes the guest links, and closes the files of the machine logs. It stops no microVM, and keeps the node network.
 - The `edge` unit closes its listeners and gives the open requests 2 s. Then it cancels the rest: the streams, the WebSockets, and the long calls. At the timeout, it closes every connection ([the edge role](/reference/edge/index.html.md)).
 - The `dns` unit closes its sockets and waits for the queries in flight.
@@ -1025,6 +1025,7 @@ Prints the server with the ID `<id>`. It calls `GetServer` ([the admin API](/ref
 - `hopboxd_version`, `kernel_release`, `cpu` (the arch, the vendor, and the model name), `cpu_template`, and `compatibility_class`
 - `cpu_threads`, `memory_bytes`, `disk_bytes`, `disk_free_bytes`, `machine_count`, and `allocations` and `actions` (their counts)
 - `last_heartbeat_time` (empty before the first heartbeat), `enroll_time`, `certificate_expire_time`, `version`, and `update_time`
+- `mesh_address`, `mesh_vrack_address`, and `mesh_public_key`: the part of the server in the mesh, empty for a server outside the mesh ([the mesh](/reference/mesh/index.html.md))
 
 Times are RFC 3339 in UTC. `state` is `ready`, `cordoned`, `unresponsive`, or `decommissioned`. `status` is `ok`, `degraded`, or empty before the first heartbeat.
 
@@ -1042,6 +1043,7 @@ The JSON object has these keys:
 - `allocations`: a list of objects with `machine_id`, `vcpus`, `memory_bytes`, and `disk_bytes`
 - `actions`: a list of objects with `machine_id`, `action`, and `start_time`
 - `last_heartbeat_time` (`null` before the first heartbeat), `enroll_time`, `certificate_expire_time`, `version`, and `update_time`
+- `mesh`: an object with `address`, `vrack_address`, and `public_key`, or `null` for a server outside the mesh
 
 Lists and the `labels` object are empty, never `null`. [The admin API](/reference/admin-api/index.html.md#server) describes each field.
 
@@ -1194,6 +1196,9 @@ enroll_time	2026-10-16T08:59:00Z
 certificate_expire_time	2026-11-15T08:59:00Z
 version	14
 update_time	2026-10-16T09:00:05Z
+mesh_address	10.239.0.2
+mesh_vrack_address	172.31.0.12
+mesh_public_key	gN65BkIKy1eCE9pP1wdc8ROUtkHLF2PfAqYdO0JbmjI=
 ```
 
 ### admin server cordon
@@ -1999,7 +2004,7 @@ The parts of the control role write their own records:
 - the control channels ([the control channel](/reference/control-channel/index.html.md))
 - the service layer ([the admin API](/reference/admin-api/index.html.md#rotatekek), [the admin API](/reference/admin-api/index.html.md#rewrapsealedvalues), [the sign-in, account, and audit API](/reference/auth-api/index.html.md#requestmagiclink))
 
-The `channel` unit writes the records of its side of the control channel with `component=node` ([the control channel](/reference/control-channel/index.html.md)). The DNS role writes its records with `component=dns` ([the DNS role](/reference/dns/index.html.md#logs)). The edge role writes its records with `component=edge` ([the edge role](/reference/edge/index.html.md)).
+The `channel` unit writes the records of its side of the control channel with `component=node` ([the control channel](/reference/control-channel/index.html.md)). It writes the records of the mesh device with `component=mesh` ([the mesh](/reference/mesh/index.html.md#logs)). The DNS role writes its records with `component=dns` ([the DNS role](/reference/dns/index.html.md#logs)). The edge role writes its records with `component=edge` ([the edge role](/reference/edge/index.html.md)).
 
 ## Exit status
 

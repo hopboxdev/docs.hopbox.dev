@@ -231,6 +231,7 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `server.attach_stream` | `ControlService.AttachStream` | the server that the stream was asked of | `server`, for its own server only |
 | `control.forward_stream` | `ControlPeerService.ForwardStream` ([the control channel](/reference/control-channel/index.html.md#streams-through-another-control-process)) | the install | `control` only |
 | `server.read_dns_zones` | a read of the DNS zones before a push on `ControlService.Channel` | the server of the caller | `server`, for its own server only, with a certificate that carries the role `dns` ([the control channel](/reference/control-channel/index.html.md#dns-zones)) |
+| `server.read_mesh_peers` | a read of the mesh before a push of `mesh_peers` | the server of the caller | `server`, for its own server only ([the control channel](/reference/control-channel/index.html.md#mesh-pushes)) |
 | `server.read_machine_specs` | a read of the machine specs before a push of `reconcile_machine` | the server of the caller | `server`, for its own server only |
 | `server.report_machine` | a `MachineReport` on `ControlService.Channel` | the server of the caller | `server`, for its own server only |
 | `server.read_edge_certificate` | a read of the certificate before a push of `edge_certificate` | the server of the caller | `server`, for its own server only, with a certificate that carries the role `edge` ([the control channel](/reference/control-channel/index.html.md#edge-pushes)) |

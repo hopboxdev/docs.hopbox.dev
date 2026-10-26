@@ -900,6 +900,15 @@ The message `Server` is one enrolled server, with the facts of its last heartbea
 | `certificate_expire_time` | `google.protobuf.Timestamp` | The end of the newest certificate of the server. |
 | `version` | int64 | The row version. It grows by 1 with each change, such as each heartbeat. |
 | `update_time` | `google.protobuf.Timestamp` | The time of the last change. |
+| `mesh` | `ServerMesh` | The part of the server in the mesh. Absent until the server reports the key of its WireGuard device, and for a server outside the mesh ([the mesh](/reference/mesh/index.html.md)). |
+
+The message `ServerMesh` has these fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `address` | string | The mesh address of the server, in `10.239.0.0/16`, for example `10.239.0.3`. |
+| `vrack_address` | string | The address of the server on the vRack, in `172.31.0.0/16`, for example `172.31.0.12`. |
+| `public_key` | string | The public key of the WireGuard device `hbm0` of the server, in base64, as `wg show` prints it. |
 
 The enum `ServerState` has these values:
 

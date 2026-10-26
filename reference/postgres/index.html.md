@@ -440,6 +440,7 @@ The file `internal/store/locks.go` holds every advisory lock key of hopbox. Each
 | `LockKeyRetiredGuestHostKeys` | `0x686f70626f780017` | Retired, do not reuse. Up to v0.1.0, a report of `running` with SSH host keys took it as an exclusive transaction lock. A `hopboxd` of v0.1.0 can still take it during an upgrade. So in the release after v0.1.0, each report takes it as a shared transaction lock, and migration `0041_route_host_keys.sql` takes it exclusively for its fill. The table `route_host_keys` now keeps each key in one route record ([Control store tables](/reference/control-store/index.html.md#route_host_keys)). The release after that drops the shared lock. |
 | `LockKeyNodeSubnets` | `0x686f70626f780018` | A transaction lock of each claim of a node subnet. So two nodes that get their first machine at once never pick the same subnet ([Control store tables](/reference/control-store/index.html.md#node_subnets)). |
 | `LockKeyReleaseImages` | `0x686f70626f780019` | A transaction lock of each register of the default image of a release at the start of the control role, around the check for an image of a newer release and the insert ([hopboxd](/reference/hopboxd/index.html.md#the-default-image-of-the-release)). |
+| `LockKeyMeshAddresses` | `0x686f70626f78001a` | A transaction lock of each claim of a mesh address. So two servers that join the mesh at once never pick the same address ([Control store tables](/reference/control-store/index.html.md#mesh_members)). |
 
 ### Queries
 

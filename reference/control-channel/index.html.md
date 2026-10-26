@@ -2,7 +2,7 @@
 
 > The control channel of a server: its messages, heartbeats, certificate renewal, the reverse-attach data streams and their windows, the machine streams of exec, file copy, and logs, server states, and logs.
 
-The control channel is the stream that each enrolled server keeps open to the control role. It carries the heartbeats of the server and the commands of the control role. This page covers the protocol `hopbox.cluster.v1.ControlService`, the heartbeat, the server states, the certificate renewal, the DNS zones, and the data streams, and the forwarding of data streams between control processes. The code is in `internal/control/channel` (the control side) and `internal/node` (the server side).
+The control channel is the stream that each enrolled server keeps open to the control role. It carries the heartbeats of the server and the commands of the control role. This page covers the protocol `hopbox.cluster.v1.ControlService`, the heartbeat, the server states, the certificate renewal, the DNS zones, the mesh, the data streams, and the forwarding of data streams between control processes. The code is in `internal/control/channel` (the control side) and `internal/node` (the server side).
 
 A server enrolls first ([Enrollment and the install PKI](/reference/enrollment/index.html.md)). Both calls of the channel run on the internal listener, over TLS 1.3 and HTTP/2, with the certificate of the server ([the internal listener](/reference/internal-listener/index.html.md)).
 
@@ -12,7 +12,7 @@ The server opens every connection. It opens `Channel` and keeps it open. When th
 
 On a server with the control role and a role that enrolls, the control role runs in the same `hopboxd` as the `channel` unit. The `channel` unit still connects over mutual TLS.
 
-Each server keeps one channel, whatever its roles. The node role, the DNS role, and the edge role use the same channel of their server. The DNS role gets its zones on it ([DNS zones](#dns-zones)). The edge role gets its certificate, its routes, and the access changes on it ([Edge pushes](#edge-pushes)). Today, `node`, `dns`, and `edge` are the roles that enroll.
+Each server keeps one channel, whatever its roles. The node role, the DNS role, and the edge role use the same channel of their server. The DNS role gets its zones on it ([DNS zones](#dns-zones)). The edge role gets its certificate, its routes, and the access changes on it ([Edge pushes](#edge-pushes)). The mesh device of the server gets its peers on it ([Mesh pushes](#mesh-pushes)). Today, `node`, `dns`, and `edge` are the roles that enroll.
 
 ## ControlService
 
@@ -30,6 +30,7 @@ Both calls need the certificate of a server. The policy lets a server act only f
 | `server.renew_certificate` | sign a new certificate | the same server |
 | `server.attach_stream` | open `AttachStream` | the server of which the control role asked the stream |
 | `server.read_dns_zones` | read the zones that the server serves, before a push of `dns_zones` | the same server, with a certificate that carries the role `dns` |
+| `server.read_mesh_peers` | read the mesh as the server sees it, before a push of `mesh_peers` | the same server |
 | `server.read_edge_certificate` | read the certificate of the install with its key, before a push of `edge_certificate` | the same server, with a certificate that carries the role `edge` |
 | `server.read_edge_routes` | read the routes of the machine URLs, before a push of `edge_routes` | the same server, with a certificate that carries the role `edge` |
 
@@ -61,6 +62,8 @@ Each message from the control role holds one of these fields:
 | `edge_routes` | `EdgeRoutes` | Every machine that a machine URL can name, with the target of each running one. Only a server with the edge role gets it. |
 | `edge_lease_renewals` | `EdgeLeaseRenewals` | The rest of the lease of each target, in place of routes that stay the same. Only a server with the edge role gets it. |
 | `edge_access_changed` | `EdgeAccessChanged` | A change of the access to machines. Only a server with the edge role gets it. |
+| `edge_ssh_keys` | `EdgeSSHKeys` | The keys of the SSH front door. Only a server with the edge role gets it. |
+| `mesh_peers` | `MeshPeers` | The mesh address of the server and the other servers of the mesh. Only a server whose heartbeat holds `mesh` gets it ([Mesh pushes](#mesh-pushes)). |
 
 A message without a known field ends the channel with `invalid_argument`. A server that gets a message that it does not know logs `the control plane sent a message that this hopboxd does not know. Upgrade hopboxd` and goes on.
 
@@ -94,6 +97,7 @@ The heartbeat holds these values.
 | `sequence` | uint64 | Numbers the heartbeats of one channel, from 1. | |
 | `executor` | bool | Tells that the server runs machine executors. | |
 | `leases` | repeated `MachineLease` | The machine leases that the executors hold. The control role renews them ([the executor protocol](/reference/executor-protocol/index.html.md#renewals)). | at most 4096 |
+| `mesh` | `MeshMember` | The part of the server in the mesh: the public key of its WireGuard device and its vRack address. It is absent on a server outside the mesh ([the mesh](/reference/mesh/index.html.md#which-servers-join)). | the key has 32 bytes. The address is an IPv4 address in `172.31.0.0/16`. A part that breaks this limit ends no channel: the control role records the heartbeat without it. |
 | `inbound_machines` | repeated string | The IDs of the machines of the server with inbound traffic since the last heartbeat. The control role sets `last_activity_at` of each machine of the server in this list, at most once a minute for each machine ([the node network](/reference/node-network/index.html.md#inbound-traffic-as-a-use)). The IDs of other servers change nothing. | at most 4096, each a UUID |
 
 `CPUFingerprint`:
@@ -213,6 +217,22 @@ These messages feed the edge role ([the edge role](/reference/edge/index.html.md
 `EdgeAccessChanged` has one field, `machine_id`. It names the one machine whose access changed, a UUID. Empty means every machine.
 
 `EdgeSSHKeys` holds the keys of the SSH front door ([the SSH front door](/reference/ssh-front-door/index.html.md#keys)). `host_key` is the PKCS #8 DER Ed25519 host key of the install. `client_key` is the PKCS #8 DER Ed25519 key with which the front door signs in to the machines. Only the mutual TLS of the channel protects them.
+
+### MeshMember, MeshPeers, and MeshPeer
+
+These messages carry the mesh ([the mesh](/reference/mesh/index.html.md)). Each `MeshPeers` replaces the one before it.
+
+| Message | Field | Type | Description |
+| --- | --- | --- | --- |
+| `MeshMember` | `public_key` | bytes | The public key of the WireGuard device `hbm0` of the server: 32 bytes. |
+| `MeshMember` | `vrack_address` | string | The IPv4 address of the server on the vRack, in `172.31.0.0/16`, such as `172.31.0.12`. |
+| `MeshPeers` | `address` | string | The mesh address of the server, in `10.239.0.0/16`, such as `10.239.0.3`. |
+| `MeshPeers` | `peers` | repeated `MeshPeer` | The other servers of the mesh that are not decommissioned, in the order of their mesh addresses. At most 4096. |
+| `MeshPeer` | `server_id` | string | The ID of the server, a UUID. |
+| `MeshPeer` | `public_key` | bytes | The public key of its WireGuard device: 32 bytes. |
+| `MeshPeer` | `endpoint` | string | Its vRack address and the UDP port `51820`, such as `172.31.0.12:51820`. |
+| `MeshPeer` | `allowed_ips` | repeated string | The prefixes that WireGuard sends to this peer, and takes from it ([the mesh](/reference/mesh/index.html.md#allowed-ips)). |
+| `MeshPeer` | `roles` | repeated string | The roles of the peer, sorted, such as `node` or `edge`. |
 
 ### AttachStreamRequest and AttachStreamResponse
 
@@ -382,6 +402,18 @@ For the routes, the control role reads them with `Service.EdgeRoutes`, under the
 Each heartbeat reads the routes again. The worker keeps the SHA-256 of the last routes that it sent on the channel, without the rest of each lease. If the routes did not change, it sends only `edge_lease_renewals`: the grant and the rest of the lease of each target. So a heartbeat costs a few bytes for each running machine, not the routes of the install. The edge acknowledges no routes, and can refuse a set. So after 11 sends of renewals, the worker sends the whole routes again: about once a minute. Either way, the lease of each target stays fresh at the edge. The machine leases last 30 s, and the heartbeats of the nodes renew them ([the executor protocol](/reference/executor-protocol/index.html.md)). At the send of either message, the control role takes two times from the lease of each target: the time since the read, and a tenth of the machine TTL, 3 s. So `lease_remaining` is the rest of the lease at the send, less 3 s, and at least 0. The edge counts it from the arrival on its own clock, and sends no traffic to the target after it. The clocks of the servers need not agree. A node can stop its renewals of the lease of a machine. Then the traffic of the machine stops at the edge within the lease, also without a change event.
 
 The agent hands each message to the edge role of its server (`node.Agent.Edge`). The edge role checks each one before it uses it ([the edge role](/reference/edge/index.html.md)). If the edge role refuses a message, the agent logs `the edge role refused a push of the control plane, and keeps what it has` at level error. The fields are `push` and `err`. The push is `certificate`, `routes`, `lease renewals`, `access change`, or `SSH keys`. The channel stays open. A server without the edge role that gets one of these messages logs `the control plane sent edge data to a server without the edge role` at level warn, with `push`, and drops it.
+
+## Mesh pushes
+
+A server joins the mesh with the field `mesh` of its heartbeats ([the mesh](/reference/mesh/index.html.md#how-a-server-joins)). The control role records that field in the transaction of the heartbeat. After each heartbeat with `mesh` that it records, the control role reads the mesh as that server sees it, under the policy action `server.read_mesh_peers`. The read gives the mesh address of the server, and every other server of the mesh that is not decommissioned. The control role keeps the SHA-256 of the last mesh that it sent on the channel. If the mesh differs, it sends `mesh_peers`. Otherwise, it sends nothing. So the first heartbeat of each channel sends the mesh, and a later heartbeat sends it only after a change.
+
+So a change of one server reaches each other server at the next recorded heartbeat of that server, within 5 s. Each control process reads the store, so this holds with several control processes too. One read runs at a time for each channel. A heartbeat that finds a read running skips its own read, and the next heartbeat reads again. A failed read logs `reading the mesh for a server failed. The next heartbeat tries again` at level warn. The channel stays open.
+
+The agent hands each mesh to the mesh device of its server (`node.Agent.Mesh`). If the device refuses a mesh, the agent logs `the mesh device refused the mesh of the control plane, and keeps the peers that it has` at level error, with the fields `address`, `peers`, and `err` ([the mesh](/reference/mesh/index.html.md#refused-mesh)). The channel stays open. A server without the device that gets a mesh logs `the control plane sent the mesh to a server outside the mesh` at level warn, and drops it.
+
+A heartbeat whose `mesh` holds the key of another server of the mesh is recorded without its part of the mesh. A full mesh range has the same effect on the heartbeat of a new server. The control role then logs `the server stays out of the mesh, or keeps its old key and vRack address there` at level error, with `component=service` and the fields `server` and `err`.
+
+A heartbeat whose `mesh` breaks its limit is recorded without its part of the mesh too, and the channel stays open. So a server of another release with another rule keeps its channel. The control role logs `the heartbeat has a bad part of the mesh, so the control plane records it without that part` at level warn, with `component=service` and the fields `server` and `err`.
 
 ## Data streams
 
@@ -593,6 +625,7 @@ The control side writes these records with `component=channel` and the field `se
 | `control channel closed` | info | `err`. The server went away, the listener stopped, a newer channel replaced this one, or `Hub.Disconnect` ended it. |
 | `recording a heartbeat failed` | warn | `err`. The channel stays open. |
 | `reading the dns zones of a server failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
+| `reading the mesh for a server failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
 | `the edge server gets no certificate yet` | info | `err`. The install has no certificate, or one of an old domain. |
 | `reading the certificate for an edge server failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
 | `reading the routes for an edge server failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
@@ -630,6 +663,8 @@ The server side writes these records with `component=node`:
 | `the control plane sent dns zones to a server without the dns role` | warn | `server` |
 | `the edge role refused a push of the control plane, and keeps what it has` | error | `server`, `push`, `err` |
 | `the control plane sent edge data to a server without the edge role` | warn | `server`, `push` |
+| `the mesh device refused the mesh of the control plane, and keeps the peers that it has` | error | `server`, `address`, `peers`, `err` |
+| `the control plane sent the mesh to a server outside the mesh` | warn | `server` |
 | `cannot refuse a stream` | warn | `stream` (the kind), `err` |
 | `cannot attach a stream` | warn | `stream` (the kind), `err` |
 | `the control plane sent a machine spec, but this server runs no machine executor` | warn | `server`. Once per channel. |

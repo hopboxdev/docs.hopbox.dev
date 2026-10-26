@@ -4408,9 +4408,40 @@ components:
           description: |-
             machine_count is the count of machines on the server that their executor has not deleted
              yet, stopped machines included. Their disks live on the server.
+        mesh:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.ServerMesh'
+          title: mesh
+          description: |-
+            mesh is the part of the server in the mesh. It is absent until the server reports the
+             public key of its WireGuard device, and on a server without an address on the vRack.
       title: Server
       additionalProperties: false
       description: Server is one enrolled server, with the facts of its last heartbeat.
+    hopbox.admin.v1.ServerMesh:
+      type: object
+      properties:
+        address:
+          type: string
+          title: address
+          description: address is the mesh address of the server, in 10.239.0.0/16, such as 10.239.0.3.
+        vrackAddress:
+          type: string
+          title: vrack_address
+          description: |-
+            vrack_address is the address of the server on the vRack, in 172.31.0.0/16, such as
+             172.31.0.12.
+        publicKey:
+          type: string
+          title: public_key
+          description: |-
+            public_key is the public key of the WireGuard device hbm0 of the server, in base64, as
+             wg show prints it.
+      title: ServerMesh
+      additionalProperties: false
+      description: |-
+        ServerMesh is the part of a server in the mesh: the WireGuard network of the servers of the
+         install over the vRack.
     hopbox.admin.v1.ServerState:
       type: string
       title: ServerState
