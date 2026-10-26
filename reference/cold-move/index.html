@@ -1,0 +1,823 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-toc data-has-sidebar class="astro-g6oqdoeg"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Cold move | hopbox docs</title><link rel="canonical" href="https://docs.hopbox.dev/reference/cold-move/"/><link rel="sitemap" href="/sitemap-index.xml"/><link rel="shortcut icon" href="/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.3.8"/><meta name="generator" content="Starlight v0.42.6"/><meta property="og:title" content="Cold move"/><meta property="og:type" content="article"/><meta property="og:url" content="https://docs.hopbox.dev/reference/cold-move/"/><meta property="og:locale" content="en"/><meta property="og:description" content="The cold move of a machine to another node. Its steps, and the disk listener on port 7444 of the mesh address. The stream and its digest, a resumed pull, a failed move, old copies, two releases, metrics, and logs."/><meta property="og:site_name" content="hopbox docs"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="The cold move of a machine to another node. Its steps, and the disk listener on port 7444 of the mesh address. The stream and its digest, a resumed pull, a failed move, old copies, two releases, metrics, and logs."/><meta name="theme-color" content="#0A0E0B"/><link rel="alternate" type="text/markdown" href="/reference/cold-move/index.html.md"/><script>
+  try {
+    if (localStorage.getItem('starlight-theme') === null) localStorage.setItem('starlight-theme', 'dark');
+  } catch {}
+  (() => {
+    let screenTheme;
+    addEventListener('beforeprint', () => {
+      screenTheme ??= document.documentElement.dataset.theme;
+      document.documentElement.dataset.theme = 'light';
+    });
+    addEventListener('afterprint', () => {
+      if (screenTheme) document.documentElement.dataset.theme = screenTheme;
+      screenTheme = undefined;
+    });
+  })();
+</script><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/_astro/print.ehPL0gv-.css" media="print"><link rel="stylesheet" href="/_astro/middleware.DMHFDR1B.css"><script type="module" src="/_astro/page.cNngjUgL.js"></script></head><body class="astro-g6oqdoeg"><a class="sl-skip-link astro-ktawktwe" href="#_top">Skip to content</a><div class="page sl-flex astro-vlwsw6sx"><header class="header astro-vlwsw6sx"><div class="header astro-qe7tu4yu"><div class="title-wrapper sl-flex astro-qe7tu4yu"><a href="/" class="site-title sl-flex astro-42muqipg"><img class="light:sl-hidden print:hidden astro-42muqipg" alt src="/_astro/logo-dark.BngW9lxq.svg" width="28" height="28"><img class="dark:sl-hidden print:block astro-42muqipg" alt src="/_astro/logo-light.CPSnkDKg.svg" width="28" height="28"><span class="astro-42muqipg" translate="no">hopbox docs</span></a></div><div class="sl-flex print:hidden astro-qe7tu4yu"><site-search class="astro-qe7tu4yu astro-yp365hkw" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"><button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-yp365hkw"><svg aria-hidden="true" class="astro-yp365hkw astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg><span class="sl-hidden md:sl-block astro-yp365hkw" aria-hidden="true">Search</span><kbd class="sl-hidden md:sl-flex astro-yp365hkw" style="display: none;"><kbd class="astro-yp365hkw">Ctrl</kbd><kbd class="astro-yp365hkw">K</kbd></kbd></button><dialog style="padding:0" aria-label="Search" class="astro-yp365hkw"><div class="dialog-frame sl-flex astro-yp365hkw"><button data-close-modal class="sl-flex md:sl-hidden astro-yp365hkw">Cancel</button><div class="search-container astro-yp365hkw"><div id="starlight__search" class="astro-yp365hkw"></div></div></div></dialog></site-search><script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script><script type="module" src="/_astro/Search.astro_astro_type_script_index_0_lang.g9hoxVJg.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-qe7tu4yu"><div class="sl-flex social-icons astro-qe7tu4yu"><a class="site-link astro-o2gh7vpa" href="https://hopbox.dev">hopbox.dev</a><a class="try astro-o2gh7vpa" href="https://dev.hopbox.dev">Try hopbox <span class="preview-tag astro-o2gh7vpa">PREVIEW</span></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script><script type="module">var e=`starlight-theme`,t=e=>e===`auto`||e===`dark`||e===`light`?e:`auto`,n=()=>t(typeof localStorage<`u`&&localStorage.getItem(e));function r(t){typeof localStorage<`u`&&localStorage.setItem(e,t===`light`||t===`dark`?t:``)}var i=()=>matchMedia(`(prefers-color-scheme: light)`).matches?`light`:`dark`;function a(e){StarlightThemeProvider.updatePickers(e),document.documentElement.dataset.theme=e===`auto`?i():e,r(e)}matchMedia(`(prefers-color-scheme: light)`).addEventListener(`change`,()=>{n()===`auto`&&a(`auto`)});var o=class extends HTMLElement{constructor(){super(),a(n()),this.querySelector(`select`)?.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&a(t(e.currentTarget.value))})}};customElements.define(`starlight-theme-select`,o);</script><script type="module">var e=class extends HTMLElement{constructor(){super();let e=this.querySelector(`select`);e&&(e.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=e.currentTarget.value)}),window.addEventListener(`pageshow`,t=>{if(!t.persisted)return;let n=e.querySelector(`option[selected]`)?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}};customElements.define(`starlight-lang-select`,e);</script></div></div></header><nav class="sidebar print:hidden astro-vlwsw6sx" aria-label="Main"><button popovertarget="starlight__sidebar" class="sl-menu-button sl-flex md:sl-hidden print:hidden astro-ibd3qwco"><svg aria-hidden="true" class="open-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-ibd3qwco astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg><span class="sr-only astro-ibd3qwco">Menu</span></button><script type="module">var e=class extends HTMLElement{constructor(){super();let e=matchMedia(`(min-width: 50em)`),t=()=>{this.popover=e.matches?null:`auto`};t(),e.addEventListener(`change`,()=>t()),this.addEventListener(`toggle`,({newState:e})=>this.trapFocus(e===`open`))}trapFocus(e){document.querySelectorAll(`.main-frame, .sl-skip-link`).forEach(t=>{t.toggleAttribute(`inert`,e)})}};customElements.define(`sl-sidebar-pane`,e);</script><sl-sidebar-pane popover id="starlight__sidebar" class="sidebar-pane astro-vlwsw6sx"><div class="sidebar-content sl-flex astro-vlwsw6sx"><sl-sidebar-state-persist data-hash="09rjdx9" class="astro-oblzz35h"><script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script><ul class="top-level astro-twzrdani"><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Guides</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Get started</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="1"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/guide/quickstart/" class="astro-twzrdani"><span class="astro-twzrdani">Try hopbox</span></a></li><li class="astro-twzrdani"><a href="/guide/install-cli/" class="astro-twzrdani"><span class="astro-twzrdani">Install the hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli/" class="astro-twzrdani"><span class="astro-twzrdani">Use the hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Use machines from the CLI</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Use hopbox</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="2"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/guide/ssh/" class="astro-twzrdani"><span class="astro-twzrdani">Reach a machine over SSH</span></a></li><li class="astro-twzrdani"><a href="/guide/exec-and-files/" class="astro-twzrdani"><span class="astro-twzrdani">Run commands and copy files</span></a></li><li class="astro-twzrdani"><a href="/guide/cli-prompt/" class="astro-twzrdani"><span class="astro-twzrdani">Work in the prompt of the CLI</span></a></li><li class="astro-twzrdani"><a href="/guide/console/" class="astro-twzrdani"><span class="astro-twzrdani">Use the console</span></a></li><li class="astro-twzrdani"><a href="/guide/orgs/" class="astro-twzrdani"><span class="astro-twzrdani">Work in a team org</span></a></li><li class="astro-twzrdani"><a href="/guide/env-vars/" class="astro-twzrdani"><span class="astro-twzrdani">Set env vars and secrets</span></a></li><li class="astro-twzrdani"><a href="/guide/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">Connect an AI agent (MCP)</span></a></li><li class="astro-twzrdani"><a href="/guide/typescript-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">Call the API from TypeScript</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Run an install</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="3"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/guide/install-on-ovhcloud/" class="astro-twzrdani"><span class="astro-twzrdani">Install on OVHcloud</span></a></li><li class="astro-twzrdani"><a href="/guide/install-debian/" class="astro-twzrdani"><span class="astro-twzrdani">Install on Debian</span></a></li><li class="astro-twzrdani"><a href="/guide/first-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">First sign-in on a new install</span></a></li><li class="astro-twzrdani"><a href="/guide/github-google-sign-in/" class="astro-twzrdani"><span class="astro-twzrdani">Sign in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/guide/admin-area/" class="astro-twzrdani"><span class="astro-twzrdani">Use the Admin area</span></a></li><li class="astro-twzrdani"><a href="/guide/pools-and-sizes/" class="astro-twzrdani"><span class="astro-twzrdani">Add pools and sizes</span></a></li><li class="astro-twzrdani"><a href="/guide/dns-role/" class="astro-twzrdani"><span class="astro-twzrdani">Run the DNS role</span></a></li><li class="astro-twzrdani"><a href="/guide/acme-certificate/" class="astro-twzrdani"><span class="astro-twzrdani">Get the wildcard certificate</span></a></li><li class="astro-twzrdani"><a href="/guide/machine-urls/" class="astro-twzrdani"><span class="astro-twzrdani">Open machine URLs</span></a></li><li class="astro-twzrdani"><a href="/guide/external-postgres/" class="astro-twzrdani"><span class="astro-twzrdani">Use an external Postgres</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Develop on a laptop</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="4"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/guide/run-hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">Run the control role</span></a></li><li class="astro-twzrdani"><a href="/guide/enroll-node/" class="astro-twzrdani"><span class="astro-twzrdani">Enroll the node role</span></a></li><li class="astro-twzrdani"><a href="/guide/machines/" class="astro-twzrdani"><span class="astro-twzrdani">Create and manage machines</span></a></li><li class="astro-twzrdani"><a href="/guide/firecracker-machines/" class="astro-twzrdani"><span class="astro-twzrdani">Run machines with Firecracker</span></a></li><li class="astro-twzrdani"><a href="/guide/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">Check the network of a machine</span></a></li></ul></details></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Reference</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="5"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">For users</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="6"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/reference/cli/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox CLI</span></a></li><li class="astro-twzrdani"><a href="/reference/mcp/" class="astro-twzrdani"><span class="astro-twzrdani">The MCP server</span></a></li><li class="astro-twzrdani"><a href="/reference/console/" class="astro-twzrdani"><span class="astro-twzrdani">Console</span></a></li><li class="astro-twzrdani"><a href="/reference/ts-sdk/" class="astro-twzrdani"><span class="astro-twzrdani">TypeScript SDK</span></a></li><li class="astro-twzrdani"><a href="/reference/go-client/" class="astro-twzrdani"><span class="astro-twzrdani">Go client</span></a></li><li class="astro-twzrdani"><a href="/reference/credentials/" class="astro-twzrdani"><span class="astro-twzrdani">Tokens and keys</span></a></li><li class="astro-twzrdani"><a href="/reference/domain-rules/" class="astro-twzrdani"><span class="astro-twzrdani">Domain rules</span></a></li><li class="astro-twzrdani"><a href="/reference/api/" class="astro-twzrdani"><span class="astro-twzrdani">The API server</span></a></li><li class="astro-twzrdani"><a href="/reference/auth-api/" class="astro-twzrdani"><span class="astro-twzrdani">The auth and audit API</span></a></li><li class="astro-twzrdani"><a href="/reference/org-api/" class="astro-twzrdani"><span class="astro-twzrdani">The org API</span></a></li><li class="astro-twzrdani"><a href="/reference/vars-api/" class="astro-twzrdani"><span class="astro-twzrdani">The env var API</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-api/" class="astro-twzrdani"><span class="astro-twzrdani">The machine API</span></a></li><li class="astro-twzrdani"><a href="/reference/version/" class="astro-twzrdani"><span class="astro-twzrdani">The version command</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">For operators</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="7"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/reference/hopboxd/" class="astro-twzrdani"><span class="astro-twzrdani">hopboxd</span></a></li><li class="astro-twzrdani"><a href="/reference/hopboxd-config/" class="astro-twzrdani"><span class="astro-twzrdani">hopboxd bootstrap config</span></a></li><li class="astro-twzrdani"><a href="/reference/server-layout/" class="astro-twzrdani"><span class="astro-twzrdani">Server layout</span></a></li><li class="astro-twzrdani"><a href="/reference/release-bundle/" class="astro-twzrdani"><span class="astro-twzrdani">Release bundle</span></a></li><li class="astro-twzrdani"><a href="/reference/terraform-provider/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox Terraform provider</span></a></li><li class="astro-twzrdani"><a href="/reference/preflight/" class="astro-twzrdani"><span class="astro-twzrdani">The preflight check</span></a></li><li class="astro-twzrdani"><a href="/reference/metrics/" class="astro-twzrdani"><span class="astro-twzrdani">Metrics</span></a></li><li class="astro-twzrdani"><a href="/reference/dns/" class="astro-twzrdani"><span class="astro-twzrdani">The DNS role</span></a></li><li class="astro-twzrdani"><a href="/reference/edge/" class="astro-twzrdani"><span class="astro-twzrdani">The edge role</span></a></li><li class="astro-twzrdani"><a href="/reference/ssh-front-door/" class="astro-twzrdani"><span class="astro-twzrdani">The SSH front door</span></a></li><li class="astro-twzrdani"><a href="/reference/acme/" class="astro-twzrdani"><span class="astro-twzrdani">The certificate of the install</span></a></li><li class="astro-twzrdani"><a href="/reference/smtp/" class="astro-twzrdani"><span class="astro-twzrdani">SMTP config</span></a></li><li class="astro-twzrdani"><a href="/reference/mail/" class="astro-twzrdani"><span class="astro-twzrdani">Mail</span></a></li><li class="astro-twzrdani"><a href="/reference/oauth/" class="astro-twzrdani"><span class="astro-twzrdani">Sign-in with GitHub and Google</span></a></li><li class="astro-twzrdani"><a href="/reference/sessions/" class="astro-twzrdani"><span class="astro-twzrdani">Sessions and sign-in links</span></a></li><li class="astro-twzrdani"><a href="/reference/postgres/" class="astro-twzrdani"><span class="astro-twzrdani">The bundled Postgres</span></a></li><li class="astro-twzrdani"><a href="/reference/admin-api/" class="astro-twzrdani"><span class="astro-twzrdani">The admin API</span></a></li><li class="astro-twzrdani"><a href="/reference/sealing/" class="astro-twzrdani"><span class="astro-twzrdani">Sealing</span></a></li><li class="astro-twzrdani"><a href="/reference/host-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Host kernel</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Internals</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="8"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/reference/placement/" class="astro-twzrdani"><span class="astro-twzrdani">Placement</span></a></li><li class="astro-twzrdani"><a href="/reference/internal-listener/" class="astro-twzrdani"><span class="astro-twzrdani">The internal listener</span></a></li><li class="astro-twzrdani"><a href="/reference/enrollment/" class="astro-twzrdani"><span class="astro-twzrdani">Enrollment and the install PKI</span></a></li><li class="astro-twzrdani"><a href="/reference/control-channel/" class="astro-twzrdani"><span class="astro-twzrdani">The control channel</span></a></li><li class="astro-twzrdani"><a href="/reference/executor-protocol/" class="astro-twzrdani"><span class="astro-twzrdani">The executor protocol</span></a></li><li class="astro-twzrdani"><a href="/reference/executor/" class="astro-twzrdani"><span class="astro-twzrdani">The node executor</span></a></li><li class="astro-twzrdani"><a href="/reference/machine-logs/" class="astro-twzrdani"><span class="astro-twzrdani">Machine logs</span></a></li><li class="astro-twzrdani"><a href="/reference/vmm/" class="astro-twzrdani"><span class="astro-twzrdani">The VMM driver interface</span></a></li><li class="astro-twzrdani"><a href="/reference/firecracker-driver/" class="astro-twzrdani"><span class="astro-twzrdani">The Firecracker driver</span></a></li><li class="astro-twzrdani"><a href="/reference/node-network/" class="astro-twzrdani"><span class="astro-twzrdani">The node network</span></a></li><li class="astro-twzrdani"><a href="/reference/mesh/" class="astro-twzrdani"><span class="astro-twzrdani">The mesh</span></a></li><li class="astro-twzrdani"><a href="/reference/cold-move/" aria-current="page" class="astro-twzrdani"><span class="astro-twzrdani">Cold move</span></a></li><li class="astro-twzrdani"><a href="/reference/hopbox-guest/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox-guest</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-link/" class="astro-twzrdani"><span class="astro-twzrdani">Guest link</span></a></li><li class="astro-twzrdani"><a href="/reference/api-definitions/" class="astro-twzrdani"><span class="astro-twzrdani">API definitions</span></a></li><li class="astro-twzrdani"><a href="/reference/control-store/" class="astro-twzrdani"><span class="astro-twzrdani">Control store tables</span></a></li><li class="astro-twzrdani"><a href="/reference/guest-kernel/" class="astro-twzrdani"><span class="astro-twzrdani">Guest kernel</span></a></li><li class="astro-twzrdani"><a href="/reference/default-image/" class="astro-twzrdani"><span class="astro-twzrdani">Default image</span></a></li><li class="astro-twzrdani"><a href="/reference/artifact-format/" class="astro-twzrdani"><span class="astro-twzrdani">Artifact format</span></a></li></ul></details></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Releases</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="9"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/releases/v0.1.0/" class="astro-twzrdani"><span class="astro-twzrdani">hopbox v0.1.0</span></a></li></ul></details></li><li class="astro-twzrdani"><details open class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="10"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Public API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="11"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="12"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicecreatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">CreateMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicegetmachine/" class="astro-twzrdani"><span class="astro-twzrdani">GetMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachinesizes/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachineSizes</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerebootmachine/" class="astro-twzrdani"><span class="astro-twzrdani">RebootMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicerenamemachine/" class="astro-twzrdani"><span class="astro-twzrdani">RenameMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlport/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLPort</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesetmachineurlvisibility/" class="astro-twzrdani"><span class="astro-twzrdani">SetMachineURLVisibility</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicesharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">ShareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestartmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StartMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceunsharemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UnshareMachine</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1machineserviceupdatemachine/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.InstallService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="13"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1installservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1installservicegetinstallinfo/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallInfo</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="14"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicedeleteaccount/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceendclisignin/" class="astro-twzrdani"><span class="astro-twzrdani">EndCLISignIn</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicegetaccount/" class="astro-twzrdani"><span class="astro-twzrdani">GetAccount</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistclisignins/" class="astro-twzrdani"><span class="astro-twzrdani">ListCLISignIns</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountservicelistsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceremovesigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSignInMethod</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1accountserviceupdateaccount/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateAccount</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.APIKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="15"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1apikeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicecreateapikey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAPIKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicelistapikeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAPIKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1apikeyservicerevokeapikey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAPIKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuditService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="16"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1auditservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1auditservicelistauditentries/" class="astro-twzrdani"><span class="astro-twzrdani">ListAuditEntries</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.AuthService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="17"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1authservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceapprovedevice/" class="astro-twzrdani"><span class="astro-twzrdani">ApproveDevice</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicegetdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">GetDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicepolldeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">PollDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerefreshclitoken/" class="astro-twzrdani"><span class="astro-twzrdani">RefreshCLIToken</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicerequestmagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">RequestMagicLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicesignout/" class="astro-twzrdani"><span class="astro-twzrdani">SignOut</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authservicestartdeviceauthorization/" class="astro-twzrdani"><span class="astro-twzrdani">StartDeviceAuthorization</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifyloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyLoginLink</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1authserviceverifymagiclink/" class="astro-twzrdani"><span class="astro-twzrdani">VerifyMagicLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="18"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceacceptinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">AcceptInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">CreateInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicecreateorg/" class="astro-twzrdani"><span class="astro-twzrdani">CreateOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicedeleteorg/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorg/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicegetorgusage/" class="astro-twzrdani"><span class="astro-twzrdani">GetOrgUsage</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceleaveorg/" class="astro-twzrdani"><span class="astro-twzrdani">LeaveOrg</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistinvitations/" class="astro-twzrdani"><span class="astro-twzrdani">ListInvitations</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgmembers/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgMembers</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceremoveorgmember/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveOrgMember</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicerevokeinvitation/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInvitation</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgservicesetorgmemberrole/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgMemberRole</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1orgserviceupdateorg/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.SSHKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="19"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1sshkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceaddsshkey/" class="astro-twzrdani"><span class="astro-twzrdani">AddSSHKey</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyservicelistsshkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListSSHKeys</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1sshkeyserviceremovesshkey/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveSSHKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.v1.VarService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="20"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/public/operations/tags/hopboxv1varservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicedeletevar/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteVar</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicelistvars/" class="astro-twzrdani"><span class="astro-twzrdani">ListVars</span></a></li><li class="astro-twzrdani"><a href="/api/public/operations/hopboxv1varservicesetvar/" class="astro-twzrdani"><span class="astro-twzrdani">SetVar</span></a></li></ul></details></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">Admin API</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="21"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AccountService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="22"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1accountservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountservicelistaccountsigninmethods/" class="astro-twzrdani"><span class="astro-twzrdani">ListAccountSignInMethods</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1accountserviceremoveaccountsigninmethod/" class="astro-twzrdani"><span class="astro-twzrdani">RemoveAccountSignInMethod</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.AdminKeyService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="23"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1adminkeyservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicecreateadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">CreateAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicelistadminkeys/" class="astro-twzrdani"><span class="astro-twzrdani">ListAdminKeys</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyserviceregisteradminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterAdminKey</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1adminkeyservicerevokeadminkey/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeAdminKey</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.CertificateService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="24"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1certificateservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1certificateservicegetcertificate/" class="astro-twzrdani"><span class="astro-twzrdani">GetCertificate</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ImageService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="25"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1imageservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageservicelistimages/" class="astro-twzrdani"><span class="astro-twzrdani">ListImages</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1imageserviceregisterimage/" class="astro-twzrdani"><span class="astro-twzrdani">RegisterImage</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstallConfigService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="26"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1installconfigservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">ClearOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceclearsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">ClearSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetInstallConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetoauthconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetOAuthConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicegetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">GetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetmaintenance/" class="astro-twzrdani"><span class="astro-twzrdani">SetMaintenance</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetoauthclient/" class="astro-twzrdani"><span class="astro-twzrdani">SetOAuthClient</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigservicesetsmtpconfig/" class="astro-twzrdani"><span class="astro-twzrdani">SetSMTPConfig</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1installconfigserviceupdateinstallconfig/" class="astro-twzrdani"><span class="astro-twzrdani">UpdateInstallConfig</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.InstanceAdminService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="27"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1instanceadminservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicegrantinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">GrantInstanceAdmin</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicelistinstanceadmins/" class="astro-twzrdani"><span class="astro-twzrdani">ListInstanceAdmins</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1instanceadminservicerevokeinstanceadmin/" class="astro-twzrdani"><span class="astro-twzrdani">RevokeInstanceAdmin</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.KeyringService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="28"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1keyringservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicelistkeks/" class="astro-twzrdani"><span class="astro-twzrdani">ListKEKs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicepromotekek/" class="astro-twzrdani"><span class="astro-twzrdani">PromoteKEK</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerewrapsealedvalues/" class="astro-twzrdani"><span class="astro-twzrdani">RewrapSealedValues</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicerotatekek/" class="astro-twzrdani"><span class="astro-twzrdani">RotateKEK</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1keyringservicestagekek/" class="astro-twzrdani"><span class="astro-twzrdani">StageKEK</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.LoginLinkService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="29"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1loginlinkservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1loginlinkservicecreateloginlink/" class="astro-twzrdani"><span class="astro-twzrdani">CreateLoginLink</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MachineService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="30"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1machineservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicecancelmove/" class="astro-twzrdani"><span class="astro-twzrdani">CancelMove</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicedeletemachine/" class="astro-twzrdani"><span class="astro-twzrdani">DeleteMachine</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicelistmachines/" class="astro-twzrdani"><span class="astro-twzrdani">ListMachines</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicelistmoves/" class="astro-twzrdani"><span class="astro-twzrdani">ListMoves</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicemovemachine/" class="astro-twzrdani"><span class="astro-twzrdani">MoveMachine</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1machineservicestopmachine/" class="astro-twzrdani"><span class="astro-twzrdani">StopMachine</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.MailService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="31"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1mailservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicegetmailfile/" class="astro-twzrdani"><span class="astro-twzrdani">GetMailFile</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1mailservicelistmailfiles/" class="astro-twzrdani"><span class="astro-twzrdani">ListMailFiles</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.OrgService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="32"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1orgservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicegetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">GetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicelistorgs/" class="astro-twzrdani"><span class="astro-twzrdani">ListOrgs</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetdefaultorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetDefaultOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesetorglimits/" class="astro-twzrdani"><span class="astro-twzrdani">SetOrgLimits</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgservicesuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">SuspendOrg</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1orgserviceunsuspendorg/" class="astro-twzrdani"><span class="astro-twzrdani">UnsuspendOrg</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.PoolService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="33"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1poolservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1poolservicecreatepool/" class="astro-twzrdani"><span class="astro-twzrdani">CreatePool</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1poolservicedeletepool/" class="astro-twzrdani"><span class="astro-twzrdani">DeletePool</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1poolservicegetpool/" class="astro-twzrdani"><span class="astro-twzrdani">GetPool</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1poolservicelistpools/" class="astro-twzrdani"><span class="astro-twzrdani">ListPools</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.ServerService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="34"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1serverservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">CordonServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicecreateenrollmenttoken/" class="astro-twzrdani"><span class="astro-twzrdani">CreateEnrollmentToken</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicedecommissionserver/" class="astro-twzrdani"><span class="astro-twzrdani">DecommissionServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicegetserver/" class="astro-twzrdani"><span class="astro-twzrdani">GetServer</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicelistcontrolprocesses/" class="astro-twzrdani"><span class="astro-twzrdani">ListControlProcesses</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicelistservers/" class="astro-twzrdani"><span class="astro-twzrdani">ListServers</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverservicesetserverlabels/" class="astro-twzrdani"><span class="astro-twzrdani">SetServerLabels</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1serverserviceuncordonserver/" class="astro-twzrdani"><span class="astro-twzrdani">UncordonServer</span></a></li></ul></details></li><li class="astro-twzrdani"><details class="astro-twzrdani"><summary class="astro-twzrdani"><span class="group-label astro-twzrdani"><span class="large astro-twzrdani">hopbox.admin.v1.SizeService</span></span><svg aria-hidden="true" class="caret astro-twzrdani astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="35"></sl-sidebar-restore><ul class="astro-twzrdani"><li class="astro-twzrdani"><a href="/api/admin/operations/tags/hopboxadminv1sizeservice/" class="astro-twzrdani"><span class="astro-twzrdani">Overview</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1sizeservicecreatesize/" class="astro-twzrdani"><span class="astro-twzrdani">CreateSize</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1sizeservicegetsize/" class="astro-twzrdani"><span class="astro-twzrdani">GetSize</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1sizeservicelistsizes/" class="astro-twzrdani"><span class="astro-twzrdani">ListSizes</span></a></li><li class="astro-twzrdani"><a href="/api/admin/operations/hopboxadminv1sizeserviceretiresize/" class="astro-twzrdani"><span class="astro-twzrdani">RetireSize</span></a></li></ul></details></li></ul></details></li></ul></details></li></ul><script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-jl756n3h"><div class="social-icons astro-jl756n3h"><a class="site-link astro-o2gh7vpa" href="https://hopbox.dev">hopbox.dev</a><a class="try astro-o2gh7vpa" href="https://dev.hopbox.dev">Try hopbox <span class="preview-tag astro-o2gh7vpa">PREVIEW</span></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-rxye4jfc"><span class="sr-only astro-rxye4jfc">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-rxye4jfc"><option value="dark" class="astro-rxye4jfc">Dark</option><option value="light" class="astro-rxye4jfc">Light</option><option value="auto" selected class="astro-rxye4jfc">Auto</option></select><svg aria-hidden="true" class="icon caret astro-rxye4jfc astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script></div></div></div></sl-sidebar-pane></nav><div class="main-frame astro-vlwsw6sx"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-bfhpgjcp"><aside class="right-sidebar-container print:hidden astro-bfhpgjcp"><div class="right-sidebar astro-bfhpgjcp"><div class="lg:sl-hidden astro-6ky2bkwt"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-bwzeb267"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-bwzeb267"><details id="starlight__mobile-toc" class="astro-bwzeb267"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-bwzeb267"><span class="toggle sl-flex astro-bwzeb267">On this page<svg aria-hidden="true" class="caret astro-bwzeb267 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-bwzeb267"></span></summary><div class="dropdown astro-bwzeb267"><ul class="isMobile astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#values" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Values</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-steps-of-a-move" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The steps of a move</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#start-of-a-move" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Start of a move</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#hand-off-to-the-target" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Hand-off to the target</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#the-pull" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">The pull</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#pull-deadline-and-cancel" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Pull deadline and cancel</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#end-of-a-move" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">End of a move</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#a-step-that-an-older-control-process-accepted" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">A step that an older control process accepted</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#old-copies" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Old copies</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#what-the-machine-keeps" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">What the machine keeps</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-disk-listener" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The disk listener</span></a><ul class="isMobile astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#access-to-a-disk" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Access to a disk</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#requests" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Requests</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#the-stream" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">The stream</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#digest" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Digest</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#two-releases" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Two releases</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#metrics" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Metrics</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#logs" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Logs</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#errors" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Errors</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#tests" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Tests</span></a></li></ul></div></details></nav></mobile-starlight-toc><script type="module" src="/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.C3fM4Kra.js"></script></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-6ky2bkwt"><div class="sl-container astro-6ky2bkwt"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-2msfj4tk" style="--depth: 0;"><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#_top" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Overview</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#values" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Values</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-steps-of-a-move" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The steps of a move</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#start-of-a-move" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Start of a move</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#hand-off-to-the-target" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Hand-off to the target</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#the-pull" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">The pull</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#pull-deadline-and-cancel" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Pull deadline and cancel</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#end-of-a-move" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">End of a move</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#a-step-that-an-older-control-process-accepted" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">A step that an older control process accepted</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#old-copies" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Old copies</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#what-the-machine-keeps" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">What the machine keeps</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#the-disk-listener" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">The disk listener</span></a><ul class="astro-2msfj4tk" style="--depth: 1;"><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#access-to-a-disk" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Access to a disk</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#requests" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Requests</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#the-stream" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">The stream</span></a></li><li style="--depth: 1;" class="astro-2msfj4tk"><a href="#digest" style="--depth: 1;" class="astro-2msfj4tk"><span style="--depth: 1;" class="astro-2msfj4tk">Digest</span></a></li></ul></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#two-releases" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Two releases</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#metrics" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Metrics</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#logs" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Logs</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#errors" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Errors</span></a></li><li style="--depth: 0;" class="astro-2msfj4tk"><a href="#tests" style="--depth: 0;" class="astro-2msfj4tk"><span style="--depth: 0;" class="astro-2msfj4tk">Tests</span></a></li></ul></nav></starlight-toc><script type="module" src="/_astro/TableOfContents.astro_astro_type_script_index_0_lang.BpJaGz7G.js"></script></div></div></div></aside><div class="main-pane astro-bfhpgjcp"><main data-pagefind-body class="astro-g6oqdoeg" lang="en" dir="ltr"><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><h1 id="_top" class="astro-42k5req6">Cold move</h1></div></div><div class="content-panel astro-7rq7dlit"><div class="sl-container astro-7rq7dlit"><div class="sl-markdown-content"><p>A cold move takes one machine from its node to another node (step 4 of a drain). The source node stops the machine. Then the target node pulls the disk of the machine from the source node over the mesh. If the target of the machine is <code dir="auto">running</code>, the target node boots it. The machine loses its memory, and keeps its disk, its name, its URL, its SSH port, and its address. The disk travels in one copy format for every moving state: a stream of the blocks that hold data, with a digest of the whole disk.</p>
+<p>An instance admin starts a move with <code dir="auto">MoveMachine</code> of the admin API (<a href="/reference/admin-api/#movemachine">the admin API</a>) or <code dir="auto">hopboxd admin machine move</code> (<a href="/reference/hopboxd/#admin-machine-move">hopboxd</a>). <code dir="auto">CancelMove</code> or <code dir="auto">hopboxd admin machine move --cancel</code> ends a move that runs. The drain of milestone N19 moves each machine of a node the same way.</p>
+<p>The control side is in <code dir="auto">internal/service/moves.go</code> and the leader job of <code dir="auto">internal/control</code>. The node side is in <code dir="auto">internal/node/transfer</code> (the disk listener and the pull), <code dir="auto">internal/node/executor</code> (<code dir="auto">move.go</code>), and <code dir="auto">internal/node/machines</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="values">Values</h2><a class="sl-anchor-link" href="#values"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Values”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Disk listener</td>
+<td>Port <code dir="auto">7444</code> (<code dir="auto">transfer.Port</code>) of the mesh address of the node, with TLS 1.3 (<a href="/reference/mesh/">the mesh</a>)</td>
+</tr>
+<tr>
+<td>Block</td>
+<td>4096 bytes (<code dir="auto">transfer.BlockSize</code>). A block of zeros is a hole.</td>
+</tr>
+<tr>
+<td>Frame</td>
+<td>At most 1 MiB of data</td>
+</tr>
+<tr>
+<td>Idle timeout of a pull</td>
+<td>30 s without a byte (<code dir="auto">transfer.DefaultIdleTimeout</code>)</td>
+</tr>
+<tr>
+<td>Write timeout of the listener</td>
+<td>30 s for each frame (<code dir="auto">transfer.DefaultWriteTimeout</code>)</td>
+</tr>
+<tr>
+<td>Save of the progress of a pull</td>
+<td>Every 64 MiB, and at each stop of the pull</td>
+</tr>
+<tr>
+<td>Length of one pull</td>
+<td>At most 5 min, the timeout of an action of the executor (<code dir="auto">executor.DefaultActionTimeout</code>). A larger disk arrives over several pulls.</td>
+</tr>
+<tr>
+<td>Wait between two pulls</td>
+<td>1 s after a pull that got bytes. After a pull without a byte, 2 s, then twice the wait each time, up to 30 s.</td>
+</tr>
+<tr>
+<td>Pulls that fail for good</td>
+<td>3 in a row (<code dir="auto">maxPullFailures</code>)</td>
+</tr>
+<tr>
+<td>Stop timeout</td>
+<td>10 min (<code dir="auto">domain.MoveStopTimeout</code>)</td>
+</tr>
+<tr>
+<td>Pull deadline</td>
+<td>30 min without progress (<code dir="auto">domain.MovePullTimeout</code>): from the hand-off, or from the last pull that wrote bytes</td>
+</tr>
+<tr>
+<td>Step of the leader job</td>
+<td>Every 2 s (<code dir="auto">control.MoveEvery</code>)</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h2"><h2 id="the-steps-of-a-move">The steps of a move</h2><a class="sl-anchor-link" href="#the-steps-of-a-move"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The steps of a move”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>State of the move</th>
+<th>What happens</th>
+<th>Current state of the machine</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">stopping</code></td>
+<td><code dir="auto">MoveMachine</code> checks the machine, picks the target, and records the move. The spec of the machine on its node then has the target <code dir="auto">stopped</code>, so the executor stops it. The machine row keeps its own target.</td>
+<td><code dir="auto">running</code>, then <code dir="auto">stopped</code></td>
+</tr>
+<tr>
+<td><code dir="auto">pulling</code></td>
+<td>Once the machine is <code dir="auto">stopped</code>, the leader hands it to the target node in one transaction. The source loses its lease. The target gets a new grant and a new row of <code dir="auto">placements</code>. The machine and its address go to the target node with the current state <code dir="auto">moving</code>. The target node pulls the disk from the source node.</td>
+<td><code dir="auto">moving</code></td>
+</tr>
+<tr>
+<td><code dir="auto">done</code></td>
+<td>The disk on the target is whole, and its digest matches. The executor of the target reports <code dir="auto">stopped</code> with the proof of the pull, the ID of the move. If the target of the machine is <code dir="auto">running</code>, the executor boots it after the control role accepts that report. The source node then removes its old copy.</td>
+<td><code dir="auto">stopped</code>, then <code dir="auto">starting</code> and <code dir="auto">running</code></td>
+</tr>
+<tr>
+<td><code dir="auto">failed</code></td>
+<td>The pull failed, the pull deadline passed, or an instance admin canceled the move. The machine stays on the source node, or goes back there, with its disk. A machine that is no longer in <code dir="auto">moving</code> on the target stays there (<a href="#a-step-that-an-older-control-process-accepted">A step that an older control process accepted</a>).</td>
+<td><code dir="auto">stopped</code></td>
+</tr>
+</tbody>
+</table>
+<p>The control role writes the current state <code dir="auto">moving</code> itself, and also <code dir="auto">stopped</code> after a failed pull. In both cases, no executor holds the lease of the machine at the time of the write (<a href="/reference/executor-protocol/#cold-moves">the executor protocol</a>).</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="start-of-a-move">Start of a move</h3><a class="sl-anchor-link" href="#start-of-a-move"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Start of a move”</span></a></div>
+<p><code dir="auto">MoveMachine</code> locks the machine as a lifecycle call does, and refuses these cases with <code dir="auto">failed_precondition</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Message</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The machine never booted, has the current state <code dir="auto">hibernated</code>, <code dir="auto">standby</code>, <code dir="auto">moving</code>, or <code dir="auto">deleted</code>, or a target other than <code dir="auto">running</code> and <code dir="auto">stopped</code></td>
+<td><code dir="auto">a cold move needs a machine that booted, with the target running or stopped. This one is &lt;state&gt;, with the target &lt;target&gt;</code></td>
+</tr>
+<tr>
+<td>The machine moves already, or a node still holds an old copy of its files</td>
+<td><code dir="auto">the machine moves already, or a node still removes the files of its last move. Retry later</code></td>
+</tr>
+<tr>
+<td>The node of the machine serves no disk</td>
+<td><code dir="auto">the node &lt;id&gt; of the machine serves no disk for a cold move. It needs a hopboxd that knows cold moves, and an address in the mesh</code></td>
+</tr>
+<tr>
+<td>The named target fails a filter of placement</td>
+<td><code dir="auto">the node &lt;id&gt; cannot take the machine: it &lt;reason&gt;</code></td>
+</tr>
+<tr>
+<td>A live control process runs a release of the schema version 44 to 49 (<a href="#two-releases">Two releases</a>)</td>
+<td><code dir="auto">the control process &lt;id&gt; on &lt;host&gt; (hopboxd &lt;release&gt;) knows the migrations up to &lt;version&gt;, and only a hopboxd that knows migration 50 moves machines. Upgrade it first</code></td>
+</tr>
+</tbody>
+</table>
+<p>A named target that is the node of the machine fails with <code dir="auto">invalid_argument</code>. An unknown named target fails with <code dir="auto">not_found</code>. Without a named target, placement picks one (<a href="/reference/placement/#hard-filters">Placement</a>). It takes the size, the pool, and the labels of the size of the machine, and leaves out the node of the machine. A move needs no compatibility class, because it carries no memory. When no node takes the machine, the call fails with <code dir="auto">unavailable</code> and the message of <a href="/reference/placement/#when-no-node-has-room">Placement</a>.</p>
+<p>The start of a move writes the audit entry <code dir="auto">machine.move</code> with <code dir="auto">move</code>, <code dir="auto">source</code>, <code dir="auto">target</code>, and <code dir="auto">old_target</code>.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="hand-off-to-the-target">Hand-off to the target</h3><a class="sl-anchor-link" href="#hand-off-to-the-target"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Hand-off to the target”</span></a></div>
+<p>The leader job runs every 2 s. For each move in <code dir="auto">stopping</code>, it locks the machine row, then the move row, and does one of these things:</p>
+<table>
+<thead>
+<tr>
+<th>Machine</th>
+<th>What the job does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">stopped</code>, and its node is <code dir="auto">ready</code> or <code dir="auto">cordoned</code></td>
+<td>It hands the machine to the target node. It locks the row of the target node as a placement does (<a href="/reference/placement/#the-steps-of-a-placement">Placement</a>). A target that has no room any more gives way to another node that placement picks, unless the instance admin named it.</td>
+</tr>
+<tr>
+<td><code dir="auto">stopped</code>, and its node is <code dir="auto">unresponsive</code></td>
+<td>It waits, because the source node must serve the disk.</td>
+</tr>
+<tr>
+<td><code dir="auto">stopped</code>, and a live control process runs a release of the schema version 44 to 49</td>
+<td>It waits. 10 min after the start of the move, the move fails with <code dir="auto">a control process runs a hopboxd that does not know the moves</code>.</td>
+</tr>
+<tr>
+<td>deleted, or its target is <code dir="auto">deleted</code></td>
+<td>The move fails with <code dir="auto">the machine was deleted during the move</code>. A delete wins over the stop of a move.</td>
+</tr>
+<tr>
+<td>not <code dir="auto">stopped</code> after 10 min, or its node is unresponsive after 10 min</td>
+<td>The move fails. The spec gives the machine its own target again.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h3"><h3 id="the-pull">The pull</h3><a class="sl-anchor-link" href="#the-pull"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The pull”</span></a></div>
+<p>The spec of a moving machine names the move, the source node, and the disk listener of the source (<a href="/reference/executor-protocol/#machinemove">the executor protocol</a>). The executor of the target never boots such a machine before its disk is whole. A boot without the disk makes a new disk from the image. It pulls the disk first, whatever the target. A target <code dir="auto">deleted</code> only removes what arrived.</p>
+<p>The executor writes the move in its node-local state, as <code dir="auto">pending_move</code>, before the first pull (<a href="/reference/executor/#node-local-state">the node executor</a>). The machine never boots on the node until the control role accepted the proof of the pull of that move. The executor keeps that move as <code dir="auto">acked_move</code>. This rule holds after a restart of <code dir="auto">hopboxd</code>. It also holds for a spec that names another state or no move. A control role of the schema version 44 to 49 sends such a spec, because it does not know the moves.</p>
+<p>The source node serves the disk once its next heartbeat brings the <code dir="auto">DiskTransfers</code> of the control role (<a href="/reference/control-channel/#disk-transfers">the control channel</a>). Until then, the source answers <code dir="auto">403</code>. While its executor still holds the lease or the microVM runs, it answers <code dir="auto">409</code>. The target tries again in both cases.</p>
+<p>A pull runs in slices. One pull lasts at most 5 min, the timeout of an action of the executor. A pull that gets no byte for 30 s ends, and so does a cut link. The bytes that arrived stay in the partial copy, with the state of their digest, and the next pull resumes from the last whole frame. A restart of <code dir="auto">hopboxd</code> on the target resumes too, from the last saved progress. So a large disk arrives over several pulls, and no step reads the whole copy again. After a pull that wrote bytes and did not end, the executor reports its state again with <code dir="auto">pull_received</code>, the bytes of that pull. That report holds off the pull deadline. These causes count toward the 3 failures in a row that end the move:</p>
+<ul>
+<li>The source has no disk of the machine (<code dir="auto">404</code>).</li>
+<li>The copy has another digest than the disk of the source.</li>
+<li>The target cannot write the copy, such as a full disk.</li>
+</ul>
+<p>Any other failure, such as a cut link, a refusal, or a timeout, makes the executor try again until the pull ends. After the third failure, the executor reports <code dir="auto">failed</code> from <code dir="auto">moving</code>, with the error <code dir="auto">pull the disk from node &lt;id&gt;: ...</code>, and stops acting with its lease.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="pull-deadline-and-cancel">Pull deadline and cancel</h3><a class="sl-anchor-link" href="#pull-deadline-and-cancel"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Pull deadline and cancel”</span></a></div>
+<p>If the target pulls no part of the disk for 30 min (<code dir="auto">domain.MovePullTimeout</code>), a move in <code dir="auto">pulling</code> fails with the error <code dir="auto">the target node pulled no part of the disk for 30m0s</code>. The 30 min count from the hand-off, and again from each report with <code dir="auto">pull_received</code>. So a large disk on a busy link keeps its move while it makes progress. The leader job checks the deadline at each step. A resumed pull can wait for the digest job of the source, and that wait writes no bytes. So the digest of a disk must take less than 30 min. An instance admin can also end a move that runs, with <code dir="auto">CancelMove</code> (<a href="/reference/admin-api/#cancelmove">the admin API</a>) or <code dir="auto">hopboxd admin machine move --cancel</code> (<a href="/reference/hopboxd/#admin-machine-move">hopboxd</a>). The move then fails with the error <code dir="auto">an instance admin canceled the move</code>, and the service logs <code dir="auto">an instance admin canceled the move of a machine</code>.</p>
+<table>
+<thead>
+<tr>
+<th>State of the move</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">stopping</code></td>
+<td>Only a cancel ends it. The spec gives the machine its own target again on its node.</td>
+</tr>
+<tr>
+<td><code dir="auto">pulling</code></td>
+<td>The result of a failed pull (<a href="#end-of-a-move">End of a move</a>). The machine goes back to the source node with its disk, stopped. A machine with the target <code dir="auto">deleted</code> goes back with that target. A machine that is no longer in <code dir="auto">moving</code> on the target stays there.</td>
+</tr>
+</tbody>
+</table>
+<p>The next heartbeat of the source node withdraws the disk from its listener, and the listener ends the streams of that disk at once. The target node then removes what it pulled.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="end-of-a-move">End of a move</h3><a class="sl-anchor-link" href="#end-of-a-move"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “End of a move”</span></a></div>
+<p><code dir="auto">ReportMachine</code> reads the move of the machine in the transaction of each report of the target node while the move is <code dir="auto">pulling</code>. Only a report that names the move in <code dir="auto">pulled_move_id</code> proves that the target has the whole disk (<a href="/reference/executor-protocol/#machinereport">the executor protocol</a>). Once the disk is here, the executor names the move in each report:</p>
+<table>
+<thead>
+<tr>
+<th>Report</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Any state but <code dir="auto">failed</code>, with the ID of the move in <code dir="auto">pulled_move_id</code></td>
+<td>The move is <code dir="auto">done</code>. The source node must remove its old copy. The service logs <code dir="auto">a machine moved to another node</code>. A report of the same state ends the move too.</td>
+</tr>
+<tr>
+<td>The same state, without the proof</td>
+<td>Nothing ends. A report with <code dir="auto">pull_received</code> above 0 holds off the pull deadline.</td>
+</tr>
+<tr>
+<td><code dir="auto">failed</code></td>
+<td>The move is <code dir="auto">failed</code>, with the error of the report. The control role ends the lease of the target. It gives the machine and its address back to the source node, with the current state and the target <code dir="auto">stopped</code>. The target node must remove what it pulled. The service logs <code dir="auto">the target node could not pull the disk, so the machine stays stopped on its source node</code>.</td>
+</tr>
+<tr>
+<td>Any other step</td>
+<td>The same result as <code dir="auto">failed</code>, with the error <code dir="auto">the target node left the state &lt;state&gt; with &lt;new state&gt;, without the whole disk of the move</code>. An executor of an older release gives such a report, because it boots a new disk from the image.</td>
+</tr>
+</tbody>
+</table>
+<p>The executor of the target boots the machine only after the control role accepted the report with the proof. If the move ended before, such as through a cancel, the control role refuses that report, because the lease of the target ended. So the machine never boots on the target.</p>
+<p>An executor of an older release on the target can boot a new disk from the image before its report. The move fails, and the machine goes back to the source. That executor loses its lease, but its microVM of the new disk keeps running on the node until the node upgrades. After the upgrade, the node gets the removal of the files of the machine. The files stay while that microVM runs, and the node logs <code dir="auto">the control plane asks this node to remove the files of a machine that it still acts on, so they stay for now</code>. An operator stops the systemd unit of that machine on the node.</p>
+<p>The next heartbeat of the source node grants it the machine again. The machine stays stopped there with its disk. A start boots it from that disk.</p>
+<p>The end of a move writes the audit entry <code dir="auto">machine.move</code> with the actor <code dir="auto">system</code> and <code dir="auto">move</code>, <code dir="auto">result</code>, and for a failure <code dir="auto">error</code>. A failure that leaves the machine on its target adds <code dir="auto">stayed</code>, the state of the machine.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="a-step-that-an-older-control-process-accepted">A step that an older control process accepted</h3><a class="sl-anchor-link" href="#a-step-that-an-older-control-process-accepted"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “A step that an older control process accepted”</span></a></div>
+<p>A control process of the schema version 44 to 49 can take the channel of the target node during a pull. It accepts a step of the target out of <code dir="auto">moving</code>, such as <code dir="auto">failed</code>, and does not end the move. The move then stays <code dir="auto">pulling</code>, and the machine is on the target in another state. The executor still waits for the proof, and pulls the disk again once a spec names the move.</p>
+<p>A cancel, the pull deadline, or a step of the target without the proof then fail the move, and leave the machine where it is. The target can already run the machine with the pulled disk. So the control role never takes the machine back, and no two microVMs run it. The move gets no <code dir="auto">cleanup_server_id</code>, and the source keeps its copy of the disk. The service logs <code dir="auto">a cold move failed while its machine was not in the state moving on the target node, so the machine stays there. The source node keeps its copy of the disk</code> at level warn, with <code dir="auto">state</code> and <code dir="auto">err</code>. An operator decides about that copy. If the target has no whole disk, the machine never boots there, and a delete removes it.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="old-copies">Old copies</h3><a class="sl-anchor-link" href="#old-copies"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Old copies”</span></a></div>
+<p><code dir="auto">cleanup_server_id</code> of a move names the node that still holds an old copy of the files of the machine: the source after <code dir="auto">done</code>, the target after <code dir="auto">failed</code>. The <code dir="auto">DiskTransfers</code> of that node lists the machine in <code dir="auto">remove</code>, once the machine is on another node or its row is gone. The executor of the node removes the files once it holds no valid lease of the machine and the microVM does not run: the disk, the partial copy, the node-local state, and the log. Then the next heartbeats name the machine in <code dir="auto">removed_machines</code>, and the control role clears <code dir="auto">cleanup_server_id</code>. A new move of the machine waits until then.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="what-the-machine-keeps">What the machine keeps</h2><a class="sl-anchor-link" href="#what-the-machine-keeps"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “What the machine keeps”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>After the move</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Disk</td>
+<td>The same bytes, with the same holes.</td>
+</tr>
+<tr>
+<td>Memory</td>
+<td>Lost. A running machine boots again on the target.</td>
+</tr>
+<tr>
+<td>Name, URL, SSH port</td>
+<td>The same.</td>
+</tr>
+<tr>
+<td>Address</td>
+<td>The same address of the subnet of its first node. The target node routes its <code dir="auto">/32</code> to the tap device of the machine, and the mesh peer of the target allows the <code dir="auto">/32</code> (<a href="/reference/node-network/#addresses">the node network</a>, <a href="/reference/mesh/#allowed-ips">the mesh</a>).</td>
+</tr>
+<tr>
+<td>Route record</td>
+<td>Dropped at the stop, and written again with the lease of the target at the report of <code dir="auto">running</code>. So no traffic goes to the source after the move.</td>
+</tr>
+<tr>
+<td>Target state</td>
+<td>The same. During the stop, the spec of the source has the target <code dir="auto">stopped</code>, and the machine row keeps its own target. So the usage of its org and of its node stay as they are.</td>
+</tr>
+<tr>
+<td>Lifecycle calls</td>
+<td>They change the machine row as usual. During the stop, the spec stays <code dir="auto">stopped</code>, apart from a delete. On the target, the machine reaches the target of the row once its disk is whole.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h2"><h2 id="the-disk-listener">The disk listener</h2><a class="sl-anchor-link" href="#the-disk-listener"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The disk listener”</span></a></div>
+<p>Three things let a node run the disk listener on port <code dir="auto">7444</code> of its mesh address. Its driver keeps its disks in files, and the node has an identity and a mesh address. Once the node knows its mesh address, the listener listens on it. A check every 2 s finds a new address, and the listener then listens on it.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="access-to-a-disk">Access to a disk</h3><a class="sl-anchor-link" href="#access-to-a-disk"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Access to a disk”</span></a></div>
+<p>Both sides of a pull use their server certificates of the install CA (<a href="/reference/enrollment/">Enrollment and the install PKI</a>):</p>
+<ol>
+<li>The listener asks each client for its certificate. The certificate must chain to the install CA, have the usage client auth, and name a server with the role <code dir="auto">node</code>. Any other client fails the TLS handshake.</li>
+<li>The target checks the certificate of the listener the same way, and checks that it names the source node of the spec. The mesh address of a node is in no certificate, so this check replaces the check of the host name.</li>
+<li>The listener serves the disk of a machine only to one node, and only with one of its certificates. That node is the target in <code dir="auto">serve</code> of the last <code dir="auto">DiskTransfers</code> of the control role. The serial of the certificate must be in <code dir="auto">target_serials</code> of that entry. The control role lists a disk there only while its move is <code dir="auto">pulling</code>, with the target of that move. <code dir="auto">target_serials</code> holds the serials of the certificates of the target that are not retired and not expired.</li>
+</ol>
+<p>So a node can pull only the disk of a machine whose lease the control role granted to it for a move. A pull of another machine, a pull by another node, or a pull with a retired certificate gets <code dir="auto">403</code>. When the next <code dir="auto">DiskTransfers</code> no longer lists a disk, the listener ends each stream of that disk at once. The listener never serves the disk of a machine whose executor holds a valid lease or whose microVM runs.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="requests">Requests</h3><a class="sl-anchor-link" href="#requests"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Requests”</span></a></div>
+<div class="expressive-code"><link rel="stylesheet" href="/_astro/ec.rm20d.css"><script type="module" src="/_astro/ec.0vx5m.js"></script><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="text"><code><div class="ec-line"><div class="code"><span style="--0:#e1e4e8;--1:#24292e">GET https://&lt;mesh address&gt;:7444/v1/disks/&lt;machine ID&gt;?offset=&lt;bytes&gt;</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="GET https://<mesh address>:7444/v1/disks/<machine ID>?offset=<bytes>"><div></div></button></div></figure></div>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">200</code></td>
+<td>The stream of the disk from <code dir="auto">offset</code> follows.</td>
+</tr>
+<tr>
+<td><code dir="auto">400</code></td>
+<td>The path names no machine, or <code dir="auto">offset</code> is not a byte offset.</td>
+</tr>
+<tr>
+<td><code dir="auto">401</code></td>
+<td>The request has no certificate of a node.</td>
+</tr>
+<tr>
+<td><code dir="auto">403</code></td>
+<td>The control role names another node, or none, for the disk, or the certificate of the request is not in <code dir="auto">target_serials</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">404</code></td>
+<td>The node has no disk of the machine.</td>
+</tr>
+<tr>
+<td><code dir="auto">409</code></td>
+<td>The machine still runs on the node, or its executor holds its lease.</td>
+</tr>
+<tr>
+<td><code dir="auto">416</code></td>
+<td><code dir="auto">offset</code> is past the end of the disk.</td>
+</tr>
+<tr>
+<td><code dir="auto">500</code></td>
+<td>The node cannot read the disk.</td>
+</tr>
+<tr>
+<td><code dir="auto">503</code></td>
+<td>The node has no identity yet.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Header of <code dir="auto">200</code></th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">Content-Type</code></td>
+<td><code dir="auto">application/vnd.hopbox.disk</code></td>
+</tr>
+<tr>
+<td><code dir="auto">Hopbox-Disk-Size</code></td>
+<td>The size of the disk in bytes.</td>
+</tr>
+<tr>
+<td><code dir="auto">Hopbox-Disk-Version</code></td>
+<td>The version of the disk file: <code dir="auto">&lt;inode&gt;-&lt;time of change in ns&gt;-&lt;size&gt;</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">Trailer</code></td>
+<td><code dir="auto">Hopbox-Disk-Digest</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Trailer of <code dir="auto">200</code></th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">Hopbox-Disk-Digest</code></td>
+<td>The digest of the whole disk, <code dir="auto">sha256:&lt;hex&gt;</code>. It comes after the end frame. A stream that ends early has no digest.</td>
+</tr>
+</tbody>
+</table>
+<p>The listener sends the headers at once, before it reads the disk. So no digest delays the start of a stream.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="the-stream">The stream</h3><a class="sl-anchor-link" href="#the-stream"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “The stream”</span></a></div>
+<p>The body is a list of frames. Each frame is a header of 12 bytes, then its data:</p>
+<table>
+<thead>
+<tr>
+<th>Bytes</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0 to 7</td>
+<td>The offset of the data in the disk, big-endian.</td>
+</tr>
+<tr>
+<td>8 to 11</td>
+<td>The length of the data, at most 1 MiB, big-endian.</td>
+</tr>
+</tbody>
+</table>
+<p>The frames come in the order of their offsets, from <code dir="auto">offset</code> rounded down to a block. Each frame holds blocks that are not all zeros, so the holes of the disk and its blocks of zeros never cross the mesh. The listener skips the holes that the file system reports with <code dir="auto">SEEK_DATA</code> and <code dir="auto">SEEK_HOLE</code>, and reads the rest. A frame with the length 0 and the offset of the size of the disk ends the stream. A stream without it was cut.</p>
+<p>The target writes each frame at its offset in the partial copy <code dir="auto">&lt;disk&gt;.pull</code>, which it first makes the size of the disk. So the copy keeps the holes. The file <code dir="auto">&lt;disk&gt;.pull.json</code> holds the progress. It has the move, the version of the disk file of the source, and the size. It also has the offset up to which the copy is on disk, and the digest state of the copy at that offset. A pull of another move, or a source whose size or version changed, starts again from zero.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="digest">Digest</h3><a class="sl-anchor-link" href="#digest"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Digest”</span></a></div>
+<p>The digest of a disk is one sha256. It takes each block that holds a byte other than zero, as its offset in 8 bytes big-endian and then its bytes. Then it takes the size of the disk in 8 bytes big-endian. A hole and a block of zeros give the same digest, so both nodes agree whatever their file systems allocate.</p>
+<p>A stream from offset 0 computes the digest of the source while it sends the frames. A stream from another offset needs the digest of the whole disk. For such a stream, the source starts a digest job apart from the request. When the job ends, the source sends the trailer. The job outlives the request, so a pull that stops early finds the digest later. The source keeps each digest for the version of its disk file while the control role lists the disk.</p>
+<p>The target adds each frame to the digest of its copy as it writes it, and keeps the state of that digest with the progress. After the end frame, the target waits for the trailer without an idle timeout. When both digests match, it renames the copy to the disk file of the machine, and syncs the dir. Otherwise, it drops the copy.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="two-releases">Two releases</h2><a class="sl-anchor-link" href="#two-releases"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Two releases”</span></a></div>
+<p>If the heartbeats of a node say <code dir="auto">disk_transfer</code>, the node takes part in moves (<a href="/reference/control-channel/#heartbeat">the control channel</a>). The control role keeps the version of <code dir="auto">hopboxd</code> of the last such heartbeat in <code dir="auto">servers.disk_transfer_version</code> (<a href="/reference/control-store/#servers">Control store tables</a>). A node is a source or a target only while two things hold. That version is the current version of the node, and the node is in the mesh. So a node that went back to a release without moves takes no move.</p>
+<p>A release of the schema version 44 to 49 runs beside migration 0050 (<a href="/reference/control-store/#machine_moves">Control store tables</a>). Such a control role sends the spec of a moving machine without <code dir="auto">move</code>. Its lifecycle calls do not know the moves. Two checks keep the disk of a machine safe in that case:</p>
+<ol>
+<li>A live row of <code dir="auto">control_processes</code> can have a <code dir="auto">schema_version</code> below 50 (<code dir="auto">service.MovesSchema</code>, <a href="/reference/control-store/#control_processes">Control store tables</a>). While it does, the control role refuses <code dir="auto">MoveMachine</code> and holds the hand-off of each move. A control process of a release before migration 0045 writes no row, so upgrade every control server before the first move.</li>
+<li>The target node keeps the move in its node-local state. It never boots the machine until it has the whole disk of that move, whatever the spec says (<a href="#the-pull">The pull</a>).</li>
+</ol>
+<p>An executor of an older release on the target can boot a new disk from the image, and report <code dir="auto">stopped</code> or <code dir="auto">running</code>. That report has no <code dir="auto">pulled_move_id</code>, so the move fails and the source keeps the disk (<a href="#end-of-a-move">End of a move</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="metrics">Metrics</h2><a class="sl-anchor-link" href="#metrics"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Metrics”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Type</th>
+<th>Labels</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">hopbox_disk_transfer_bytes_total</code></td>
+<td>counter</td>
+<td><code dir="auto">direction</code></td>
+<td>The bytes of disk data of the pulls. <code dir="auto">sent</code> counts what the node sent to other nodes. <code dir="auto">received</code> counts what it pulled from another node.</td>
+</tr>
+</tbody>
+</table>
+<p>The pulls count in <code dir="auto">hopbox_executor_actions_total</code> with the action <code dir="auto">pull</code> (<a href="/reference/executor/#metrics">the node executor</a>).</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="logs">Logs</h2><a class="sl-anchor-link" href="#logs"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Logs”</span></a></div>
+<p>The control role logs with <code dir="auto">component=service</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Level</th>
+<th>Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">a cold move of a machine starts</code></td>
+<td>info</td>
+<td><code dir="auto">machine</code>, <code dir="auto">move</code>, <code dir="auto">source</code>, <code dir="auto">target</code></td>
+</tr>
+<tr>
+<td><code dir="auto">handed a stopped machine to the target node of its move</code></td>
+<td>info</td>
+<td><code dir="auto">move</code>, <code dir="auto">machine</code>, <code dir="auto">source</code>, <code dir="auto">target</code></td>
+</tr>
+<tr>
+<td><code dir="auto">a cold move failed, so the machine stays on its node</code></td>
+<td>warn</td>
+<td><code dir="auto">move</code>, <code dir="auto">machine</code>, <code dir="auto">source</code>, <code dir="auto">target</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">a step of a cold move failed. The next run tries again</code></td>
+<td>warn</td>
+<td><code dir="auto">move</code>, <code dir="auto">machine</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">a machine moved to another node</code></td>
+<td>info</td>
+<td><code dir="auto">machine</code>, <code dir="auto">move</code>, <code dir="auto">source</code>, <code dir="auto">target</code></td>
+</tr>
+<tr>
+<td><code dir="auto">a cold move failed while its machine was not in the state moving on the target node, so the machine stays there. The source node keeps its copy of the disk</code></td>
+<td>warn</td>
+<td><code dir="auto">machine</code>, <code dir="auto">move</code>, <code dir="auto">source</code>, <code dir="auto">target</code>, <code dir="auto">state</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">an instance admin canceled the move of a machine</code></td>
+<td>info</td>
+<td><code dir="auto">machine</code>, <code dir="auto">move</code>, <code dir="auto">source</code>, <code dir="auto">target</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the target node could not pull the disk, so the machine stays stopped on its source node</code></td>
+<td>warn</td>
+<td><code dir="auto">machine</code>, <code dir="auto">move</code>, <code dir="auto">source</code>, <code dir="auto">target</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">a node removed the old files of a machine that left it</code></td>
+<td>info</td>
+<td><code dir="auto">machine</code>, <code dir="auto">move</code>, <code dir="auto">server</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Level</th>
+<th>Component</th>
+<th>Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">taking the cold moves on failed</code></td>
+<td>warn</td>
+<td><code dir="auto">leader</code></td>
+<td><code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">reading the moves of a node failed. The next heartbeat tries again</code></td>
+<td>warn</td>
+<td><code dir="auto">channel</code></td>
+<td><code dir="auto">server</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the control plane sent the disks of cold moves to a server that takes part in no move</code></td>
+<td>warn</td>
+<td><code dir="auto">node</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>The executor logs with <code dir="auto">component=executor</code> and <code dir="auto">machine</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Level</th>
+<th>Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">the disk of the machine is on this node</code></td>
+<td>info</td>
+<td><code dir="auto">move</code>, <code dir="auto">source</code>, <code dir="auto">size</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the pull of the disk stopped, and the executor tries again</code></td>
+<td>warn</td>
+<td><code dir="auto">move</code>, <code dir="auto">source</code>, <code dir="auto">received</code>, <code dir="auto">err</code>, <code dir="auto">retry_in</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the pull of the disk failed for good, so the machine goes back to its source node</code></td>
+<td>error</td>
+<td><code dir="auto">move</code>, <code dir="auto">source</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the spec names no valid source node of the disk</code></td>
+<td>error</td>
+<td><code dir="auto">source</code></td>
+</tr>
+<tr>
+<td><code dir="auto">removed the files of a machine that left this node</code></td>
+<td>info</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">removing the files of a machine that left this node failed</code></td>
+<td>warn</td>
+<td><code dir="auto">err</code>. The next step tries again.</td>
+</tr>
+<tr>
+<td><code dir="auto">the control plane asks this node to remove the files of a machine that it still acts on, so they stay for now</code></td>
+<td>warn</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">cannot remove the node-local state of a machine that left this node</code></td>
+<td>error</td>
+<td><code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">cannot remove the log of a machine that left this node</code></td>
+<td>error</td>
+<td><code dir="auto">err</code></td>
+</tr>
+</tbody>
+</table>
+<p>A moving machine whose spec names no source logs <code dir="auto">the executor cannot reach the target</code> at level warn, with the reason <code dir="auto">the machine moves to this node, but the spec names no source node of its disk, or this node pulls no disk</code>.</p>
+<p>The disk listener and the pulls log with <code dir="auto">component=transfer</code> and <code dir="auto">machine</code>. The listener adds <code dir="auto">peer</code>, the pulling node, and a pull adds <code dir="auto">source</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Level</th>
+<th>Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">the disk listener serves the pulls of disks</code></td>
+<td>info</td>
+<td><code dir="auto">address</code>. No <code dir="auto">machine</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">cannot listen for the pulls of disks. The next check tries again</code></td>
+<td>error</td>
+<td><code dir="auto">address</code>, <code dir="auto">port</code>, <code dir="auto">err</code>, <code dir="auto">retry_in</code>. No <code dir="auto">machine</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">a node pulls the disk of a machine</code></td>
+<td>info</td>
+<td><code dir="auto">offset</code>, <code dir="auto">size</code></td>
+</tr>
+<tr>
+<td><code dir="auto">a node pulled the disk of a machine</code></td>
+<td>info</td>
+<td><code dir="auto">sent</code>, <code dir="auto">size</code>, <code dir="auto">duration</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the pull of a disk ended early</code></td>
+<td>warn</td>
+<td><code dir="auto">sent</code>, <code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">refused the pull of a disk by a node that the control plane did not name for it</code></td>
+<td>warn</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">a node pulls the disk of a machine that has no disk on this node</code></td>
+<td>error</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">cannot open the disk of a machine for a pull</code></td>
+<td>error</td>
+<td><code dir="auto">err</code></td>
+</tr>
+<tr>
+<td><code dir="auto">cannot compute the digest of a disk</code></td>
+<td>error</td>
+<td><code dir="auto">err</code>. The error <code dir="auto">transfer: the disk changed during the pull</code> means that the disk file changed during the digest job. The next pull then starts again from zero.</td>
+</tr>
+<tr>
+<td><code dir="auto">pulling the disk of a machine</code></td>
+<td>info</td>
+<td><code dir="auto">size</code></td>
+</tr>
+<tr>
+<td><code dir="auto">resumed the pull of a disk</code></td>
+<td>info</td>
+<td><code dir="auto">offset</code>, <code dir="auto">size</code></td>
+</tr>
+<tr>
+<td><code dir="auto">pulled the disk of a machine</code></td>
+<td>info</td>
+<td><code dir="auto">size</code>, <code dir="auto">received</code>, <code dir="auto">digest</code>, <code dir="auto">duration</code></td>
+</tr>
+<tr>
+<td><code dir="auto">the disk of the source changed since the last pull, so the pull starts again from zero</code></td>
+<td>warn</td>
+<td></td>
+</tr>
+<tr>
+<td><code dir="auto">the control plane named a disk to serve without valid IDs</code></td>
+<td>warn</td>
+<td><code dir="auto">machine</code>, <code dir="auto">target</code></td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h2"><h2 id="errors">Errors</h2><a class="sl-anchor-link" href="#errors"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Errors”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">transfer: the source node does not serve the disk now: ...</code></td>
+<td><code dir="auto">403</code> or <code dir="auto">409</code>. The executor tries again.</td>
+</tr>
+<tr>
+<td><code dir="auto">transfer: the source node has no disk of the machine: ...</code></td>
+<td><code dir="auto">404</code>. It counts toward the end of the move.</td>
+</tr>
+<tr>
+<td><code dir="auto">transfer: the copy of the disk has another digest than the disk of the source: ...</code></td>
+<td>The copy is dropped. It counts toward the end of the move.</td>
+</tr>
+<tr>
+<td><code dir="auto">transfer: cannot write the copy of the disk on this node: ...</code></td>
+<td>A local failure, such as a full disk. It counts toward the end of the move.</td>
+</tr>
+<tr>
+<td><code dir="auto">transfer: the peer is not a node of this install: ...</code></td>
+<td>A certificate that does not chain to the install CA, names no node, or names another node than the source.</td>
+</tr>
+<tr>
+<td><code dir="auto">transfer: the source sent nothing for 30s</code></td>
+<td>The idle timeout of a pull.</td>
+</tr>
+<tr>
+<td><code dir="auto">transfer: the source sent no valid size or version of the disk</code></td>
+<td>The headers of the source have no size or no version. The executor tries again.</td>
+</tr>
+<tr>
+<td><code dir="auto">transfer: the source sent no digest of the disk</code></td>
+<td>The stream ended without the trailer. The executor tries again from the saved progress.</td>
+</tr>
+</tbody>
+</table>
+<div class="sl-heading-wrapper level-h2"><h2 id="tests">Tests</h2><a class="sl-anchor-link" href="#tests"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Tests”</span></a></div>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Where it runs</th>
+<th>What it checks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The tests of <code dir="auto">internal/node/transfer</code></td>
+<td><code dir="auto">make test</code>, also on a Mac</td>
+<td>The digest of holes and zeros, and a pull that keeps the holes. The refusals of the listener, a node of another install, a server without the node role, and a retired certificate. A cut pull that resumes, a changed disk and another move that start from zero, and the idle timeout. A digest that takes longer than the timeout of a pull, a digest that does not match, and a withdrawn disk that ends its stream.</td>
+</tr>
+<tr>
+<td>The tests of <code dir="auto">internal/node/executor</code></td>
+<td><code dir="auto">make test</code>, also on a Mac</td>
+<td>A moving machine that never boots without its disk, also after a restart and with a spec of an older control role. A machine that boots only after the control role accepted the proof of its pull, also after an older control process accepted <code dir="auto">failed</code>. <code dir="auto">Busy</code>, and a removal that waits until the node stops acting on the machine.</td>
+</tr>
+<tr>
+<td><code dir="auto">TestColdMove</code>, <code dir="auto">TestColdMoveFails</code>, <code dir="auto">TestMoveRefusals</code>, <code dir="auto">TestDeleteDuringAMove</code>, <code dir="auto">TestColdMoveNeedsTheProofOfThePull</code>, <code dir="auto">TestCancelMove</code>, <code dir="auto">TestPullDeadline</code>, <code dir="auto">TestMovesWaitForEveryControlProcess</code>, <code dir="auto">TestMoveAfterAnOldControlAcceptedTheTarget</code> of <code dir="auto">internal/service</code></td>
+<td><code dir="auto">make test</code></td>
+<td>The steps of a move in the control store. The spec of the stop, the hand-off, the lease, the address, the mesh, <code dir="auto">DiskTransfers</code>, the end, and the cleanup. A failed stop, a failed pull, the refusals, and a delete during a move. A target that leaves <code dir="auto">moving</code> without the proof of the pull, a cancel, and the pull deadline with its progress. A control process of an older release, also one that accepted a step of the target.</td>
+</tr>
+<tr>
+<td><code dir="auto">TestColdMoveEndToEnd</code> of <code dir="auto">internal/control</code></td>
+<td><code dir="auto">make test</code></td>
+<td>Two nodes over mutual TLS on loopback, with their executors, the test driver, and the disk listener. A running machine moves with the data of its disk, its name, its URL, its SSH port, and its address. The source removes its old copy. A move back to a node that cannot write the disk fails, and the machine stays stopped with its disk.</td>
+</tr>
+<tr>
+<td><code dir="auto">TestColdMove</code> of <code dir="auto">test/fleet</code></td>
+<td><code dir="auto">make test-fleet</code></td>
+<td>Two nodes of the test driver on <code dir="auto">vrack0</code> with the real mesh. A cut of the <code dir="auto">vrack</code> link of the target in the middle of the pull, and the pull resumes. The data, the name, the URL, the SSH port, and the address stay. A failed target keeps the disk on the source.</td>
+</tr>
+<tr>
+<td><code dir="auto">TestColdMoveKVM</code> of <code dir="auto">test/fleet</code></td>
+<td><code dir="auto">make test-fleet</code> with <code dir="auto">FLEET_KVM_BUNDLE</code>, on a host with <code dir="auto">/dev/kvm</code></td>
+<td>Two KVM nodes with the real Firecracker. A file that the guest wrote is there after the move, and the address in the guest stays. It skips without KVM.</td>
+</tr>
+</tbody>
+</table>
+</div><footer class="sl-flex astro-fzngq47q"><div class="meta sl-flex astro-fzngq47q"></div><div class="pagination-links print:hidden astro-7jhddma2" dir="ltr"><a href="/reference/mesh/" rel="prev" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-7jhddma2">Previous<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">The mesh</span></span></a><a href="/reference/hopbox-guest/" rel="next" class="astro-7jhddma2"><svg aria-hidden="true" class="astro-7jhddma2 astro-w2bgc3ha" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-7jhddma2">Next<br class="astro-7jhddma2"><span class="link-title astro-7jhddma2">hopbox-guest</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>

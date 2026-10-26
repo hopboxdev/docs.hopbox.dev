@@ -76,6 +76,14 @@ A driver runs the microVMs of one node. Its microVMs run apart from `hopboxd`, s
 | `vmm.Snapshotter` | `Snapshot(ctx, inst)` | Saves the memory and the state of a running microVM to the memory file of the machine, and stops the microVM. |
 | `vmm.Restorer` | `Restore(ctx, Boot)` | Boots a machine from its memory file, with a new link key. A failure keeps the memory file, and leaves no microVM of the machine running. A success drops the memory file. |
 
+## Mover
+
+A driver that keeps the disk of each machine in one file is a `vmm.Mover`. A cold move copies that file to another node ([Cold move](/reference/cold-move/index.html.md)). A node whose driver is not a `Mover` takes part in no move.
+
+| Interface | Method | Description |
+| --- | --- | --- |
+| `vmm.Mover` | `DiskPath(id)` | The path of the disk file of a machine. The file exists from the first boot of the machine until `Delete`. A boot keeps a disk that it finds there, such as a pulled one. `Delete` also removes the partial copy of a pull beside the file. |
+
 ## The test driver
 
 `vmmtest.New(dir, logger, capabilities...)` returns a driver for tests. Its microVM is the real guest agent of `internal/guest`, run in the test process. It connects to the guest link socket over a unix socket. So an executor goes through the same steps as on a real node, without KVM. Its microVMs live as long as the driver, so they outlive the `Manager` that booted them. This is how a microVM outlives `hopboxd`.
@@ -88,6 +96,7 @@ A driver runs the microVMs of one node. Its microVMs run apart from `hopboxd`, s
 | `Ops()` | The calls so far, in order. |
 | `Overlaps()` | Each call that ran while another call of the same machine ran. An executor must never cause one. |
 | `Boots(id)`, `Status(id)`, `Root(id)` | How many times a machine booted, what the driver holds of it, and the dir of the `/etc` of its guest. |
+| `DiskPath(id)` | The disk file of a machine, `<dir>/disks/<id>/disk.raw`: a sparse file of the disk size that the first boot makes, at least 1 MiB. The guest agent of the driver never writes to it, so a test of a cold move writes its data. `Delete` removes its dir. |
 | `Close()` | Ends every microVM, at the end of a test. |
 
 The guest agent starts each command, exec or start command, in a process group of its own. So a Ctrl-C in the terminal does not reach the command. A killed test binary also skips `Close()`.

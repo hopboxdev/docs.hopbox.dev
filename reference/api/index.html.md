@@ -207,6 +207,9 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `machine.list_all` | admin `MachineService.ListMachines` | the install | `local_root`, `admin_key`, an admin `session` |
 | `machine.admin_stop` | admin `MachineService.StopMachine` | the install | `local_root`, `admin_key`, an admin `session` |
 | `machine.admin_delete` | admin `MachineService.DeleteMachine` | the install | `local_root`, `admin_key`, an admin `session` |
+| `machine.move` | admin `MachineService.MoveMachine` ([Cold move](/reference/cold-move/index.html.md)) | the install | `local_root`, `admin_key` |
+| `machine.list_moves` | admin `MachineService.ListMoves` | the install | `local_root`, `admin_key` |
+| `machine.cancel_move` | admin `MachineService.CancelMove` | the install | `local_root`, `admin_key` |
 | `image.register` | admin `ImageService.RegisterImage`, and the start of the control role for the default image of its release ([hopboxd](/reference/hopboxd/index.html.md#the-default-image-of-the-release)) | the install | `local_root`, `admin_key` |
 | `image.list` | admin `ImageService.ListImages` | the install | `local_root`, `admin_key`, an admin `session` |
 | `pool.create` | `PoolService.CreatePool` | the install | `local_root`, `admin_key`, an admin `session` |
@@ -235,6 +238,7 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `control.forward_stream` | `ControlPeerService.ForwardStream` ([the control channel](/reference/control-channel/index.html.md#streams-through-another-control-process)) | the install | `control` only |
 | `server.read_dns_zones` | a read of the DNS zones before a push on `ControlService.Channel` | the server of the caller | `server`, for its own server only, with a certificate that carries the role `dns` ([the control channel](/reference/control-channel/index.html.md#dns-zones)) |
 | `server.read_mesh_peers` | a read of the mesh before a push of `mesh_peers` | the server of the caller | `server`, for its own server only ([the control channel](/reference/control-channel/index.html.md#mesh-pushes)) |
+| `server.read_disk_transfers` | a read of the cold moves of a node before a push of `disk_transfers` | the server of the caller | `server` with the role `node`, for its own server only ([the control channel](/reference/control-channel/index.html.md#disk-transfers)) |
 | `server.read_machine_specs` | a read of the machine specs before a push of `reconcile_machine` | the server of the caller | `server`, for its own server only |
 | `server.report_machine` | a `MachineReport` on `ControlService.Channel` | the server of the caller | `server`, for its own server only |
 | `server.read_edge_certificate` | a read of the certificate before a push of `edge_certificate` | the server of the caller | `server`, for its own server only, with a certificate that carries the role `edge` ([the control channel](/reference/control-channel/index.html.md#edge-pushes)) |

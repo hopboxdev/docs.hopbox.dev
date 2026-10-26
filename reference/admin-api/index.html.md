@@ -27,7 +27,7 @@ The admin API has these services:
 | `hopbox.admin.v1.SizeService` | `CreateSize`, `GetSize`, `ListSizes`, `RetireSize` |
 | `hopbox.admin.v1.OrgService` | `ListOrgs`, `SuspendOrg`, `UnsuspendOrg`, `SetOrgLimits`, `GetDefaultOrgLimits`, `SetDefaultOrgLimits` |
 | `hopbox.admin.v1.AdminKeyService` | `CreateAdminKey`, `RegisterAdminKey`, `ListAdminKeys`, `RevokeAdminKey` |
-| `hopbox.admin.v1.MachineService` | `ListMachines`, `StopMachine`, `DeleteMachine` |
+| `hopbox.admin.v1.MachineService` | `ListMachines`, `StopMachine`, `DeleteMachine`, `MoveMachine`, `CancelMove`, `ListMoves` |
 | `hopbox.admin.v1.ImageService` | `RegisterImage`, `ListImages` |
 
 ### Admin sessions
@@ -1551,7 +1551,7 @@ update_time	2026-10-16T15:50:02Z
 
 ## MachineService
 
-`hopbox.admin.v1.MachineService` lets instance admins see the machines of every org, and stop or delete any of them. This also works in a suspended org, for example to handle abuse. It never opens a shell in a machine and never reads its secrets. [The machine API](/reference/machine-api/index.html.md) covers the calls of the members of an org.
+`hopbox.admin.v1.MachineService` lets instance admins see the machines of every org, and stop, delete, or move any of them. This also works in a suspended org, for example to handle abuse. It never opens a shell in a machine and never reads its secrets. [The machine API](/reference/machine-api/index.html.md) covers the calls of the members of an org.
 
 The message `Machine` of this service is a machine with the facts that only instance admins see:
 
@@ -1616,6 +1616,91 @@ state	pending
 target_state	stopped
 duration	39.001s
 done	false
+```
+
+### MoveMachine
+
+Moves any machine cold to another node ([Cold move](/reference/cold-move/index.html.md)). The node of the machine stops it. The other node then pulls its disk, and boots it if its target is `running`. The machine keeps its name, its URL, its SSH port, and its address. The call returns at once, with the move in the state `stopping`. `ListMoves` follows the move. A move works in a suspended org too.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.MachineService/MoveMachine` |
+| Policy action | `machine.move`: `local_root` and `admin_key` |
+| Idempotent option | yes. The call needs an `Idempotency-Key` header. A retry with the same key returns the first move, and starts no second move. A second call with a new key fails with `failed_precondition` while the first move runs. |
+| Audit entry | action `machine.move`, org the org of the machine, target kind `machine`, details `name`, `move`, `source`, `target`, and `old_target`. The end of the move writes a second entry with the actor `system` and the details `move` and `result`, and `error` for a failure. |
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `id`, `name` | string | | Name the machine. |
+| `target_server_id` | string | empty | The UUID of the node to move the machine to. Empty lets placement pick a node. |
+
+The response `MoveMachineResponse` has the field `move`, a `Move`. [Cold move](/reference/cold-move/index.html.md#start-of-a-move) lists the refusals. A machine that cannot move, such as a hibernated one, gets `failed_precondition`. A named node that is the node of the machine, or a `target_server_id` that is not a UUID, gets `invalid_argument`. An unknown named node gets `not_found`. When no node takes the machine, the call fails with `unavailable` and the message of [Placement](/reference/placement/index.html.md#when-no-node-has-room). While a live control process runs a `hopboxd` that does not know the moves, the call fails with `failed_precondition` ([Cold move](/reference/cold-move/index.html.md#two-releases)).
+
+### CancelMove
+
+Ends the cold move of a machine that runs ([Cold move](/reference/cold-move/index.html.md#pull-deadline-and-cancel)). The move ends in the state `failed`, with the error `an instance admin canceled the move`. A machine in `stopping` gets its own target back on its node. A machine in `pulling` goes back to its source node with its disk, stopped, and the target node removes what it pulled. A machine that is no longer in `moving` on the target node stays there ([Cold move](/reference/cold-move/index.html.md#a-step-that-an-older-control-process-accepted)).
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.MachineService/CancelMove` |
+| Policy action | `machine.cancel_move`: `local_root` and `admin_key` |
+| Idempotent option | no. A second call fails with `failed_precondition`, because the move no longer runs. |
+| Audit entry | action `machine.cancel_move`, org the org of the machine, target kind `machine`, details `name`, `move`, and `state`, the state of the move before the cancel. A move in `pulling` also gets the entry `machine.move` of a failed move, with the actor `system`. |
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `id`, `name` | string | | Name the machine. |
+
+The response `CancelMoveResponse` has the field `move`, a `Move`. A machine without a move that runs gets `failed_precondition` with the message `the machine has no move that runs`.
+
+### ListMoves
+
+Lists the cold moves of one machine, or of every machine, newest first, one page at a time.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.MachineService/ListMoves` |
+| Policy action | `machine.list_moves`: `local_root` and `admin_key` |
+| Idempotent option | yes |
+| Audit entry | action `machine.list_moves`, no target. With `machine_id`, the entry has the detail `machine_id`. |
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `machine_id` | optional string | none | Lists only the moves of this machine. |
+| `page_size` | int32 | 100 | The most moves in one response, 1 to 1000. |
+| `page_token` | string | empty | The `next_page_token` of the response before. Leave it empty for the first page. |
+
+The response `ListMovesResponse` has the fields `moves`, a repeated `Move`, and `next_page_token`. The token is empty on the last page. A page size out of range, a page token that does not decode, or a `machine_id` that is not a UUID gets `invalid_argument`.
+
+### Move
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | string | The UUID of the move. |
+| `machine_id` | string | The UUID of the machine. |
+| `source_server_id` | string | The UUID of the node that the machine leaves. |
+| `target_server_id` | string | The UUID of the node that the machine moves to. |
+| `state` | `MoveState` | The state of the move. |
+| `target_state` | `hopbox.v1.MachineState` | The target state of the machine before the move. The machine keeps it on the target node. |
+| `error` | string | Why the move failed. |
+| `cleanup_server_id` | string | The UUID of the node that still holds an old copy of the files of the machine: the source after a move that is done, the target after a move that failed. Empty once that node removed them. |
+| `create_time` | Timestamp | When the move started. |
+| `update_time` | Timestamp | When the move changed last. |
+
+| `MoveState` | Meaning |
+| --- | --- |
+| `MOVE_STATE_STOPPING` | The source node stops the machine. |
+| `MOVE_STATE_PULLING` | The machine is on the target node, which pulls its disk. |
+| `MOVE_STATE_DONE` | The target node has the disk. |
+| `MOVE_STATE_FAILED` | The move failed, passed its pull deadline, or an instance admin canceled it. The machine and its disk stay on the source node. |
+
+```text
+$ sudo hopboxd admin machine move --name box1
+id	01a1460c-2a7b-7c11-8d23-4e5f6a7b8c9d
+machine_id	01a1460c-1f6e-7b8a-9c42-3d5e7f8a9b10
+source_server_id	01a14600-0a1b-7c2d-8e3f-405162738495
+target_server_id	01a14600-1b2c-7d3e-8f40-516273849506
+state	stopping
 ```
 
 ## ImageService

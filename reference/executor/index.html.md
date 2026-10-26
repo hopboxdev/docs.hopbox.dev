@@ -41,8 +41,15 @@ Every log record of the executor has `component=executor`, apart from the record
 | `deleted` | anything | delete: a stop of the microVM, then the removal of the disk and the memory file | `deleted` |
 | `hibernated` | a microVM, and a driver with the capability snapshot | hibernate | `hibernated` |
 | `hibernated` or `standby` | a driver without the capability | none | none. The executor logs `the executor cannot reach the target` at level warn, with `target` and `reason`. |
+| any but `deleted` | a move in `pending_move` whose disk is not here yet, and a spec with `move` | pull: a copy of the disk from the source node of the move ([Cold move](/reference/cold-move/index.html.md#the-pull)) | none, or `failed` after 3 pulls that fail for good |
+| `running` | the disk of the move in `pending_move` is here, without the proof that the control role accepted | report the proof of the pull, then boot once the control role accepted it | `stopped` with `pulled_move_id`, then `starting` and `running` |
+| `stopped`, `hibernated`, or `standby` | the same | report the proof of the pull | `stopped` with `pulled_move_id`. A machine that the control store has `stopped` already gets a report of `stopped` again. |
+| `deleted` | the state `moving` | delete: the removal of what arrived | `stopped`, then `deleted` |
+| any but `deleted` | a move in `pending_move` whose disk is not here yet, and a spec without `move` | none | none. The executor logs `the executor cannot reach the target` at level warn, with `target` and `reason`. |
 
-A boot or a wake succeeds once the guest agent applied the configuration of the machine on an authenticated guest link ([Guest link](/reference/guest-link/index.html.md#node-api)). Only then does the executor report `running`. A boot that fails reports `failed` with the error. If the microVM runs but its guest agent does not come up, the executor stops the microVM first.
+The executor never boots a machine of a move before its disk is whole. A boot without the disk makes a new disk from the image. The move stays in `pending_move` of the node-local state until the control role accepted a report with the proof of its pull, `pulled_move_id`. The executor then writes the move in `acked_move`. Until then, the machine never boots on the node, whatever its current state. This rule holds after a restart of `hopboxd`, and on a spec of a control role that does not know the move. It also holds after such a control role accepted a step out of `moving`. If the control role ended the move before it accepted the proof, it refuses that report, and the machine never boots on the node. Once the disk is here, each report of the executor names the move in `pulled_move_id`. A pull can write bytes and end early. The executor then reports its current state again with `pull_received`, which holds off the pull deadline of the move. After a pull that failed for good, the executor reports `failed` and acts no more with its grant: the control role gives the machine back to its source node.
+
+A boot or a wake starts only after the control role answered each report that waits in the queue. Such an answer can find the grant stale, for example the answer to the report of a crash. A boot with a stale grant can run the machine beside the executor of the live grant. So a restart after a crash waits for the answer to `failed`. If the control channel is down at the crash, the machine does not restart on the node until the channel is back. When the answer arrives, the machine restarts with the same grant. If the lease ended in the meantime, the machine waits for the next grant, and restarts with it. The wait for that grant can add up to the rest of the lease, about 30 s (`domain.MachineLeaseTTL`). A boot or a wake succeeds once the guest agent applied the configuration of the machine on an authenticated guest link ([Guest link](/reference/guest-link/index.html.md#node-api)). Only then does the executor report `running`. A boot that fails reports `failed` with the error. If the microVM runs but its guest agent does not come up, the executor stops the microVM first.
 
 When a report needs a step that the lifecycle does not allow, the executor reports through one state between. For example, a delete of a machine in `starting` reports `stopped`, then `deleted` ([Domain rules](/reference/domain-rules/index.html.md#steps-between-current-states)).
 
@@ -158,6 +165,9 @@ The executor keeps one file per machine in its state dir, `<dir>/<machine ID>.js
 | `machine_id` | The ID of the machine. |
 | `epoch`, `token` | The grant that the executor acted with last. After a restart, the next heartbeat lists it. It counts as valid only after a heartbeat renews it, or after a new spec names it. |
 | `boot_generation` | The reboot generation of the last boot, so a restart never reboots a running machine again. |
+| `pulled_move` | The move whose disk the node pulled whole, so a restart before the report of the move pulls it no more. Absent for a machine that never moved here. |
+| `pending_move` | The move whose disk the node waits for, or `unknown` for a moving machine whose spec names no move. Absent for a machine that never moved here. |
+| `acked_move` | The move whose proof of the pull the control role accepted. Until it names the move of `pending_move`, the machine never boots on the node. Absent for a machine that never moved here. |
 
 The executor writes the file at each new grant and each boot, through a temporary file, a rename, and a sync of the dir. At its start, it removes each temporary file `.tmp-*` that a crash left. It removes the file once the control role accepted the report `deleted`. A stale answer to that report ends the executor too: the driver deleted the machine already, and the control store dropped its row. A file that does not parse is logged as `cannot read the node-local state of a machine` at level error, and the other machines still load.
 
@@ -181,7 +191,7 @@ After a restart, the executor asks the driver for each machine of the state dir.
 
 | Label | Values |
 | --- | --- |
-| `action` | `boot`, `wake`, `reboot`, `stop`, `delete`, `hibernate`, `link`, `report`, `config`, `start_command` |
+| `action` | `boot`, `wake`, `reboot`, `stop`, `delete`, `hibernate`, `link`, `report`, `config`, `start_command`, `pull` |
 | `result` | `ok`, `failed`, or `canceled` for an action that ended with the loss of its lease |
 
 The histogram has the buckets 0.01, 0.05, 0.1, 0.5, 1, 2.5, 5, 10, 30, 60, 120, and 300 seconds.
@@ -202,6 +212,7 @@ The histogram has the buckets 0.01, 0.05, 0.1, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 
 | `Metrics` | none | The metrics of `executor.NewMetrics(registerer)`. |
 | `Logs` | none | The logs of the start commands, an `executor.LogSink`: `Append(id, entry)` takes a line and must not block, and `Remove(id)` drops the log of a deleted machine. Nil drops the lines. |
 | `Nameservers` | none | A func that returns the resolvers of the machines of the node, such as `Nameservers` of a `netcfg.Network`. Nil gives a machine no resolver. |
+| `Puller` | none | Pulls the disk of a machine that moves to the node, such as a `transfer.Client` ([Cold move](/reference/cold-move/index.html.md)). Nil, or a driver that is no `vmm.Mover`, pulls none, and a moving machine waits. |
 
 The `Manager` is the `Machines` of the agent of the node, `node.Agent.Machines`. The agent calls these methods:
 
@@ -212,3 +223,11 @@ The `Manager` is the `Machines` of the agent of the node, `node.Agent.Machines`.
 | `LeasesRenewed(sentAt, sent, renewed)` | For each `HeartbeatAck`, with the leases of its heartbeat. |
 | `ReportResult(MachineReportResult)` | For each result of a report. |
 | `Connected(send)`, `Disconnected()` | At the start and the end of each channel. |
+
+For the cold moves, the node role calls these methods ([Cold move](/reference/cold-move/index.html.md#old-copies)):
+
+| Method | What it does |
+| --- | --- |
+| `Busy(id)` | Reports whether the executor of the machine holds a valid lease, runs an action, or runs the microVM. A microVM that the executor attached to after a restart, before a spec arrived, counts too. The disk listener serves no disk of such a machine. |
+| `Forget(ids)` | Removes the files of the machines that left the node, once their executor holds no valid lease and their microVM does not run. A machine that a later call names no more keeps its files. |
+| `Removed()` | Returns the machines whose files `Forget` removed, for the heartbeats. |

@@ -12,14 +12,14 @@ The control role gives out the addresses (`internal/service/network.go`). The no
 | --- | --- |
 | Install range | `10.240.0.0/12`. Every machine address of the install is in it. |
 | Node subnet | A `/20` of the install range for each node, such as `10.240.0.0/20`. When the control role places the first machine of a node, the node gets the first free subnet. The install range holds 256 node subnets. |
-| Machine address | One IPv4 address of the subnet of the node of the machine. A create takes the first free address, from the second address of the subnet to the one before the last. A subnet holds 4094 machines. |
+| Machine address | One IPv4 address of the subnet of the first node of the machine. A create takes the first free address, from the second address of the subnet to the one before the last. A subnet holds 4094 machines. A machine that moves to another node keeps its address ([Moved machines](#moved-machines)). |
 | Prefix length in the guest | `/32`. The guest has no neighbor on its link apart from the gateway. |
 | Gateway | `169.254.0.1`, on-link. The node has this address on each tap device. |
 | MTU | `1420`, on the tap device and in the guest. A packet of this size fits the mesh device `hbm0`, whose MTU is `1420` too ([the mesh](/reference/mesh/index.html.md#values)). |
 | Hold | 5 minutes after the delete of a machine (`domain.AddressHold`). |
 | IPv6 | None in phase 1. IPv6 egress comes in phase 2, with the egress through the edge servers. |
 
-A machine keeps its address for its whole life. A stop, a start, a reboot, and a restart of `hopboxd` keep it.
+A machine keeps its address for its whole life. A stop, a start, a reboot, a restart of `hopboxd`, and a cold move keep it.
 
 A create claims the address in its own transaction, under the row lock of the node. So two creates never take the same address. When the subnet of the node has no free address, the create fails with `no capacity` and does nothing ([the machine API](/reference/machine-api/index.html.md)).
 
@@ -29,11 +29,19 @@ The executor reports `deleted` once it removed the machine from its node. The re
 
 An edge server gets a machine lease with each route. It sends traffic to the address of the route for at most the rest of that lease, 30 seconds ([the edge role](/reference/edge/index.html.md)). The hold of 5 minutes is much longer. So no new machine at an old address gets the requests or the SSH sessions of the machine that had it before ([the SSH front door](/reference/ssh-front-door/index.html.md)). After the hold, the next create on the node can take the address again.
 
+### Moved machines
+
+A cold move takes a machine to another node ([Cold move](/reference/cold-move/index.html.md)). The machine keeps its address, which stays in the subnet of its first node. The row of the address in `machine_addresses` names the new node from the hand-off of the move. At the boot of the machine, the new node routes the `/32` of the address to its tap device ([The tap device of a machine](#the-tap-device-of-a-machine)). The table `inet hopbox_node` takes the device and the address in the set `machines`. So the rules work for an address outside the subnet of the node too.
+
+The mesh peer of the new node allows the `/32` of the address ([the mesh](/reference/mesh/index.html.md#allowed-ips)). WireGuard sends a packet to the peer with the longest prefix that holds its destination. So the edge servers and the other nodes reach the machine at its new node, and the rest of the subnet at the first node. The first node no longer has a tap device for the address, so its mesh routes the `/32` over `hbm0` like the other servers do.
+
+The subnet of the first node keeps the address while the machine lives. So a create on the first node never takes it.
+
 ### Where the address shows
 
 | Place | What it holds |
 | --- | --- |
-| `machine_addresses` | The address of each machine, with its hold ([Control store tables](/reference/control-store/index.html.md#machine_addresses)). |
+| `machine_addresses` | The address of each machine, with its node and its hold ([Control store tables](/reference/control-store/index.html.md#machine_addresses)). |
 | `node_subnets` | The subnet of each node ([Control store tables](/reference/control-store/index.html.md#node_subnets)). |
 | The spec of the machine | `MachineNetwork`: the address as a `/32`, the gateway, and the MTU ([the executor protocol](/reference/executor-protocol/index.html.md#machinespec)). |
 | The route record | `route_records.address`, from each report of running. The edge role reaches the machine at this address ([Control store tables](/reference/control-store/index.html.md#route_records)). |

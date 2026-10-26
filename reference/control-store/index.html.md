@@ -766,7 +766,7 @@ Migration `0034_acme.sql`. The state of the attempts of the ACME job ([the certi
 
 ## servers
 
-Migrations `0015_servers.sql`, `0030_server_labels.sql`, and `0045_control_processes.sql` (the column `channel_process`). The server registry: one row per enrolled server. Enrollment inserts the row, and each heartbeat on the control channel writes the facts of the server ([the control channel](/reference/control-channel/index.html.md)).
+Migrations `0015_servers.sql`, `0030_server_labels.sql`, `0045_control_processes.sql` (the column `channel_process`), and `0050_machine_moves.sql` (the column `disk_transfer_version`). The server registry: one row per enrolled server. Enrollment inserts the row, and each heartbeat on the control channel writes the facts of the server ([the control channel](/reference/control-channel/index.html.md)).
 
 | Column | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -790,6 +790,7 @@ Migrations `0015_servers.sql`, `0030_server_labels.sql`, and `0045_control_proce
 | `disk_free_bytes` | `bigint` | `0` | The free space on that file system. |
 | `allocations` | `jsonb` | `[]` | The resources that the machines of the server hold: objects with `machine_id`, `vcpus`, `memory_bytes`, and `disk_bytes`. |
 | `actions` | `jsonb` | `[]` | The actions in progress: objects with `machine_id`, `action`, and `started_at`. |
+| `disk_transfer_version` | `text` | empty | The `hopboxd_version` of the last heartbeat that said `disk_transfer`. Each other heartbeat of a release that knows the field sets it empty. A node is the source or the target of a cold move only while it equals `hopboxd_version` ([Cold move](/reference/cold-move/index.html.md#two-releases)). |
 | `last_heartbeat_at` | `timestamptz` | null | The time of the last heartbeat. Null before the first one. |
 | `channel_process` | `uuid` | null | The control process that holds the control channel of the server, a row of `control_processes` ([control_processes](#control_processes)). Each recorded heartbeat of a channel that its process still holds sets it. Other heartbeats leave it as it is. The hub clears it when the last channel of the server in that process ends, if it still names that process. Another control process reads it to forward a data stream ([the control channel](/reference/control-channel/index.html.md#streams-through-another-control-process)). Migration `0045_control_processes.sql` adds it. Null before the first heartbeat on a control process of a release with the migration. |
 | `enrolled_at` | `timestamptz` | the time of the insert | When the server enrolled. |
@@ -1175,7 +1176,7 @@ Migration `0039_machine_addresses.sql`. One row per IPv4 address that a machine 
 | Column | Type | Description |
 | --- | --- | --- |
 | `address` | `inet`, primary key | The address, a `/32` of `10.240.0.0/12`. |
-| `server_id` | `uuid` | The node whose subnet holds the address. |
+| `server_id` | `uuid` | The node of the machine. It is the node whose subnet holds the address, until a cold move hands the machine to another node ([the node network](/reference/node-network/index.html.md#moved-machines)). |
 | `machine_id` | `uuid`, unique | The machine. A delete of the machine row deletes the row. The foreign key is deferred to the end of the transaction, as in `machine_names`. |
 | `held_until` | `timestamptz`, can be null | Null while the machine lives. The report of `deleted` sets it 5 minutes ahead (`domain.AddressHold`). |
 | `version` | `bigint` | The row version. |
@@ -1203,6 +1204,29 @@ The heartbeat of a server writes its row, in the transaction of the heartbeat ([
 The migration has the line `-- oldest_schema_version: 44`, because a `hopboxd` of an older release never reads the table ([the bundled Postgres](/reference/postgres/index.html.md#two-releases-on-one-store)). The servers of such a release stay out of the mesh until they upgrade.
 
 A key that the row of another server holds changes nothing: the heartbeat goes on without its part of the mesh. A decommissioned server keeps its row, so no other server takes its address. The read of the mesh leaves out the decommissioned servers.
+
+## machine_moves
+
+Migration `0050_machine_moves.sql`. One row per cold move of a machine ([Cold move](/reference/cold-move/index.html.md)).
+
+| Column | Type | Description |
+| --- | --- | --- |
+| `id` | `uuid`, primary key | A UUIDv7. |
+| `machine_id` | `uuid` | The machine. It has no foreign key, so a node can still remove an old copy after the leader drops the row of a deleted machine. |
+| `source_server_id` | `uuid` | The node that the machine leaves, a row of `servers`. |
+| `target_server_id` | `uuid` | The node that the machine moves to, a row of `servers`. It differs from the source. |
+| `state` | `text` | `stopping`, `pulling`, `done`, or `failed`. |
+| `target_state` | `text` | The target state of the machine before the move: `running` or `stopped`. |
+| `pinned_target` | `boolean` | True when the instance admin named the target. A target without room then fails the move, and placement picks no other one. |
+| `error` | `text` | Why the move failed. Empty otherwise. |
+| `cleanup_server_id` | `uuid`, can be null | The node that still holds an old copy of the files of the machine: the source after `done`, the target after a move that failed in `pulling`. Null once the heartbeat of that node says that it removed them, for a move that failed in `stopping`, and for a failed move that left its machine on the target. |
+| `version` | `bigint` | The row version. |
+| `created_at` | `timestamptz` | The start of the move. The stop timeout counts from it. |
+| `updated_at` | `timestamptz` | The last change. In `pulling`, it is the time of the hand-off or of the last progress of the pull, and the pull deadline counts from it. |
+
+The unique partial index `machine_moves_active` lets one move of a machine run at a time, in `stopping` or `pulling`. The index `machine_moves_serving` lists the disks that a source serves, and `machine_moves_cleanup` the old copies of a node. A change of a move locks the machine row first, then the move row. The rows stay after the move as its record.
+
+The migration adds the column `servers.disk_transfer_version` too. It has the line `-- oldest_schema_version: 44`, because a `hopboxd` of an older release never reads either. Such a release starts no move. While a live row of `control_processes` has a `schema_version` below 50, a newer control role starts no move and hands off none either ([Cold move](/reference/cold-move/index.html.md#two-releases)).
 
 ## placements
 

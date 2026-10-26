@@ -2,7 +2,7 @@
 
 > The WireGuard mesh of the servers over the vRack: the device hbm0, which servers join, the mesh addresses, the peers and their allowed IPs, the routes, a restart, metrics, logs, and errors.
 
-The mesh connects the servers of an install over the vRack with kernel WireGuard. WireGuard encrypts the mesh traffic between servers. An edge server reaches the machines of each node over the mesh, and the cold move of a later milestone copies disks over it. The control channel stays outside the mesh, on the vRack.
+The mesh connects the servers of an install over the vRack with kernel WireGuard. WireGuard encrypts the mesh traffic between servers. An edge server reaches the machines of each node over the mesh, and a cold move copies the disk of a machine over it ([Cold move](/reference/cold-move/index.html.md)). The control channel stays outside the mesh, on the vRack.
 
 The server side is in `internal/mesh`. The control role keeps the members of the mesh in `internal/service/mesh.go`, and pushes the mesh on the control channel from `internal/control/channel/mesh.go`.
 
@@ -68,7 +68,7 @@ An unresponsive server stays a peer. So when it comes back, the mesh works again
 
 | Server | Allowed IPs |
 | --- | --- |
-| A server with the node role | Its mesh address as a `/32`. Its node subnet, such as `10.240.16.0/20`, once it has one: the control role gives a node its subnet at its first machine ([the node network](/reference/node-network/index.html.md#addresses)). The `/32` of each machine on it whose address is outside its subnet, such as a machine that moved to it. |
+| A server with the node role | Its mesh address as a `/32`. Its node subnet, such as `10.240.16.0/20`, once it has one: the control role gives a node its subnet at its first machine ([the node network](/reference/node-network/index.html.md#addresses)). The `/32` of each machine on it whose address is outside its subnet, such as a machine that moved to it ([the node network](/reference/node-network/index.html.md#moved-machines)). |
 | Another server | Its mesh address as a `/32`. |
 
 The device refuses a mesh with an allowed IP outside these ranges: the mesh range, the machine range `10.240.0.0/12`, and the IPv6 unique local range `fc00::/7`, which the IPv6 addresses of machines will use. So no push can route the vRack range, and so the control channel, over the device.
@@ -208,4 +208,3 @@ The other parts of the mesh log with their own components:
 - The edge servers apart from the nodes, which dial the machines over the mesh: N15 of the build plan of phase 2.
 - The host firewall, which takes the port `51820` only from the vRack range: N16.
 - The egress tunnels `hbe0`, `hbe1`, and so on, and the IPv6 `/64` of each node subnet: N17.
-- The disk transfer of a cold move on port `7444` of the mesh address: N18.

@@ -172,6 +172,8 @@ The SSH ports of the machines are 10000 to 30000. The kernel must not give them 
 
 The drop-in sets the whole list. If another drop-in sets this key with a name that sorts after `60-hopbox.conf`, that drop-in wins at boot.
 
+The disk listener of a node reserves no port either. It listens on port 7444 of the mesh address only ([Cold move](/reference/cold-move/index.html.md#the-disk-listener)).
+
 The DNS role reserves no port. It listens on the ports of `dns.listen`, port 53 by default ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)). The edge role reserves no port either. It listens on `edge.https_listen`, `edge.http_listen`, and `edge.ssh_listen`, ports 443, 80, and 2222 by default. At its start, it also replaces the nftables table `inet hopbox_edge`, which sends the SSH ports 10000 to 30000 to `edge.ssh_listen`. A stop deletes the table ([the SSH front door](/reference/ssh-front-door/index.html.md#redirect-of-the-ssh-ports)). The redirect matches only new connections, so an edge server without the node role needs no reserved ports.
 
 ## The bootstrap admin API key

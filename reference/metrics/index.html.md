@@ -181,6 +181,14 @@ A server with the mesh device `hbm0` serves these metrics ([the mesh](/reference
 curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_mesh_'
 ```
 
+## Metrics of the cold moves
+
+A node whose driver keeps its disks in files counts the bytes of the disks that it serves and pulls for the cold moves ([Cold move](/reference/cold-move/index.html.md#metrics)). The pulls also count in `hopbox_executor_actions_total` with the action `pull`.
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_disk_transfer_bytes_total` | counter | `direction` | The bytes of disk data of the pulls: `sent` to other nodes, and `received` from another node. |
+
 ## Metrics of the process
 
 | Prefix | Source |

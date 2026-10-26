@@ -121,6 +121,7 @@ The spec holds the env vars and the secrets of the machine. No part of hopbox lo
 | `network` | `MachineNetwork` | The address setup of the machine ([the node network](/reference/node-network/index.html.md#addresses)). Not set for a machine without an address, which then boots without network. |
 | `authorized_keys` | repeated string | The public keys that sshd in the machine accepts for every Linux user: the client key of the SSH front door ([the SSH front door](/reference/ssh-front-door/index.html.md#keys)). Empty while the install has no keys of the front door, which needs a key-encryption key. The control role then logs `the machine specs go out without the key of the SSH front door` at level warn, with `component=service` and `err`. |
 | `env_unresolved` | bool | The env of the machine did not resolve. The spec then holds no env, and the executor pushes nothing to the guest with it. |
+| `move` | `MachineMove` | Set while the machine moves to this node: where the node pulls its disk ([Cold moves](#cold-moves)). Not set for any other machine. |
 
 ### A machine whose env does not resolve
 
@@ -162,6 +163,38 @@ The spec carries no link key of the guest link. The node makes a new link key fo
 
 Each value of `MachineState` is a state of [Domain rules](/reference/domain-rules/index.html.md#machine-states) with the prefix `MACHINE_STATE_`, such as `MACHINE_STATE_RUNNING`. `MACHINE_STATE_UNSPECIFIED` is no state.
 
+## Cold moves
+
+A cold move takes a stopped machine to another node with its disk ([Cold move](/reference/cold-move/index.html.md)). The protocol carries it in these steps:
+
+1. The move waits for the stop of the machine. Meanwhile, the spec of the machine on its node has the target `stopped`, apart from a target `deleted`. The executor stops the machine and reports `stopped`, as for any stop.
+2. The leader hands the machine to the target node. In one transaction, it ends the grant of the source, grants the lease to the target, and writes a row of `placements`. It sets the current state `moving` and moves the machine and its address to the target node. No executor holds the lease at that time, so the control role writes this state itself.
+3. The next heartbeat of the source finds its grant stale, and its executor stops acting. The spec goes to the target node with the current state `moving` and the field `move`.
+4. The executor of the target writes the move in its node-local state, and pulls the disk with the action `pull` ([the node executor](/reference/executor/index.html.md#actions)). It never boots the machine before the control role accepted the proof of the pull of that move. With the target `deleted`, it deletes what arrived instead. A pull that wrote bytes and ended early gets a report of the same state with `pull_received`, which holds off the pull deadline.
+5. Once the disk is whole, the executor leaves `moving` through `stopped`, with the ID of the move in `pulled_move_id`. That report ends the move. If the target of the machine is `running`, the executor boots the machine after the control role accepted the report.
+6. After 3 pulls in a row that fail for good, the executor reports `failed` from `moving`, and acts no more with its grant. The report gives the machine back to the source node. The control role ends the grant of the target in the transaction of the report, and writes the current state `stopped`.
+
+The control role reads the move in the transaction of each report of the target node while the move pulls:
+
+| Report of the target | What the control role does in the transaction of the report |
+| --- | --- |
+| Any state but `failed`, with the ID of the move in `pulled_move_id` | The move is done. The source node must remove its old copy. A report of the same state ends the move too. |
+| The same state, without the proof | Nothing ends. `pull_received` above 0 holds off the pull deadline. |
+| `failed` from `moving` | The move failed. The control role ends the lease of the target. It gives the machine and its address back to the source node with the current state and the target `stopped`. The target node must remove what it pulled. |
+| Any other step | The same as `failed`, with the error `the target node left the state <state> with <new state>, without the whole disk of the move`. |
+
+The control role gives the machine back only while it is in `moving` on the target. A control process of a release without moves can accept a step of the target out of `moving` during a pull. After that, a failed move leaves the machine on the target ([Cold move](/reference/cold-move/index.html.md#a-step-that-an-older-control-process-accepted)).
+
+A spec with the current state `moving` and without `move` makes the executor wait. A control process of a release without moves sends such a spec. The executor then logs `the executor cannot reach the target` with its reason. The node-local state of the executor keeps the move. While the disk of that move is not whole, a spec with another current state boots nothing either.
+
+### MachineMove
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `move_id` | string | The ID of the move, a UUID. A partial copy of another move starts again from zero. |
+| `source_server_id` | string | The ID of the source node, a UUID. Its certificate must name it. |
+| `source_address` | string | The disk listener of the source node: its mesh address and port `7444`, such as `10.239.0.2:7444`. |
+
 ## MachineReport
 
 `MachineReport` (field 4 of `ChannelRequest`) is one step of the current state of a machine. The executor sends its reports one at a time: it sends the next one after the result of the one before. So the reports of a machine arrive in order. After a new channel opens, the executor sends its waiting report again. A report of the state that the control store holds already changes nothing, so a report that arrives twice is harmless.
@@ -176,6 +209,8 @@ Each value of `MachineState` is a state of [Domain rules](/reference/domain-rule
 | `error` | string | Why the machine failed, for a report of `failed`. | at most 1024 bytes, valid UTF-8 |
 | `skipped_env` | uint32 | For a report of `running`, the count of env values that the guest agent left out ([Guest link](/reference/guest-link/index.html.md#configuration)). After a change of the count, the executor reports `running` again. | at most 2147483647 |
 | `ssh_host_keys` | repeated string | For a report of `running`, the public SSH host keys of the guest, as the guest agent reported them in its status. Each one is in the `authorized_keys` format without a comment. The executor leaves out a key that does not parse, and a key that it has already. After a change of the keys, the executor reports `running` again. A report of another state carries none. | at most 8, each one key without options or a comment |
+| `pulled_move_id` | string | The ID of the move whose whole disk the executor pulled, with a digest that matches. The executor sets it on each report once the disk is here, until a later move. A step of the target of a move without it fails the move ([Cold moves](#cold-moves)). A value that is not a UUID counts as empty. | |
+| `pull_received` | uint64 | For a report of the same state during a pull, the bytes that the last pull wrote. Above 0, it holds off the pull deadline of the move. 0 on every other report. | |
 
 ### What the control role does
 
@@ -191,7 +226,8 @@ Each value of `MachineState` is a state of [Domain rules](/reference/domain-rule
 8. A report with `stopped_by_itself` of a machine with the target `running` and the restart policy `never` sets the target to `stopped`. So a later start boots the machine again. The `boot_generation` of the report must not be lower than the `reboot_generation` of the machine. A start after the shutdown adds 1 to `reboot_generation` ([the machine API](/reference/machine-api/index.html.md#startmachine)). So when the executor sends the report again on a new channel after that start, the report leaves the target `running`. The audit entry is `machine.stop` with the actor `system` and the details `old_target` and `reason`.
 9. A report of `running` writes the route record of the machine, with the address of the machine and `ssh_host_keys`. Each key goes to at most one route record, through the table `route_host_keys` ([Control store tables](/reference/control-store/index.html.md#route_host_keys)). Only reports that share a key wait on each other. If the record of another machine holds a key of the report, that key stays out of the record, and the other keys go in. The service then logs `a guest reported an SSH host key of another machine, so the SSH front door does not reach it` at level error. The fields are `machine` and `other_machine`. A key that the record lets go goes to the oldest other route record, by `created_at`, whose last report claimed it. A report of another state drops the record, and lets its keys go the same way ([Control store tables](/reference/control-store/index.html.md#route_records)).
 10. A report of `deleted` ends the lease of the machine, and starts the hold of its address ([the node network](/reference/node-network/index.html.md#the-hold-of-a-released-address)).
-11. It publishes the event `machine.state_changed` with the payload `{"action": "server.report_machine"}`. The lifecycle waits and `WatchMachines` follow it ([the machine API](/reference/machine-api/index.html.md#change-events)).
+11. A report that leaves `moving` ends the move of the machine ([Cold moves](#cold-moves)).
+12. It publishes the event `machine.state_changed` with the payload `{"action": "server.report_machine"}`. The lifecycle waits and `WatchMachines` follow it ([the machine API](/reference/machine-api/index.html.md#change-events)).
 
 The service logs each change with `component=service` and the fields `machine`, `server`, `epoch`, and `boot_generation`:
 
@@ -226,6 +262,8 @@ The nodes upgrade last in a rolling upgrade, so the executors of a node of relea
 
 Placement puts a new machine only on a node whose `hopboxd` is at least `version.MinNodeVersion` ([Placement](/reference/placement/index.html.md#hard-filters)). Only a release whose control role sends a spec that older nodes cannot run raises it. That release raises it to the oldest release that runs the new spec. A machine that runs on an older node stays there. So a release that changes the spec keeps sending the old form to the nodes of the release before, until they upgrade.
 
+A release before cold moves ignores the field `move`, and can boot a moving machine from its image. So a node is the source or the target of a move only while its heartbeats say `disk_transfer` with its current `hopboxd` ([Cold move](/reference/cold-move/index.html.md#two-releases)). If such a node rolls back during a pull, its report out of `moving` has no `pulled_move_id`. The move then fails, and the source keeps the disk.
+
 ## Policy
 
 The policy lets a server act only for itself ([the API server](/reference/api/index.html.md#callers-and-policy)):
@@ -234,6 +272,7 @@ The policy lets a server act only for itself ([the API server](/reference/api/in
 | --- | --- | --- |
 | `server.read_machine_specs` | read the specs of the machines of the server, with their env vars and secrets | the server that the certificate names |
 | `server.report_machine` | record a report of an executor of the server | the same server |
+| `server.read_disk_transfers` | read the disks that the server serves, and the machines whose old files it removes ([Cold move](/reference/cold-move/index.html.md#old-copies)) | the same server, with the role `node` |
 
 ## Go API
 
@@ -243,5 +282,6 @@ The policy lets a server act only for itself ([the API server](/reference/api/in
 | `Service.ExecutorSpecs(ctx, caller, ids)` | Returns the specs of the machines of the server of `caller` whose live lease it holds, or of every such machine for nil `ids`. |
 | `Service.ReportMachine(ctx, caller, MachineReport)` | Writes one report. Fails with `lease.ErrStale` for a stale lease, and with `ErrFailedPrecondition` for a step that the lifecycle does not allow. |
 | `Service.MachineNodes(ctx, ids)` | Returns the node of each machine, so the dispatcher finds the channel of its spec. |
+| `Service.DiskTransfers(ctx, caller)` | Returns the disks that the node of `caller` serves to the targets of moves, and the machines whose old files it removes. |
 | `Hub.Dispatch(ctx, MachineHub)` | Sends the specs of changed machines until `ctx` ends. The internal listener of the control role runs it. |
 | `MachineHub.SubscribeKinds(kinds...)` | Follows the changes of every machine in events of the given kinds. |

@@ -31,6 +31,7 @@ Both calls need the certificate of a server. The policy lets a server act only f
 | `server.attach_stream` | open `AttachStream` | the server of which the control role asked the stream |
 | `server.read_dns_zones` | read the zones that the server serves, before a push of `dns_zones` | the same server, with a certificate that carries the role `dns` |
 | `server.read_mesh_peers` | read the mesh as the server sees it, before a push of `mesh_peers` | the same server |
+| `server.read_disk_transfers` | read the part of the server in the cold moves, before a push of `disk_transfers` | the same server, with a certificate that carries the role `node` |
 | `server.read_edge_certificate` | read the certificate of the install with its key, before a push of `edge_certificate` | the same server, with a certificate that carries the role `edge` |
 | `server.read_edge_routes` | read the routes of the machine URLs, before a push of `edge_routes` | the same server, with a certificate that carries the role `edge` |
 
@@ -64,6 +65,7 @@ Each message from the control role holds one of these fields:
 | `edge_access_changed` | `EdgeAccessChanged` | A change of the access to machines. Only a server with the edge role gets it. |
 | `edge_ssh_keys` | `EdgeSSHKeys` | The keys of the SSH front door. Only a server with the edge role gets it. |
 | `mesh_peers` | `MeshPeers` | The mesh address of the server and the other servers of the mesh. Only a server whose heartbeat holds `mesh` gets it ([Mesh pushes](#mesh-pushes)). |
+| `disk_transfers` | `DiskTransfers` | The disks that the node serves to other nodes, and the machines whose old files it removes. Only a server whose heartbeat says `disk_transfer` gets it ([Disk transfers](#disk-transfers)). |
 
 A message without a known field ends the channel with `invalid_argument`. A server that gets a message that it does not know logs `the control plane sent a message that this hopboxd does not know. Upgrade hopboxd` and goes on.
 
@@ -99,6 +101,8 @@ The heartbeat holds these values.
 | `leases` | repeated `MachineLease` | The machine leases that the executors hold. The control role renews them ([the executor protocol](/reference/executor-protocol/index.html.md#renewals)). | at most 4096 |
 | `mesh` | `MeshMember` | The part of the server in the mesh: the public key of its WireGuard device and its vRack address. It is absent on a server outside the mesh ([the mesh](/reference/mesh/index.html.md#which-servers-join)). | the key has 32 bytes. The address is an IPv4 address in `172.31.0.0/16`. A part that breaks this limit ends no channel: the control role records the heartbeat without it. |
 | `inbound_machines` | repeated string | The IDs of the machines of the server with inbound traffic since the last heartbeat. The control role sets `last_activity_at` of each machine of the server in this list, at most once a minute for each machine ([the node network](/reference/node-network/index.html.md#inbound-traffic-as-a-use)). The IDs of other servers change nothing. | at most 4096, each a UUID |
+| `disk_transfer` | bool | Tells that the server serves and pulls the disks of the cold moves ([Cold move](/reference/cold-move/index.html.md#two-releases)). The control role records the `hopboxd_version` of the heartbeat with it. | |
+| `removed_machines` | repeated string | The IDs of the machines of the last `remove` of `DiskTransfers` whose old files the server removed ([Disk transfers](#disk-transfers)). | at most 4096, each a UUID |
 
 `CPUFingerprint`:
 
@@ -234,6 +238,18 @@ These messages carry the mesh ([the mesh](/reference/mesh/index.html.md)). Each 
 | `MeshPeer` | `allowed_ips` | repeated string | The prefixes that WireGuard sends to this peer, and takes from it ([the mesh](/reference/mesh/index.html.md#allowed-ips)). |
 | `MeshPeer` | `roles` | repeated string | The roles of the peer, sorted, such as `node` or `edge`. |
 
+### DiskTransfers and DiskExport
+
+These messages carry the part of a node in the cold moves ([Cold move](/reference/cold-move/index.html.md)). Each `DiskTransfers` replaces the one before it.
+
+| Message | Field | Type | Description |
+| --- | --- | --- | --- |
+| `DiskTransfers` | `serve` | repeated `DiskExport` | The disks that the node lets another node pull: those of the moves in `pulling` whose source is the node. At most 4096. |
+| `DiskTransfers` | `remove` | repeated string | The IDs of the machines that left the node, whose old files it removes. At most 4096. |
+| `DiskExport` | `machine_id` | string | The ID of the machine, a UUID. |
+| `DiskExport` | `target_server_id` | string | The ID of the one node that can pull the disk, a UUID. |
+| `DiskExport` | `target_serials` | repeated string | The serials of the certificates of that node that are not retired and not expired. The disk listener serves the disk only to a client certificate with one of these serials. |
+
 ### AttachStreamRequest and AttachStreamResponse
 
 | Message | Field | Type | Description |
@@ -264,6 +280,7 @@ On a server, the `Collector` of `internal/node` gathers the facts. It reads some
 | `hopboxd_version` | the version of `hopboxd` | each heartbeat |
 | `allocations`, `actions`, `leases`, `executor` | the executors of the node ([the node executor](/reference/executor/index.html.md)). A server with the node role runs the executors. A server without it sends empty lists and `executor` false. | each heartbeat |
 | `inbound_machines` | the inbound counters of the table `inet hopbox_node` ([the node network](/reference/node-network/index.html.md#counters)). A server without the node role sends an empty list. | each heartbeat |
+| `disk_transfer`, `removed_machines` | the disk listener and the executors of the node ([Cold move](/reference/cold-move/index.html.md)). A node whose driver keeps no disk in files, and a server without the node role, send false and an empty list. | each heartbeat |
 
 A server without the node role runs no machine. So it skips the preflight checks and the snapshot version. Its `status` is always `SERVER_STATUS_OK`, its `problems` come only from the host, the CPU, and the capacity, and its `compatibility_class` is empty.
 
@@ -414,6 +431,12 @@ The agent hands each mesh to the mesh device of its server (`node.Agent.Mesh`). 
 A heartbeat whose `mesh` holds the key of another server of the mesh is recorded without its part of the mesh. A full mesh range has the same effect on the heartbeat of a new server. The control role then logs `the server stays out of the mesh, or keeps its old key and vRack address there` at level error, with `component=service` and the fields `server` and `err`.
 
 A heartbeat whose `mesh` breaks its limit is recorded without its part of the mesh too, and the channel stays open. So a server of another release with another rule keeps its channel. The control role logs `the heartbeat has a bad part of the mesh, so the control plane records it without that part` at level warn, with `component=service` and the fields `server` and `err`.
+
+## Disk transfers
+
+A node takes part in the cold moves with the field `disk_transfer` of its heartbeats ([Cold move](/reference/cold-move/index.html.md)). The control role records such a heartbeat. Then it reads the part of the node in the moves, under the policy action `server.read_disk_transfers`. It keeps the SHA-256 of the last `DiskTransfers` that it sent on the channel, and sends `disk_transfers` only after a change, as for the mesh. So the first heartbeat of each channel sends it, and a new step of a move reaches the node within 5 s. A failed read logs `reading the moves of a node failed. The next heartbeat tries again` at level warn. The channel stays open.
+
+The agent hands each `DiskTransfers` to the node role (`node.Agent.Moves`). The disk listener takes `serve`. It ends the streams of each disk that the new message no longer lists, or lists with another node or other serials. The executors take `remove`. The heartbeats then name each machine of `remove` whose files the node removed in `removed_machines`, until a later `DiskTransfers` names it no more. The control role records the removal in the transaction of the heartbeat. A server that takes part in no move logs `the control plane sent the disks of cold moves to a server that takes part in no move` at level warn, and drops the message.
 
 ## Data streams
 

@@ -81,6 +81,8 @@ hopboxd --log-level=debug version
 | `admin machine list` | Lists the machines of every org, or of one org, with metadata only. |
 | `admin machine stop` | Stops any machine, also in a suspended org, and waits for it. |
 | `admin machine delete` | Deletes any machine, also in a suspended org, and waits for it. |
+| `admin machine move` | Moves any machine cold to another node. It returns at once. With `--cancel`, it ends the move of the machine that runs. |
+| `admin machine moves` | Lists the cold moves of one machine, or of every machine, newest first. |
 | `admin image register` | Adds an image from its `artifact.json`. |
 | `admin image list` | Lists the images of the install. |
 | `admin admin-key create` | Makes an admin API key and prints it once. |
@@ -121,7 +123,7 @@ First, `run` starts the metrics listener. Then it starts the units of the contro
 | 7 | `admin socket` | Serves the admin API on `<run_dir>/admin.sock` ([the admin API](/reference/admin-api/index.html.md#the-admin-socket)). | 10 s |
 | 8 | `dns` | The DNS role ([the DNS role](/reference/dns/index.html.md)). At its start, it opens a UDP socket and a TCP socket at each address of `dns.listen`. So a port that another program holds fails the start. It answers `SERVFAIL` to each query until the first zones arrive over the control channel. | 1 s |
 | 9 | `edge` | The edge role ([the edge role](/reference/edge/index.html.md)). At its start, it opens the HTTPS listener at `edge.https_listen` and the HTTP listener at `edge.http_listen`. So a port that another program holds fails the start. It refuses each TLS handshake until the first certificate arrives over the control channel. At its stop, it closes the listeners, gives the open requests 2 s, and then ends the rest, also the streams and the WebSockets. | 5 s |
-| 10 | `machines` | The node role. It first sets up the node network: it replaces the nftables table `inet hopbox_node` with one that holds the tap devices of the machines that run, and turns on IPv4 forwarding ([the node network](/reference/node-network/index.html.md#at-the-start-and-at-the-stop-of-hopboxd)). Until its stop, it watches the table, and installs it again after a flush. It adds the guest kernel of `vmm.kernel` to the kernel cache. It starts the executors of the machines with the Firecracker driver ([the node executor](/reference/executor/index.html.md), [the Firecracker driver](/reference/firecracker-driver/index.html.md)). It also starts the store of the machine logs ([Machine logs](/reference/machine-logs/index.html.md)). At its start, the executors attach to the microVMs that run. At its stop, the executors end their actions at once. Every microVM keeps running, because it runs in a systemd unit of its own. The unit of each machine runs [stop-guest](#stop-guest) at its stop, and is ordered before `hopboxd.service`. | 10 s |
+| 10 | `machines` | The node role. It first sets up the node network: it replaces the nftables table `inet hopbox_node` with one that holds the tap devices of the machines that run, and turns on IPv4 forwarding ([the node network](/reference/node-network/index.html.md#at-the-start-and-at-the-stop-of-hopboxd)). Until its stop, it watches the table, and installs it again after a flush. It adds the guest kernel of `vmm.kernel` to the kernel cache. It starts the executors of the machines with the Firecracker driver ([the node executor](/reference/executor/index.html.md), [the Firecracker driver](/reference/firecracker-driver/index.html.md)). It also starts the store of the machine logs ([Machine logs](/reference/machine-logs/index.html.md)). Once the server has a mesh address, it serves the disks of the cold moves on port 7444 of that address ([Cold move](/reference/cold-move/index.html.md#the-disk-listener)). At its start, the executors attach to the microVMs that run. At its stop, the executors end their actions at once. Every microVM keeps running, because it runs in a systemd unit of its own. The unit of each machine runs [stop-guest](#stop-guest) at its stop, and is ordered before `hopboxd.service`. | 10 s |
 | 11 | `channel` | Keeps the control channel of this server to one of `channel.control_urls`, over mutual TLS. After a lost or refused channel, it dials the next URL ([the control channel](/reference/control-channel/index.html.md#the-agent)). If the control role runs in the same `hopboxd`, the channel still goes over TLS ([the control channel](/reference/control-channel/index.html.md)). It hands the zones that the control role sends to the `dns` unit. It hands the certificate, the routes, and the access changes to the `edge` unit. It hands the specs of the machines to the executors of the `machines` unit, and the machine streams to its handlers. It also keeps the mesh device `hbm0` ([the mesh](/reference/mesh/index.html.md)). It checks the device at its start, before the first heartbeat, and then every 2 s. It hands the device the mesh that the control role sends. Its start returns after that first check. Before the enrollment of the server, it waits for the identity in `<data_dir>/server`. So `run` can start before [enroll](#enroll). | 5 s |
 
 Units 1 to 7 belong to the control role and unit 8 to the DNS role. Unit 9 belongs to the edge role and unit 10 to the node role. Unit 11 runs on a server that enrolls: one with a role other than `control`. Unit 12, `systemd notify`, runs for every role:
@@ -1109,6 +1111,62 @@ Sets the target of any machine to `deleted`, also in a suspended org, and waits 
 
 ```sh
 sudo hopboxd admin machine delete --id 01a1460c-1f6e-7b8a-9c42-3d5e7f8a9b10
+```
+
+### admin machine move
+
+```sh
+hopboxd admin machine move (--name=NAME | --id=ID) [--to=SERVER_ID | --cancel] [--json]
+```
+
+Moves any machine cold to another node, also in a suspended org ([Cold move](/reference/cold-move/index.html.md)). The node of the machine stops it. The other node then pulls its disk, and boots it if its target is `running`. It calls `MoveMachine` of the admin API ([the admin API](/reference/admin-api/index.html.md#movemachine)), with a new idempotency key. The command returns at once, with the move in the state `stopping`. Follow the move with `admin machine moves`.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--name` | string | none | The name of the machine. Give `--name` or `--id`, not both. |
+| `--id` | string | none | The UUID of the machine. |
+| `--to` | string | none | The UUID of the node to move the machine to. Without it, placement picks a node. |
+| `--cancel` | bool | `false` | Ends the move of the machine that runs, with `CancelMove` of the admin API ([the admin API](/reference/admin-api/index.html.md#cancelmove)). The machine stays on its source node with its disk, or goes back there, stopped. Give `--to` or `--cancel`, not both. |
+| `--json` | bool | `false` | Prints one JSON object with the key `move`, which has the keys of `admin machine moves --json`. |
+
+```console
+$ sudo hopboxd admin machine move --name box1
+id	01a1460c-2a7b-7c11-8d23-4e5f6a7b8c9d
+machine_id	01a1460c-1f6e-7b8a-9c42-3d5e7f8a9b10
+source_server_id	01a14600-0a1b-7c2d-8e3f-405162738495
+target_server_id	01a14600-1b2c-7d3e-8f40-516273849506
+state	stopping
+```
+
+If a move is too slow or no longer needed, end it with `--cancel`. The command prints the move in the state `failed`:
+
+```console
+$ sudo hopboxd admin machine move --name box1 --cancel
+id	01a1460c-2a7b-7c11-8d23-4e5f6a7b8c9d
+machine_id	01a1460c-1f6e-7b8a-9c42-3d5e7f8a9b10
+source_server_id	01a14600-0a1b-7c2d-8e3f-405162738495
+target_server_id	01a14600-1b2c-7d3e-8f40-516273849506
+state	failed
+```
+
+### admin machine moves
+
+```sh
+hopboxd admin machine moves [--id=ID] [--json]
+```
+
+Lists the cold moves of one machine, or of every machine, newest first. It calls `ListMoves` of the admin API ([the admin API](/reference/admin-api/index.html.md#listmoves)) for each page. Each line holds one move, with tabs between its parts. The parts are the ID of the move, the machine, the state, the source node, and the target node. Then come the node that still holds an old copy, and the error of a failed move.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--id` | string | none | Lists only the moves of the machine with this UUID. |
+| `--json` | bool | `false` | Prints one JSON object with the key `moves`. Each move has the keys `id`, `machine_id`, `source_server_id`, `target_server_id`, and `state`. It also has `target_state`, `error`, `cleanup_server_id`, `create_time`, and `update_time`. |
+
+The states are `stopping`, `pulling`, `done`, and `failed` ([Cold move](/reference/cold-move/index.html.md#the-steps-of-a-move)).
+
+```console
+$ sudo hopboxd admin machine moves --id 01a1460c-1f6e-7b8a-9c42-3d5e7f8a9b10
+01a1460c-2a7b-7c11-8d23-4e5f6a7b8c9d	machine=01a1460c-1f6e-7b8a-9c42-3d5e7f8a9b10	done	from=01a14600-0a1b-7c2d-8e3f-405162738495	to=01a14600-1b2c-7d3e-8f40-516273849506	cleanup=
 ```
 
 ### The default image of the release

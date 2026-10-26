@@ -1092,6 +1092,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.CreateLoginLinkResponse'
+  /hopbox.admin.v1.MachineService/CancelMove:
+    post:
+      tags:
+        - hopbox.admin.v1.MachineService
+      summary: CancelMove
+      description: |-
+        CancelMove ends the move of a machine that runs. The machine stays on its source node with its disk, or goes
+         back there, stopped. The target node removes what it pulled.
+      operationId: hopbox.admin.v1.MachineService.CancelMove
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.CancelMoveRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.CancelMoveResponse'
   /hopbox.admin.v1.MachineService/DeleteMachine:
     post:
       tags:
@@ -1170,6 +1211,88 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.ListMachinesResponse'
+  /hopbox.admin.v1.MachineService/ListMoves:
+    post:
+      tags:
+        - hopbox.admin.v1.MachineService
+      summary: ListMoves
+      description: ListMoves lists the moves of one machine, or of every machine, newest first, one page at a time.
+      operationId: hopbox.admin.v1.MachineService.ListMoves
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.ListMovesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.ListMovesResponse'
+  /hopbox.admin.v1.MachineService/MoveMachine:
+    post:
+      tags:
+        - hopbox.admin.v1.MachineService
+      summary: MoveMachine
+      description: |-
+        MoveMachine moves any machine cold to another node: its node stops it, the other node pulls its disk,
+         and boots it when its target was running. The machine keeps its name, URL, SSH port, and address.
+         The call returns at once with the move, and ListMoves follows it. A retry with the same idempotency key
+         returns the first result.
+      operationId: hopbox.admin.v1.MachineService.MoveMachine
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.MoveMachineRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.MoveMachineResponse'
   /hopbox.admin.v1.MachineService/StopMachine:
     post:
       tags:
@@ -2442,6 +2565,50 @@ components:
       title: CPUFingerprint
       additionalProperties: false
       description: CPUFingerprint describes the CPU of a server.
+    hopbox.admin.v1.CancelMoveRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      title: CancelMoveRequest
+      description: CancelMoveRequest names the machine whose move ends.
+    hopbox.admin.v1.CancelMoveResponse:
+      type: object
+      properties:
+        move:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.Move'
+          title: move
+          description: move is the move, in the state failed.
+      title: CancelMoveResponse
+      additionalProperties: false
+      description: CancelMoveResponse holds the move that ended.
     hopbox.admin.v1.Capacity:
       type: object
       properties:
@@ -3607,6 +3774,43 @@ components:
       title: ListMailFilesResponse
       additionalProperties: false
       description: ListMailFilesResponse lists the mail files.
+    hopbox.admin.v1.ListMovesRequest:
+      type: object
+      properties:
+        machineId:
+          type:
+            - string
+            - "null"
+          title: machine_id
+          description: machine_id, when set, lists only the moves of this machine.
+        pageSize:
+          type: integer
+          title: page_size
+          format: int32
+          description: page_size is the most moves in one response, 1 to 1000. 0 takes 100.
+        pageToken:
+          type: string
+          title: page_token
+          description: page_token is the next_page_token of the response before. Leave it empty for the first page.
+      title: ListMovesRequest
+      additionalProperties: false
+      description: ListMovesRequest asks for one page of moves.
+    hopbox.admin.v1.ListMovesResponse:
+      type: object
+      properties:
+        moves:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.Move'
+          title: moves
+          description: moves are the moves of the page, newest first.
+        nextPageToken:
+          type: string
+          title: next_page_token
+          description: next_page_token reads the next page. It is empty on the last page.
+      title: ListMovesResponse
+      additionalProperties: false
+      description: ListMovesResponse holds one page of moves.
     hopbox.admin.v1.ListOrgsRequest:
       type: object
       properties:
@@ -3749,6 +3953,122 @@ components:
         - MAIL_TRANSPORT_SMTP
         - MAIL_TRANSPORT_FILE
       description: MailTransport says how the install delivers its mail.
+    hopbox.admin.v1.Move:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the move.
+        machineId:
+          type: string
+          title: machine_id
+          description: machine_id is the UUID of the machine.
+        sourceServerId:
+          type: string
+          title: source_server_id
+          description: source_server_id is the UUID of the node that the machine leaves.
+        targetServerId:
+          type: string
+          title: target_server_id
+          description: target_server_id is the UUID of the node that the machine moves to.
+        state:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.MoveState'
+          title: state
+          description: state is the state of the move.
+        targetState:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.MachineState'
+          title: target_state
+          description: |-
+            target_state is the target state of the machine before the move. The machine gets it back on the
+             target node.
+        error:
+          type: string
+          title: error
+          description: error says why the move failed.
+        cleanupServerId:
+          type: string
+          title: cleanup_server_id
+          description: |-
+            cleanup_server_id is the UUID of the node that still holds an old copy of the files of the machine:
+             the source node after a move that is done, the target node after a move that failed. It is empty once
+             that node removed them.
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is when the move started.
+        updateTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: update_time
+          description: update_time is when the move changed last.
+      title: Move
+      additionalProperties: false
+      description: Move is one cold move of a machine.
+    hopbox.admin.v1.MoveMachineRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      properties:
+        targetServerId:
+          type: string
+          title: target_server_id
+          description: |-
+            target_server_id, when set, is the UUID of the node to move the machine to. Empty lets placement pick
+             a node.
+      title: MoveMachineRequest
+      description: MoveMachineRequest names one machine, and the node to move it to.
+    hopbox.admin.v1.MoveMachineResponse:
+      type: object
+      properties:
+        move:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.Move'
+          title: move
+          description: move is the move, in its first state.
+      title: MoveMachineResponse
+      additionalProperties: false
+      description: MoveMachineResponse holds the new move.
+    hopbox.admin.v1.MoveState:
+      type: string
+      title: MoveState
+      enum:
+        - MOVE_STATE_UNSPECIFIED
+        - MOVE_STATE_STOPPING
+        - MOVE_STATE_PULLING
+        - MOVE_STATE_DONE
+        - MOVE_STATE_FAILED
+      description: MoveState is a state of a cold move.
     hopbox.admin.v1.OAuthClient:
       type: object
       properties:
@@ -5212,8 +5532,8 @@ tags:
     description: LoginLinkService makes the one-time sign-in links of the first instance admin.
   - name: hopbox.admin.v1.MachineService
     description: |-
-      MachineService lets instance admins see the machines of every org, and stop or delete any of them,
-       also in a suspended org, for example to handle abuse.
+      MachineService lets instance admins see the machines of every org, and stop, delete, or move any of them,
+       also in a suspended org, for example to handle abuse or to empty a node.
        It never opens a shell in a machine and never reads its secrets.
   - name: hopbox.admin.v1.MailService
     description: |-

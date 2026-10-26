@@ -20,7 +20,7 @@ A machine is always in one current state. It also has a target state, which is t
 | `stopped` | The microVM does not run. The disk stays. | yes |
 | `failed` | An action failed. The saved state of the machine stays. | no |
 | `deleted` | The machine and its saved state are gone. | yes |
-| `moving` | A drain moves the machine to another node. | no |
+| `moving` | A cold move takes the machine to another node, which pulls its disk ([Cold move](/reference/cold-move/index.html.md)). The control role sets this state at the hand-off of the move. | no |
 
 A new machine starts with the current state `pending` and the target state `running`.
 

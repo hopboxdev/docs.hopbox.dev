@@ -914,7 +914,7 @@ The machine calls write these entries in the transaction of the change. Their or
 | `machine.set_url_port` | `SetMachineURLPort` | `url_port`, `old_url_port`, `url_visibility`, `old_url_visibility` |
 | `machine.set_url_visibility` | `SetMachineURLVisibility` | the same as `machine.set_url_port` |
 
-A call that changes nothing writes no entry. The read calls write none. The admin calls on machines write `machine.list_all`, `machine.admin_stop`, and `machine.admin_delete` ([the admin API](/reference/admin-api/index.html.md#machineservice)). Each sign-in through the SSH front door writes `machine.ssh`, with the actor `ssh_key` ([the SSH front door](/reference/ssh-front-door/index.html.md#audit)). `Exec`, `Upload`, and `Download` write no entry.
+A call that changes nothing writes no entry. The read calls write none. The admin calls on machines write `machine.list_all`, `machine.admin_stop`, `machine.admin_delete`, `machine.move`, `machine.cancel_move`, and `machine.list_moves` ([the admin API](/reference/admin-api/index.html.md#machineservice)). Each sign-in through the SSH front door writes `machine.ssh`, with the actor `ssh_key` ([the SSH front door](/reference/ssh-front-door/index.html.md#audit)). `Exec`, `Upload`, and `Download` write no entry.
 
 ## Change events
 

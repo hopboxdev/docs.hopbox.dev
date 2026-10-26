@@ -118,6 +118,7 @@ The disk of a machine is a reflink copy of the disk of its image, made with the 
 | Cache mode | `Writeback`: a flush in the guest reaches the disk of the node. |
 | Discard | On: the guest can give freed blocks back, so the disk stays sparse. |
 | Delete | `Delete` removes the disk with the machine dir. |
+| Cold move | `DiskPath(id)` names `disk.raw`, so the driver is a `vmm.Mover` ([the VMM driver interface](/reference/vmm/index.html.md#mover)). The target node of a move pulls the disk into `disk.raw.pull` of the machine dir, and renames it to `disk.raw` once its digest matches ([Cold move](/reference/cold-move/index.html.md#the-stream)). The next boot keeps that disk, and gives it to the jail user. |
 
 ## The image cache
 
@@ -203,7 +204,7 @@ An upgrade changes the files of `vmm.firecracker` and `vmm.kernel`. A running mi
 
 ## Delete
 
-`Delete` refuses a machine whose unit runs. It resets a failed unit, removes the tap device, the jail dir, and the machine dir with the disk. The jail ID of the machine is then free.
+`Delete` refuses a machine whose unit runs. It resets a failed unit, removes the tap device, the jail dir, and the machine dir with the disk. The machine dir also holds the partial copy of a pull, which goes with it. The jail ID of the machine is then free.
 
 ## Logs
 
@@ -261,6 +262,7 @@ The driver has no metrics of its own. The executor counts each boot, stop, and d
 | Method | Description |
 | --- | --- |
 | `AddKernel(ctx, path)` | Adds the kernel at `path` to the kernel cache, and returns its sha256. |
+| `DiskPath(id)` | The path of `disk.raw` of a machine, for a cold move. |
 | `SnapshotFormat(ctx)` | The snapshot format version of Firecracker. |
 | `Close()` | Closes the connection to systemd. A later call makes a new one. `hopboxd run` calls it after the stop of the unit `machines`. |
 

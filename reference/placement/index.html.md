@@ -2,7 +2,7 @@
 
 > How a create picks the node of a machine: the hard filters, the usage of a node, the score, the retries, the no-capacity error, the room check of a start, and the placement metric.
 
-Placement picks the node of a new machine. `CreateMachine` runs it in its transaction ([the machine API](/reference/machine-api/index.html.md#createmachine)). The start of a stopped machine uses the same rules of room on the node of the machine. The Go package `internal/placement` holds the rules, without I/O. The service layer reads the nodes and makes the placement (`internal/service/machines.go`).
+Placement picks the node of a new machine. `CreateMachine` runs it in its transaction ([the machine API](/reference/machine-api/index.html.md#createmachine)). The start of a stopped machine uses the same rules of room on the node of the machine. A cold move picks its target node with the same filters ([Cold move](/reference/cold-move/index.html.md#start-of-a-move)). The Go package `internal/placement` holds the rules, without I/O. The service layer reads the nodes and makes the placement (`internal/service/machines.go`).
 
 ## The steps of a placement
 
@@ -38,10 +38,11 @@ A server must pass every filter, in this order:
 | 5 | Labels | The server has each label of the request, with the same value. | `labels` |
 | 6 | Compatibility class | The request names no class, or the class of the server. | `class` |
 | 7 | Version | Its `hopboxd` is at least the oldest version that the request allows. The version must be a valid semver version. | `version` |
-| 8 | vCPUs | The vCPUs that it uses, plus the vCPUs of the size, are at most 2 times its CPU threads. | `cpu` |
-| 9 | RAM | The RAM that it uses, plus the RAM of the size, is at most its RAM. | `ram` |
+| 8 | Cold move | Only for the target of a cold move: its heartbeats say that it pulls disks with its current `hopboxd`, and it is in the mesh ([Cold move](/reference/cold-move/index.html.md#two-releases)). A create skips this filter. | `move` |
+| 9 | vCPUs | The vCPUs that it uses, plus the vCPUs of the size, are at most 2 times its CPU threads. | `cpu` |
+| 10 | RAM | The RAM that it uses, plus the RAM of the size, is at most its RAM. | `ram` |
 
-A create takes the pool and the labels of its size for filters 4 and 5. The size `default` names no pool and no label, so its machines pass both filters on every server. A move with memory state names a compatibility class. No call moves a machine yet, so filter 6 passes every server.
+A create takes the pool and the labels of its size for filters 4 and 5. So does a cold move, with the size of the machine. The size `default` names no pool and no label, so its machines pass both filters on every server. A move with memory state names a compatibility class. A cold move carries no memory, so it names none, and filter 6 passes every server. The target of a cold move is never the node of the machine.
 
 The oldest version that a create allows is `version.MinNodeVersion`. Today it is `v0.0.0-0.unknown`, which sorts below every build ([the version command](/reference/version/index.html.md#version-format)). So every node with a valid version passes. Only a release whose executor protocol needs it raises it, to the oldest release that follows the new protocol ([the executor protocol](/reference/executor-protocol/index.html.md#two-releases)). In a rolling upgrade, the nodes of the release before then take no new machine until they upgrade.
 
@@ -90,6 +91,7 @@ no capacity: no node has room for a machine of size <size> (<n> vCPUs, <RAM> of 
 | `labels` | `1 node lacks a label` | `<n> nodes lack a label` |
 | `class` | `1 node is in another compatibility class` | `<n> nodes are in another compatibility class` |
 | `version` | `1 node runs a hopboxd that is too old` | `<n> nodes run a hopboxd that is too old` |
+| `move` | `1 node pulls no disk of a cold move` | `<n> nodes pull no disk of a cold move` |
 | `cpu` | `1 node has too few free vCPUs` | `<n> nodes have too few free vCPUs` |
 | `ram` | `1 node has too little free RAM` | `<n> nodes have too little free RAM` |
 | `refused` | `1 node refused the placement` | `<n> nodes refused the placement` |
@@ -110,7 +112,7 @@ The error wraps `placement.ErrNoCapacity`. The API maps it to `unavailable` ([th
 
 ## Start of a stopped machine
 
-The disk of a machine lives on its node, so a start cannot move the machine in phase 1. The start of a machine whose target is `stopped` checks the room on its own node with the same rules: the vCPUs with an overcommit of 2, and the RAM without overcommit ([the machine API](/reference/machine-api/index.html.md#startmachine)). It locks the server row with `FOR NO KEY UPDATE`, and counts every other machine of the node as in [What a node uses](#what-a-node-uses). It checks no other filter: a cordoned or unresponsive node keeps its machines. For a machine on a decommissioned node, a start skips the check.
+The disk of a machine lives on its node, so a start never moves the machine. Only a cold move takes a machine and its disk to another node ([Cold move](/reference/cold-move/index.html.md)), and the next start checks the room on the new node. The start of a machine whose target is `stopped` checks the room on its own node with the same rules: the vCPUs with an overcommit of 2, and the RAM without overcommit ([the machine API](/reference/machine-api/index.html.md#startmachine)). It locks the server row with `FOR NO KEY UPDATE`, and counts every other machine of the node as in [What a node uses](#what-a-node-uses). It checks no other filter: a cordoned or unresponsive node keeps its machines. For a machine on a decommissioned node, a start skips the check.
 
 | Case | Code | Message |
 | --- | --- | --- |
