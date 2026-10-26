@@ -11,7 +11,7 @@ The control role gives out the addresses (`internal/service/network.go`). The no
 | Item | Value |
 | --- | --- |
 | Install range | `10.240.0.0/12`. Every machine address of the install is in it. |
-| Node subnet | A `/20` of the install range for each node, such as `10.240.0.0/20`. When the control role places the first machine of a node, the node gets the first free subnet. The install range holds 256 node subnets. |
+| Node subnet | A `/20` of the install range for each node, such as `10.240.0.0/20`. When the control role places the first machine of a node, the node gets the first free subnet. The install range holds 256 node subnets. The subnet of a decommissioned node goes free again ([Subnet of a decommissioned node](#subnet-of-a-decommissioned-node)). |
 | Machine address | One IPv4 address of the subnet of the first node of the machine. A create takes the first free address, from the second address of the subnet to the one before the last. A subnet holds 4094 machines. A machine that moves to another node keeps its address ([Moved machines](#moved-machines)). |
 | Prefix length in the guest | `/32`. The guest has no neighbor on its link apart from the gateway. |
 | Gateway | `169.254.0.1`, on-link. The node has this address on each tap device. |
@@ -36,6 +36,10 @@ A cold move takes a machine to another node ([Cold move](/reference/cold-move/in
 The mesh peer of the new node allows the `/32` of the address ([the mesh](/reference/mesh/index.html.md#allowed-ips)). WireGuard sends a packet to the peer with the longest prefix that holds its destination. So the edge servers and the other nodes reach the machine at its new node, and the rest of the subnet at the first node. The first node no longer has a tap device for the address, so its mesh routes the `/32` over `hbm0` like the other servers do.
 
 The subnet of the first node keeps the address while the machine lives. So a create on the first node never takes it.
+
+### Subnet of a decommissioned node
+
+A drain moves every machine off a node, and then decommissions the node ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node)). The leader sweep, which runs every 10 min with the other sweeps, frees the subnet of a decommissioned node once no machine address of that subnet is held. An address is held when `held_until` is null or in the future. A moved machine keeps the address of its first node, so the subnet stays taken while such a machine lives. After a delete, the hold of 5 min ends, and the next sweep frees the subnet. The next node that gets its first machine takes the first free subnet, which can be the freed one.
 
 ### Where the address shows
 

@@ -2,7 +2,7 @@
 
 > How an instance admin uses the Admin area of the console, signs in again after 10 minutes, and handles an abuse report. Also the work that stays with root.
 
-The Admin area is the part of the console for instance admins. An instance admin is an account that operates the whole install. In the Admin area, you see the servers, the pools, the sizes, the images, the orgs, and the machines of the install. You also manage the instance admins, the admin API keys, the config of the install, and you read the audit log of the install. [Console](/reference/console/index.html.md#admin-area) lists each page and its calls.
+The Admin area is the part of the console for instance admins. An instance admin is an account that operates the whole install. In the Admin area, you see the servers, the pools, the sizes, the images, the orgs, and the machines of the install. You cordon and drain nodes. You also manage the instance admins, the admin API keys, and the config of the install, and you read the audit log of the install. [Console](/reference/console/index.html.md#admin-area) lists each page and its calls.
 
 This guide uses the install `https://example.com`, an org `org1`, and a machine `box1`.
 
@@ -41,7 +41,21 @@ A cordoned server takes no new machine. Its machines keep running. Cordon a serv
 
 To set the labels of a server, click its name. Type the labels as `key=value` pairs, such as `disk=nvme, zone=a`, and click "Set labels". A size can ask for labels, and placement then puts its machines only on servers with them ([Add pools and sizes](/guide/pools-and-sizes/index.html.md)).
 
-The Admin area does not add or remove a server. The hopbox Terraform provider does that ([Install hopbox on an OVHcloud server with Terraform](/guide/install-on-ovhcloud/index.html.md)). The Admin area has no drain button yet, because hopbox has no drain of a server yet. The button comes with the drain.
+The Admin area does not add or remove a server. The hopbox Terraform provider does that ([Install hopbox on an OVHcloud server with Terraform](/guide/install-on-ovhcloud/index.html.md)). To take a server out of the install with its machines, drain it first ([Drain a node](/guide/drain-a-node/index.html.md)). The server page has a button "Drain" for it.
+
+## Drain a server
+
+A drain moves every machine of a server to other nodes, and then decommissions the server ([Drain a node](/guide/drain-a-node/index.html.md)). A running machine stops, moves, and boots again, so it loses its memory. Each machine keeps its disk, name, URL, SSH port, and address.
+
+1. Click the name of the server `node1`. The page of the server opens.
+2. Click "Drain". The dialog "Drain node1" explains the drain. It says that you cannot stop a drain. It also says to destroy a server that Terraform manages with Terraform, because the next refresh of Terraform drops a drained server from its state.
+3. Click "Drain". The state changes to `draining`. The buttons "Cordon" and "Uncordon" disappear, because a drain keeps the server cordoned.
+4. Watch the section "Drain". It shows when the drain started, the moves that run, and the empty checks, such as `1 of 3`. The page reads again every 2 s.
+5. When the server holds nothing, the state changes to `shutting down`, and after 3 empty checks, to `decommissioned`.
+
+Only a server with the role `node` has the button. The Admin area cannot drain a server that hosts a control process, because the drain ends in a decommission. Drain such a server as root on a control server, or with `terraform destroy`.
+
+A machine that the drain cannot move shows in a table with its reason. The notice "The drain cannot go on by itself" appears when each machine left on the server is stranded. Fix the reason, then click "Drain again" to try the machines again.
 
 ## Handle an abuse report
 

@@ -766,7 +766,7 @@ Migration `0034_acme.sql`. The state of the attempts of the ACME job ([the certi
 
 ## servers
 
-Migrations `0015_servers.sql`, `0030_server_labels.sql`, `0045_control_processes.sql` (the column `channel_process`), and `0050_machine_moves.sql` (the column `disk_transfer_version`). The server registry: one row per enrolled server. Enrollment inserts the row, and each heartbeat on the control channel writes the facts of the server ([the control channel](/reference/control-channel/index.html.md)).
+Migrations `0015_servers.sql`, `0030_server_labels.sql`, `0045_control_processes.sql` (the column `channel_process`), and `0050_machine_moves.sql` (the column `disk_transfer_version`), and `0051_server_drains.sql` (the states `draining` and `shutting_down`). The server registry: one row per enrolled server. Enrollment inserts the row, and each heartbeat on the control channel writes the facts of the server ([the control channel](/reference/control-channel/index.html.md)).
 
 | Column | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -774,7 +774,7 @@ Migrations `0015_servers.sql`, `0030_server_labels.sql`, `0045_control_processes
 | `pool_id` | `uuid` | none | The pool of the server, a row of `pools`. |
 | `hostname` | `text` | empty | The host name that the server sent at its enrollment. |
 | `roles` | `text[]` | none | The roles of the server, at least one, for example `{node}`. |
-| `state` | `text` | none | `ready`, `cordoned`, `unresponsive`, or `decommissioned`. |
+| `state` | `text` | none | `ready`, `cordoned`, `unresponsive`, `draining`, `shutting_down`, or `decommissioned`. |
 | `cordoned` | `boolean` | `false` | The choice of an instance admin. It stays while the server is unresponsive. |
 | `status` | `text` | empty | The health of the last heartbeat: `ok` or `degraded`. Empty before the first heartbeat. |
 | `problems` | `text[]` | empty | The failed checks of the last heartbeat. |
@@ -798,21 +798,24 @@ Migrations `0015_servers.sql`, `0030_server_labels.sql`, `0045_control_processes
 | `created_at` | `timestamptz` | the time of the insert | When the row was made. |
 | `updated_at` | `timestamptz` | the time of the insert | The last change. |
 
-A check refuses the state `cordoned` without the flag `cordoned`. The partial index `servers_heartbeat` on `last_heartbeat_at` covers the `ready` and `cordoned` servers, for the leader job.
+A check refuses the state `cordoned` without the flag `cordoned`. The partial index `servers_heartbeat` on `last_heartbeat_at` covers the `ready`, `cordoned`, `draining`, and `shutting_down` servers, for the leader job.
 
 The state changes in these steps:
 
 | Event | From | To |
 | --- | --- | --- |
 | Enrollment | none | `unresponsive`. A server is `ready` only once a heartbeat arrived. |
-| A heartbeat | `unresponsive` | `cordoned` if the flag `cordoned` is set, else `ready` |
-| A heartbeat | `ready` or `cordoned` | no change |
+| A heartbeat | `unresponsive` | `draining` if the server has a row in `server_drains`, else `cordoned` if the flag `cordoned` is set, else `ready` |
+| A heartbeat | `ready`, `cordoned`, `draining`, or `shutting_down` | no change |
 | `CordonServer` | `ready` | `cordoned`. The flag is set in every state but `decommissioned`. |
-| `UncordonServer` | `cordoned` | `ready`. The flag is cleared in every state but `decommissioned`. |
-| `DecommissionServer` | `ready`, `cordoned`, or `unresponsive` | `decommissioned`, for good. It refuses a server with a row of `machines` whose `current_state` is not `deleted`, or whose `allocations` are not empty. It refuses a server that shares its host with the last live control process while another server is not `decommissioned` ([control_processes](#control_processes)). |
-| The leader job, 20 s after the last heartbeat | `ready` or `cordoned` | `unresponsive` |
+| `UncordonServer` | `cordoned` | `ready`. The flag is cleared in every state but `decommissioned`. It refuses a server with a row in `server_drains`. |
+| `DrainServer` | `ready` or `cordoned` | `draining`, with the flag set. An `unresponsive` server keeps its state with the flag set. |
+| The drain, the first empty check | `draining` | `shutting_down` |
+| The drain, a check that finds the server not empty, or `DrainServer` again | `shutting_down` | `draining` |
+| `DecommissionServer`, and the third empty check of the drain | `ready`, `cordoned`, `unresponsive`, `draining`, or `shutting_down` | `decommissioned`, for good. It refuses a server with a row of `machines` whose `current_state` is not `deleted`, or whose `allocations` are not empty, a server that a move runs from or to, and a server that keeps a copy of a disk after a failed move. It deletes the row of `server_drains`, and clears `cleanup_server_id` of the moves that name the server. It refuses a server that shares its host with the last live control process while another server is not `decommissioned` ([control_processes](#control_processes)). |
+| The leader job, 20 s after the last heartbeat | `ready`, `cordoned`, `draining`, or `shutting_down` | `unresponsive` |
 
-A heartbeat of a `decommissioned` server changes nothing. No call moves a server out of `decommissioned`. `DecommissionServer` writes the audit entry `server.decommission` with the details `old_state` and `state`, and `SetServerLabels` writes `server.set_labels` with the details `old_labels` and `labels`. The heartbeat that ends an `unresponsive` spell writes the audit entry `server.heartbeat` with the details `old_state` and `state`. The leader job writes the audit entry `server.mark_unresponsive` with the actor `system` and the detail `last_heartbeat_at`, and its write checks the leader lease ([Fenced writes](#fenced-writes)).
+A heartbeat of a `decommissioned` server changes nothing. No call moves a server out of `decommissioned`. `DecommissionServer` writes the audit entry `server.decommission` with the details `old_state` and `state`. The third empty check of a drain writes it with the actor `system` and the details `old_state` `shutting_down`, `state` `decommissioned`, and `drain` `true`. `DrainServer` writes `server.drain` with the details `old_state`, `state`, and `retry`. The first empty check of a drain writes `server.mark_shutting_down` with the actor `system` and the details `old_state`, `state`, and `checks`. A check that finds the server not empty again writes `server.mark_draining` with the actor `system` and the details `old_state`, `state`, and `reason`. `SetServerLabels` writes `server.set_labels` with the details `old_labels` and `labels`. The heartbeat that ends an `unresponsive` spell writes the audit entry `server.heartbeat` with the details `old_state` and `state`. The leader job writes the audit entry `server.mark_unresponsive` with the actor `system` and the detail `last_heartbeat_at`, and its write checks the leader lease ([Fenced writes](#fenced-writes)).
 
 ## control_processes
 
@@ -1169,6 +1172,8 @@ Migration `0039_machine_addresses.sql`. The subnet of each node with machines ([
 
 The create of the first machine of a node claims its subnet: the first `/20` of the range that no node holds. The claim takes the transaction lock `LockKeyNodeSubnets` of `internal/store/locks.go`, so two nodes never pick the same subnet.
 
+The leader sweep deletes the row of a decommissioned node once no row of `machine_addresses` holds an address of its `subnet`. An address holds the subnet while `held_until` is null or in the future. A moved machine keeps the address of its first node, so the row stays while such a machine lives. The next claim can take the freed subnet ([the node network](/reference/node-network/index.html.md#subnet-of-a-decommissioned-node)).
+
 ## machine_addresses
 
 Migration `0039_machine_addresses.sql`. One row per IPv4 address that a machine holds, or held until its hold ends ([the node network](/reference/node-network/index.html.md#addresses)).
@@ -1227,6 +1232,38 @@ Migration `0050_machine_moves.sql`. One row per cold move of a machine ([Cold mo
 The unique partial index `machine_moves_active` lets one move of a machine run at a time, in `stopping` or `pulling`. The index `machine_moves_serving` lists the disks that a source serves, and `machine_moves_cleanup` the old copies of a node. A change of a move locks the machine row first, then the move row. The rows stay after the move as its record.
 
 The migration adds the column `servers.disk_transfer_version` too. It has the line `-- oldest_schema_version: 44`, because a `hopboxd` of an older release never reads either. Such a release starts no move. While a live row of `control_processes` has a `schema_version` below 50, a newer control role starts no move and hands off none either ([Cold move](/reference/cold-move/index.html.md#two-releases)).
+
+## server_drains
+
+Migration `0051_server_drains.sql`. One row per server that drains ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node)). The row goes with the decommission.
+
+| Column | Type | Default | Description |
+| --- | --- | --- | --- |
+| `server_id` | `uuid`, primary key | none | The server, a row of `servers`. |
+| `started_at` | `timestamptz` | the time of the insert | The start of the drain, or of its last retry. A move that failed before it strands no machine. |
+| `empty_checks` | `integer` | `0` | The empty checks in a row: 0 to 3. A check constraint keeps it in that range. |
+| `checked_at` | `timestamptz`, can be null | null | The time of the last empty check. |
+| `error` | `text` | empty | Why the drain waits now, such as a refused decommission. Empty otherwise. |
+| `version` | `bigint` | `1` | The row version. |
+| `created_at` | `timestamptz` | the time of the insert | The start of the first drain. |
+| `updated_at` | `timestamptz` | the time of the insert | The last change. |
+
+## drain_strands
+
+Migration `0051_server_drains.sql`. One row per machine that the drain of a server cannot move, with the reason. A retry of the drain drops the rows, and the drain tries each machine again.
+
+| Column | Type | Description |
+| --- | --- | --- |
+| `server_id` | `uuid` | The draining server, a row of `server_drains`. A delete of that row deletes the row. |
+| `machine_id` | `uuid` | The machine, a row of `machines`. A delete of the machine row deletes the row. |
+| `reason` | `text` | Why the machine cannot move. It is never empty. |
+| `version` | `bigint` | The row version. |
+| `created_at` | `timestamptz` | The time of the row. |
+| `updated_at` | `timestamptz` | The last change. |
+
+The primary key is `(server_id, machine_id)`. The index `drain_strands_machine` lists the rows of a machine.
+
+The migration has the line `-- oldest_schema_version: 44`, so a release of the schema version 44 to 50 runs beside it. Such a release never reads the two tables. It shows `draining` and `shutting_down` as unknown (`SERVER_STATE_UNSPECIFIED`), and places nothing on such a node, because placement takes only `ready` nodes. It keeps the state in its heartbeats, and its leader job never marks such a node unresponsive. Its uncordon can clear the flag `cordoned`, which the next step of the drain sets again. Its leader runs no drain job, and its hand-off of a move from a draining source waits and fails after 10 min. While a live row of `control_processes` has a `schema_version` below 51, `DrainServer` refuses, and the drain job starts no move and decommissions nothing ([Cold move](/reference/cold-move/index.html.md#two-releases)).
 
 ## placements
 

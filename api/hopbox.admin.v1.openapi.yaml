@@ -1899,7 +1899,9 @@ paths:
       summary: DecommissionServer
       description: |-
         DecommissionServer takes a server out of the install for good. The install refuses its
-         certificates from then on. It refuses a server that still holds machines.
+         certificates from then on. It refuses a server that still holds machines, a server that a
+         cold move runs from or to, and a server that keeps the copy of a disk that a failed move
+         left behind. DrainServer empties a node first.
       operationId: hopbox.admin.v1.ServerService.DecommissionServer
       parameters:
         - name: Connect-Protocol-Version
@@ -1933,6 +1935,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.DecommissionServerResponse'
+  /hopbox.admin.v1.ServerService/DrainServer:
+    post:
+      tags:
+        - hopbox.admin.v1.ServerService
+      summary: DrainServer
+      description: |-
+        DrainServer cordons a server and moves each of its machines cold to another node, at most 2
+         at once. A machine that cannot move stays on the server with its disk, and the drain names
+         it. Once the server is empty, 3 empty checks in a row, one minute apart,
+         decommission it. It returns at once. A second call tries each named machine again.
+      operationId: hopbox.admin.v1.ServerService.DrainServer
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.DrainServerRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.DrainServerResponse'
   /hopbox.admin.v1.ServerService/GetServer:
     post:
       tags:
@@ -3195,6 +3240,26 @@ components:
       title: DeletePoolResponse
       additionalProperties: false
       description: DeletePoolResponse has no fields.
+    hopbox.admin.v1.DrainServerRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the ID of the server.
+      title: DrainServerRequest
+      additionalProperties: false
+      description: DrainServerRequest names a server.
+    hopbox.admin.v1.DrainServerResponse:
+      type: object
+      properties:
+        server:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.Server'
+          title: server
+      title: DrainServerResponse
+      additionalProperties: false
+      description: DrainServerResponse holds the server after the start of its drain.
     hopbox.admin.v1.GetCertificateRequest:
       type: object
       title: GetCertificateRequest
@@ -4750,9 +4815,62 @@ components:
           description: |-
             mesh is the part of the server in the mesh. It is absent until the server reports the
              public key of its WireGuard device, and on a server without an address on the vRack.
+        drain:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.ServerDrain'
+          title: drain
+          description: |-
+            drain is the drain of the server. It is absent on a server that does not drain, and after
+             the decommission.
       title: Server
       additionalProperties: false
       description: Server is one enrolled server, with the facts of its last heartbeat.
+    hopbox.admin.v1.ServerDrain:
+      type: object
+      properties:
+        startTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: start_time
+          description: start_time is the start of the drain, or of its last retry.
+        moving:
+          type: integer
+          title: moving
+          format: int32
+          description: moving counts the cold moves from the server that run now.
+        stranded:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.StrandedMachine'
+          title: stranded
+          description: |-
+            stranded are the machines that the drain cannot move. Each one keeps its disk on the
+             server.
+        emptyChecks:
+          type: integer
+          title: empty_checks
+          format: int32
+          description: 'empty_checks counts the empty checks in a row: 0 to 3.'
+        lastCheckTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: last_check_time
+          description: last_check_time is the time of the last empty check. It is absent before the first one.
+        error:
+          type: string
+          title: error
+          description: |-
+            error says why the drain waits now, such as a refused decommission. It is empty when the
+             drain goes on.
+        stuck:
+          type: boolean
+          title: stuck
+          description: |-
+            stuck is true when the drain cannot go on by itself: no move runs, and each machine left
+             on the server is stranded, or the error names a refusal. A second DrainServer tries again.
+      title: ServerDrain
+      additionalProperties: false
+      description: ServerDrain is the drain of a server.
     hopbox.admin.v1.ServerMesh:
       type: object
       properties:
@@ -4786,6 +4904,8 @@ components:
         - SERVER_STATE_CORDONED
         - SERVER_STATE_UNRESPONSIVE
         - SERVER_STATE_DECOMMISSIONED
+        - SERVER_STATE_DRAINING
+        - SERVER_STATE_SHUTTING_DOWN
       description: ServerState is the state of a server.
     hopbox.admin.v1.ServerStatus:
       type: string
@@ -5187,6 +5307,30 @@ components:
       title: StopMachineResponse
       additionalProperties: false
       description: StopMachineResponse holds the machine after the wait.
+    hopbox.admin.v1.StrandedMachine:
+      type: object
+      properties:
+        machineId:
+          type: string
+          title: machine_id
+          description: machine_id is the ID of the machine.
+        name:
+          type: string
+          title: name
+          description: name is the name of the machine.
+        reason:
+          type: string
+          title: reason
+          description: reason says why the machine cannot move.
+        onServer:
+          type: boolean
+          title: on_server
+          description: |-
+            on_server is false for a machine on another node whose disk a failed move left on the
+             server (reference/cold-move.md "A step that an older control process accepted").
+      title: StrandedMachine
+      additionalProperties: false
+      description: StrandedMachine is a machine that the drain of a server cannot move.
     hopbox.admin.v1.SuspendOrgRequest:
       type: object
       properties:

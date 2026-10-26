@@ -4,7 +4,7 @@
 
 A cold move takes one machine from its node to another node (step 4 of a drain). The source node stops the machine. Then the target node pulls the disk of the machine from the source node over the mesh. If the target of the machine is `running`, the target node boots it. The machine loses its memory, and keeps its disk, its name, its URL, its SSH port, and its address. The disk travels in one copy format for every moving state: a stream of the blocks that hold data, with a digest of the whole disk.
 
-An instance admin starts a move with `MoveMachine` of the admin API ([the admin API](/reference/admin-api/index.html.md#movemachine)) or `hopboxd admin machine move` ([hopboxd](/reference/hopboxd/index.html.md#admin-machine-move)). `CancelMove` or `hopboxd admin machine move --cancel` ends a move that runs. The drain of milestone N19 moves each machine of a node the same way.
+An instance admin starts a move with `MoveMachine` of the admin API ([the admin API](/reference/admin-api/index.html.md#movemachine)) or `hopboxd admin machine move` ([hopboxd](/reference/hopboxd/index.html.md#admin-machine-move)). `CancelMove` or `hopboxd admin machine move --cancel` ends a move that runs. The drain of a node moves each machine of the node the same way ([Drain of a node](#drain-of-a-node)).
 
 The control side is in `internal/service/moves.go` and the leader job of `internal/control`. The node side is in `internal/node/transfer` (the disk listener and the pull), `internal/node/executor` (`move.go`), and `internal/node/machines`.
 
@@ -44,6 +44,7 @@ The control role writes the current state `moving` itself, and also `stopped` af
 | --- | --- |
 | The machine never booted, has the current state `hibernated`, `standby`, `moving`, or `deleted`, or a target other than `running` and `stopped` | `a cold move needs a machine that booted, with the target running or stopped. This one is <state>, with the target <target>` |
 | The machine moves already, or a node still holds an old copy of its files | `the machine moves already, or a node still removes the files of its last move. Retry later` |
+| A failed move left the machine on its target, and its source keeps a copy of its disk ([A step that an older control process accepted](#a-step-that-an-older-control-process-accepted)) | `a failed move left the machine on its node, and the node <id> keeps a copy of its disk. The node of the machine can lack a whole disk of it, so it does not move again. Delete the machine to end it (reference/cold-move.md)` |
 | The node of the machine serves no disk | `the node <id> of the machine serves no disk for a cold move. It needs a hopboxd that knows cold moves, and an address in the mesh` |
 | The named target fails a filter of placement | `the node <id> cannot take the machine: it <reason>` |
 | A live control process runs a release of the schema version 44 to 49 ([Two releases](#two-releases)) | `the control process <id> on <host> (hopboxd <release>) knows the migrations up to <version>, and only a hopboxd that knows migration 50 moves machines. Upgrade it first` |
@@ -58,7 +59,7 @@ The leader job runs every 2 s. For each move in `stopping`, it locks the machine
 
 | Machine | What the job does |
 | --- | --- |
-| `stopped`, and its node is `ready` or `cordoned` | It hands the machine to the target node. It locks the row of the target node as a placement does ([Placement](/reference/placement/index.html.md#the-steps-of-a-placement)). A target that has no room any more gives way to another node that placement picks, unless the instance admin named it. |
+| `stopped`, and its node is `ready`, `cordoned`, `draining`, or `shutting_down` | It hands the machine to the target node. It locks the row of the target node as a placement does ([Placement](/reference/placement/index.html.md#the-steps-of-a-placement)). A target that has no room any more gives way to another node that placement picks, unless the instance admin named it. |
 | `stopped`, and its node is `unresponsive` | It waits, because the source node must serve the disk. |
 | `stopped`, and a live control process runs a release of the schema version 44 to 49 | It waits. 10 min after the start of the move, the move fails with `a control process runs a hopboxd that does not know the moves`. |
 | deleted, or its target is `deleted` | The move fails with `the machine was deleted during the move`. A delete wins over the stop of a move. |
@@ -114,11 +115,112 @@ The end of a move writes the audit entry `machine.move` with the actor `system` 
 
 A control process of the schema version 44 to 49 can take the channel of the target node during a pull. It accepts a step of the target out of `moving`, such as `failed`, and does not end the move. The move then stays `pulling`, and the machine is on the target in another state. The executor still waits for the proof, and pulls the disk again once a spec names the move.
 
-A cancel, the pull deadline, or a step of the target without the proof then fail the move, and leave the machine where it is. The target can already run the machine with the pulled disk. So the control role never takes the machine back, and no two microVMs run it. The move gets no `cleanup_server_id`, and the source keeps its copy of the disk. The service logs `a cold move failed while its machine was not in the state moving on the target node, so the machine stays there. The source node keeps its copy of the disk` at level warn, with `state` and `err`. An operator decides about that copy. If the target has no whole disk, the machine never boots there, and a delete removes it.
+A cancel, the pull deadline, or a step of the target without the proof then fail the move, and leave the machine where it is. The target can already run the machine with the pulled disk. So the control role never takes the machine back, and no two microVMs run it. The move gets no `cleanup_server_id`, and the source keeps its copy of the disk. The service logs `a cold move failed while its machine was not in the state moving on the target node, so the machine stays there. The source node keeps its copy of the disk` at level warn, with `state` and `err`. An operator decides about that copy. If the target has no whole disk, the machine never boots there, and a delete removes it. The machine does not move again while the source keeps the copy, because a move from the target could make a partial or a blank disk the machine. `MoveMachine` and a drain refuse it. The source never counts as empty for a drain, and `DecommissionServer` refuses it, also after a later move of the machine from another node. Only a delete of the machine ends the copy.
 
 ### Old copies
 
 `cleanup_server_id` of a move names the node that still holds an old copy of the files of the machine: the source after `done`, the target after `failed`. The `DiskTransfers` of that node lists the machine in `remove`, once the machine is on another node or its row is gone. The executor of the node removes the files once it holds no valid lease of the machine and the microVM does not run: the disk, the partial copy, the node-local state, and the log. Then the next heartbeats name the machine in `removed_machines`, and the control role clears `cleanup_server_id`. A new move of the machine waits until then.
+
+## Drain of a node
+
+A drain takes every machine off a node, so that the node can leave the install. `DrainServer` of the admin API ([the admin API](/reference/admin-api/index.html.md#drainserver)) or `hopboxd admin server drain` ([hopboxd](/reference/hopboxd/index.html.md#admin-server-drain)) starts it. The guide [Drain a node](/guide/drain-a-node/index.html.md) shows it step by step. The drain cordons the node and sets its state to `draining` ([the control channel](/reference/control-channel/index.html.md#server-states)). Then a leader job moves each machine of the node cold to another node. A drain never deletes a machine. Every machine keeps its disk.
+
+The code is in `internal/service/drains.go`. The leader job calls `service.AdvanceDrains` every 5 s (`control.DrainEvery`).
+
+| Item | Value |
+| --- | --- |
+| Moves from the node at once | At most 2 (`service.DrainMoves`). The count includes the moves that an admin started. |
+| Empty checks in a row | 3 (`service.DrainEmptyChecks`) |
+| Time between two empty checks | 1 min (`service.DrainCheckEvery`) |
+| Step of the leader job | Every 5 s (`control.DrainEvery`) |
+
+### Start
+
+`DrainServer` locks the server, and does these things in one transaction:
+
+1. It writes a row of `server_drains` for the node ([Control store tables](/reference/control-store/index.html.md#server_drains)). A second call finds the row. It clears the stranded machines, restarts `started_at`, and counts the empty checks from zero. This is a retry.
+2. It sets the cordon flag. A node in `ready` or `cordoned` turns `draining`.
+3. It writes the audit entry `server.drain` with the target kind `server` and the details `old_state`, `state`, and `retry` (`true` or `false`).
+
+A node in `unresponsive` stays `unresponsive` with the cordon flag set. It turns `draining` at its next heartbeat, because a node with a row in `server_drains` comes back as `draining`, before the cordon rule. `UncordonServer` refuses a node that drains, with `failed precondition: the server <id> drains, and stays cordoned until the drain decommissions it. A drain cannot stop. Follow it with hopboxd admin server get, and fix the reasons of its stranded machines. For a server that Terraform manages, run terraform destroy, which waits for the drain`. Placement takes only `ready` nodes, so a draining node takes no new machine.
+
+`DrainServer` refuses these cases:
+
+| Case | Error |
+| --- | --- |
+| The ID is not valid | `invalid_argument` |
+| No server has the ID | `not_found` |
+| The server left the install | `failed precondition: the server <id> is decommissioned` |
+| The server has no role `node` | `failed precondition: the server <id> has no role node, so it holds no machine to move. Decommission it instead` |
+| An admin session drains a server that shares its host with a live control process, or with the control process that takes the call | `permission denied: the server <id> hosts a control process, so only root on a control server or an admin API key drains it`. A drain ends in a decommission, and a control server goes only by root or by the Terraform provider. |
+| A live control process runs a release of the schema version below 51 ([Two releases](#two-releases)) | `failed precondition: the control process <process> knows the migrations up to <n>, and only a hopboxd that knows migration 51 drains servers. Upgrade it first` |
+
+### The machines of the node
+
+Each run, the job reads the machines of the node in the order of their IDs. A machine that its executor has deleted does not count. For each machine, it does the first case that fits:
+
+| Machine | What the job does |
+| --- | --- |
+| A move of the machine runs | It waits. |
+| The target is `deleted` | It waits, with the reason `the machine <name> waits for its delete`. The delete goes by itself. |
+| The current state is `pending`, and the target is `running` | It waits until the machine boots, with the reason `the machine <name> has not booted yet, and moves once it runs`. Then it can move. |
+| The machine cannot move cold: it never booted with the target `stopped`, is `hibernated` or `standby`, or has another target | The machine is stranded, with the reason `a cold move needs a machine that booted, with the target running or stopped. This one is <state>, with the target <target>`. |
+| The newest move of the machine from the node since the start of the drain failed | The machine is stranded, with the reason `its move failed: <error of the move>`. It stays stopped with its disk on the node. |
+| Otherwise | A move starts, if fewer than 2 moves run from the node. |
+
+A move starts as `MoveMachine` starts it ([Start of a move](#start-of-a-move)), with a target that placement picks. The audit entry is `machine.move` with the actor `system`, the same details, and the detail `drain`, the ID of the server. A machine whose last move still waits for the cleanup of an old copy waits too, with the reason `the machine <name> waits until the node <id> (<state>) removes the old copy of its last move`. The state shows a node that cannot do the cleanup now, such as an `unresponsive` one. A start that fails with `failed_precondition` or with no capacity strands the machine. Its reason is the message of that error, such as `no capacity: no node has room for a machine of size ...`.
+
+A machine that cannot move stays on the node with its disk: a running machine with no room keeps running, a machine whose move failed stays stopped. The stop is part of the cold move, and an early stop of a machine with no room elsewhere only adds downtime.
+
+A stranded machine is not tried again until `DrainServer` runs again. The drain also strands a machine whose disk copy a failed move left on this node ([A step that an older control process accepted](#a-step-that-an-older-control-process-accepted)). The machine is on another node. Its reason is `a failed move left the machine <state> on the node <id>, and this server keeps a copy of its disk that nothing removes (reference/cold-move.md)`. A delete of that machine ends the reason.
+
+The drain is stuck when no move runs, every machine left on the server is stranded, and a machine is stranded or the decommission was refused. A stuck drain waits for an operator. The operator makes room or fixes the reason, then runs `DrainServer` again.
+
+### Empty checks and the decommission
+
+The `error` of the drain says why the drain waits now: an older control process, a node without heartbeats, the first wait of the table above, an old copy on the node, or a refused decommission. So a drain that starts no move always shows its reason. The control store keeps the time of the empty checks, so a new leader with another clock keeps the gap of 1 min.
+
+After the moves, the job checks the node. The node counts as empty when all these things hold:
+
+- The state is `draining` or `shutting_down`, so the node answers its heartbeats.
+- No machine is on the node in the control store, except machines that their executor has deleted.
+- The last heartbeat of the node lists no allocation.
+- No move runs from or to the node.
+- No old copy waits for the node to remove it (`cleanup_server_id`). While one waits, the reason is `the server still removes the old copy of the machine <name>`.
+- The node keeps no copy of a disk after a failed move.
+- No live control process runs a release of the schema version below 51.
+
+The first empty check turns the state to `shutting_down`. It writes the audit entry `server.mark_shutting_down` with the actor `system` and the details `old_state` `draining`, `state` `shutting_down`, and `checks` `1`. The later checks change no state and write no such entry. The checks are 1 min apart, and the third one decommissions the node with all the checks of `DecommissionServer` ([the admin API](/reference/admin-api/index.html.md#decommissionserver)). The audit entry is `server.decommission` with the actor `system` and the details `old_state` `shutting_down`, `state` `decommissioned`, and `drain` `true`. The row of `server_drains` goes with the decommission.
+
+| Event | Result |
+| --- | --- |
+| A check finds the node not empty | The state goes back to `draining`, and the empty checks restart from zero. The audit entry is `server.mark_draining` with the actor `system` and the details `old_state` `shutting_down`, `state` `draining`, and `reason`: `the node is not empty`, or why the drain waits. |
+| `DrainServer` runs again | The state goes back to `draining`, and the empty checks restart from zero. |
+| The node sends no heartbeat for 20 s | The state turns `unresponsive`, and the audit entry is `server.mark_unresponsive`. The leader job marks `draining` and `shutting_down` nodes too. The error of the drain is `the server sends no heartbeat, so the drain waits for it`. The drain goes on at the next heartbeat. |
+| The third check meets a refusal of the decommission, such as `... shares its host with the last live control process ...` | The error of the drain holds the message. The empty checks stay at 3, and the next check one minute later tries again. |
+| A live control process runs a release of the schema version below 51 | The error holds the refusal message of `DrainServer`. The drain starts no move and runs no check. |
+
+`DecommissionServer` still works on a `draining` or `shutting_down` node that is empty. Its refusals now name the cause: the machines, the move, or the kept copy ([the admin API](/reference/admin-api/index.html.md#decommissionserver)). A decommission also drops the old copies that the server still had to remove. It clears `cleanup_server_id` of those moves, so that a new move of those machines does not wait.
+
+### Logs of the drain
+
+The control role logs with `component=service`:
+
+| Message | Level | Fields |
+| --- | --- | --- |
+| `the drain of a server starts` | info | `server`, `retry` |
+| `the drain of a server moves a machine` | info | `server`, `machine`, `move`, `target` |
+| `the drain of a server cannot move a machine, so the machine stays with its disk` | warn | `server`, `machine`, `reason` |
+| `a step of the drain of a server failed. The next run tries again` | warn | `server`, `err` |
+| `the drain found a server empty` | info | `server`, `checks` |
+| `the drain decommissioned a server` | info | `server` |
+| `the drain cannot decommission a server that it found empty` | warn | `server`, `err` |
+
+The leader logs `taking the drains on failed` at level warn with `err`, with `component=leader`.
+
+### The subnet of a decommissioned node
+
+The leader sweep frees the subnet of a decommissioned node, with the other sweeps ([Control store tables](/reference/control-store/index.html.md#node_subnets)). A subnet is free once no machine address of it is held. An address is held when `held_until` is null or in the future. A moved machine keeps the address of its first node, so the subnet stays taken while such a machine lives. The next node that gets its first machine takes the first free subnet, which can be the freed one ([the node network](/reference/node-network/index.html.md)). The sweep log `freed reserved machine names and ports` has the field `subnets` for the count.
 
 ## What the machine keeps
 
@@ -209,6 +311,8 @@ A release of the schema version 44 to 49 runs beside migration 0050 ([Control st
 
 An executor of an older release on the target can boot a new disk from the image, and report `stopped` or `running`. That report has no `pulled_move_id`, so the move fails and the source keeps the disk ([End of a move](#end-of-a-move)).
 
+The drain needs migration 0051 (`service.DrainsSchema`, [Control store tables](/reference/control-store/index.html.md#server_drains)). A release of the schema version 44 to 50 runs beside it. It never reads the new tables, runs no drain job, and shows `draining` and `shutting_down` as unknown. It places nothing on such a node. It keeps the state in its heartbeats and never marks such a node unresponsive. Its uncordon can clear the cordon flag, which the next step of the drain sets again. Its hand-off of a move from a draining source waits and fails after 10 min. So while such a control process is live, `DrainServer` refuses, and the drain job starts no move, runs no check, and decommissions nothing ([Start](#start)).
+
 ## Metrics
 
 | Metric | Type | Labels | Description |
@@ -297,3 +401,7 @@ The disk listener and the pulls log with `component=transfer` and `machine`. The
 | `TestColdMoveEndToEnd` of `internal/control` | `make test` | Two nodes over mutual TLS on loopback, with their executors, the test driver, and the disk listener. A running machine moves with the data of its disk, its name, its URL, its SSH port, and its address. The source removes its old copy. A move back to a node that cannot write the disk fails, and the machine stays stopped with its disk. |
 | `TestColdMove` of `test/fleet` | `make test-fleet` | Two nodes of the test driver on `vrack0` with the real mesh. A cut of the `vrack` link of the target in the middle of the pull, and the pull resumes. The data, the name, the URL, the SSH port, and the address stay. A failed target keeps the disk on the source. |
 | `TestColdMoveKVM` of `test/fleet` | `make test-fleet` with `FLEET_KVM_BUNDLE`, on a host with `/dev/kvm` | Two KVM nodes with the real Firecracker. A file that the guest wrote is there after the move, and the address in the guest stays. It skips without KVM. |
+| `TestDrain`, `TestDrainWithoutRoom`, `TestDrainStrandsAFailedMove`, `TestDrainKeepsACopyOfADisk`, `TestDecommissionWaitsForAMove`, `TestDrainWaits`, `TestDrainOfTheLastControlServer`, `TestSubnetOfADecommissionedNode` of `internal/service` | `make test` | The drain in the control store: the states, the moves at most 2 at once, the stranded machines and their reasons, the empty checks, the decommission, the refusals, and the subnet of a decommissioned node. |
+| `TestDrainEndToEnd` of `internal/control` | `make test` | Two nodes over mutual TLS on loopback. A running and a stopped machine move with their data and their address, and the drain decommissions the node. |
+| `TestDrain` of `test/fleet` | `make test-fleet` | With no room, the drain strands all three machines. Then a drain with a failed pull of box3 strands box3, while box1 and box2 move, at most 2 at once. A retry moves box3, and 3 empty checks a minute apart decommission node1. |
+| `TestDrainKVM` of `test/fleet` | `make test-fleet` with `FLEET_KVM_BUNDLE`, on a host with `/dev/kvm` | KVM nodes with the real Firecracker. It skips without `/dev/kvm` and `FLEET_KVM_BUNDLE`. |

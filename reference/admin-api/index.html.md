@@ -22,7 +22,7 @@ The admin API has these services:
 | `hopbox.admin.v1.LoginLinkService` | `CreateLoginLink` |
 | `hopbox.admin.v1.InstanceAdminService` | `ListInstanceAdmins`, `GrantInstanceAdmin`, `RevokeInstanceAdmin` |
 | `hopbox.admin.v1.AccountService` | `ListAccountSignInMethods`, `RemoveAccountSignInMethod` |
-| `hopbox.admin.v1.ServerService` | `CreateEnrollmentToken`, `ListServers`, `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DecommissionServer`, `ListControlProcesses` |
+| `hopbox.admin.v1.ServerService` | `CreateEnrollmentToken`, `ListServers`, `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DecommissionServer`, `DrainServer`, `ListControlProcesses` |
 | `hopbox.admin.v1.PoolService` | `CreatePool`, `GetPool`, `ListPools`, `DeletePool` |
 | `hopbox.admin.v1.SizeService` | `CreateSize`, `GetSize`, `ListSizes`, `RetireSize` |
 | `hopbox.admin.v1.OrgService` | `ListOrgs`, `SuspendOrg`, `UnsuspendOrg`, `SetOrgLimits`, `GetDefaultOrgLimits`, `SetDefaultOrgLimits` |
@@ -41,7 +41,7 @@ An admin session can make these calls, and no other call of the admin API:
 | `hopbox.admin.v1.InstallConfigService` | `GetInstallConfig`, `UpdateInstallConfig`, `GetSMTPConfig`, `SetSMTPConfig`, `ClearSMTPConfig`, `GetOAuthConfig`, `SetOAuthClient`, `ClearOAuthClient` |
 | `hopbox.admin.v1.InstanceAdminService` | `ListInstanceAdmins`, `GrantInstanceAdmin`, `RevokeInstanceAdmin` |
 | `hopbox.admin.v1.AdminKeyService` | `CreateAdminKey`, `ListAdminKeys`, `RevokeAdminKey` |
-| `hopbox.admin.v1.ServerService` | `ListServers`, `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels` |
+| `hopbox.admin.v1.ServerService` | `ListServers`, `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DrainServer` (only of a server that hosts no control process) |
 | `hopbox.admin.v1.PoolService` | `CreatePool`, `GetPool`, `ListPools`, `DeletePool` |
 | `hopbox.admin.v1.SizeService` | `CreateSize`, `GetSize`, `ListSizes`, `RetireSize` |
 | `hopbox.admin.v1.OrgService` | `ListOrgs`, `SuspendOrg`, `UnsuspendOrg`, `SetOrgLimits`, `GetDefaultOrgLimits`, `SetDefaultOrgLimits` |
@@ -940,6 +940,7 @@ The message `Server` is one enrolled server, with the facts of its last heartbea
 | `version` | int64 | The row version. It grows by 1 with each change, such as each heartbeat. |
 | `update_time` | `google.protobuf.Timestamp` | The time of the last change. |
 | `mesh` | `ServerMesh` | The part of the server in the mesh. Absent until the server reports the key of its WireGuard device, and for a server outside the mesh ([the mesh](/reference/mesh/index.html.md)). |
+| `drain` | `ServerDrain` | The drain of the server (field 26). Absent when the server does not drain, and after the decommission. |
 
 The message `ServerMesh` has these fields:
 
@@ -949,6 +950,27 @@ The message `ServerMesh` has these fields:
 | `vrack_address` | string | The address of the server on the vRack, in `172.31.0.0/16`, for example `172.31.0.12`. |
 | `public_key` | string | The public key of the WireGuard device `hbm0` of the server, in base64, as `wg show` prints it. |
 
+The message `ServerDrain` has these fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `start_time` | `google.protobuf.Timestamp` | The start of the drain, or of its last retry. |
+| `moving` | int32 | The moves from the server that run now. |
+| `stranded` | repeated `StrandedMachine` | The machines that the drain cannot move. Each one keeps its disk on the server. |
+| `empty_checks` | int32 | The empty checks in a row: 0 to 3. |
+| `last_check_time` | `google.protobuf.Timestamp` | The time of the last empty check. Absent before the first one. |
+| `error` | string | Why the drain waits now, such as a refused decommission. Empty while the drain goes on. |
+| `stuck` | bool | True when no move runs, every machine left on the server is stranded, and a machine is stranded or the decommission was refused. A second `DrainServer` tries again. |
+
+The message `StrandedMachine` has these fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `machine_id` | string | The ID of the machine. |
+| `name` | string | The name of the machine. |
+| `reason` | string | Why the machine cannot move. |
+| `on_server` | bool | False for a machine on another node whose disk copy a failed move left on this server ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node)). |
+
 The enum `ServerState` has these values:
 
 | Value | Meaning |
@@ -957,6 +979,8 @@ The enum `ServerState` has these values:
 | `SERVER_STATE_READY` | The server sends heartbeats and takes new machines. |
 | `SERVER_STATE_CORDONED` | An instance admin cordoned the server. It keeps its machines but takes no new one. |
 | `SERVER_STATE_UNRESPONSIVE` | The server sent no heartbeat for 20 s, or none since its enrollment. Its machines stay on it. |
+| `SERVER_STATE_DRAINING` | A drain cordoned the server and moves its machines to other nodes. The server takes no new machine. |
+| `SERVER_STATE_SHUTTING_DOWN` | The drain found the server empty. After 3 empty checks in a row, one minute apart, it decommissions the server. |
 | `SERVER_STATE_DECOMMISSIONED` | The server left the install. The install refuses its certificates. |
 
 The enum `ServerStatus` has these values:
@@ -1110,7 +1134,7 @@ The request `CordonServerRequest` has the field `id`, the ID of the server. The 
 
 ### UncordonServer
 
-Lets new machines land on a cordoned server again. The call clears the flag `cordoned`. A `cordoned` server turns `ready`. An `unresponsive` server stays `unresponsive`, and turns `ready` with its next heartbeat. An uncordon of a server that is not cordoned changes nothing.
+Lets new machines land on a cordoned server again. The call clears the flag `cordoned`. A `cordoned` server turns `ready`. An `unresponsive` server stays `unresponsive`, and turns `ready` with its next heartbeat. An uncordon of a server that is not cordoned changes nothing. A server that drains stays cordoned until its decommission, so the call refuses it ([DrainServer](#drainserver)).
 
 | Item | Value |
 | --- | --- |
@@ -1138,9 +1162,13 @@ The request `SetServerLabelsRequest` has the fields `id`, the ID of the server, 
 
 Takes a server out of the install for good. The state turns `decommissioned`, and no call changes it again. The install refuses the certificates, the heartbeats, and the renewals of the server from then on. If the control channel of the server runs in the same control process, that process ends it after the commit. A channel in another control process ends at its next heartbeat ([the control channel](/reference/control-channel/index.html.md)).
 
-The call refuses a server that still holds machines. The control store counts each machine on the server that its executor has not deleted yet, stopped machines included. The last heartbeat of the server counts its allocations.
+The call works from every state but `decommissioned`. A `draining` or `shutting_down` server must be empty. The drain runs this call itself at its third empty check ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node)).
 
-The call also refuses a server that shares its host with the last live control process, while another server is not decommissioned. The other servers need that control role. The check reads the live rows of `control_processes` ([Control store tables](/reference/control-store/index.html.md#control_processes)). A live process hosts the server when its row names the server ID, or when it is the process that takes the call and its own host has that identity in `<data_dir>/server` ([Enrollment and the install PKI](/reference/enrollment/index.html.md)). The call refuses only while no live control process runs on another host, and other servers still belong to the install. A process on another host counts only when its row names no server, or names a server that is not decommissioned. A process on a decommissioned server goes with its server, so it keeps no control plane for the others. A control process of a release before migration `0045` records no row, so the check does not see it: upgrade every control server before a decommission relies on it. So an install with a second control server decommissions the first server in any order, and the server of the last control process goes last. The check takes a transaction lock before it reads, and so does each enrollment. So two decommissions at the same time, such as in one parallel `terraform apply`, see each other, and a server that enrolls during the check counts. If the control role cannot read that identity, the call fails with `failed_precondition`. The message names the file: `cannot read the server on the host of this control role: read <data_dir>/server/identity.pem: ...`. A drain that moves the machines to another server comes in phase 2. A decommission of a decommissioned server changes nothing, and its row version stays. When Terraform destroys a server, the hopbox Terraform provider calls it ([hopbox Terraform provider](/reference/terraform-provider/index.html.md)). The provider never removes the first server from its state after a decommission outside Terraform.
+The call refuses a server that still holds machines. The control store counts each machine on the server that its executor has not deleted yet, stopped machines included. The last heartbeat of the server counts its allocations. The call refuses a server that a move runs from or to. It also refuses a server that keeps the copy of a disk which a failed move left, while the machine lives on another node.
+
+The decommission drops the old copies that the server still had to remove. It clears `cleanup_server_id` of those moves, so that a new move of those machines does not wait. The row of the drain goes too.
+
+The call also refuses a server that shares its host with the last live control process, while another server is not decommissioned. The other servers need that control role. The check reads the live rows of `control_processes` ([Control store tables](/reference/control-store/index.html.md#control_processes)). A live process hosts the server when its row names the server ID, or when it is the process that takes the call and its own host has that identity in `<data_dir>/server` ([Enrollment and the install PKI](/reference/enrollment/index.html.md)). The call refuses only while no live control process runs on another host, and other servers still belong to the install. A process on another host counts only when its row names no server, or names a server that is not decommissioned. A process on a decommissioned server goes with its server, so it keeps no control plane for the others. A control process of a release before migration `0045` records no row, so the check does not see it: upgrade every control server before a decommission relies on it. So an install with a second control server decommissions the first server in any order, and the server of the last control process goes last. The check takes a transaction lock before it reads, and so does each enrollment. So two decommissions at the same time, such as in one parallel `terraform apply`, see each other, and a server that enrolls during the check counts. If the control role cannot read that identity, the call fails with `failed_precondition`. The message names the file: `cannot read the server on the host of this control role: read <data_dir>/server/identity.pem: ...`. A decommission of a decommissioned server changes nothing, and its row version stays. When Terraform destroys a server, the hopbox Terraform provider drains it, and the drain calls it ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#delete)). The provider never removes the first server from its state after a decommission outside Terraform.
 
 | Item | Value |
 | --- | --- |
@@ -1151,17 +1179,38 @@ The call also refuses a server that shares its host with the last live control p
 
 The request `DecommissionServerRequest` has the field `id`, the ID of the server. The response `DecommissionServerResponse` has the field `server`, the `Server` after the change.
 
+### DrainServer
+
+Moves every machine of a server cold to other nodes, then decommissions the server ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node), [Drain a node](/guide/drain-a-node/index.html.md)). The call cordons the server and sets its state to `draining`, then returns at once. A leader job moves the machines, at most 2 at once. A machine that cannot move stays on the server with its disk: a running machine with no room keeps running, a machine whose move failed stays stopped. The `drain` of the `Server` names it. Once the server is empty, 3 empty checks in a row, one minute apart, decommission it. A drain never deletes a machine.
+
+A second call starts the drain again, as a retry. It clears the stranded list, restarts `start_time`, and counts the empty checks from zero. A server that drains stays cordoned, so `UncordonServer` refuses it with `failed precondition: the server <id> drains, and stays cordoned until the drain decommissions it. A drain cannot stop. Follow it with hopboxd admin server get, and fix the reasons of its stranded machines. For a server that Terraform manages, run terraform destroy, which waits for the drain`. An `unresponsive` server keeps that state with the flag set, and turns `draining` at its next heartbeat.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.ServerService/DrainServer` |
+| Policy action | `server.drain`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no. A second call starts the drain again. |
+| Audit entry | action `server.drain`, target kind `server`, target ID the server ID, details `old_state`, `state`, and `retry` (`true` or `false`) |
+
+The request `DrainServerRequest` has the field `id`, the ID of the server. The response `DrainServerResponse` has the field `server`, the `Server` after the change, with its `drain`.
+
 ### Errors of ServerService
 
-`GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, and `DecommissionServer` check the policy first, and then the ID.
+`GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DecommissionServer`, and `DrainServer` check the policy first, and then the ID.
 
 | Error | Cause |
 | --- | --- |
 | `invalid_argument` with `invalid argument: the server ID "<id>" is not a UUID` | The ID is not a UUID. |
 | `not_found` with `not found: no server has the ID <id>` | No server has the ID. |
-| `failed_precondition` with `failed precondition: the server <id> is decommissioned` | `CordonServer`, `UncordonServer`, or `SetServerLabels` of a decommissioned server. |
+| `failed_precondition` with `failed precondition: the server <id> is decommissioned` | `CordonServer`, `UncordonServer`, `SetServerLabels`, or `DrainServer` of a decommissioned server. |
 | `invalid_argument` with `invalid argument: invalid label: ...` | `SetServerLabels` with a label that breaks a rule. The rest of the message names the label and the rule. |
-| `failed_precondition` with `failed precondition: the server <id> holds <n> machines. Delete them first: a drain that moves machines to another server comes in a later release` | `DecommissionServer` of a server with machines. |
+| `failed_precondition` with `failed precondition: the server <id> holds <n> machines, such as <names>. Drain it first, so that its machines move to other nodes, or delete them` | `DecommissionServer` of a server with machines. `<names>` holds up to 5 names. Without names, the message reads `holds <n> machines. Drain it first, ...`. |
+| `failed_precondition` with `failed precondition: the move <move id> of the machine <machine id> runs from or to the server <id>. Wait for its end, or cancel it` | `DecommissionServer` of a server that a move runs from or to. |
+| `failed_precondition` with `failed precondition: the server <id> keeps a copy of the disk of the machine <name>, which a failed move left <state> on another node. Delete the machine, or keep the server` | `DecommissionServer` of a server that keeps the only copy of a disk after a failed move. |
+| `failed_precondition` with `failed precondition: the server <id> drains, and stays cordoned until the drain decommissions it. A drain cannot stop. Follow it with hopboxd admin server get, and fix the reasons of its stranded machines. For a server that Terraform manages, run terraform destroy, which waits for the drain` | `UncordonServer` of a server that drains. |
+| `failed_precondition` with `failed precondition: the control process <process> knows the migrations up to <n>, and only a hopboxd that knows migration 51 drains servers. Upgrade it first` | `DrainServer` while a live control process runs a release of the schema version below 51. |
+| `failed_precondition` with `failed precondition: the server <id> has no role node, so it holds no machine to move. Decommission it instead` | `DrainServer` of a server without the role `node`. |
+| `permission_denied` with `permission denied: the server <id> hosts a control process, so only root on a control server or an admin API key drains it` | `DrainServer` by an admin session of a server that hosts a control process. A new sign-in does not change it. |
 | `failed_precondition` with `failed precondition: the server <id> shares its host with the last live control process of the install, and <n> other servers still belong to the install. Decommission them first, or start the control role on another server` | `DecommissionServer` of the server on the host of the last live control process, before the other servers. |
 
 Example:

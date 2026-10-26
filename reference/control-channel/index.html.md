@@ -152,7 +152,7 @@ A heartbeat that breaks a limit ends the channel with `invalid_argument` and a m
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `state` | `ServerState` | The state of the server after the heartbeat: `SERVER_STATE_READY`, `SERVER_STATE_CORDONED`, `SERVER_STATE_UNRESPONSIVE`, or `SERVER_STATE_DECOMMISSIONED`. |
+| `state` | `ServerState` | The state of the server after the heartbeat: `SERVER_STATE_READY`, `SERVER_STATE_CORDONED`, `SERVER_STATE_UNRESPONSIVE`, `SERVER_STATE_DRAINING`, `SERVER_STATE_SHUTTING_DOWN`, or `SERVER_STATE_DECOMMISSIONED`. |
 | `sequence` | uint64 | The heartbeat that the control role recorded last on the channel. |
 | `renewed` | repeated `MachineLease` | The leases of that heartbeat that the control role renewed. The other leases of that heartbeat are stale ([the executor protocol](/reference/executor-protocol/index.html.md#renewals)). |
 
@@ -326,16 +326,18 @@ The machines keep running on their nodes. Their leases are not renewed, so 30 s 
 
 ## Server states
 
-A server is in one of the states of phase 1. Draining and shutting down come with the drain in phase 2.
+A server is in one of these states. The drain of a node sets `draining` and `shutting_down` ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node)). Both states exist in `hopbox.admin.v1.ServerState` and in `hopbox.cluster.v1.ServerState` as `SERVER_STATE_DRAINING = 5` and `SERVER_STATE_SHUTTING_DOWN = 6`.
 
 | State | Meaning |
 | --- | --- |
 | `ready` | The server sends heartbeats and takes new machines. |
 | `cordoned` | An instance admin cordoned it. It keeps its machines but takes no new one. |
 | `unresponsive` | It sent no heartbeat for 20 seconds, or none since its enrollment. Its machines stay on it. |
+| `draining` | A drain cordoned it, and moves its machines to other nodes. It takes no new machine. |
+| `shutting_down` | A drain found it empty. After 3 empty checks in a row, the drain decommissions it. |
 | `decommissioned` | It left the install. The control role refuses its certificates, its heartbeats, and its renewals. |
 
-The registry also keeps the flag `cordoned`, which is the choice of the instance admin. The flag stays while the server is unresponsive, so the server comes back cordoned.
+The registry also keeps the flag `cordoned`, which is the choice of the instance admin. The flag stays while the server is unresponsive, so the server comes back cordoned. A server with a drain comes back `draining`, before the cordon rule.
 
 | From | Event | To | Audit entry |
 | --- | --- | --- | --- |
@@ -345,14 +347,21 @@ The registry also keeps the flag `cordoned`, which is the choice of the instance
 | `ready` | `CordonServer` | `cordoned` | `server.cordon` |
 | `cordoned` | `UncordonServer` | `ready` | `server.uncordon` |
 | `unresponsive` | `CordonServer` or `UncordonServer` | `unresponsive`, with the flag set or cleared | `server.cordon` or `server.uncordon` |
-| `ready` or `cordoned` | no heartbeat for 20 seconds, found by the leader job | `unresponsive` | `server.mark_unresponsive`, actor `system` |
-| `ready`, `cordoned`, or `unresponsive` | `DecommissionServer` | `decommissioned` | `server.decommission` |
+| `unresponsive` | a heartbeat, the server has a drain | `draining` | `server.heartbeat`, actor `server` |
+| `ready` or `cordoned` | `DrainServer` | `draining` | `server.drain` |
+| `unresponsive` | `DrainServer` | `unresponsive`, with the flag set. It turns `draining` at its next heartbeat. | `server.drain` |
+| `draining` | the first empty check of the drain | `shutting_down` | `server.mark_shutting_down`, actor `system`, details `old_state`, `state`, and `checks` |
+| `shutting_down` | a check finds the node not empty | `draining` | `server.mark_draining`, actor `system`, details `old_state`, `state`, and `reason` |
+| `shutting_down` | `DrainServer` again | `draining` | `server.drain` |
+| `ready`, `cordoned`, `draining`, or `shutting_down` | no heartbeat for 20 seconds, found by the leader job | `unresponsive` | `server.mark_unresponsive`, actor `system` |
+| `shutting_down` | the third empty check of the drain | `decommissioned` | `server.decommission`, actor `system`, details `old_state` `shutting_down`, `state` `decommissioned`, and `drain` `true` |
+| `ready`, `cordoned`, `unresponsive`, `draining`, or `shutting_down` | `DecommissionServer` | `decommissioned` | `server.decommission` |
 
-Only a heartbeat that changes the state writes the audit entry `server.heartbeat`. Its details are `old_state` and `state`. The entries of `CordonServer` and `UncordonServer` have the same details ([the admin API](/reference/admin-api/index.html.md#serverservice)). `DecommissionServer` of the admin API sets `decommissioned` ([the admin API](/reference/admin-api/index.html.md#decommissionserver)). When Terraform destroys a server, the hopbox Terraform provider calls it.
+Only a heartbeat that changes the state writes the audit entry `server.heartbeat`. Its details are `old_state` and `state`. The entries of `CordonServer` and `UncordonServer` have the same details ([the admin API](/reference/admin-api/index.html.md#serverservice)). `DecommissionServer` of the admin API sets `decommissioned` ([the admin API](/reference/admin-api/index.html.md#decommissionserver)). When Terraform destroys a server, the hopbox Terraform provider calls `DrainServer`, and the drain decommissions the server.
 
 ### The leader job
 
-The leader of the control role checks the heartbeats every 5 seconds ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). The checks of the first 20 seconds of each term do nothing, and so do those of the first 20 seconds after maintenance mode. In that time, the servers can dial again after a stop of the control role. In maintenance mode, the job does not run ([Maintenance mode](#maintenance-mode)). Each check marks unresponsive every `ready` or `cordoned` server whose last heartbeat is 20 seconds old or older.
+The leader of the control role checks the heartbeats every 5 seconds ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). The checks of the first 20 seconds of each term do nothing, and so do those of the first 20 seconds after maintenance mode. In that time, the servers can dial again after a stop of the control role. In maintenance mode, the job does not run ([Maintenance mode](#maintenance-mode)). Each check marks unresponsive every `ready`, `cordoned`, `draining`, or `shutting_down` server whose last heartbeat is 20 seconds old or older.
 
 The write is fenced with the leader lease ([Control store tables](/reference/control-store/index.html.md#fenced-writes)). So a leader that lost its lease changes nothing, and its check fails with `lease: the lease epoch is stale or expired`.
 

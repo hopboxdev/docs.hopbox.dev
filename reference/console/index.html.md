@@ -68,8 +68,8 @@ Only an instance admin sees the link "Admin" at the top right. The routes under 
 | Path | What it does | Calls |
 | --- | --- | --- |
 | `/admin` | Opens `/admin/servers`. | none |
-| `/admin/servers` | The servers, with their state, their last heartbeat, their compat class, their labels, and their count of machines. The cordon and uncordon actions. | `ListServers`, `CordonServer`, `UncordonServer` |
-| `/admin/servers/<server ID>` | One server: its roles, its pool, its status and problems, its heartbeat, its compat class, its CPU, its capacity, its versions, and its certificate. Its cordon, and a form for its labels. | `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels` |
+| `/admin/servers` | The servers, with their state, their last heartbeat, their compat class, their labels, and their count of machines. The cordon and uncordon actions. While a server drains, the list reads again every 2 s. | `ListServers`, `CordonServer`, `UncordonServer` |
+| `/admin/servers/<server ID>` | One server: its roles, its pool, its status and problems, its heartbeat, its compat class, its CPU, its capacity, its versions, and its certificate. Its cordon, its drain, and a form for its labels. While the server drains, the page reads again every 2 s. | `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DrainServer` |
 | `/admin/pools` | The pools, with their OVHcloud plan, their hardware, and their counts of servers and sizes. A form that creates a pool, and the delete action. | `ListPools`, `CreatePool`, `DeletePool` |
 | `/admin/sizes` | The sizes, with their resources, their pool, and their labels. With "Show retired sizes", also the retired ones. A form that creates a size, and the retire action. | `ListSizes`, `ListPools`, `CreateSize`, `RetireSize` |
 | `/admin/images` | The machine images, with their digest, their arch, their disk, and their times. It has no action. | `ListImages` |
@@ -79,6 +79,29 @@ Only an instance admin sees the link "Admin" at the top right. The routes under 
 | `/admin/admin-keys` | The admin API keys. A new key shows its secret once. The revoke action. | `ListAdminKeys`, `CreateAdminKey`, `RevokeAdminKey` |
 | `/admin/config` | The domain, the public addresses, the ACME settings, the mail transport, and maintenance mode. A form that changes the domain. A form for the SMTP server, and a form for the app of GitHub and of Google. | `GetInstallConfig`, `UpdateInstallConfig`, `GetSMTPConfig`, `SetSMTPConfig`, `ClearSMTPConfig`, `GetOAuthConfig`, `SetOAuthClient`, `ClearOAuthClient` |
 | `/admin/audit` | The audit log of the whole install, newest first, page by page. | `ListAuditEntries` with `whole_install` |
+
+### Drain of a server
+
+The server page has the button "Drain" in the danger style. It opens the dialog "Drain <name>" ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node)). The dialog says these things:
+
+- The drain cordons the server and moves each machine to another node, at most 2 at once.
+- A running machine stops, moves, and boots again, so it loses its memory.
+- Each machine keeps its disk, name, URL, SSH port, and address.
+- Once the server holds nothing, the drain decommissions it.
+- "You cannot stop a drain."
+- If Terraform manages the server, run terraform destroy instead, because the next refresh of Terraform drops a drained server from its state.
+
+A server without the role `node` has no button "Drain", because it holds no machine and the install refuses its drain. An admin session cannot drain a server that hosts a control process: the call fails with `permission_denied` ([the admin API](/reference/admin-api/index.html.md#drainserver)).
+
+While the server drains, the page changes:
+
+- The button reads "Drain again". It starts the drain again, to try the stranded machines again. Its dialog says that the drain tries each stranded machine again and counts its empty checks from zero.
+- The buttons "Cordon" and "Uncordon" are hidden, because a drain keeps the server cordoned.
+- The section "Drain" shows these facts: Started, Moves, Empty checks (`n of 3`, and how long ago the last one ran), and Waits, the error of the drain.
+- A notice says that the drain cannot go on by itself when the drain is stuck.
+- A table lists each stranded machine with its reason. A machine whose disk copy a failed move left on this server shows "on another node" under its name.
+
+The admin API has no stream of servers. So the list of servers and the page of a server read again every 2 s while a drain runs.
 
 The calls of the admin API go to the services `hopbox.admin.v1.*`. Each read of the admin API writes an audit entry. So each load of a page of the Admin area adds entries to the audit log ([the admin API](/reference/admin-api/index.html.md#where-the-admin-api-is-served)).
 
@@ -296,10 +319,11 @@ The console pins each package to an exact version in `web/apps/console/package.j
 19. Checks that each page of the Admin area fits a phone width of 360 pixels without a horizontal scroll.
 20. Makes the session 11 minutes old, and clicks "Cordon". The action fails and asks for a sign-in again, and the server stays `ready`. The suite signs in with a new login link, comes back to `/admin/servers`, and the cordon works. After the run, the Go test reads the audit log: each action of the Admin area has the actor kind `session`. The test also finds the new SMTP server of the install.
 21. Turns on the file mail transport, and links the email `ann.work@example.org` on `/account`. It opens the link from the mail file, and finds the email link in the sign-in methods. Then it makes the session 11 minutes old, and checks that a second link asks for a sign-in again.
-22. Checks that no page error and no policy violation happened.
+22. Drains a second server of the test, which holds no machine, from its page. The empty checks of the test come 2 s apart. The badge shows `draining` or `shutting down`, the section "Drain" shows, and the button "Uncordon" is gone. Then the badge shows `decommissioned`, and the page has no drain button. The audit log has `server.drain` with the actor kind `session`, and `server.decommission` with the actor `system`. The Playwright test is "the drain button drains a server, which then leaves the install".
+23. Checks that no page error and no policy violation happened.
 
-Steps 12, 14 to 21 each start with a new sign-in through a login link, and step 11 starts without cookies. So they need no session from the steps before them, and their order does not matter. Each sign-in goes through the page of the link and the real sign-in of the API, as for a person.
+Steps 12, 14 to 22 each start with a new sign-in through a login link, and step 11 starts without cookies. So they need no session from the steps before them, and their order does not matter. Each sign-in goes through the page of the link and the real sign-in of the API, as for a person.
 
-`TestConsole` gives Playwright the install in env vars, so you do not set them yourself. `HOPBOX_E2E_PROXY` is the proxy that serves the console and the API. `HOPBOX_E2E_LOGIN_LINK` is the first login link of `ann@example.org`, the account of the suite and an instance admin. A `POST` to `HOPBOX_E2E_LOGIN`, a URL on loopback, returns a new login link of that account. `HOPBOX_E2E_USER_COOKIE` is the session token of `user1@example.org`, an account with a verified email that is not an instance admin. `HOPBOX_E2E_USER_CODE` and `HOPBOX_E2E_USER_CODE_2` are the codes of the two device sign-ins. A `POST` to `HOPBOX_E2E_AGE_SESSIONS`, a URL on loopback, makes every session of `ann@example.org` 11 minutes old. A `POST` to `HOPBOX_E2E_MAIL`, a URL on loopback, turns on the file mail transport. A `GET` of it returns the link in the newest mail file. `HOPBOX_E2E_TEAM_ORG` is the ID of the org `Team`, where `bob@example.org` is a member of the account of the suite. The others are `HOPBOX_E2E_URL`, `HOPBOX_E2E_SSH_KEY`, and `HOPBOX_E2E_MACHINE`.
+`TestConsole` gives Playwright the install in env vars, so you do not set them yourself. `HOPBOX_E2E_PROXY` is the proxy that serves the console and the API. `HOPBOX_E2E_LOGIN_LINK` is the first login link of `ann@example.org`, the account of the suite and an instance admin. A `POST` to `HOPBOX_E2E_LOGIN`, a URL on loopback, returns a new login link of that account. `HOPBOX_E2E_USER_COOKIE` is the session token of `user1@example.org`, an account with a verified email that is not an instance admin. `HOPBOX_E2E_USER_CODE` and `HOPBOX_E2E_USER_CODE_2` are the codes of the two device sign-ins. A `POST` to `HOPBOX_E2E_AGE_SESSIONS`, a URL on loopback, makes every session of `ann@example.org` 11 minutes old. A `POST` to `HOPBOX_E2E_MAIL`, a URL on loopback, turns on the file mail transport. A `GET` of it returns the link in the newest mail file. `HOPBOX_E2E_TEAM_ORG` is the ID of the org `Team`, where `bob@example.org` is a member of the account of the suite. `HOPBOX_E2E_DRAIN_SERVER` is the ID of a second server, cordoned and without machines, which the suite drains. The others are `HOPBOX_E2E_URL`, `HOPBOX_E2E_SSH_KEY`, and `HOPBOX_E2E_MACHINE`.
 
 Without `HOPBOX_TEST_CONSOLE`, `TestConsole` skips. `make test-console` sets the variable, and `make test` does not, so `make test` needs no browser. The test needs `corepack pnpm install`, a build of the console, and the Chromium of Playwright: run `web/apps/console/node_modules/.bin/playwright install chromium` once. If one of them is missing, the test fails.

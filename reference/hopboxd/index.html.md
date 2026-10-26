@@ -62,6 +62,7 @@ hopboxd --log-level=debug version
 | `admin server cordon` | Stops new machines from landing on a server, through the admin socket. |
 | `admin server uncordon` | Lets new machines land on a cordoned server again, through the admin socket. |
 | `admin server set-labels` | Replaces the labels of a server, through the admin socket. |
+| `admin server drain` | Moves every machine of a server to other nodes, then decommissions the server, through the admin socket. |
 | `admin server decommission` | Takes a server out of the install for good, through the admin socket. |
 | `admin control list` | Lists the control processes of the install, live or not, through the admin socket. |
 | `admin pool create` | Adds a pool of servers. |
@@ -184,9 +185,10 @@ The leader of the control role runs these jobs. In maintenance mode, the leader 
 | Sweep of sign-ins | 10 min | Deletes the ended sessions, and the magic links, login links, and OAuth flows that are older than 24 hours ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sweep)). Deletes the expired CLI tokens, the ended CLI sign-ins, and the device sign-ins and failed device approvals that are older than 24 hours. Deletes the API keys and admin API keys that expired more than 30 days ago ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#sweep)). |
 | Sweep of control processes | 10 min | Deletes the rows of the control processes that were not renewed for 24 hours. They ended without their stop ([Control store tables](/reference/control-store/index.html.md#control_processes)). |
 | Sweep of the fleet | 10 min | Deletes the enrollment tokens that expired more than 1 day ago, and the server certificates that expired more than 1 day ago. It keeps the newest certificate of each server ([Control store tables](/reference/control-store/index.html.md#enrollment_tokens)). |
-| Check of silent servers | 5 s | Marks `unresponsive` each `ready` or `cordoned` server whose last heartbeat is 20 s old or older: 4 missed heartbeats. The write checks the leader lease, so a leader that lost its lease writes nothing. Each server that it marks gets an audit entry `server.mark_unresponsive` with the actor `system` ([Control store tables](/reference/control-store/index.html.md#servers)). The next heartbeat of the server makes it `ready` again, or `cordoned` ([the control channel](/reference/control-channel/index.html.md)). |
+| Check of silent servers | 5 s | Marks `unresponsive` each `ready`, `cordoned`, `draining`, or `shutting_down` server whose last heartbeat is 20 s old or older: 4 missed heartbeats. The write checks the leader lease, so a leader that lost its lease writes nothing. Each server that it marks gets an audit entry `server.mark_unresponsive` with the actor `system` ([Control store tables](/reference/control-store/index.html.md#servers)). The next heartbeat of the server makes it `ready` again, or `cordoned`, or `draining` when the server has a drain ([the control channel](/reference/control-channel/index.html.md)). |
+| Step of the drains | 5 s | Takes the drain of each `draining` or `shutting_down` server one step on: it starts the cold moves off the server, at most 2 at once, names the machines that cannot move, and runs the empty checks ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node)). The first empty check turns the server `shutting_down`, with the audit entry `server.mark_shutting_down`. A check that finds it not empty turns it `draining` again, with `server.mark_draining`. The third empty check in a row, one minute after the second, decommissions the server, with the audit entry `server.decommission`. Both entries have the actor `system`. Every write checks the leader lease. |
 | Sweep of invitations | 10 min | Deletes the invitations to orgs that ended more than 24 hours ago, by a use, a revoke, or the expiry. It also deletes the records of their rate limits that are older than 24 hours ([the org API](/reference/org-api/index.html.md#invitations)). |
-| Sweep of machines | 10 min | Frees the machine names and the SSH ports whose reservation of 7 days ended ([Domain rules](/reference/domain-rules/index.html.md#name-reservation)). Drops the row of each machine that its executor deleted, 7 days after its delete request. Then deletes the machine lease of each machine whose row is gone ([Control store tables](/reference/control-store/index.html.md#machines)). Each of these four steps runs in a transaction of its own that checks the leader lease. So a leader that lost its lease frees nothing more. |
+| Sweep of machines | 10 min | Frees the machine names and the SSH ports whose reservation of 7 days ended ([Domain rules](/reference/domain-rules/index.html.md#name-reservation)). Drops the row of each machine that its executor deleted, 7 days after its delete request. Then deletes the machine lease of each machine whose row is gone ([Control store tables](/reference/control-store/index.html.md#machines)). Last, it frees the subnet of a decommissioned node once no machine address of it is held ([Control store tables](/reference/control-store/index.html.md#node_subnets)). Each of these five steps runs in a transaction of its own that checks the leader lease. So a leader that lost its lease frees nothing more. |
 | Prune of change events | 10 min | Deletes the change events that are older than 24 hours. Every reader of the events starts from the head, so an older event serves nobody ([Control store tables](/reference/control-store/index.html.md#events)). |
 | Certificate of the install | when due | Gets the wildcard certificate of the install from the ACME CA, and renews it after two thirds of its lifetime. It starts at the start of each term, and plans again after each change of an input of the ACME job ([the certificate of the install](/reference/acme/index.html.md#the-acme-job)). Every write checks the leader lease. |
 | Auto-delete of idle machines | 1 min | Deletes each machine whose last recorded use is older than its auto-delete timeout plus 1 minute. A use is recorded at most once a minute ([the machine API](/reference/machine-api/index.html.md#auto-delete)). It takes at most 100 machines per run, the oldest last use first. The next run takes the rest. It skips the machines of a suspended org. Each machine goes in a transaction of its own, which checks the leader lease, so a leader that lost its lease deletes nothing. The delete reserves the name and the SSH port, as `DeleteMachine` does. Each delete gets an audit entry `machine.delete` with the actor `system` and the detail `reason` (`auto-delete`), and the log record `deleted an idle machine`. A machine whose delete fails gets the log record `deleting an idle machine failed`, and the job goes on with the next one. Only a lost leader lease stops the run. |
@@ -1028,8 +1030,9 @@ Prints the server with the ID `<id>`. It calls `GetServer` ([the admin API](/ref
 - `cpu_threads`, `memory_bytes`, `disk_bytes`, `disk_free_bytes`, `machine_count`, and `allocations` and `actions` (their counts)
 - `last_heartbeat_time` (empty before the first heartbeat), `enroll_time`, `certificate_expire_time`, `version`, and `update_time`
 - `mesh_address`, `mesh_vrack_address`, and `mesh_public_key`: the part of the server in the mesh, empty for a server outside the mesh ([the mesh](/reference/mesh/index.html.md))
+- Only while the server drains: `drain_start_time`, `drain_moving`, `drain_empty_checks`, `drain_last_check_time` (empty before the first check), `drain_error`, and `drain_stuck` (`true` or `false`). Then one line `drain_stranded` for each stranded machine, with the value `<name> <machine id>: <reason>`.
 
-Times are RFC 3339 in UTC. `state` is `ready`, `cordoned`, `unresponsive`, or `decommissioned`. `status` is `ok`, `degraded`, or empty before the first heartbeat.
+Times are RFC 3339 in UTC. `state` is `ready`, `cordoned`, `unresponsive`, `draining`, `shutting_down`, or `decommissioned`. `status` is `ok`, `degraded`, or empty before the first heartbeat.
 
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -1046,6 +1049,7 @@ The JSON object has these keys:
 - `actions`: a list of objects with `machine_id`, `action`, and `start_time`
 - `last_heartbeat_time` (`null` before the first heartbeat), `enroll_time`, `certificate_expire_time`, `version`, and `update_time`
 - `mesh`: an object with `address`, `vrack_address`, and `public_key`, or `null` for a server outside the mesh
+- `drain`: `null` for a server that does not drain, or an object with `start_time`, `moving`, `stranded` (a list of objects with `machine_id`, `name`, `reason`, and `on_server`), `empty_checks`, `last_check_time` (`null` before the first check), `error`, and `stuck`
 
 Lists and the `labels` object are empty, never `null`. [The admin API](/reference/admin-api/index.html.md#server) describes each field.
 
@@ -1302,13 +1306,44 @@ Example:
 sudo hopboxd admin server set-labels 01a14404-ce7b-72d9-b18e-5006c3e462db --label zone=gra --label disk=nvme
 ```
 
+### admin server drain
+
+```sh
+hopboxd admin server drain <id> [--json]
+```
+
+Moves every machine of the server `<id>` cold to other nodes, then decommissions the server ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node), [Drain a node](/guide/drain-a-node/index.html.md)). It calls `DrainServer` ([the admin API](/reference/admin-api/index.html.md#drainserver)) and prints the server after the change, as `admin server get` does. The command returns at once. A leader job does the moves. Follow the drain with `admin server get`. A second run starts the drain again: it tries each stranded machine again, and counts the empty checks from zero. A server that drains stays cordoned, so `admin server uncordon` refuses it. A server without the role `node` holds no machine, so the command refuses it: run `admin server decommission` for it. Do not drain a server that Terraform manages. Run `terraform destroy` instead, which drains it first. After a drain outside Terraform, the next refresh drops a decommissioned node from the Terraform state, and fails on the first server.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--json` | bool | `false` | Prints one JSON object, as `admin server get --json` does. |
+
+Example:
+
+```text
+$ sudo hopboxd admin server drain 01a14404-ce7b-72d9-b18e-5006c3e462db
+id	01a14404-ce7b-72d9-b18e-5006c3e462db
+pool	default
+hostname	node1
+roles	node
+state	draining
+cordoned	true
+...
+drain_start_time	2026-10-16T09:10:00Z
+drain_moving	0
+drain_empty_checks	0
+drain_last_check_time	
+drain_error	
+drain_stuck	false
+```
+
 ### admin server decommission
 
 ```sh
 hopboxd admin server decommission <id> [--json]
 ```
 
-Takes the server `<id>` out of the install for good. Do not run it on a server that Terraform manages. Run `terraform destroy` instead. After a decommission outside Terraform, the provider keeps the first server in its state. A new create erases the install. It calls `DecommissionServer` ([the admin API](/reference/admin-api/index.html.md#decommissionserver)) and prints the server after the change, as `admin server get` does. The install refuses the certificates of the server from then on, and `hopboxd` on that server retries once a minute without success. The command refuses a server that still holds machines. It also refuses a server that hosts a live control process, while no live control process runs on another host and other servers belong to the install. A decommission of a decommissioned server changes nothing.
+Takes the server `<id>` out of the install for good. Do not run it on a server that Terraform manages. Run `terraform destroy` instead. After a decommission outside Terraform, the provider keeps the first server in its state. A new create erases the install. It calls `DecommissionServer` ([the admin API](/reference/admin-api/index.html.md#decommissionserver)) and prints the server after the change, as `admin server get` does. The install refuses the certificates of the server from then on, and `hopboxd` on that server retries once a minute without success. The command refuses a server that still holds machines. Drain the server first. It also refuses a server that a move runs from or to, and a server that keeps the copy of a disk after a failed move ([the admin API](/reference/admin-api/index.html.md#decommissionserver)). It also refuses a server that hosts a live control process, while no live control process runs on another host and other servers belong to the install. A decommission of a decommissioned server changes nothing.
 
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -1877,12 +1912,12 @@ If the source must come back instead, run `hopboxd admin maintenance off` on it.
 | `missing flags: --account-id=ID or --email=EMAIL` | `admin instance-admin grant` without an account. The exit status is 80. |
 | `failed_precondition: failed precondition: the keyring has no key-encryption key to seal or open the value. Run hopboxd admin kek rotate to make the first one` | `admin enrollment-token create` before the first key-encryption key. |
 | `not_found: not found: no pool is named "<pool>"` | `admin enrollment-token create --pool` with a pool that does not exist. |
-| `invalid_argument: invalid argument: the server ID "<id>" is not a UUID` | `admin server get`, `cordon`, `uncordon`, `set-labels`, or `decommission` with a bad ID. |
+| `invalid_argument: invalid argument: the server ID "<id>" is not a UUID` | `admin server get`, `cordon`, `uncordon`, `set-labels`, `drain`, or `decommission` with a bad ID. |
 | `not_found: not found: no server has the ID <id>` | No server has the ID. |
 | `--lifetime must be 30d, 90d, or 365d, not "<value>"` | `admin admin-key create` or `register` with another lifetime. |
 | `--lifetime and --expire-time can't be used together` | Both flags at once. The exit status is 80. |
 | `not_found: not found: no admin key <id>` | `admin admin-key revoke` of a key that does not exist. |
-| `failed_precondition: failed precondition: the server <id> is decommissioned` | `admin server cordon`, `uncordon`, or `set-labels` of a decommissioned server. |
+| `failed_precondition: failed precondition: the server <id> is decommissioned` | `admin server cordon`, `uncordon`, `set-labels`, or `drain` of a decommissioned server. |
 | `failed_precondition: failed precondition: the install has a control server on <host> too, and a rotation makes the new key current only on this server. Run hopboxd admin kek stage, copy the staged file to every control server, then run hopboxd admin kek promote` | `admin kek rotate` while the install has a control process on another host, live or not. |
 | `failed_precondition: failed precondition: a key file holds another key than the install recorded for its ID: ...` | `admin kek stage`, `admin kek promote`, or a start of the control role, with a key file whose fingerprint differs from the one that the install recorded for its ID ([Sealing](/reference/sealing/index.html.md#key-fingerprints)). |
 | `failed_precondition: failed precondition: the control process <id> on <host> (hopboxd <rel>) does not hold the current key <key> with this fingerprint, ...` | `admin kek rewrap` while a live control process lacks the current key. |
@@ -1891,7 +1926,12 @@ If the source must come back instead, run `hopboxd admin maintenance off` on it.
 | `failed_precondition: failed precondition: the key file <k> is newer than <id>, so <id> would never seal. Stage a new key instead` | `admin kek promote` of a key when a key file with a higher number exists. |
 | `failed_precondition: failed precondition: the control process <id> on <host> (hopboxd <release>) reports no key file of <key>. Copy the staged file to the key dir of that server with mode 0400, and promote again after its next renewal, within 5 s` | `admin kek promote` while a live control process does not list the key in `kek_ids`. |
 | `unavailable: unavailable: <key> is promoted, but the control process <id> still seals with <old key>: ...` | `admin kek promote` ran out of time while a process still seals with the old key. The promote stays recorded. |
-| `failed_precondition: failed precondition: the server <id> holds <n> machines. ...` | `admin server decommission` of a server with machines. |
+| `failed_precondition: failed precondition: the server <id> holds <n> machines, such as <names>. Drain it first, so that its machines move to other nodes, or delete them` | `admin server decommission` of a server with machines. |
+| `failed_precondition: failed precondition: the move <move id> of the machine <machine id> runs from or to the server <id>. Wait for its end, or cancel it` | `admin server decommission` of a server that a move runs from or to. |
+| `failed_precondition: failed precondition: the server <id> keeps a copy of the disk of the machine <name>, which a failed move left <state> on another node. Delete the machine, or keep the server` | `admin server decommission` of a server that keeps the only copy of a disk. |
+| `failed_precondition: failed precondition: the server <id> drains, and stays cordoned until the drain decommissions it. A drain cannot stop. Follow it with hopboxd admin server get, and fix the reasons of its stranded machines. For a server that Terraform manages, run terraform destroy, which waits for the drain` | `admin server uncordon` of a server that drains. |
+| `failed_precondition: failed precondition: the control process <process> knows the migrations up to <n>, and only a hopboxd that knows migration 51 drains servers. Upgrade it first` | `admin server drain` while a live control process runs a release of the schema version below 51. |
+| `failed_precondition: failed precondition: the server <id> has no role node, so it holds no machine to move. Decommission it instead` | `admin server drain` of a server without the role `node`. |
 | `failed_precondition: failed precondition: the server <id> shares its host with the last live control process of the install, ...` | `admin server decommission` of the server on the host of the last live control process, before the other servers. Decommission them first, or start the control role on another server. |
 | `invalid_argument: invalid argument: invalid label: ...` | `admin server set-labels` with a label that breaks a rule. |
 | `--memory-gib <n> is too large`, `--disk-gb <n> is too large` | `admin org set-limits` or `admin org default-limits set` with a size of more than 2^63 - 1 bytes. |
@@ -1977,7 +2017,7 @@ A field of type duration is a number of nanoseconds.
 | `sweep of enrollment tokens and server certificates failed` | warn | `component=leader`, `err` |
 | `swept ended invitations` | info | `component=leader`, `count` |
 | `sweep of invitations failed` | warn | `component=leader`, `err` |
-| `freed reserved machine names and ports` | info | `component=leader`, `names`, `ports`, `machines` (the counts) |
+| `freed reserved machine names and ports` | info | `component=leader`, `names`, `ports`, `machines`, `subnets` (the counts) |
 | `sweep of machine names and ports failed` | warn | `component=leader`, `err` |
 | `pruned old change events` | info | `component=leader`, `count` |
 | `swept the rows of control processes that ended without their stop` | info | `component=leader`, `count` |
