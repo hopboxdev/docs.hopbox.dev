@@ -1,0 +1,124 @@
+# hopbox
+
+> hopbox runs machines, and each machine is a Firecracker microVM. You make and use machines with the hopbox CLI, the console, the API, the TypeScript SDK, and the MCP server. Start with the [Quickstart](https://docs.hopbox.dev/guide/quickstart/index.html.md).
+
+The guides tell how to do one task, with an example to run. The reference lists every command, flag, API call, field, configuration key, and default.
+
+Each guide, reference page, and release note also has a Markdown copy at its URL with index.html.md, such as https://docs.hopbox.dev/guide/cli/index.html.md. The lists below link to these copies.
+
+## Guides: Get started
+
+- [Try hopbox](https://docs.hopbox.dev/guide/quickstart/index.html.md): How to try hopbox on the preview install: sign in, create a machine, open a shell, and open its URL. Also the words of these docs.
+- [Install the hopbox CLI](https://docs.hopbox.dev/guide/install-cli/index.html.md): How to download the hopbox CLI, check it, put it on the PATH, and sign it in to an install.
+- [Use the hopbox CLI](https://docs.hopbox.dev/guide/cli/index.html.md): How to sign the hopbox CLI in, work in an org, make API keys and SSH keys, script it with JSON, keep the sign-in alive, use a second install, and sign out.
+- [Use machines from the CLI](https://docs.hopbox.dev/guide/cli-machines/index.html.md): How to make and use a machine with the hopbox CLI: commands, files, the log, a shell, and the SSH alias.
+
+## Guides: Use hopbox
+
+- [Reach a machine over SSH](https://docs.hopbox.dev/guide/ssh/index.html.md): How to reach a machine through the SSH front door with ssh, scp, sftp, rsync, and port forwards. Also what each failure means.
+- [Run commands and copy files in a machine](https://docs.hopbox.dev/guide/exec-and-files/index.html.md): How to run commands in a machine, copy files, and read its log through the API with grpcurl, and open a shell over the WebSocket.
+- [Work in the prompt of the CLI](https://docs.hopbox.dev/guide/cli-prompt/index.html.md): How to work in the prompt of the hopbox CLI: Tab completion of commands and live machine names, quotes, a shell, Ctrl-C, the history, and profiles.
+- [Use the console](https://docs.hopbox.dev/guide/console/index.html.md): How to use the console of an install in a browser: sign in, create a machine, open a shell, approve the hopbox CLI, and the other pages.
+- [Work in a team org](https://docs.hopbox.dev/guide/orgs/index.html.md): How to share an org with a team, and how the operator sets the limits of an org and suspends it.
+- [Set env vars and secrets](https://docs.hopbox.dev/guide/env-vars/index.html.md): How to set env vars and secrets with the hopbox CLI in each scope, list them, share a machine with them, and rewrap the secrets after a rotation of the key-encryption key.
+- [Connect an AI agent to hopbox with MCP](https://docs.hopbox.dev/guide/mcp/index.html.md): How to connect Claude Code to the MCP server of an install with an API key, and let it make and use a machine.
+- [Call the API from TypeScript](https://docs.hopbox.dev/guide/typescript-sdk/index.html.md): How to call the API of an install from Node.js and from the console with the TypeScript SDK, which a reader builds from a checkout.
+
+## Guides: Run an install
+
+- [Install hopbox on an OVHcloud server with Terraform](https://docs.hopbox.dev/guide/install-on-ovhcloud/index.html.md): How to install hopbox on an OVHcloud server with Terraform, and how to upgrade, import, and destroy it.
+- [Install hopbox on a Debian 13 server by hand](https://docs.hopbox.dev/guide/install-debian/index.html.md): How to install hopbox on a Debian 13 server by hand, the path that the Terraform provider automates, and how to upgrade it and roll it back.
+- [First sign-in on a new install](https://docs.hopbox.dev/guide/first-sign-in/index.html.md): How the first instance admin signs in to a new install with a login link, reads the audit log, and turns on magic links.
+- [Sign in with GitHub and Google](https://docs.hopbox.dev/guide/github-google-sign-in/index.html.md): How an operator registers the GitHub OAuth app and the Google OAuth client of an install, gives hopbox their clients, and signs in with GitHub.
+- [Add pools and sizes](https://docs.hopbox.dev/guide/pools-and-sizes/index.html.md): How to add a pool for a second server model and a size whose machines land in it, why enrollment refuses a server with other hardware, and how to retire a size and delete a pool.
+- [Serve the domain of an install with the DNS role](https://docs.hopbox.dev/guide/dns-role/index.html.md): How to run the DNS role, set the domain and the public addresses, and query the zone. Also how to delegate the domain of an install.
+- [Get the wildcard certificate of an install](https://docs.hopbox.dev/guide/acme-certificate/index.html.md): How to get the wildcard certificate of an install, first from the test CA Pebble on a Mac, then from Let's Encrypt on a server.
+- [Run the edge role and open machine URLs](https://docs.hopbox.dev/guide/machine-urls/index.html.md): How to run the edge role on a Mac and call the API through it. Also how a private URL, its port, and a public URL work.
+- [Run the control store on an external Postgres](https://docs.hopbox.dev/guide/external-postgres/index.html.md): How to run the control store on an external Postgres, such as managed PostgreSQL: the database, the CA and password files, the config, and the checks. Also how to move a one-server install there with hopboxd admin db export and maintenance mode.
+
+## Guides: Develop on a laptop
+
+- [Run the control role on a laptop](https://docs.hopbox.dev/guide/run-hopboxd/index.html.md): How to run the control role on a laptop, call the API and the admin socket, read the audit log, make an admin API key, open the console behind Caddy, and sign the CLI in with curl.
+- [Enroll the node role on one server](https://docs.hopbox.dev/guide/enroll-node/index.html.md): How to enroll the node role of a server with the control role of the same server, and check its heartbeats.
+- [Create and manage machines](https://docs.hopbox.dev/guide/machines/index.html.md): How to register the default image, then create, list, watch, stop, and delete a machine through the API, and how the operator sees and stops the machines of every org.
+- [Run machines with Firecracker](https://docs.hopbox.dev/guide/firecracker-machines/index.html.md): How to follow a machine on its node: its systemd unit, its disk, a restart of hopboxd with the machine running, and the causes of a failed boot.
+- [Check the network of a machine](https://docs.hopbox.dev/guide/node-network/index.html.md): How to check the network of a machine: its address, its egress, what it cannot reach, and its traffic counters.
+
+## Reference: For users
+
+- [hopbox CLI](https://docs.hopbox.dev/reference/cli/index.html.md): The commands, flags, env vars, profiles, files, tokens, output, and exit status of the hopbox CLI. It also covers the managed SSH block and the prompt.
+- [The MCP server](https://docs.hopbox.dev/reference/mcp/index.html.md): The MCP server of hopbox at /mcp: its transport, credentials, limits, every tool with its input and its result, the left-out methods, errors, logs, and tests.
+- [Console](https://docs.hopbox.dev/reference/console/index.html.md): The console: its pages and their calls, its headers, its build, and its tests.
+- [TypeScript SDK](https://docs.hopbox.dev/reference/ts-sdk/index.html.md): The TypeScript SDK @hopbox/sdk for Node.js and browsers: its options, retries, idempotency keys, typed errors, credentials, exec, file copy, and tests.
+- [Go client](https://docs.hopbox.dev/reference/go-client/index.html.md): The Go client of the public API: its options, idempotency keys, retries, typed errors, and credentials.
+- [CLI tokens, API keys, admin API keys, and SSH keys](https://docs.hopbox.dev/reference/credentials/index.html.md): The CLI tokens, API keys, admin API keys, and SSH keys: their forms and prefixes, lifetimes, the device flow and its limits, refresh rotation, the rules of each key, and how the request gate reads them. Also curl examples of the device flow, a refresh, and an API key.
+- [Domain rules](https://docs.hopbox.dev/reference/domain-rules/index.html.md): The rules of machine states and actions, restart policies, names and their suggestions and reservation, SSH ports, machine URLs, start commands, auto-delete timeouts, sizes, emails, orgs, usage limits, API key kinds, credential names, SSH keys, and scopes.
+- [The API server](https://docs.hopbox.dev/reference/api/index.html.md): The API server: its listener, the request gate, callers and the policy matrix, the interceptors, idempotency keys, error codes, reflection, health, and InstallService.
+- [The sign-in, account, and audit API](https://docs.hopbox.dev/reference/auth-api/index.html.md): The sign-in, account, audit, API key, and SSH key calls of the public API: AuthService with the device flow, AccountService, AuditService, APIKeyService, and SSHKeyService, with their audit entries.
+- [The org API](https://docs.hopbox.dev/reference/org-api/index.html.md): The org calls of the public API, OrgService: orgs, roles, members, invitations, usage limits, the suspension, and their audit entries.
+- [The env var API](https://docs.hopbox.dev/reference/vars-api/index.html.md): The env var and secret calls of the public API, VarService: scopes, who can set each one, the name rules and the reserved names, the limits, the env of a machine, sealing, and their audit entries.
+- [The machine API](https://docs.hopbox.dev/reference/machine-api/index.html.md): The machine calls of the public API, MachineService: who can do what, the messages, the lifecycle calls, the access calls, sharing, settings, the suspension, the audit entries, and the change events.
+- [The version command](https://docs.hopbox.dev/reference/version/index.html.md): The version command of every hopbox binary, its output, and where its values come from.
+
+## Reference: For operators
+
+- [hopboxd](https://docs.hopbox.dev/reference/hopboxd/index.html.md): The commands, flags, logs, and exit status of hopboxd, with the start and stop order of hopboxd run, the leader jobs, install, upgrade and its rollback, enroll, preflight, and the admin commands for tokens, servers, admin API keys, orgs, machines, and images.
+- [The bootstrap config of hopboxd](https://docs.hopbox.dev/reference/hopboxd-config/index.html.md): Every key and default of the bootstrap config /etc/hopbox/hopboxd.toml, and its errors.
+- [Server layout](https://docs.hopbox.dev/reference/server-layout/index.html.md): Every path, user, ID range, systemd unit, and reserved port that hopboxd install makes on a server, the image cache, and the file of the bootstrap admin API key.
+- [Release bundle](https://docs.hopbox.dev/reference/release-bundle/index.html.md): The release bundle: its file, contents, manifest, the checks of a release, make bundle, tools/bundle, and the Firecracker pins.
+- [hopbox Terraform provider](https://docs.hopbox.dev/reference/terraform-provider/index.html.md): The hopbox Terraform provider, its provider block, the OVHcloud API rights, the resource hopbox_server, its steps and errors, and the binary.
+- [The preflight check](https://docs.hopbox.dev/reference/preflight/index.html.md): The preflight checks of a server, their severities, their errors, the tested OS and kernel, and the tested server.
+- [Metrics](https://docs.hopbox.dev/reference/metrics/index.html.md): The Prometheus metrics listener of hopboxd and every metric that it serves.
+- [The DNS role](https://docs.hopbox.dev/reference/dns/index.html.md): The DNS role: its listeners, zone, answers, and push. Also its TXT records, the parent zone, metrics, and logs.
+- [The edge role](https://docs.hopbox.dev/reference/edge/index.html.md): The edge role: its listeners, TLS, routing, and forwarded requests. Also the machine URLs, their sign-in, EdgeService, metrics, and logs.
+- [The SSH front door](https://docs.hopbox.dev/reference/ssh-front-door/index.html.md): The SSH front door of the edge role: its listener, the redirect of the SSH ports, the keys, and the sign-in. Also the connection to a machine, the channels, the checks, the limits, AuthorizeSSH, metrics, and logs.
+- [The certificate of the install](https://docs.hopbox.dev/reference/acme/index.html.md): The wildcard certificate of the install: the ACME settings, the leader job that gets and renews it, the name server check, the backoff, where it lives, its logs, and its tests with Pebble.
+- [SMTP config](https://docs.hopbox.dev/reference/smtp/index.html.md): The SMTP config that sends the sign-in links: its fields, TLS modes, the sealed password, and its errors.
+- [Mail](https://docs.hopbox.dev/reference/mail/index.html.md): The mail transports smtp and file, the mail that hopbox sends, and the file transport of dev installs: its folder, file names, bounds, logs, and how to read the mail.
+- [Sign-in with GitHub and Google](https://docs.hopbox.dev/reference/oauth/index.html.md): The sign-in with GitHub and Google: its config, redirect URIs, browser endpoints, checks, cookies, errors, limits, logs, and audit entries.
+- [Sessions, cookies, and sign-in links](https://docs.hopbox.dev/reference/sessions/index.html.md): The session cookie, the lifetimes, the check against cross-site requests, the magic links and login links, what a sign-in does, and the rate limits.
+- [The bundled Postgres](https://docs.hopbox.dev/reference/postgres/index.html.md): The bundled Postgres: its build, tools/pgdist, paths, OS users, roles, logs, errors, and the schema migrations.
+- [The admin API](https://docs.hopbox.dev/reference/admin-api/index.html.md): The admin API hopbox.admin.v1, its calls and their audit entries, including enrollment tokens, the server calls, the calls on orgs and their limits, and admin API keys, and the admin socket.
+- [Sealing](https://docs.hopbox.dev/reference/sealing/index.html.md): How hopbox seals secrets: the key files and their checks, the places, the sealed columns, the envelope format, rotation, and rewrap.
+- [Host kernel](https://docs.hopbox.dev/reference/host-kernel/index.html.md): The build, the kernel configuration, and the install of the tested host kernel, with the scripts in build/hostkernel/.
+
+## Reference: Internals
+
+- [Placement](https://docs.hopbox.dev/reference/placement/index.html.md): How a create picks the node of a machine: the hard filters, the usage of a node, the score, the retries, the no-capacity error, the room check of a start, and the placement metric.
+- [The internal listener](https://docs.hopbox.dev/reference/internal-listener/index.html.md): The TLS internal listener of the control role, its certificate, its client certificates, and the server caller.
+- [Enrollment and the install PKI](https://docs.hopbox.dev/reference/enrollment/index.html.md): The install CA, the enrollment token, the steps of an enrollment, the identity files of a server, and EnrollmentService.Enroll.
+- [The control channel](https://docs.hopbox.dev/reference/control-channel/index.html.md): The control channel of a server: its messages, heartbeats, certificate renewal, the reverse-attach data streams and their windows, the machine streams of exec, file copy, and logs, server states, and logs.
+- [The executor protocol](https://docs.hopbox.dev/reference/executor-protocol/index.html.md): The executor protocol on the control channel: the machine leases and their renewals, ReconcileMachine, the current-state reports, and their results.
+- [The node executor](https://docs.hopbox.dev/reference/executor/index.html.md): The executor of each machine on its node: its actions, the guest link for exec and file copy, the restart policy, saved state, node-local state, logs, and metrics.
+- [Machine logs](https://docs.hopbox.dev/reference/machine-logs/index.html.md): The node-local logs of the start commands of machines: their retention, files, writes, and reads.
+- [The VMM driver interface](https://docs.hopbox.dev/reference/vmm/index.html.md): The VMM driver interface of the executor, its capabilities, its drivers, and the test driver.
+- [The Firecracker driver](https://docs.hopbox.dev/reference/firecracker-driver/index.html.md): The Firecracker driver of the node role. It covers the unit, the jail, and the disk of each machine, the caches of images and kernels, and the KVM tests.
+- [The node network](https://docs.hopbox.dev/reference/node-network/index.html.md): The network of the machines of a node: the addresses and their hold, the tap devices, the nftables table inet hopbox_node, the resolvers, and the traffic counters.
+- [hopbox-guest](https://docs.hopbox.dev/reference/hopbox-guest/index.html.md): The commands, flags, files, systemd unit, logs, and exit status of the guest agent hopbox-guest.
+- [Guest link](https://docs.hopbox.dev/reference/guest-link/index.html.md): The transport, link key, handshake, versions, messages, exec, and file copy of the guest link, and its Go API on the node.
+- [API definitions](https://docs.hopbox.dev/reference/api-definitions/index.html.md): The API definitions under proto/, the code generators and their versions, the generated outputs, the make targets, and the API checks in CI.
+- [Control store tables](https://docs.hopbox.dev/reference/control-store/index.html.md): The tables of the control store, leases, leader election, change events, the audit log, idempotency keys, the install config, the tables of accounts, orgs, invitations, usage, sessions, sign-in links, and instance admins, the tables of pools, the install CA, the server registry, and enrollment tokens, the tables of sizes, images, machines, machine names, SSH ports, and placements, and the tables of the DNS zone.
+- [Guest kernel](https://docs.hopbox.dev/reference/guest-kernel/index.html.md): The source, config, fragment, builder, outputs, make targets, boot arguments, and security modules of the guest kernel.
+- [Default image](https://docs.hopbox.dev/reference/default-image/index.html.md): The programs, users, services, ports, files, disk, pins, build, and boot test of the default image.
+- [Artifact format](https://docs.hopbox.dev/reference/artifact-format/index.html.md): The artifact format version 1 for images: the files, artifact.json, the digest, the Go API, and tools/imageartifact.
+
+## Releases
+
+- [hopbox v0.1.0](https://docs.hopbox.dev/releases/v0.1.0/index.html.md): The release notes of v0.1.0, the pre-release at the end of phase 1: what it delivers by area, its known limits, the upgrade, and the acceptance on the dev install.
+
+## Documentation Sets
+
+- [Abridged documentation](https://docs.hopbox.dev/llms-small.txt): a compact version of the documentation for hopbox, with non-essential content removed
+- [Complete documentation](https://docs.hopbox.dev/llms-full.txt): the full documentation for hopbox
+- [Guides](https://docs.hopbox.dev/_llms-txt/guides.txt): how to do one task with hopbox, with an example to run
+- [Reference](https://docs.hopbox.dev/_llms-txt/reference.txt): every command, flag, API call, field, configuration key, and default of hopbox
+
+## Notes
+
+- The complete documentation includes all content from the official documentation
+- The content is automatically generated from the same source as the official documentation
+
+## Optional
+
+- [Public API spec](https://docs.hopbox.dev/api/hopbox.v1.openapi.yaml): the OpenAPI 3.1 spec of the public API
+- [Admin API spec](https://docs.hopbox.dev/api/hopbox.admin.v1.openapi.yaml): the OpenAPI 3.1 spec of the admin API, which only instance admins call

@@ -1,0 +1,5447 @@
+openapi: 3.1.0
+info:
+  title: hopbox public API
+  description: The public API of hopbox, package hopbox.v1.
+  version: v1
+paths:
+  /hopbox.v1.APIKeyService/CreateAPIKey:
+    post:
+      tags:
+        - hopbox.v1.APIKeyService
+      summary: CreateAPIKey
+      description: |-
+        CreateAPIKey makes a key. Any member makes a member key for itself.
+         The org admins and owners make org keys. The response holds the only copy of the key:
+         the install keeps only its hash. A retry with the same idempotency key makes no
+         second key. It fails with ALREADY_EXISTS.
+      operationId: hopbox.v1.APIKeyService.CreateAPIKey
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.CreateAPIKeyRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.CreateAPIKeyResponse'
+  /hopbox.v1.APIKeyService/ListAPIKeys:
+    post:
+      tags:
+        - hopbox.v1.APIKeyService
+      summary: ListAPIKeys
+      description: |-
+        ListAPIKeys lists the keys of an org that the caller manages, oldest first:
+         the own member keys for a member, every key of the org for an org admin or owner.
+      operationId: hopbox.v1.APIKeyService.ListAPIKeys
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.ListAPIKeysRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.ListAPIKeysResponse'
+  /hopbox.v1.APIKeyService/RevokeAPIKey:
+    post:
+      tags:
+        - hopbox.v1.APIKeyService
+      summary: RevokeAPIKey
+      description: |-
+        RevokeAPIKey deletes a key at once. A member deletes its own member keys.
+         An org admin or owner deletes any key of the org.
+      operationId: hopbox.v1.APIKeyService.RevokeAPIKey
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.RevokeAPIKeyRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.RevokeAPIKeyResponse'
+  /hopbox.v1.AccountService/DeleteAccount:
+    post:
+      tags:
+        - hopbox.v1.AccountService
+      summary: DeleteAccount
+      description: |-
+        DeleteAccount deletes the account, its personal org, its sessions, and its sign-in methods.
+         It fails while the account is the only owner of another org, or the last instance admin.
+      operationId: hopbox.v1.AccountService.DeleteAccount
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.DeleteAccountRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.DeleteAccountResponse'
+  /hopbox.v1.AccountService/EndCLISignIn:
+    post:
+      tags:
+        - hopbox.v1.AccountService
+      summary: EndCLISignIn
+      description: EndCLISignIn ends one CLI sign-in of the account, with all of its tokens, for example one on a lost laptop.
+      operationId: hopbox.v1.AccountService.EndCLISignIn
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.EndCLISignInRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.EndCLISignInResponse'
+  /hopbox.v1.AccountService/GetAccount:
+    post:
+      tags:
+        - hopbox.v1.AccountService
+      summary: GetAccount
+      description: GetAccount returns the account of the caller.
+      operationId: hopbox.v1.AccountService.GetAccount
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.GetAccountRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.GetAccountResponse'
+  /hopbox.v1.AccountService/ListCLISignIns:
+    post:
+      tags:
+        - hopbox.v1.AccountService
+      summary: ListCLISignIns
+      description: 'ListCLISignIns lists the CLI sign-ins of the account, oldest first: each device that holds CLI tokens.'
+      operationId: hopbox.v1.AccountService.ListCLISignIns
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.ListCLISignInsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.ListCLISignInsResponse'
+  /hopbox.v1.AccountService/ListSignInMethods:
+    post:
+      tags:
+        - hopbox.v1.AccountService
+      summary: ListSignInMethods
+      description: ListSignInMethods lists the sign-in methods of the account, oldest first.
+      operationId: hopbox.v1.AccountService.ListSignInMethods
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.ListSignInMethodsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.ListSignInMethodsResponse'
+  /hopbox.v1.AccountService/RemoveSignInMethod:
+    post:
+      tags:
+        - hopbox.v1.AccountService
+      summary: RemoveSignInMethod
+      description: RemoveSignInMethod removes one sign-in method. An account keeps at least one.
+      operationId: hopbox.v1.AccountService.RemoveSignInMethod
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.RemoveSignInMethodRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.RemoveSignInMethodResponse'
+  /hopbox.v1.AccountService/UpdateAccount:
+    post:
+      tags:
+        - hopbox.v1.AccountService
+      summary: UpdateAccount
+      description: UpdateAccount changes the fields that the request sets, and keeps the others.
+      operationId: hopbox.v1.AccountService.UpdateAccount
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.UpdateAccountRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.UpdateAccountResponse'
+  /hopbox.v1.AuditService/ListAuditEntries:
+    post:
+      tags:
+        - hopbox.v1.AuditService
+      summary: ListAuditEntries
+      description: |-
+        ListAuditEntries returns audit entries, newest first.
+         Org owners and org admins read the entries of their org.
+         Instance admins read the entries of every org and of the whole install.
+      operationId: hopbox.v1.AuditService.ListAuditEntries
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.ListAuditEntriesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.ListAuditEntriesResponse'
+  /hopbox.v1.AuthService/ApproveDevice:
+    post:
+      tags:
+        - hopbox.v1.AuthService
+      summary: ApproveDevice
+      description: |-
+        ApproveDevice approves a user code for the account of the session.
+         The console page /device calls it with the create_time that GetDeviceAuthorization returned.
+         The session needs a recent sign-in. An older one gets permission_denied with the detail RecentSignInRequired.
+      operationId: hopbox.v1.AuthService.ApproveDevice
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.ApproveDeviceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.ApproveDeviceResponse'
+  /hopbox.v1.AuthService/GetDeviceAuthorization:
+    post:
+      tags:
+        - hopbox.v1.AuthService
+      summary: GetDeviceAuthorization
+      description: |-
+        GetDeviceAuthorization returns the client of a user code that waits for its approval,
+         so the console page /device shows the person which client it signs in. Session only.
+      operationId: hopbox.v1.AuthService.GetDeviceAuthorization
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.GetDeviceAuthorizationRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.GetDeviceAuthorizationResponse'
+  /hopbox.v1.AuthService/PollDeviceAuthorization:
+    post:
+      tags:
+        - hopbox.v1.AuthService
+      summary: PollDeviceAuthorization
+      description: |-
+        PollDeviceAuthorization asks whether a person approved the device code.
+         The first poll after the approval returns the CLI tokens, once.
+      operationId: hopbox.v1.AuthService.PollDeviceAuthorization
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.PollDeviceAuthorizationRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.PollDeviceAuthorizationResponse'
+  /hopbox.v1.AuthService/RefreshCLIToken:
+    post:
+      tags:
+        - hopbox.v1.AuthService
+      summary: RefreshCLIToken
+      description: |-
+        RefreshCLIToken trades a refresh token for a new access token and a new refresh token.
+         Each refresh token works once. A used refresh token that comes back ends the whole CLI sign-in.
+      operationId: hopbox.v1.AuthService.RefreshCLIToken
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.RefreshCLITokenRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.RefreshCLITokenResponse'
+  /hopbox.v1.AuthService/RequestMagicLink:
+    post:
+      tags:
+        - hopbox.v1.AuthService
+      summary: RequestMagicLink
+      description: |-
+        RequestMagicLink sends a sign-in link to an email. It answers the same for every email,
+         so it tells nothing about who has an account.
+      operationId: hopbox.v1.AuthService.RequestMagicLink
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.RequestMagicLinkRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.RequestMagicLinkResponse'
+  /hopbox.v1.AuthService/SignOut:
+    post:
+      tags:
+        - hopbox.v1.AuthService
+      summary: SignOut
+      description: |-
+        SignOut ends the session of the caller and clears the session cookie.
+         With a CLI access token, it ends the CLI sign-in of the token, with all of its tokens.
+      operationId: hopbox.v1.AuthService.SignOut
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.SignOutRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.SignOutResponse'
+  /hopbox.v1.AuthService/StartDeviceAuthorization:
+    post:
+      tags:
+        - hopbox.v1.AuthService
+      summary: StartDeviceAuthorization
+      description: |-
+        StartDeviceAuthorization starts the device flow of the hopbox CLI (RFC 8628).
+         It needs no credential. The CLI shows the user code and the verification URI,
+         then polls with the device code.
+      operationId: hopbox.v1.AuthService.StartDeviceAuthorization
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.StartDeviceAuthorizationRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.StartDeviceAuthorizationResponse'
+  /hopbox.v1.AuthService/VerifyLoginLink:
+    post:
+      tags:
+        - hopbox.v1.AuthService
+      summary: VerifyLoginLink
+      description: VerifyLoginLink signs in with the token of a first-admin login link, and sets the session cookie.
+      operationId: hopbox.v1.AuthService.VerifyLoginLink
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.VerifyLoginLinkRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.VerifyLoginLinkResponse'
+  /hopbox.v1.AuthService/VerifyMagicLink:
+    post:
+      tags:
+        - hopbox.v1.AuthService
+      summary: VerifyMagicLink
+      description: VerifyMagicLink signs in with the token of a magic link, and sets the session cookie.
+      operationId: hopbox.v1.AuthService.VerifyMagicLink
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.VerifyMagicLinkRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.VerifyMagicLinkResponse'
+  /hopbox.v1.InstallService/GetInstallInfo:
+    post:
+      tags:
+        - hopbox.v1.InstallService
+      summary: GetInstallInfo
+      description: |-
+        GetInstallInfo returns the facts that a client needs before its first call.
+         It needs no credential.
+      operationId: hopbox.v1.InstallService.GetInstallInfo
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.GetInstallInfoRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.GetInstallInfoResponse'
+  /hopbox.v1.MachineService/CreateMachine:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: CreateMachine
+      description: |-
+        CreateMachine makes a machine and places it on a node.
+         The machine starts with the state pending and the target running.
+         A machine that an org key makes is shared from the start.
+      operationId: hopbox.v1.MachineService.CreateMachine
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.CreateMachineRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.CreateMachineResponse'
+  /hopbox.v1.MachineService/DeleteMachine:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: DeleteMachine
+      description: |-
+        DeleteMachine sets the target of a machine to deleted, and waits for it.
+         Its name and its SSH port stay reserved for 7 days.
+      operationId: hopbox.v1.MachineService.DeleteMachine
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.DeleteMachineRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.DeleteMachineResponse'
+  /hopbox.v1.MachineService/Download: {}
+  /hopbox.v1.MachineService/Exec: {}
+  /hopbox.v1.MachineService/GetMachine:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: GetMachine
+      description: GetMachine returns one machine that the caller sees.
+      operationId: hopbox.v1.MachineService.GetMachine
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.GetMachineRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.GetMachineResponse'
+  /hopbox.v1.MachineService/ListMachineSizes:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: ListMachineSizes
+      description: ListMachineSizes lists the sizes that a machine can have.
+      operationId: hopbox.v1.MachineService.ListMachineSizes
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.ListMachineSizesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.ListMachineSizesResponse'
+  /hopbox.v1.MachineService/ListMachines:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: ListMachines
+      description: ListMachines lists the machines of an org that the caller sees, by name.
+      operationId: hopbox.v1.MachineService.ListMachines
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.ListMachinesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.ListMachinesResponse'
+  /hopbox.v1.MachineService/RebootMachine:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: RebootMachine
+      description: RebootMachine boots a running machine again, and waits for the new boot.
+      operationId: hopbox.v1.MachineService.RebootMachine
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.RebootMachineRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.RebootMachineResponse'
+  /hopbox.v1.MachineService/RenameMachine:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: RenameMachine
+      description: |-
+        RenameMachine gives a machine a new name. The old name stays reserved for the org for 7 days.
+         A rename reboots a running machine, and then waits for the new boot.
+      operationId: hopbox.v1.MachineService.RenameMachine
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.RenameMachineRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.RenameMachineResponse'
+  /hopbox.v1.MachineService/SetMachineURLPort:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: SetMachineURLPort
+      description: SetMachineURLPort sets the port in the machine that its URL reaches. Only its creator can call it.
+      operationId: hopbox.v1.MachineService.SetMachineURLPort
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.SetMachineURLPortRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.SetMachineURLPortResponse'
+  /hopbox.v1.MachineService/SetMachineURLVisibility:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: SetMachineURLVisibility
+      description: SetMachineURLVisibility makes the URL of a machine public or private. Only its creator can call it.
+      operationId: hopbox.v1.MachineService.SetMachineURLVisibility
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.SetMachineURLVisibilityRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.SetMachineURLVisibilityResponse'
+  /hopbox.v1.MachineService/ShareMachine:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: ShareMachine
+      description: |-
+        ShareMachine opens a private machine to the whole org. Only its creator can call it.
+         If the env of the machine as a shared machine does not resolve, the call fails with
+         failed_precondition and the cause, and the machine stays private.
+      operationId: hopbox.v1.MachineService.ShareMachine
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.ShareMachineRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.ShareMachineResponse'
+  /hopbox.v1.MachineService/StartMachine:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: StartMachine
+      description: StartMachine sets the target of a machine to running, and waits for it.
+      operationId: hopbox.v1.MachineService.StartMachine
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.StartMachineRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.StartMachineResponse'
+  /hopbox.v1.MachineService/StopMachine:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: StopMachine
+      description: StopMachine sets the target of a machine to stopped, and waits for it.
+      operationId: hopbox.v1.MachineService.StopMachine
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.StopMachineRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.StopMachineResponse'
+  /hopbox.v1.MachineService/StreamMachineLogs: {}
+  /hopbox.v1.MachineService/UnshareMachine:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: UnshareMachine
+      description: UnshareMachine makes a shared machine private to its creator again. Only its creator can call it.
+      operationId: hopbox.v1.MachineService.UnshareMachine
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.UnshareMachineRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.UnshareMachineResponse'
+  /hopbox.v1.MachineService/UpdateMachine:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: UpdateMachine
+      description: UpdateMachine changes the restart policy, the start command, or the auto-delete timeout of a machine.
+      operationId: hopbox.v1.MachineService.UpdateMachine
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.UpdateMachineRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.UpdateMachineResponse'
+  /hopbox.v1.MachineService/Upload: {}
+  /hopbox.v1.MachineService/WatchMachines: {}
+  /hopbox.v1.OrgService/AcceptInvitation:
+    post:
+      tags:
+        - hopbox.v1.OrgService
+      summary: AcceptInvitation
+      description: |-
+        AcceptInvitation joins the org of an invitation.
+         The account of the caller must hold the email of the invitation as a verified email.
+      operationId: hopbox.v1.OrgService.AcceptInvitation
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.AcceptInvitationRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.AcceptInvitationResponse'
+  /hopbox.v1.OrgService/CreateInvitation:
+    post:
+      tags:
+        - hopbox.v1.OrgService
+      summary: CreateInvitation
+      description: |-
+        CreateInvitation invites an email to join an org, and returns the link.
+         With an SMTP config, the server also sends the link to the email.
+         A new invitation for an email replaces the open one, so a retry needs no idempotency key.
+      operationId: hopbox.v1.OrgService.CreateInvitation
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.CreateInvitationRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.CreateInvitationResponse'
+  /hopbox.v1.OrgService/CreateOrg:
+    post:
+      tags:
+        - hopbox.v1.OrgService
+      summary: CreateOrg
+      description: CreateOrg makes an org with the caller as its owner.
+      operationId: hopbox.v1.OrgService.CreateOrg
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.CreateOrgRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.CreateOrgResponse'
+  /hopbox.v1.OrgService/DeleteOrg:
+    post:
+      tags:
+        - hopbox.v1.OrgService
+      summary: DeleteOrg
+      description: |-
+        DeleteOrg deletes an org and every resource in it. Only an owner can call it.
+         The request must confirm the delete with the name of the org.
+      operationId: hopbox.v1.OrgService.DeleteOrg
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.DeleteOrgRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.DeleteOrgResponse'
+  /hopbox.v1.OrgService/GetOrg:
+    post:
+      tags:
+        - hopbox.v1.OrgService
+      summary: GetOrg
+      description: GetOrg returns one org of the caller.
+      operationId: hopbox.v1.OrgService.GetOrg
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.GetOrgRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.GetOrgResponse'
+  /hopbox.v1.OrgService/GetOrgUsage:
+    post:
+      tags:
+        - hopbox.v1.OrgService
+      summary: GetOrgUsage
+      description: GetOrgUsage returns what the org uses, and its limits.
+      operationId: hopbox.v1.OrgService.GetOrgUsage
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.GetOrgUsageRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.GetOrgUsageResponse'
+  /hopbox.v1.OrgService/LeaveOrg:
+    post:
+      tags:
+        - hopbox.v1.OrgService
+      summary: LeaveOrg
+      description: LeaveOrg takes the caller out of an org, with what it made in the org and did not share.
+      operationId: hopbox.v1.OrgService.LeaveOrg
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.LeaveOrgRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.LeaveOrgResponse'
+  /hopbox.v1.OrgService/ListInvitations:
+    post:
+      tags:
+        - hopbox.v1.OrgService
+      summary: ListInvitations
+      description: ListInvitations lists the open invitations of an org, oldest first.
+      operationId: hopbox.v1.OrgService.ListInvitations
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.ListInvitationsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.ListInvitationsResponse'
+  /hopbox.v1.OrgService/ListOrgMembers:
+    post:
+      tags:
+        - hopbox.v1.OrgService
+      summary: ListOrgMembers
+      description: ListOrgMembers lists the members of an org, in the order that they joined.
+      operationId: hopbox.v1.OrgService.ListOrgMembers
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.ListOrgMembersRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.ListOrgMembersResponse'
+  /hopbox.v1.OrgService/ListOrgs:
+    post:
+      tags:
+        - hopbox.v1.OrgService
+      summary: ListOrgs
+      description: 'ListOrgs lists the orgs of the caller: the personal org first, then the others, oldest first.'
+      operationId: hopbox.v1.OrgService.ListOrgs
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.ListOrgsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.ListOrgsResponse'
+  /hopbox.v1.OrgService/RemoveOrgMember:
+    post:
+      tags:
+        - hopbox.v1.OrgService
+      summary: RemoveOrgMember
+      description: |-
+        RemoveOrgMember takes another account out of an org, with what it made in the org and did not share.
+         An admin removes members. An owner removes anyone.
+      operationId: hopbox.v1.OrgService.RemoveOrgMember
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.RemoveOrgMemberRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.RemoveOrgMemberResponse'
+  /hopbox.v1.OrgService/RevokeInvitation:
+    post:
+      tags:
+        - hopbox.v1.OrgService
+      summary: RevokeInvitation
+      description: RevokeInvitation ends an open invitation, so its link stops working.
+      operationId: hopbox.v1.OrgService.RevokeInvitation
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.RevokeInvitationRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.RevokeInvitationResponse'
+  /hopbox.v1.OrgService/SetOrgMemberRole:
+    post:
+      tags:
+        - hopbox.v1.OrgService
+      summary: SetOrgMemberRole
+      description: |-
+        SetOrgMemberRole changes the role of a member. Only an owner can call it.
+         Every org keeps at least one owner.
+      operationId: hopbox.v1.OrgService.SetOrgMemberRole
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.SetOrgMemberRoleRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.SetOrgMemberRoleResponse'
+  /hopbox.v1.OrgService/UpdateOrg:
+    post:
+      tags:
+        - hopbox.v1.OrgService
+      summary: UpdateOrg
+      description: UpdateOrg changes the name of an org. Only an owner can call it.
+      operationId: hopbox.v1.OrgService.UpdateOrg
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.UpdateOrgRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.UpdateOrgResponse'
+  /hopbox.v1.SSHKeyService/AddSSHKey:
+    post:
+      tags:
+        - hopbox.v1.SSHKeyService
+      summary: AddSSHKey
+      description: |-
+        AddSSHKey adds a public key: Ed25519, ECDSA on P-256, P-384, or P-521, or RSA of at least 3072 bits.
+         A key that an account of the install holds already fails with ALREADY_EXISTS.
+      operationId: hopbox.v1.SSHKeyService.AddSSHKey
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.AddSSHKeyRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.AddSSHKeyResponse'
+  /hopbox.v1.SSHKeyService/ListSSHKeys:
+    post:
+      tags:
+        - hopbox.v1.SSHKeyService
+      summary: ListSSHKeys
+      description: ListSSHKeys lists the SSH keys of the account, oldest first.
+      operationId: hopbox.v1.SSHKeyService.ListSSHKeys
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.ListSSHKeysRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.ListSSHKeysResponse'
+  /hopbox.v1.SSHKeyService/RemoveSSHKey:
+    post:
+      tags:
+        - hopbox.v1.SSHKeyService
+      summary: RemoveSSHKey
+      description: RemoveSSHKey removes an SSH key from the account.
+      operationId: hopbox.v1.SSHKeyService.RemoveSSHKey
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.RemoveSSHKeyRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.RemoveSSHKeyResponse'
+  /hopbox.v1.VarService/DeleteVar:
+    post:
+      tags:
+        - hopbox.v1.VarService
+      summary: DeleteVar
+      description: DeleteVar deletes a value. The rules of SetVar say who may delete it.
+      operationId: hopbox.v1.VarService.DeleteVar
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.DeleteVarRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.DeleteVarResponse'
+  /hopbox.v1.VarService/ListVars:
+    post:
+      tags:
+        - hopbox.v1.VarService
+      summary: ListVars
+      description: |-
+        ListVars lists the shared and all values of the org and the private values of the caller,
+         by name. It returns the value of each env var and no value of a secret.
+      operationId: hopbox.v1.VarService.ListVars
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.ListVarsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.ListVarsResponse'
+  /hopbox.v1.VarService/SetVar:
+    post:
+      tags:
+        - hopbox.v1.VarService
+      summary: SetVar
+      description: |-
+        SetVar sets a value, and replaces the value with the same name and scope.
+         Org admins and owners set shared and all values. Any member sets private values for
+         its own machines. A retry gives the same end state, so it needs no idempotency key.
+      operationId: hopbox.v1.VarService.SetVar
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.SetVarRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.SetVarResponse'
+components:
+  schemas:
+    connect-protocol-version:
+      type: number
+      examples:
+        - 1
+      title: Connect-Protocol-Version
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      examples:
+        - 1000
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`.'
+        value:
+          type: string
+          format: byte
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          type: object
+          title: Debug
+          additionalProperties: true
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+    google.protobuf.Duration:
+      type: string
+      format: duration
+      description: A signed duration in seconds, with up to nine fractional digits and an `s` suffix (for example, `3s` or `-0.001s`).
+    google.protobuf.Timestamp:
+      type: string
+      examples:
+        - "2023-01-15T01:30:15.01Z"
+        - "2024-12-25T12:00:00Z"
+      format: date-time
+      description: A point in time in RFC 3339 format, with up to nanosecond precision. Output uses UTC (`Z`); input may use an offset from UTC.
+    hopbox.v1.APIKey:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the key.
+        orgId:
+          type: string
+          title: org_id
+          description: org_id is the UUID of the org of the key.
+        kind:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.APIKeyKind'
+          title: kind
+        name:
+          type: string
+          title: name
+          description: name is the name that its creator gave the key, such as ci.
+        accountId:
+          type: string
+          title: account_id
+          description: account_id is the UUID of the account of a member key, and empty for an org key.
+        creatorAccountId:
+          type: string
+          title: creator_account_id
+          description: creator_account_id is the UUID of the account that made the key, or empty after its deletion.
+        expireTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: expire_time
+          description: expire_time is the end of the key.
+        lastUseTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: last_use_time
+          description: last_use_time is the time of the last call with the key, exact to a minute. It is unset for an unused key.
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is the time of the creation of the key.
+      title: APIKey
+      additionalProperties: false
+      description: APIKey is an API key without its secret.
+    hopbox.v1.APIKeyKind:
+      type: string
+      title: APIKeyKind
+      enum:
+        - API_KEY_KIND_UNSPECIFIED
+        - API_KEY_KIND_MEMBER
+        - API_KEY_KIND_ORG
+      description: APIKeyKind is the kind of an API key.
+    hopbox.v1.APIKeyLifetime:
+      type: string
+      title: APIKeyLifetime
+      enum:
+        - API_KEY_LIFETIME_UNSPECIFIED
+        - API_KEY_LIFETIME_30_DAYS
+        - API_KEY_LIFETIME_90_DAYS
+        - API_KEY_LIFETIME_365_DAYS
+      description: APIKeyLifetime is a preset lifetime of a new API key.
+    hopbox.v1.AcceptInvitationRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          title: token
+          description: 'token is the value after #token= in the link.'
+      title: AcceptInvitationRequest
+      additionalProperties: false
+      description: AcceptInvitationRequest holds the token of the link.
+    hopbox.v1.AcceptInvitationResponse:
+      type: object
+      properties:
+        org:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Org'
+          title: org
+      title: AcceptInvitationResponse
+      additionalProperties: false
+      description: AcceptInvitationResponse holds the org that the caller joined.
+    hopbox.v1.Account:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the account.
+        displayName:
+          type: string
+          title: display_name
+          description: display_name is the name that the person chose. It can be empty.
+        emails:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.v1.AccountEmail'
+          title: emails
+          description: emails lists the emails of the account.
+        instanceAdmin:
+          type: boolean
+          title: instance_admin
+          description: instance_admin is true when the account operates the install.
+        personalOrgId:
+          type: string
+          title: personal_org_id
+          description: personal_org_id is the UUID of the personal org of the account.
+        version:
+          type: string
+          title: version
+          format: int64
+          description: version grows by 1 with each change of the account.
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is the time of the first sign-in.
+      title: Account
+      additionalProperties: false
+      description: Account is the record of one person in the install.
+    hopbox.v1.AccountEmail:
+      type: object
+      properties:
+        email:
+          type: string
+          title: email
+          description: email is the address, in lower case.
+        verified:
+          type: boolean
+          title: verified
+          description: |-
+            verified is true when a sign-in method proved the email.
+             Only a verified email links other sign-in methods to the account.
+        verifyTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: verify_time
+          description: verify_time is the time of the proof. It is unset for an email that is not verified.
+      title: AccountEmail
+      additionalProperties: false
+      description: AccountEmail is one email of an account.
+    hopbox.v1.AddSSHKeyRequest:
+      type: object
+      properties:
+        publicKey:
+          type: string
+          title: public_key
+          description: public_key is one line of the authorized_keys form, as in ~/.ssh/id_ed25519.pub.
+        name:
+          type: string
+          title: name
+          description: |-
+            name helps people tell their keys apart. The default is the comment of the key, such as ann@laptop.
+             It has at most 64 characters.
+      title: AddSSHKeyRequest
+      additionalProperties: false
+      description: AddSSHKeyRequest holds the key.
+    hopbox.v1.AddSSHKeyResponse:
+      type: object
+      properties:
+        key:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.SSHKey'
+          title: key
+      title: AddSSHKeyResponse
+      additionalProperties: false
+      description: AddSSHKeyResponse holds the new key.
+    hopbox.v1.ApproveDeviceRequest:
+      type: object
+      properties:
+        userCode:
+          type: string
+          title: user_code
+          description: user_code is the code that the client shows. Case, dashes, and spaces do not matter.
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: |-
+            create_time is the create_time of GetDeviceAuthorizationResponse for the code. The approval
+             fails unless it matches, so the console approves only a client that it showed.
+      title: ApproveDeviceRequest
+      additionalProperties: false
+      description: ApproveDeviceRequest holds the user code and the start of the device sign-in that the console showed.
+    hopbox.v1.ApproveDeviceResponse:
+      type: object
+      properties:
+        clientName:
+          type: string
+          title: client_name
+          description: client_name is the name that the client gave at its start.
+        clientIp:
+          type: string
+          title: client_ip
+          description: client_ip is the IP address that started the device sign-in, or empty.
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is the start of the device sign-in.
+      title: ApproveDeviceResponse
+      additionalProperties: false
+      description: ApproveDeviceResponse describes the client that the approval signs in.
+    hopbox.v1.AuditActor:
+      type: object
+      properties:
+        kind:
+          type: string
+          title: kind
+          description: kind is the kind of caller, such as session, local_root, or system.
+        accountId:
+          type: string
+          title: account_id
+          description: account_id is the UUID of the account behind the call, or empty.
+        credentialId:
+          type: string
+          title: credential_id
+          description: credential_id is the UUID of the session, key, token, or server that made the call, or empty.
+      title: AuditActor
+      additionalProperties: false
+      description: AuditActor is the caller of an action.
+    hopbox.v1.AuditEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the entry.
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the UUID of the org of the action. It is unset for an action on the whole install.
+        actor:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.AuditActor'
+          title: actor
+          description: actor is the caller that did the action.
+        action:
+          type: string
+          title: action
+          description: action names the action, such as auth.sign_in.
+        targetKind:
+          type: string
+          title: target_kind
+          description: target_kind is the kind of object of the action, such as account. It is empty for an action without an object.
+        targetId:
+          type: string
+          title: target_id
+          description: target_id is the ID or the name of the object.
+        details:
+          type: object
+          title: details
+          additionalProperties:
+            type: string
+            title: value
+          description: details holds more facts about the action. It never holds a secret value.
+        requestId:
+          type: string
+          title: request_id
+          description: request_id is the ID of the API request, or empty.
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is the time of the action.
+      title: AuditEntry
+      additionalProperties: false
+      description: AuditEntry records one action.
+    hopbox.v1.CLISignIn:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the CLI sign-in, the cli_sign_in_id of its tokens.
+        clientName:
+          type: string
+          title: client_name
+          description: client_name is the name that the CLI gave at the start of the device flow.
+        clientIp:
+          type: string
+          title: client_ip
+          description: client_ip is the IP address that started the device flow, or empty.
+        lastUseTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: last_use_time
+          description: last_use_time is the last call with an access token of the sign-in, exact to a minute.
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is the start of the CLI sign-in.
+        lastUseIp:
+          type: string
+          title: last_use_ip
+          description: last_use_ip is the IP address of the last call with an access token of the sign-in, or empty.
+      title: CLISignIn
+      additionalProperties: false
+      description: 'CLISignIn is one CLI sign-in of the account: a device that holds CLI tokens.'
+    hopbox.v1.CLITokens:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          title: access_token
+          description: 'access_token starts with hbxat_. It goes in the header "Authorization: Bearer <token>".'
+        accessTokenExpireTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: access_token_expire_time
+          description: access_token_expire_time is the end of the access token, 1 hour after its issue.
+        refreshToken:
+          type: string
+          title: refresh_token
+          description: refresh_token starts with hbxrt_. It works once, with RefreshCLIToken.
+        refreshTokenExpireTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: refresh_token_expire_time
+          description: refresh_token_expire_time is the end of the refresh token, 30 days after its issue.
+        accountId:
+          type: string
+          title: account_id
+          description: account_id is the UUID of the account of the tokens.
+        cliSignInId:
+          type: string
+          title: cli_sign_in_id
+          description: cli_sign_in_id is the UUID of the CLI sign-in. Every refresh keeps it.
+      title: CLITokens
+      additionalProperties: false
+      description: CLITokens are the tokens of a CLI sign-in. The install keeps only their hashes.
+    hopbox.v1.CreateAPIKeyRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            expireTime:
+              allOf:
+                - $ref: '#/components/schemas/google.protobuf.Timestamp'
+              title: expire_time
+              description: expire_time is a custom end, in the future and at most 365 days ahead.
+          title: expire_time
+        - type: object
+          properties:
+            lifetime:
+              allOf:
+                - $ref: '#/components/schemas/hopbox.v1.APIKeyLifetime'
+              title: lifetime
+              description: lifetime is a preset lifetime.
+          title: lifetime
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - expireTime
+              - required:
+                  - lifetime
+          - not:
+              oneOf:
+                - required:
+                    - expireTime
+                - required:
+                    - lifetime
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the UUID of the org of the key. The default is the personal org of the caller.
+        kind:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.APIKeyKind'
+          title: kind
+          description: kind is the kind of the key. The default is a member key.
+        name:
+          type: string
+          title: name
+          description: name helps people tell their keys apart, such as ci. It has 1 to 64 characters.
+      title: CreateAPIKeyRequest
+      description: CreateAPIKeyRequest describes the new key.
+    hopbox.v1.CreateAPIKeyResponse:
+      type: object
+      properties:
+        key:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.APIKey'
+          title: key
+        secret:
+          type: string
+          title: secret
+          description: |-
+            secret is the key itself, which starts with hbx_. It goes in the header
+             "Authorization: Bearer <secret>". The install keeps no copy of it.
+      title: CreateAPIKeyResponse
+      additionalProperties: false
+      description: CreateAPIKeyResponse holds the new key and its secret.
+    hopbox.v1.CreateInvitationRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the UUID of the org. Leave it out for the personal org, which the call refuses.
+        email:
+          type: string
+          title: email
+          description: email is the email of the person to invite, such as ann@example.org.
+        role:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.OrgRole'
+          title: role
+          description: role is the role that the invitation gives. ORG_ROLE_UNSPECIFIED gives ORG_ROLE_MEMBER.
+      title: CreateInvitationRequest
+      additionalProperties: false
+      description: CreateInvitationRequest names the email and the role.
+    hopbox.v1.CreateInvitationResponse:
+      type: object
+      properties:
+        invitation:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Invitation'
+          title: invitation
+        url:
+          type: string
+          title: url
+          description: |-
+            url is the link of the invitation, such as https://hop.example.org/invite#token=<token>.
+             It is a secret until its use or its end. The server keeps only its hash.
+        emailSent:
+          type: boolean
+          title: email_sent
+          description: |-
+            email_sent is true when the server sent the link to the email.
+             It is false without an SMTP config, when the email failed, and when the install writes its mail to files
+             (mail_to_files in GetInstallInfoResponse). Then pass the link to the person yourself.
+      title: CreateInvitationResponse
+      additionalProperties: false
+      description: CreateInvitationResponse holds the invitation and its link.
+    hopbox.v1.CreateMachineRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the org of the machine. Leave it out for the org of an API key, or the personal org.
+        name:
+          type: string
+          title: name
+          description: name is the name of the machine. Leave it empty to get a free name, such as box1.
+        size:
+          type: string
+          title: size
+          description: size is the name of a size. Leave it empty for default.
+        image:
+          type: string
+          title: image
+          description: image is the name of an image. Leave it empty for default.
+        restartPolicy:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.RestartPolicy'
+          title: restart_policy
+          description: restart_policy is the restart policy. Leave it unspecified for always.
+        startCommand:
+          type: string
+          title: start_command
+          description: start_command is a command that the guest agent runs after each boot, at most 4096 bytes.
+        autoDeleteTimeout:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: auto_delete_timeout
+          description: |-
+            auto_delete_timeout deletes the machine after this time without use: 1 minute to 365 days.
+             The delete comes 1 to 2 minutes after this time from the last recorded use.
+             Leave it unset to keep the machine.
+      title: CreateMachineRequest
+      additionalProperties: false
+      description: CreateMachineRequest asks for a new machine.
+    hopbox.v1.CreateMachineResponse:
+      type: object
+      properties:
+        machine:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Machine'
+          title: machine
+          description: machine is the new machine, with the state pending.
+      title: CreateMachineResponse
+      additionalProperties: false
+      description: CreateMachineResponse holds the new machine.
+    hopbox.v1.CreateOrgRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+          description: |-
+            name is the name of the org: 1 to 64 characters, without control characters,
+             and without spaces at either end.
+      title: CreateOrgRequest
+      additionalProperties: false
+      description: CreateOrgRequest names the new org.
+    hopbox.v1.CreateOrgResponse:
+      type: object
+      properties:
+        org:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Org'
+          title: org
+      title: CreateOrgResponse
+      additionalProperties: false
+      description: CreateOrgResponse holds the new org.
+    hopbox.v1.DeleteAccountRequest:
+      type: object
+      title: DeleteAccountRequest
+      additionalProperties: false
+      description: DeleteAccountRequest has no fields.
+    hopbox.v1.DeleteAccountResponse:
+      type: object
+      title: DeleteAccountResponse
+      additionalProperties: false
+      description: DeleteAccountResponse has no fields.
+    hopbox.v1.DeleteMachineRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      title: DeleteMachineRequest
+      description: DeleteMachineRequest names one machine.
+    hopbox.v1.DeleteMachineResponse:
+      type: object
+      properties:
+        machine:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Machine'
+          title: machine
+          description: machine is the machine at the end of the wait.
+        duration:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: duration
+          description: duration is how long the call took, the wait included.
+        done:
+          type: boolean
+          title: done
+          description: done is true when the machine is deleted at the end of the wait.
+      title: DeleteMachineResponse
+      additionalProperties: false
+      description: DeleteMachineResponse holds the machine after the wait.
+    hopbox.v1.DeleteOrgRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the UUID of the org. Leave it out for the personal org, which the call refuses.
+        confirm:
+          type: string
+          title: confirm
+          description: confirm must be the name of the org.
+      title: DeleteOrgRequest
+      additionalProperties: false
+      description: DeleteOrgRequest names the org.
+    hopbox.v1.DeleteOrgResponse:
+      type: object
+      title: DeleteOrgResponse
+      additionalProperties: false
+      description: DeleteOrgResponse has no fields.
+    hopbox.v1.DeleteVarRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the UUID of the org. The default is the org of the API key, or else the personal org of the caller.
+        name:
+          type: string
+          title: name
+          description: name is the name of the value.
+        scope:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.VarScope'
+          title: scope
+          description: scope is the scope of the value. The default is shared.
+      title: DeleteVarRequest
+      additionalProperties: false
+      description: DeleteVarRequest names the value.
+    hopbox.v1.DeleteVarResponse:
+      type: object
+      title: DeleteVarResponse
+      additionalProperties: false
+      description: DeleteVarResponse has no fields.
+    hopbox.v1.DeviceAuthorizationState:
+      type: string
+      title: DeviceAuthorizationState
+      enum:
+        - DEVICE_AUTHORIZATION_STATE_UNSPECIFIED
+        - DEVICE_AUTHORIZATION_STATE_PENDING
+        - DEVICE_AUTHORIZATION_STATE_SLOW_DOWN
+        - DEVICE_AUTHORIZATION_STATE_APPROVED
+      description: DeviceAuthorizationState is the answer of a poll.
+    hopbox.v1.DownloadInfo:
+      type: object
+      properties:
+        archive:
+          type: boolean
+          title: archive
+          description: archive is true when the data is a tar stream of the contents of a directory. Otherwise it is the contents of one file.
+        mode:
+          type: integer
+          title: mode
+          description: mode is the permission bits of the file or the directory.
+        size:
+          type: string
+          title: size
+          format: int64
+          description: size is the size of a file in bytes, or zero for an archive.
+      title: DownloadInfo
+      additionalProperties: false
+      description: DownloadInfo says what a download holds.
+    hopbox.v1.DownloadRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      properties:
+        path:
+          type: string
+          title: path
+          description: path is the source path, at most 4096 bytes. A relative path starts at the home directory of the user.
+        user:
+          type: string
+          title: user
+          description: user is the Linux user whose home directory a relative path starts at. Leave it empty for the main user, user.
+      title: DownloadRequest
+      description: DownloadRequest names a file or a directory to read from a machine.
+    hopbox.v1.DownloadResponse:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            data:
+              type: string
+              title: data
+              format: byte
+              description: data is the next bytes, at most 32 KiB in one message.
+          title: data
+        - type: object
+          properties:
+            info:
+              allOf:
+                - $ref: '#/components/schemas/hopbox.v1.DownloadInfo'
+              title: info
+              description: info says what the data holds. It is always the first message.
+          title: info
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - data
+              - required:
+                  - info
+          - not:
+              oneOf:
+                - required:
+                    - data
+                - required:
+                    - info
+      title: DownloadResponse
+      description: DownloadResponse is one message of a download.
+    hopbox.v1.EndCLISignInRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the CLI sign-in.
+      title: EndCLISignInRequest
+      additionalProperties: false
+      description: EndCLISignInRequest names the CLI sign-in.
+    hopbox.v1.EndCLISignInResponse:
+      type: object
+      title: EndCLISignInResponse
+      additionalProperties: false
+      description: EndCLISignInResponse has no fields.
+    hopbox.v1.ExecChunk:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            exit:
+              allOf:
+                - $ref: '#/components/schemas/hopbox.v1.ExecExit'
+              title: exit
+              description: exit is how the command ended. It is always the last chunk from the server.
+          title: exit
+        - type: object
+          properties:
+            resize:
+              allOf:
+                - $ref: '#/components/schemas/hopbox.v1.TerminalSize'
+              title: resize
+              description: resize is a new size of the terminal.
+          title: resize
+        - type: object
+          properties:
+            signal:
+              type: string
+              title: signal
+              description: signal sends a signal to the command, by name, such as SIGINT or SIGTERM.
+          title: signal
+        - type: object
+          properties:
+            start:
+              allOf:
+                - $ref: '#/components/schemas/hopbox.v1.ExecStart'
+              title: start
+              description: start names the machine and the command. It is always the first chunk from the client, and only the first.
+          title: start
+        - type: object
+          properties:
+            stderr:
+              type: string
+              title: stderr
+              format: byte
+              description: stderr is error output of the command.
+          title: stderr
+        - type: object
+          properties:
+            stdin:
+              type: string
+              title: stdin
+              format: byte
+              description: stdin is input for the command, at most 1 MiB in one chunk.
+          title: stdin
+        - type: object
+          properties:
+            stdinEof:
+              type: boolean
+              title: stdin_eof
+              description: stdin_eof tells that no more input comes. With a terminal, the command reads the end-of-file character, Ctrl-D.
+          title: stdin_eof
+        - type: object
+          properties:
+            stdout:
+              type: string
+              title: stdout
+              format: byte
+              description: stdout is output of the command. With a terminal, all output arrives as stdout.
+          title: stdout
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - exit
+              - required:
+                  - resize
+              - required:
+                  - signal
+              - required:
+                  - start
+              - required:
+                  - stderr
+              - required:
+                  - stdin
+              - required:
+                  - stdinEof
+              - required:
+                  - stdout
+          - not:
+              oneOf:
+                - required:
+                    - exit
+                - required:
+                    - resize
+                - required:
+                    - signal
+                - required:
+                    - start
+                - required:
+                    - stderr
+                - required:
+                    - stdin
+                - required:
+                    - stdinEof
+                - required:
+                    - stdout
+      title: ExecChunk
+      description: ExecChunk is one part of an exec. The WebSocket endpoint /api/ws/exec carries the same message, one in each binary frame.
+    hopbox.v1.ExecExit:
+      type: object
+      properties:
+        code:
+          type: integer
+          title: code
+          format: int32
+          description: |-
+            code is the exit code of the command. It is 128 plus the signal number after a signal, 127 for a program that does not exist,
+             126 when the command did not start for another reason, and 124 after the timeout.
+        signal:
+          type: string
+          title: signal
+          description: signal is the name of the signal that ended the command, such as SIGKILL, or empty.
+        error:
+          type: string
+          title: error
+          description: error says why the command did not start, or is empty.
+        timedOut:
+          type: boolean
+          title: timed_out
+          description: timed_out is true when the timeout of the exec ended the command.
+      title: ExecExit
+      additionalProperties: false
+      description: ExecExit is how a command ended.
+    hopbox.v1.ExecRequest:
+      type: object
+      properties:
+        chunk:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.ExecChunk'
+          title: chunk
+          description: chunk is the next part of the exec. The first message holds start. The next ones hold stdin, stdin_eof, resize, or signal.
+      title: ExecRequest
+      additionalProperties: false
+      description: ExecRequest is one message from the client on Exec.
+    hopbox.v1.ExecResponse:
+      type: object
+      properties:
+        chunk:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.ExecChunk'
+          title: chunk
+          description: 'chunk is the next part of the exec: stdout, stderr, and at the end exit.'
+      title: ExecResponse
+      additionalProperties: false
+      description: ExecResponse is one message from the server on Exec.
+    hopbox.v1.ExecStart:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      properties:
+        argv:
+          type: array
+          items:
+            type: string
+          title: argv
+          description: |-
+            argv is the program and its arguments, at most 4096 items and 256 KiB in all.
+             Leave it empty for the login shell of the user, as hopbox connect does.
+        env:
+          type: object
+          title: env
+          additionalProperties:
+            type: string
+            title: value
+          description: env are env vars on top of the env of the machine, at most 256 and 256 KiB in all.
+        user:
+          type: string
+          title: user
+          description: user is the Linux user that runs the command. Leave it empty for the main user, user.
+        dir:
+          type: string
+          title: dir
+          description: dir is the working directory. Leave it empty for the home directory of the user.
+        tty:
+          type: boolean
+          title: tty
+          description: tty runs the command in a terminal, for a shell.
+        size:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.TerminalSize'
+          title: size
+          description: size is the first size of the terminal, when tty is set.
+        term:
+          type: string
+          title: term
+          description: term is the TERM env var, when tty is set. Leave it empty for xterm-256color.
+        timeout:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: timeout
+          description: timeout ends the command after this time, from 1 second to 24 hours. Leave it unset for no timeout.
+      title: ExecStart
+      description: ExecStart names the machine and the command of an exec.
+    hopbox.v1.GetAccountRequest:
+      type: object
+      title: GetAccountRequest
+      additionalProperties: false
+      description: GetAccountRequest has no fields.
+    hopbox.v1.GetAccountResponse:
+      type: object
+      properties:
+        account:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Account'
+          title: account
+      title: GetAccountResponse
+      additionalProperties: false
+      description: GetAccountResponse holds the account.
+    hopbox.v1.GetDeviceAuthorizationRequest:
+      type: object
+      properties:
+        userCode:
+          type: string
+          title: user_code
+          description: user_code is the code that the client shows. Case, dashes, and spaces do not matter.
+      title: GetDeviceAuthorizationRequest
+      additionalProperties: false
+      description: GetDeviceAuthorizationRequest holds the user code.
+    hopbox.v1.GetDeviceAuthorizationResponse:
+      type: object
+      properties:
+        clientName:
+          type: string
+          title: client_name
+          description: client_name is the name that the client gave at its start.
+        clientIp:
+          type: string
+          title: client_ip
+          description: client_ip is the IP address that started the device sign-in, or empty.
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is the start of the device sign-in. ApproveDevice needs it back.
+        expireTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: expire_time
+          description: expire_time is the end of the device sign-in.
+      title: GetDeviceAuthorizationResponse
+      additionalProperties: false
+      description: GetDeviceAuthorizationResponse describes the client that waits for the approval.
+    hopbox.v1.GetInstallInfoRequest:
+      type: object
+      title: GetInstallInfoRequest
+      additionalProperties: false
+      description: GetInstallInfoRequest has no fields.
+    hopbox.v1.GetInstallInfoResponse:
+      type: object
+      properties:
+        domain:
+          type: string
+          title: domain
+          description: |-
+            domain is the domain of the install, for example hop.example.org.
+             It is empty until an instance admin sets it.
+        signInMethods:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.v1.SignInMethod'
+          title: sign_in_methods
+          description: |-
+            sign_in_methods lists the sign-in methods that anyone can use on the install.
+             SIGN_IN_METHOD_EMAIL_LINK is in it while the install has an SMTP config or writes its mail to files.
+             SIGN_IN_METHOD_GITHUB and SIGN_IN_METHOD_GOOGLE are in it while the install has a domain and the client of the provider.
+             A browser starts such a sign-in at https://<domain>/auth/github/start or https://<domain>/auth/google/start.
+        sshHostKey:
+          type: string
+          title: ssh_host_key
+          description: |-
+            ssh_host_key is the public host key of the SSH front door, in the
+             authorized_keys format, for example "ssh-ed25519 AAAA...".
+             It is empty until the install has an SSH front door.
+        version:
+          type: string
+          title: version
+          description: version is the version of hopboxd on the server that answered, for example v0.1.0.
+        mailToFiles:
+          type: boolean
+          title: mail_to_files
+          description: |-
+            mail_to_files is true on a dev or test install that writes each email to a file on its server,
+             instead of a send. Then no sign-in link or invitation reaches its recipient by email.
+      title: GetInstallInfoResponse
+      additionalProperties: false
+      description: GetInstallInfoResponse holds the public facts of the install.
+    hopbox.v1.GetMachineRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      title: GetMachineRequest
+      description: GetMachineRequest names one machine.
+    hopbox.v1.GetMachineResponse:
+      type: object
+      properties:
+        machine:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Machine'
+          title: machine
+          description: machine is the machine.
+      title: GetMachineResponse
+      additionalProperties: false
+      description: GetMachineResponse holds one machine.
+    hopbox.v1.GetOrgRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the UUID of the org. Leave it out for the personal org.
+      title: GetOrgRequest
+      additionalProperties: false
+      description: GetOrgRequest names the org.
+    hopbox.v1.GetOrgResponse:
+      type: object
+      properties:
+        org:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Org'
+          title: org
+      title: GetOrgResponse
+      additionalProperties: false
+      description: GetOrgResponse holds the org.
+    hopbox.v1.GetOrgUsageRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the UUID of the org. Leave it out for the personal org.
+      title: GetOrgUsageRequest
+      additionalProperties: false
+      description: GetOrgUsageRequest names the org.
+    hopbox.v1.GetOrgUsageResponse:
+      type: object
+      properties:
+        usage:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.OrgUsage'
+          title: usage
+          description: usage is what the org uses now.
+        limits:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.OrgLimits'
+          title: limits
+          description: 'limits are the limits of the org: the default of the install, or the limits that an instance admin set.'
+      title: GetOrgUsageResponse
+      additionalProperties: false
+      description: GetOrgUsageResponse holds the usage and the limits.
+    hopbox.v1.Invitation:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the invitation.
+        orgId:
+          type: string
+          title: org_id
+          description: org_id is the UUID of the org.
+        email:
+          type: string
+          title: email
+          description: email is the email that the invitation is for, in lower case.
+        role:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.OrgRole'
+          title: role
+          description: role is the role that the invitation gives.
+        inviterAccountId:
+          type: string
+          title: inviter_account_id
+          description: inviter_account_id is the UUID of the account that made the invitation, or empty when it is gone.
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is the time of the invitation.
+        expireTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: expire_time
+          description: expire_time is the end of the invitation.
+      title: Invitation
+      additionalProperties: false
+      description: Invitation is an open invitation to join an org.
+    hopbox.v1.LeaveOrgRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the UUID of the org. Leave it out for the personal org, which the call refuses.
+      title: LeaveOrgRequest
+      additionalProperties: false
+      description: LeaveOrgRequest names the org.
+    hopbox.v1.LeaveOrgResponse:
+      type: object
+      title: LeaveOrgResponse
+      additionalProperties: false
+      description: LeaveOrgResponse has no fields.
+    hopbox.v1.LinkedSignInMethod:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the method on this account.
+        method:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.SignInMethod'
+          title: method
+          description: method is the kind of sign-in.
+        email:
+          type: string
+          title: email
+          description: email is the email that the method names.
+        lastUseTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: last_use_time
+          description: last_use_time is the time of the last sign-in with the method.
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is the time when the method joined the account.
+      title: LinkedSignInMethod
+      additionalProperties: false
+      description: LinkedSignInMethod is one way to sign in to an account.
+    hopbox.v1.ListAPIKeysRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the UUID of the org. The default is the personal org of the caller.
+      title: ListAPIKeysRequest
+      additionalProperties: false
+      description: ListAPIKeysRequest names the org.
+    hopbox.v1.ListAPIKeysResponse:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.v1.APIKey'
+          title: keys
+      title: ListAPIKeysResponse
+      additionalProperties: false
+      description: ListAPIKeysResponse lists the keys.
+    hopbox.v1.ListAuditEntriesRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: |-
+            org_id is the UUID of the org whose entries to read.
+             Leave it out to read the personal org of the caller.
+        wholeInstall:
+          type: boolean
+          title: whole_install
+          description: |-
+            whole_install reads the entries of every org and of the install.
+             Only an instance admin may set it, and org_id must then be left out.
+        pageSize:
+          type: integer
+          title: page_size
+          format: int32
+          description: page_size is the most entries in one response, 1 to 500. 0 means 50.
+        pageToken:
+          type: string
+          title: page_token
+          description: page_token is the next_page_token of the response before. Leave it empty for the newest entries.
+      title: ListAuditEntriesRequest
+      additionalProperties: false
+      description: ListAuditEntriesRequest selects the entries.
+    hopbox.v1.ListAuditEntriesResponse:
+      type: object
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.v1.AuditEntry'
+          title: entries
+        nextPageToken:
+          type: string
+          title: next_page_token
+          description: next_page_token reads the next, older page. It is empty on the last page.
+      title: ListAuditEntriesResponse
+      additionalProperties: false
+      description: ListAuditEntriesResponse holds one page of entries.
+    hopbox.v1.ListCLISignInsRequest:
+      type: object
+      title: ListCLISignInsRequest
+      additionalProperties: false
+      description: ListCLISignInsRequest has no fields.
+    hopbox.v1.ListCLISignInsResponse:
+      type: object
+      properties:
+        signIns:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.v1.CLISignIn'
+          title: sign_ins
+      title: ListCLISignInsResponse
+      additionalProperties: false
+      description: ListCLISignInsResponse lists the CLI sign-ins.
+    hopbox.v1.ListInvitationsRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the UUID of the org. Leave it out for the personal org.
+      title: ListInvitationsRequest
+      additionalProperties: false
+      description: ListInvitationsRequest names the org.
+    hopbox.v1.ListInvitationsResponse:
+      type: object
+      properties:
+        invitations:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.v1.Invitation'
+          title: invitations
+      title: ListInvitationsResponse
+      additionalProperties: false
+      description: ListInvitationsResponse lists the open invitations.
+    hopbox.v1.ListMachineSizesRequest:
+      type: object
+      title: ListMachineSizesRequest
+      additionalProperties: false
+      description: ListMachineSizesRequest has no fields.
+    hopbox.v1.ListMachineSizesResponse:
+      type: object
+      properties:
+        sizes:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.v1.MachineSize'
+          title: sizes
+          description: sizes are the sizes, smallest first.
+      title: ListMachineSizesResponse
+      additionalProperties: false
+      description: ListMachineSizesResponse holds the sizes of the install.
+    hopbox.v1.ListMachinesRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the org. Leave it out for the org of an API key, or the personal org.
+      title: ListMachinesRequest
+      additionalProperties: false
+      description: ListMachinesRequest names an org.
+    hopbox.v1.ListMachinesResponse:
+      type: object
+      properties:
+        machines:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.v1.Machine'
+          title: machines
+          description: machines are the machines, by name.
+      title: ListMachinesResponse
+      additionalProperties: false
+      description: ListMachinesResponse holds the machines of the org that the caller sees.
+    hopbox.v1.ListOrgMembersRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the UUID of the org. Leave it out for the personal org.
+      title: ListOrgMembersRequest
+      additionalProperties: false
+      description: ListOrgMembersRequest names the org.
+    hopbox.v1.ListOrgMembersResponse:
+      type: object
+      properties:
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.v1.OrgMember'
+          title: members
+      title: ListOrgMembersResponse
+      additionalProperties: false
+      description: ListOrgMembersResponse lists the members.
+    hopbox.v1.ListOrgsRequest:
+      type: object
+      title: ListOrgsRequest
+      additionalProperties: false
+      description: ListOrgsRequest has no fields.
+    hopbox.v1.ListOrgsResponse:
+      type: object
+      properties:
+        orgs:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.v1.Org'
+          title: orgs
+      title: ListOrgsResponse
+      additionalProperties: false
+      description: ListOrgsResponse lists the orgs of the caller.
+    hopbox.v1.ListSSHKeysRequest:
+      type: object
+      title: ListSSHKeysRequest
+      additionalProperties: false
+      description: ListSSHKeysRequest has no fields.
+    hopbox.v1.ListSSHKeysResponse:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.v1.SSHKey'
+          title: keys
+      title: ListSSHKeysResponse
+      additionalProperties: false
+      description: ListSSHKeysResponse lists the keys.
+    hopbox.v1.ListSignInMethodsRequest:
+      type: object
+      title: ListSignInMethodsRequest
+      additionalProperties: false
+      description: ListSignInMethodsRequest has no fields.
+    hopbox.v1.ListSignInMethodsResponse:
+      type: object
+      properties:
+        methods:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.v1.LinkedSignInMethod'
+          title: methods
+      title: ListSignInMethodsResponse
+      additionalProperties: false
+      description: ListSignInMethodsResponse lists the sign-in methods.
+    hopbox.v1.ListVarsRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the UUID of the org. The default is the org of the API key, or else the personal org of the caller.
+      title: ListVarsRequest
+      additionalProperties: false
+      description: ListVarsRequest names the org.
+    hopbox.v1.ListVarsResponse:
+      type: object
+      properties:
+        vars:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.v1.Var'
+          title: vars
+      title: ListVarsResponse
+      additionalProperties: false
+      description: ListVarsResponse lists the values.
+    hopbox.v1.Machine:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the machine.
+        orgId:
+          type: string
+          title: org_id
+          description: org_id is the UUID of the org of the machine.
+        name:
+          type: string
+          title: name
+          description: name is the name of the machine, unique in the install. It is the first label of its URL.
+        state:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.MachineState'
+          title: state
+          description: state is the current state.
+        targetState:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.MachineState'
+          title: target_state
+          description: target_state is the state that the machine must reach.
+        size:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.MachineSize'
+          title: size
+          description: size is the size of the machine.
+        imageName:
+          type: string
+          title: image_name
+          description: image_name is the name of the image that the machine started from, for example default.
+        imageDigest:
+          type: string
+          title: image_digest
+          description: 'image_digest is the digest of that image: "sha256:" and 64 hex digits.'
+        creatorAccountId:
+          type: string
+          title: creator_account_id
+          description: |-
+            creator_account_id is the UUID of the account that made the machine.
+             It is empty for a machine that an org key made, and after the delete of the account.
+        creatorKeyId:
+          type: string
+          title: creator_key_id
+          description: creator_key_id is the UUID of the org key that made the machine, or empty.
+        shared:
+          type: boolean
+          title: shared
+          description: shared is true for a machine that is open to the whole org.
+        restartPolicy:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.RestartPolicy'
+          title: restart_policy
+          description: restart_policy says what happens when the machine stops by itself.
+        startCommand:
+          type: string
+          title: start_command
+          description: start_command is the command that the guest agent runs after each boot, or empty.
+        autoDeleteTimeout:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: auto_delete_timeout
+          description: |-
+            auto_delete_timeout is the time without use after which hopbox deletes the machine. Unset is off.
+             The delete comes 1 to 2 minutes after this time from the last recorded use: a use is recorded
+             at most once a minute, and the auto-delete job runs once a minute.
+        url:
+          type: string
+          title: url
+          description: url is https://<name>.<domain>, or empty while the install has no domain.
+        urlPort:
+          type: integer
+          title: url_port
+          format: int32
+          description: url_port is the port in the machine that the URL reaches. The default is 8000.
+        urlVisibility:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.URLVisibility'
+          title: url_visibility
+          description: url_visibility says who can open the URL.
+        sshPort:
+          type: integer
+          title: ssh_port
+          format: int32
+          description: ssh_port is the SSH port of the machine on the edge servers, 10000 to 30000. It never changes.
+        rebootPending:
+          type: boolean
+          title: reboot_pending
+          description: reboot_pending is true while a reboot that a request asked for did not run yet.
+        lastActivityTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: last_activity_time
+          description: last_activity_time is the last use of the machine, for the auto-delete timeout.
+        stateChangeTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: state_change_time
+          description: state_change_time is the time of the last change of the current state.
+        deleteRequestTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: delete_request_time
+          description: delete_request_time is the time of the delete request, or unset.
+        version:
+          type: string
+          title: version
+          format: int64
+          description: 'version grows by 1 with each change of the machine: by a request, by a report of its executor, or by an env change that reaches it.'
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is the creation time of the machine.
+        updateTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: update_time
+          description: update_time is the time of the last change that a request made.
+        skippedEnvVars:
+          type: integer
+          title: skipped_env_vars
+          format: int32
+          description: skipped_env_vars is the count of env vars and secrets that the guest agent of the running machine left out, because their names break its rules.
+      title: Machine
+      additionalProperties: false
+      description: Machine is a machine as its users see it.
+    hopbox.v1.MachineLogEntry:
+      type: object
+      properties:
+        time:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: time
+          description: time is when the guest agent read the line.
+        stream:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.MachineLogStream'
+          title: stream
+          description: stream is the output that the line came from.
+        data:
+          type: string
+          title: data
+          format: byte
+          description: data is the line without its newline. A line longer than 16 KiB arrives in parts.
+        dropped:
+          type: string
+          title: dropped
+          format: int64
+          description: dropped is the count of lines that were lost before this one, because a buffer was full.
+      title: MachineLogEntry
+      additionalProperties: false
+      description: MachineLogEntry is one line of output of the start command of a machine.
+    hopbox.v1.MachineLogStream:
+      type: string
+      title: MachineLogStream
+      enum:
+        - MACHINE_LOG_STREAM_UNSPECIFIED
+        - MACHINE_LOG_STREAM_STDOUT
+        - MACHINE_LOG_STREAM_STDERR
+      description: MachineLogStream names the output that a line of the log came from.
+    hopbox.v1.MachineNameTaken:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+          description: name is the name that the request asked for.
+        suggestedName:
+          type: string
+          title: suggested_name
+          description: suggested_name is a free name close to it, or empty when hopbox found none.
+      title: MachineNameTaken
+      additionalProperties: false
+      description: |-
+        MachineNameTaken is the detail of the already_exists error of a create or a rename
+         whose machine name another machine holds, or another org holds in reservation.
+    hopbox.v1.MachineSize:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+          description: name is the name of the size, for example default.
+        vcpus:
+          type: integer
+          title: vcpus
+          format: int32
+          description: vcpus is the count of vCPUs.
+        memoryBytes:
+          type: string
+          title: memory_bytes
+          format: int64
+          description: memory_bytes is the RAM, in bytes.
+        diskBytes:
+          type: string
+          title: disk_bytes
+          format: int64
+          description: disk_bytes is the size of the sparse disk, in bytes.
+      title: MachineSize
+      additionalProperties: false
+      description: 'MachineSize is a size of a machine: its vCPUs, its RAM, and its sparse disk.'
+    hopbox.v1.MachineState:
+      type: string
+      title: MachineState
+      enum:
+        - MACHINE_STATE_UNSPECIFIED
+        - MACHINE_STATE_PENDING
+        - MACHINE_STATE_STARTING
+        - MACHINE_STATE_RUNNING
+        - MACHINE_STATE_STANDBY
+        - MACHINE_STATE_HIBERNATED
+        - MACHINE_STATE_STOPPED
+        - MACHINE_STATE_FAILED
+        - MACHINE_STATE_DELETED
+        - MACHINE_STATE_MOVING
+      description: MachineState is the state of a machine.
+    hopbox.v1.Org:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the org.
+        name:
+          type: string
+          title: name
+          description: name is the name of the org.
+        personal:
+          type: boolean
+          title: personal
+          description: personal is true for the personal org of an account.
+        role:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.OrgRole'
+          title: role
+          description: role is the role of the caller in the org.
+        suspended:
+          type: boolean
+          title: suspended
+          description: suspended is true while an instance admin suspends the org.
+        suspendTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: suspend_time
+          description: suspend_time is the start of the suspension. It is unset for an org that is not suspended.
+        suspendReason:
+          type: string
+          title: suspend_reason
+          description: suspend_reason is the reason that the instance admin gave, or empty.
+        version:
+          type: string
+          title: version
+          format: int64
+          description: version grows by 1 with each change of the org.
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is the time when the org was created.
+      title: Org
+      additionalProperties: false
+      description: Org is an org as one of its members sees it.
+    hopbox.v1.OrgLimits:
+      type: object
+      properties:
+        machines:
+          type: integer
+          title: machines
+          format: int32
+          description: machines is the most machines.
+        vcpus:
+          type: integer
+          title: vcpus
+          format: int32
+          description: vcpus is the most vCPUs of all machines together.
+        memoryBytes:
+          type: string
+          title: memory_bytes
+          format: int64
+          description: memory_bytes is the most RAM of all machines together, in bytes.
+        diskBytes:
+          type: string
+          title: disk_bytes
+          format: int64
+          description: disk_bytes is the most disk of all machines together, in bytes.
+      title: OrgLimits
+      additionalProperties: false
+      description: OrgLimits are the usage limits of an org. A limit of 0 allows nothing.
+    hopbox.v1.OrgMember:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          description: account_id is the UUID of the account.
+        displayName:
+          type: string
+          title: display_name
+          description: display_name is the display name of the account.
+        emails:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.v1.AccountEmail'
+          title: emails
+          description: emails lists the emails of the account.
+        role:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.OrgRole'
+          title: role
+          description: role is the role of the account in the org.
+        joinTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: join_time
+          description: join_time is the time when the account joined the org.
+      title: OrgMember
+      additionalProperties: false
+      description: OrgMember is one account in an org.
+    hopbox.v1.OrgRole:
+      type: string
+      title: OrgRole
+      enum:
+        - ORG_ROLE_UNSPECIFIED
+        - ORG_ROLE_MEMBER
+        - ORG_ROLE_ADMIN
+        - ORG_ROLE_OWNER
+      description: |-
+        OrgRole is the rights of an account in an org.
+         Each role has the rights of the role before it.
+    hopbox.v1.OrgUsage:
+      type: object
+      properties:
+        machines:
+          type: integer
+          title: machines
+          format: int32
+          description: machines counts the machines.
+        vcpus:
+          type: integer
+          title: vcpus
+          format: int32
+          description: vcpus counts the vCPUs of all machines.
+        memoryBytes:
+          type: string
+          title: memory_bytes
+          format: int64
+          description: memory_bytes is the RAM of all machines, in bytes.
+        diskBytes:
+          type: string
+          title: disk_bytes
+          format: int64
+          description: disk_bytes is the disk of all machines, in bytes.
+      title: OrgUsage
+      additionalProperties: false
+      description: OrgUsage is what an org uses of its limits.
+    hopbox.v1.PollDeviceAuthorizationRequest:
+      type: object
+      properties:
+        deviceCode:
+          type: string
+          title: device_code
+          description: device_code is the device_code of StartDeviceAuthorizationResponse.
+      title: PollDeviceAuthorizationRequest
+      additionalProperties: false
+      description: PollDeviceAuthorizationRequest holds the device code.
+    hopbox.v1.PollDeviceAuthorizationResponse:
+      type: object
+      properties:
+        state:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.DeviceAuthorizationState'
+          title: state
+        intervalSeconds:
+          type: integer
+          title: interval_seconds
+          format: int32
+          description: interval_seconds is the least time until the next poll.
+        tokens:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.CLITokens'
+          title: tokens
+          description: tokens are set for DEVICE_AUTHORIZATION_STATE_APPROVED only.
+      title: PollDeviceAuthorizationResponse
+      additionalProperties: false
+      description: PollDeviceAuthorizationResponse is the answer of a poll.
+    hopbox.v1.RebootMachineRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      title: RebootMachineRequest
+      description: RebootMachineRequest names one machine.
+    hopbox.v1.RebootMachineResponse:
+      type: object
+      properties:
+        machine:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Machine'
+          title: machine
+          description: machine is the machine at the end of the wait.
+        duration:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: duration
+          description: duration is how long the call took, the wait included.
+        done:
+          type: boolean
+          title: done
+          description: done is true when the new boot runs at the end of the wait.
+      title: RebootMachineResponse
+      additionalProperties: false
+      description: RebootMachineResponse holds the machine after the wait.
+    hopbox.v1.RecentSignInRequired:
+      type: object
+      properties:
+        maxAge:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: max_age
+          description: 'max_age is how long a session counts as recent after its sign-in: 10 minutes.'
+      title: RecentSignInRequired
+      additionalProperties: false
+      description: |-
+        RecentSignInRequired is the detail of the permission_denied error of an action that needs a
+         recent sign-in, such as ApproveDevice. The person signs in again, then retries.
+    hopbox.v1.RefreshCLITokenRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          title: refresh_token
+          description: refresh_token is the newest refresh token of the CLI sign-in.
+      title: RefreshCLITokenRequest
+      additionalProperties: false
+      description: RefreshCLITokenRequest holds the refresh token.
+    hopbox.v1.RefreshCLITokenResponse:
+      type: object
+      properties:
+        tokens:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.CLITokens'
+          title: tokens
+      title: RefreshCLITokenResponse
+      additionalProperties: false
+      description: RefreshCLITokenResponse holds the new tokens.
+    hopbox.v1.RemoveOrgMemberRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the UUID of the org. Leave it out for the personal org.
+        accountId:
+          type: string
+          title: account_id
+          description: account_id is the UUID of the member.
+      title: RemoveOrgMemberRequest
+      additionalProperties: false
+      description: RemoveOrgMemberRequest names the member.
+    hopbox.v1.RemoveOrgMemberResponse:
+      type: object
+      title: RemoveOrgMemberResponse
+      additionalProperties: false
+      description: RemoveOrgMemberResponse has no fields.
+    hopbox.v1.RemoveSSHKeyRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the key.
+      title: RemoveSSHKeyRequest
+      additionalProperties: false
+      description: RemoveSSHKeyRequest names the key.
+    hopbox.v1.RemoveSSHKeyResponse:
+      type: object
+      title: RemoveSSHKeyResponse
+      additionalProperties: false
+      description: RemoveSSHKeyResponse has no fields.
+    hopbox.v1.RemoveSignInMethodRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the method, as ListSignInMethods returns it.
+      title: RemoveSignInMethodRequest
+      additionalProperties: false
+      description: RemoveSignInMethodRequest names the method to remove.
+    hopbox.v1.RemoveSignInMethodResponse:
+      type: object
+      title: RemoveSignInMethodResponse
+      additionalProperties: false
+      description: RemoveSignInMethodResponse has no fields.
+    hopbox.v1.RenameMachineRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      properties:
+        newName:
+          type: string
+          title: new_name
+          description: new_name is the new name.
+      title: RenameMachineRequest
+      description: RenameMachineRequest names one machine and its new name.
+    hopbox.v1.RenameMachineResponse:
+      type: object
+      properties:
+        machine:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Machine'
+          title: machine
+          description: machine is the machine at the end of the wait.
+        duration:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: duration
+          description: duration is how long the call took, the wait included.
+        done:
+          type: boolean
+          title: done
+          description: done is true when the machine has its new name, and a running machine runs its new boot.
+      title: RenameMachineResponse
+      additionalProperties: false
+      description: RenameMachineResponse holds the machine after the wait.
+    hopbox.v1.RequestMagicLinkRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          title: email
+          description: email is the address that gets the link, such as ann@example.org.
+      title: RequestMagicLinkRequest
+      additionalProperties: false
+      description: RequestMagicLinkRequest names the email.
+    hopbox.v1.RequestMagicLinkResponse:
+      type: object
+      title: RequestMagicLinkResponse
+      additionalProperties: false
+      description: RequestMagicLinkResponse has no fields.
+    hopbox.v1.RestartPolicy:
+      type: string
+      title: RestartPolicy
+      enum:
+        - RESTART_POLICY_UNSPECIFIED
+        - RESTART_POLICY_ALWAYS
+        - RESTART_POLICY_NEVER
+      description: RestartPolicy says what the executor does when a machine stops by itself.
+    hopbox.v1.RevokeAPIKeyRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the key.
+      title: RevokeAPIKeyRequest
+      additionalProperties: false
+      description: RevokeAPIKeyRequest names the key.
+    hopbox.v1.RevokeAPIKeyResponse:
+      type: object
+      title: RevokeAPIKeyResponse
+      additionalProperties: false
+      description: RevokeAPIKeyResponse has no fields.
+    hopbox.v1.RevokeInvitationRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the UUID of the org. Leave it out for the personal org.
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the invitation.
+      title: RevokeInvitationRequest
+      additionalProperties: false
+      description: RevokeInvitationRequest names the invitation.
+    hopbox.v1.RevokeInvitationResponse:
+      type: object
+      title: RevokeInvitationResponse
+      additionalProperties: false
+      description: RevokeInvitationResponse has no fields.
+    hopbox.v1.SSHKey:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the key.
+        name:
+          type: string
+          title: name
+          description: name helps people tell their keys apart, such as ann@laptop. It can be empty.
+        type:
+          type: string
+          title: type
+          description: type is the key type, such as ssh-ed25519.
+        bits:
+          type: integer
+          title: bits
+          format: int32
+          description: 'bits is the size of the key: 256 for Ed25519, the curve size for ECDSA, the modulus size for RSA.'
+        publicKey:
+          type: string
+          title: public_key
+          description: public_key is the key in the authorized_keys form, without a comment.
+        fingerprint:
+          type: string
+          title: fingerprint
+          description: fingerprint is the SHA-256 fingerprint, as ssh-keygen -l prints it, such as SHA256:uHcvUGW....
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is the time of the addition of the key.
+      title: SSHKey
+      additionalProperties: false
+      description: SSHKey is a public key of an account.
+    hopbox.v1.SetMachineURLPortRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      properties:
+        port:
+          type: integer
+          title: port
+          format: int32
+          description: port is the port in the machine, 1 to 65535.
+      title: SetMachineURLPortRequest
+      description: SetMachineURLPortRequest names one machine and the port.
+    hopbox.v1.SetMachineURLPortResponse:
+      type: object
+      properties:
+        machine:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Machine'
+          title: machine
+          description: machine is the machine after the change.
+      title: SetMachineURLPortResponse
+      additionalProperties: false
+      description: SetMachineURLPortResponse holds the machine after the change.
+    hopbox.v1.SetMachineURLVisibilityRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      properties:
+        visibility:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.URLVisibility'
+          title: visibility
+          description: visibility is the new visibility, private or public.
+      title: SetMachineURLVisibilityRequest
+      description: SetMachineURLVisibilityRequest names one machine and the visibility.
+    hopbox.v1.SetMachineURLVisibilityResponse:
+      type: object
+      properties:
+        machine:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Machine'
+          title: machine
+          description: machine is the machine after the change.
+      title: SetMachineURLVisibilityResponse
+      additionalProperties: false
+      description: SetMachineURLVisibilityResponse holds the machine after the change.
+    hopbox.v1.SetOrgMemberRoleRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the UUID of the org. Leave it out for the personal org.
+        accountId:
+          type: string
+          title: account_id
+          description: account_id is the UUID of the member.
+        role:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.OrgRole'
+          title: role
+          description: role is the new role.
+      title: SetOrgMemberRoleRequest
+      additionalProperties: false
+      description: SetOrgMemberRoleRequest names the member and the new role.
+    hopbox.v1.SetOrgMemberRoleResponse:
+      type: object
+      title: SetOrgMemberRoleResponse
+      additionalProperties: false
+      description: SetOrgMemberRoleResponse has no fields.
+    hopbox.v1.SetVarRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the UUID of the org. The default is the org of the API key, or else the personal org of the caller.
+        name:
+          type: string
+          title: name
+          description: |-
+            name has 1 to 128 letters, digits, and underscores, and does not start with a digit.
+             Some names are reserved, such as PATH, LD_PRELOAD, and every name that starts with HOPBOX_.
+        value:
+          type: string
+          title: value
+          description: value is valid UTF-8 without a NUL byte, at most 16 KiB. It can be empty and can hold newlines.
+        secret:
+          type: boolean
+          title: secret
+          description: secret seals the value, so that no call returns it.
+        scope:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.VarScope'
+          title: scope
+          description: scope is the scope of the value. The default is shared.
+      title: SetVarRequest
+      additionalProperties: false
+      description: SetVarRequest describes the value.
+    hopbox.v1.SetVarResponse:
+      type: object
+      properties:
+        var:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Var'
+          title: var
+      title: SetVarResponse
+      additionalProperties: false
+      description: SetVarResponse holds the value, without the value of a secret.
+    hopbox.v1.ShareMachineRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      title: ShareMachineRequest
+      description: ShareMachineRequest names one machine.
+    hopbox.v1.ShareMachineResponse:
+      type: object
+      properties:
+        machine:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Machine'
+          title: machine
+          description: machine is the shared machine.
+      title: ShareMachineResponse
+      additionalProperties: false
+      description: ShareMachineResponse holds the machine after the change.
+    hopbox.v1.SignInMethod:
+      type: string
+      title: SignInMethod
+      enum:
+        - SIGN_IN_METHOD_UNSPECIFIED
+        - SIGN_IN_METHOD_EMAIL_LINK
+        - SIGN_IN_METHOD_LOGIN_LINK
+        - SIGN_IN_METHOD_GITHUB
+        - SIGN_IN_METHOD_GOOGLE
+      description: SignInMethod is one way to sign in to an account.
+    hopbox.v1.SignOutRequest:
+      type: object
+      title: SignOutRequest
+      additionalProperties: false
+      description: SignOutRequest has no fields.
+    hopbox.v1.SignOutResponse:
+      type: object
+      title: SignOutResponse
+      additionalProperties: false
+      description: SignOutResponse has no fields.
+    hopbox.v1.StartDeviceAuthorizationRequest:
+      type: object
+      properties:
+        clientName:
+          type: string
+          title: client_name
+          description: |-
+            client_name is what the client calls itself, such as "hopbox CLI on ann-laptop".
+             It has at most 64 characters, and can be empty. The console shows it at the approval.
+      title: StartDeviceAuthorizationRequest
+      additionalProperties: false
+      description: StartDeviceAuthorizationRequest describes the client that signs in.
+    hopbox.v1.StartDeviceAuthorizationResponse:
+      type: object
+      properties:
+        deviceCode:
+          type: string
+          title: device_code
+          description: device_code is the secret with which the client polls. It must not be shown.
+        userCode:
+          type: string
+          title: user_code
+          description: user_code is the code that the person types in the console, such as WDJB-MJHT.
+        verificationUri:
+          type: string
+          title: verification_uri
+          description: verification_uri is the console page where the person approves the code.
+        verificationUriComplete:
+          type: string
+          title: verification_uri_complete
+          description: verification_uri_complete is verification_uri with the user code in it.
+        expireTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: expire_time
+          description: expire_time is the end of the device sign-in, 10 minutes after its start.
+        intervalSeconds:
+          type: integer
+          title: interval_seconds
+          format: int32
+          description: interval_seconds is the least time between two polls, 5 seconds.
+      title: StartDeviceAuthorizationResponse
+      additionalProperties: false
+      description: StartDeviceAuthorizationResponse holds the codes of a new device sign-in.
+    hopbox.v1.StartMachineRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      title: StartMachineRequest
+      description: StartMachineRequest names one machine.
+    hopbox.v1.StartMachineResponse:
+      type: object
+      properties:
+        machine:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Machine'
+          title: machine
+          description: machine is the machine at the end of the wait.
+        duration:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: duration
+          description: duration is how long the call took, the wait included.
+        done:
+          type: boolean
+          title: done
+          description: done is true when the machine runs at the end of the wait.
+      title: StartMachineResponse
+      additionalProperties: false
+      description: StartMachineResponse holds the machine after the wait.
+    hopbox.v1.StopMachineRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      title: StopMachineRequest
+      description: StopMachineRequest names one machine.
+    hopbox.v1.StopMachineResponse:
+      type: object
+      properties:
+        machine:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Machine'
+          title: machine
+          description: machine is the machine at the end of the wait.
+        duration:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: duration
+          description: duration is how long the call took, the wait included.
+        done:
+          type: boolean
+          title: done
+          description: done is true when the machine is stopped at the end of the wait.
+      title: StopMachineResponse
+      additionalProperties: false
+      description: StopMachineResponse holds the machine after the wait.
+    hopbox.v1.StreamMachineLogsRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      properties:
+        tail:
+          type: integer
+          title: tail
+          description: tail sends only the last tail entries, at most 10000. Leave it zero for every entry.
+        since:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: since
+          description: since sends only the entries from this time on. Leave it unset for every entry.
+        follow:
+          type: boolean
+          title: follow
+          description: follow keeps the stream open after the old entries, and sends each new entry as it arrives.
+      title: StreamMachineLogsRequest
+      description: StreamMachineLogsRequest names the machine whose log to read.
+    hopbox.v1.StreamMachineLogsResponse:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            entry:
+              allOf:
+                - $ref: '#/components/schemas/hopbox.v1.MachineLogEntry'
+              title: entry
+              description: entry is one line of the log.
+          title: entry
+        - type: object
+          properties:
+            synced:
+              type: boolean
+              title: synced
+              description: synced tells that the old entries end here. Only a stream with follow sends it, once.
+          title: synced
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - entry
+              - required:
+                  - synced
+          - not:
+              oneOf:
+                - required:
+                    - entry
+                - required:
+                    - synced
+      title: StreamMachineLogsResponse
+      description: StreamMachineLogsResponse is one message of a logs stream.
+    hopbox.v1.TerminalSize:
+      type: object
+      properties:
+        rows:
+          type: integer
+          title: rows
+          description: rows is the count of lines, 1 to 1000.
+        cols:
+          type: integer
+          title: cols
+          description: cols is the count of columns, 1 to 1000.
+      title: TerminalSize
+      additionalProperties: false
+      description: TerminalSize is the size of a terminal in characters.
+    hopbox.v1.URLVisibility:
+      type: string
+      title: URLVisibility
+      enum:
+        - URL_VISIBILITY_UNSPECIFIED
+        - URL_VISIBILITY_PRIVATE
+        - URL_VISIBILITY_PUBLIC
+      description: URLVisibility says who can open the URL of a machine.
+    hopbox.v1.UnshareMachineRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      title: UnshareMachineRequest
+      description: UnshareMachineRequest names one machine.
+    hopbox.v1.UnshareMachineResponse:
+      type: object
+      properties:
+        machine:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Machine'
+          title: machine
+          description: machine is the private machine.
+      title: UnshareMachineResponse
+      additionalProperties: false
+      description: UnshareMachineResponse holds the machine after the change.
+    hopbox.v1.UpdateAccountRequest:
+      type: object
+      properties:
+        displayName:
+          type:
+            - string
+            - "null"
+          title: display_name
+          description: |-
+            display_name is the new display name: at most 64 characters, without control characters,
+             and without spaces at either end. An empty name is allowed. Leave it out to keep the name.
+        expectedVersion:
+          type:
+            - string
+            - "null"
+          title: expected_version
+          format: int64
+          description: |-
+            expected_version is the version of the account that the caller read.
+             If the account has another version now, the call fails with ABORTED and changes nothing.
+      title: UpdateAccountRequest
+      additionalProperties: false
+      description: UpdateAccountRequest holds the fields to change.
+    hopbox.v1.UpdateAccountResponse:
+      type: object
+      properties:
+        account:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Account'
+          title: account
+      title: UpdateAccountResponse
+      additionalProperties: false
+      description: UpdateAccountResponse holds the account after the change.
+    hopbox.v1.UpdateMachineRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      properties:
+        restartPolicy:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.RestartPolicy'
+          title: restart_policy
+          description: restart_policy is the new restart policy. RESTART_POLICY_UNSPECIFIED keeps it.
+        startCommand:
+          type:
+            - string
+            - "null"
+          title: start_command
+          description: start_command is the new start command. An empty string removes it.
+        autoDeleteTimeout:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: auto_delete_timeout
+          description: auto_delete_timeout is the new auto-delete timeout. A zero duration turns it off.
+        expectedVersion:
+          type:
+            - string
+            - "null"
+          title: expected_version
+          format: int64
+          description: |-
+            expected_version is the version that the caller read. If the machine has another version now,
+             the call fails with aborted and changes nothing. The version also grows without a request, for
+             example at each report of the executor, so read the machine again and retry.
+      title: UpdateMachineRequest
+      description: UpdateMachineRequest names one machine and the settings to change. A field left out keeps its value.
+    hopbox.v1.UpdateMachineResponse:
+      type: object
+      properties:
+        machine:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Machine'
+          title: machine
+          description: machine is the machine after the change.
+      title: UpdateMachineResponse
+      additionalProperties: false
+      description: UpdateMachineResponse holds the machine after the change.
+    hopbox.v1.UpdateOrgRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the UUID of the org. Leave it out for the personal org.
+        name:
+          type:
+            - string
+            - "null"
+          title: name
+          description: name is the new name of the org. Leave it out to keep the name.
+        expectedVersion:
+          type:
+            - string
+            - "null"
+          title: expected_version
+          format: int64
+          description: |-
+            expected_version is the version of the org that the caller read.
+             If the org has another version now, the call fails with ABORTED and changes nothing.
+      title: UpdateOrgRequest
+      additionalProperties: false
+      description: UpdateOrgRequest holds the fields to change.
+    hopbox.v1.UpdateOrgResponse:
+      type: object
+      properties:
+        org:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Org'
+          title: org
+      title: UpdateOrgResponse
+      additionalProperties: false
+      description: UpdateOrgResponse holds the org after the change.
+    hopbox.v1.UploadRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            data:
+              type: string
+              title: data
+              format: byte
+              description: data is the next bytes, at most 1 MiB in one message. The end of the client stream is the end of the data.
+          title: data
+        - type: object
+          properties:
+            start:
+              allOf:
+                - $ref: '#/components/schemas/hopbox.v1.UploadStart'
+              title: start
+              description: start names the machine and the target. It is always the first message, and only the first.
+          title: start
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - data
+              - required:
+                  - start
+          - not:
+              oneOf:
+                - required:
+                    - data
+                - required:
+                    - start
+      title: UploadRequest
+      description: UploadRequest is one message from the client on Upload.
+    hopbox.v1.UploadResponse:
+      type: object
+      properties:
+        bytes:
+          type: string
+          title: bytes
+          format: int64
+          description: bytes is the count of bytes that the machine received.
+      title: UploadResponse
+      additionalProperties: false
+      description: UploadResponse is the result of an upload.
+    hopbox.v1.UploadStart:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      properties:
+        path:
+          type: string
+          title: path
+          description: path is the target path, at most 4096 bytes. A relative path starts at the home directory of the user.
+        archive:
+          type: boolean
+          title: archive
+          description: |-
+            archive is true when the data is a tar stream of the contents of a directory.
+             The machine extracts it into the directory path, and makes the directory when it does not exist.
+             Otherwise the data is the contents of one file.
+        mode:
+          type: integer
+          title: mode
+          description: mode is the permission bits of a file, such as 0755. Leave it zero for 0644. An archive carries its own.
+        user:
+          type: string
+          title: user
+          description: user is the Linux user that owns the new files. Leave it empty for the main user, user.
+      title: UploadStart
+      description: UploadStart names the machine and the target of an upload.
+    hopbox.v1.Var:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the value.
+        orgId:
+          type: string
+          title: org_id
+          description: org_id is the UUID of the org of the value.
+        name:
+          type: string
+          title: name
+          description: name is the name of the env var in the machine, such as DATABASE_URL.
+        scope:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.VarScope'
+          title: scope
+        secret:
+          type: boolean
+          title: secret
+          description: secret is true for a sealed value.
+        value:
+          type: string
+          title: value
+          description: value is the value of an env var, and empty for a secret.
+        ownerAccountId:
+          type: string
+          title: owner_account_id
+          description: owner_account_id is the UUID of the account of a private value, and empty for a shared or an all value.
+        updaterAccountId:
+          type: string
+          title: updater_account_id
+          description: updater_account_id is the UUID of the account that set the value last, or empty after its deletion.
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is the time of the first set of the value.
+        updateTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: update_time
+          description: update_time is the time of the last set of the value.
+      title: Var
+      additionalProperties: false
+      description: Var is an env var or a secret.
+    hopbox.v1.VarScope:
+      type: string
+      title: VarScope
+      enum:
+        - VAR_SCOPE_UNSPECIFIED
+        - VAR_SCOPE_SHARED
+        - VAR_SCOPE_PRIVATE
+        - VAR_SCOPE_ALL
+      description: VarScope says which machines of the org a value reaches.
+    hopbox.v1.VerifyLoginLinkRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          title: token
+          description: token is the value after "#token=" in the link.
+      title: VerifyLoginLinkRequest
+      additionalProperties: false
+      description: VerifyLoginLinkRequest holds the token of the link.
+    hopbox.v1.VerifyLoginLinkResponse:
+      type: object
+      properties:
+        account:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Account'
+          title: account
+        newAccount:
+          type: boolean
+          title: new_account
+          description: new_account is true when this sign-in created the account.
+        sessionExpireTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: session_expire_time
+          description: |-
+            session_expire_time is the end of the session, 30 days after the sign-in.
+             A session that no call uses for 7 days ends before.
+      title: VerifyLoginLinkResponse
+      additionalProperties: false
+      description: VerifyLoginLinkResponse names the account of the new session.
+    hopbox.v1.VerifyMagicLinkRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          title: token
+          description: token is the value after "#token=" in the link.
+      title: VerifyMagicLinkRequest
+      additionalProperties: false
+      description: VerifyMagicLinkRequest holds the token of the link.
+    hopbox.v1.VerifyMagicLinkResponse:
+      type: object
+      properties:
+        account:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Account'
+          title: account
+        newAccount:
+          type: boolean
+          title: new_account
+          description: new_account is true when this sign-in created the account.
+        sessionExpireTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: session_expire_time
+          description: |-
+            session_expire_time is the end of the session, 30 days after the sign-in.
+             A session that no call uses for 7 days ends before.
+      title: VerifyMagicLinkResponse
+      additionalProperties: false
+      description: VerifyMagicLinkResponse names the account of the new session.
+    hopbox.v1.WatchMachinesRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the org. Leave it out for the org of an API key, or the personal org.
+      title: WatchMachinesRequest
+      additionalProperties: false
+      description: WatchMachinesRequest names an org.
+    hopbox.v1.WatchMachinesResponse:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            goneMachineId:
+              type: string
+              title: gone_machine_id
+              description: gone_machine_id is the UUID of a machine that the caller no longer sees, for example after an unshare.
+          title: gone_machine_id
+        - type: object
+          properties:
+            machine:
+              allOf:
+                - $ref: '#/components/schemas/hopbox.v1.Machine'
+              title: machine
+              description: 'machine is a machine as it is now: in the first list, new, or changed.'
+          title: machine
+        - type: object
+          properties:
+            synced:
+              type: boolean
+              title: synced
+              description: synced marks the end of the first list. Every later message is a change.
+          title: synced
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - goneMachineId
+              - required:
+                  - machine
+              - required:
+                  - synced
+          - not:
+              oneOf:
+                - required:
+                    - goneMachineId
+                - required:
+                    - machine
+                - required:
+                    - synced
+      title: WatchMachinesResponse
+      description: WatchMachinesResponse is one message of the stream.
+security: []
+tags:
+  - name: hopbox.v1.MachineService
+    description: |-
+      MachineService creates, reads, and changes the machines of an org.
+       A request on one machine names it by its ID or by its name: names are unique in the whole install.
+       A lifecycle call only sets the target state of the machine.
+       The executor on its node then moves the machine there, and the call waits for it for up to 60 seconds.
+  - name: hopbox.v1.InstallService
+    description: InstallService describes the install to a client before it signs in.
+  - name: hopbox.v1.AccountService
+    description: |-
+      AccountService reads and changes the account of the caller.
+       Each call acts on the account of the session that calls it.
+  - name: hopbox.v1.APIKeyService
+    description: |-
+      APIKeyService manages the API keys of an org. An API key belongs to one org and expires.
+       A member key acts as its account in that org. An org key is a service credential of the org,
+       with the rights of a member without personal resources. No API key can call this service,
+       so no key makes, lists, or deletes another key.
+  - name: hopbox.v1.AuditService
+    description: 'AuditService reads the audit log: who did which action.'
+  - name: hopbox.v1.AuthService
+    description: |-
+      AuthService signs people in to the console of the install, and the hopbox CLI with a device flow.
+       A call that starts a session sets the session cookie __Host-hopbox_session.
+       A call that sets or carries the cookie must carry the Origin of the install
+       and use the Connect protocol.
+  - name: hopbox.v1.OrgService
+    description: |-
+      OrgService manages the orgs of the caller, their members, and their invitations.
+       A request that leaves out org_id acts in the personal org of the caller.
+  - name: hopbox.v1.SSHKeyService
+    description: |-
+      SSHKeyService manages the SSH keys of the account of the caller. An SSH key opens the machines
+       that the account can reach through the SSH front door. Each key works for one account only.
+  - name: hopbox.v1.VarService
+    description: |-
+      VarService manages the env vars and secrets of an org. hopbox puts them into the machines
+       of the org at boot and into every login shell. An env var can be read back. A secret is
+       sealed, and no call returns its value. The scope of a value says which machines it reaches.
+       A request that leaves out org_id acts in the org of the API key, or else in the personal
+       org of the caller.
