@@ -137,7 +137,7 @@ Each control server holds its own copy of the key files, and all copies must mat
 Every control server must run a release with migration `0045` before a `kek stage` or a `kek promote`. A control process of an older release records no row in `control_processes`, so a promote cannot see that it lacks the new key.
 
 1. Stage the key. `sudo hopboxd admin kek stage` ([hopboxd](/reference/hopboxd/index.html.md#admin-kek-stage)) or the call `StageKEK` ([the admin API](/reference/admin-api/index.html.md#stagekek)) adds the file `<n>.staged` to the key dir of this server. The current KEK stays the same, so the staged key seals nothing yet. The command prints the ID and the path of the file.
-2. Copy the staged file to the same path on every other control server, as root, with the owner of `hopboxd` and the mode `0400`. hopbox does not copy key files for you yet. Use `scp` or `rsync` over SSH, and keep the key out of the shell history, the logs, and the database backups.
+2. Copy the staged file to the same path on every other control server, as root, with the owner of `hopboxd` and the mode `0400`. hopbox does not copy a staged key for you. Use `scp` or `rsync` over SSH, and keep the key out of the shell history, the logs, and the database backups.
 3. Promote the key. `sudo hopboxd admin kek promote <id>` ([hopboxd](/reference/hopboxd/index.html.md#admin-kek-promote)) or the call `PromoteKEK` ([the admin API](/reference/admin-api/index.html.md#promotekek)) makes the staged key current on every control server.
 4. [Rewrap](#rewrap) the sealed values, and remove the old key files.
 

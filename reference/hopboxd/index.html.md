@@ -1326,7 +1326,7 @@ Lists the control processes that recorded themselves in the control store, oldes
 | --- | --- | --- | --- |
 | `--json` | bool | `false` | Prints one JSON object, `{"processes":[...]}`, with one object for each process. |
 
-Each object has the keys `id`, `server_id`, `hostname`, `internal_url`, `release`, `schema_version`, `kek_ids`, `kek_current`, `maintenance`, `drained`, `live`, `start_time`, `renew_time`, `stop_time`, and `version`. `server_id` is empty when no role of the same `hopboxd` enrolled. `stop_time` is `null` unless the process stopped cleanly. `kek_ids` is an empty list, never `null`. [The admin API](/reference/admin-api/index.html.md#controlprocess) describes each field.
+Each object has the keys `id`, `server_id`, `hostname`, `internal_url`, `release`, `schema_version`, `kek_ids`, `kek_current`, `kek_fingerprints`, `maintenance`, `drained`, `live`, `start_time`, `renew_time`, `stop_time`, and `version`. `server_id` is empty when no role of the same `hopboxd` enrolled. `stop_time` is `null` unless the process stopped cleanly. `kek_ids` and `kek_fingerprints` are empty lists, never `null`. [The admin API](/reference/admin-api/index.html.md#controlprocess) describes each field.
 
 Example:
 

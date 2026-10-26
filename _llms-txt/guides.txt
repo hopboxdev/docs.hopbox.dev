@@ -3233,6 +3233,18 @@ To order new servers, also give it these rights ([hopbox Terraform provider](/re
 
 A key with `POST /order/cart/*` can pay for orders with the payment method of the account. Give it only to the people who are allowed to spend that money.
 
+To grow the install into a fleet on the vRack ([Grow the install into a fleet](#grow-the-install-into-a-fleet)), also give it these rights:
+
+| Method   | Path                                  |
+| -------- | ------------------------------------- |
+| `POST`   | `/vrack/*/dedicatedServerInterface`   |
+| `DELETE` | `/vrack/*/dedicatedServerInterface/*` |
+| `GET`    | `/vrack/*/task/*`                     |
+| `GET`    | `/ip/*`                               |
+| `POST`   | `/ip/*/move`                          |
+| `POST`   | `/ip/*/park`                          |
+| `GET`    | `/ip/*/task/*`                        |
+
 Keep the values in your shell, not in a file:
 
 ```sh
@@ -3438,6 +3450,224 @@ resource "hopbox_size" "large" {
 ```
 
 Keep the key out of the files: export it as `HOPBOX_ADMIN_API_KEY` before the apply. The first server stays in the pool `default`. A server that joins `big` sets `pool = hopbox_pool.big.name`. [Add pools and sizes](/guide/pools-and-sizes/) explains the rules, and [hopbox Terraform provider](/reference/terraform-provider/#resource-hopbox_pool) lists every attribute.
+
+## Grow the install into a fleet
+
+A fleet runs the roles on several servers: edge servers that take the public traffic, control servers that share one external Postgres, and nodes that run machines. The servers talk over the vRack, the private network of OVHcloud. This section builds a fleet of five servers in two pools:
+
+| Resource | Roles                            | Pool      | vRack address | Floating address |
+| -------- | -------------------------------- | --------- | ------------- | ---------------- |
+| `first`  | `control`, `node`, `dns`, `edge` | `default` | `172.31.0.11` | `203.0.113.5`    |
+| `edge2`  | `edge`, `dns`                    | `default` | `172.31.0.12` | `203.0.113.6`    |
+| `cp2`    | `control`, `node`                | `default` | `172.31.0.13` | none             |
+| `node1`  | `node`                           | `default` | `172.31.0.21` | none             |
+| `node2`  | `node`                           | `big`     | `172.31.0.22` | none             |
+
+The first server joins the vRack at its create, so a fleet starts with a new install. The provider never moves a server that runs onto the vRack. A plan that gives such a server a `vrack_address` fails with `The vRack address of a server cannot change`.
+
+### What a fleet needs
+
+* The rights of the fleet in [step 1](#1-make-the-ovhcloud-api-keys).
+* A vRack in the OVHcloud account, such as `pn-12345`, and servers of a range that offers the vRack. The OVHcloud manager shows both.
+* One Additional IPv4 address for each edge server, routed to a server of the account and not to the vRack. This example uses `203.0.113.5` and `203.0.113.6`.
+* For the second control server, an external Postgres, such as managed PostgreSQL of OVHcloud on the vRack ([Run the control store on an external Postgres](/guide/external-postgres/)).
+
+### 1. Make the first server on the vRack
+
+Start from `main.tf` of step 3. Name the vRack in the provider block, and give the first server its vRack address and its floating address:
+
+```hcl
+provider "hopbox" {
+  ssh_private_key = file(pathexpand("~/.ssh/id_ed25519"))
+  ovh_vrack       = "pn-12345"
+}
+
+
+locals {
+  bundle = {
+    source = pathexpand("~/hopbox-release/hopbox-v0.1.0-linux-amd64.tar.gz")
+    sha256 = "<the sha256 of the bundle>"
+  }
+  host_kernel = {
+    source = pathexpand("~/hopbox-release/linux-image-6.18.57-hopbox1_6.18.57-1_amd64.deb")
+    sha256 = "<the sha256 of the package>"
+  }
+}
+
+
+resource "hopbox_server" "first" {
+  ovh_service_name   = "ns1234567.ip-198-51-100.eu"
+  bootstrap          = true
+  domain             = "example.com"
+  vrack_address      = "172.31.0.11"
+  floating_addresses = ["203.0.113.5"]
+  bundle             = local.bundle
+  host_kernel        = local.host_kernel
+}
+
+
+output "first_host_key" {
+  value = hopbox_server.first.ssh_host_key
+}
+```
+
+Apply, as in step 4:
+
+```sh
+terraform apply
+```
+
+The provider attaches the server to the vRack before the reinstall. After the reinstall, it gives the server its vRack address with the unit `hopbox-network.service`, which sets the address again at each boot. The internal listener of the control role listens on `172.31.0.11:7443`, so the other servers can enroll there. At the end, the floating address routes to the server. The zone of the DNS role still names the own address of the server. A later release puts the floating addresses in the zone.
+
+Check the network of the server:
+
+```sh
+ssh -i ~/.ssh/id_ed25519 debian@"$(terraform output -raw ipv4)" ip -br addr
+```
+
+The output shows `172.31.0.11/16` on the vRack interface, and `203.0.113.5/32` on the public interface.
+
+### 2. Set the jump host and the admin API
+
+The other servers enroll through the admin API, so the provider needs `install_url` and an admin API key ([6. Keep the admin API key](#6-keep-the-admin-api-key)). Export the key, and keep it out of the files:
+
+```sh
+export HOPBOX_ADMIN_API_KEY="$(terraform output -raw admin_api_key)"
+terraform output -raw first_host_key
+```
+
+The first server is an edge server on the vRack, so it is the jump host of the provider. The jump host must be on the vRack, because the provider dials the vRack address of each other server through it. Put its address and the host key of the output in the provider block:
+
+```hcl
+provider "hopbox" {
+  ssh_private_key = file(pathexpand("~/.ssh/id_ed25519"))
+  install_url     = "https://example.com"
+  ovh_vrack       = "pn-12345"
+
+
+  ssh_jump_host = {
+    address  = "<the ipv4 output>"
+    host_key = "<the first_host_key output>"
+  }
+}
+```
+
+From then on, every SSH step of a server without the role `edge` goes through the first server, to the vRack address of the server ([hopbox Terraform provider](/reference/terraform-provider/#jump-host)). After the bastion firewall, the nodes and the control servers keep no SSH port open on the internet. The jump host is then the only way in.
+
+### 3. Add an edge server and the nodes
+
+Add a pool for the bigger nodes, as in [Add pools and sizes](#add-pools-and-sizes), and the servers:
+
+```hcl
+resource "hopbox_pool" "big" {
+  name     = "big"
+  ovh_plan = "24adv01"
+}
+
+
+resource "hopbox_server" "edge2" {
+  ovh_service_name   = "ns2345678.ip-198-51-100.eu"
+  roles              = ["edge", "dns"]
+  vrack_address      = "172.31.0.12"
+  floating_addresses = ["203.0.113.6"]
+  bundle             = local.bundle
+  host_kernel        = local.host_kernel
+  depends_on         = [hopbox_server.first]
+
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+
+resource "hopbox_server" "node1" {
+  ovh_service_name = "ns3456789.ip-198-51-100.eu"
+  vrack_address    = "172.31.0.21"
+  bundle           = local.bundle
+  host_kernel      = local.host_kernel
+  depends_on       = [hopbox_server.first]
+}
+
+
+resource "hopbox_server" "node2" {
+  ovh_service_name = "ns4567890.ip-198-51-100.eu"
+  pool             = hopbox_pool.big.name
+  vrack_address    = "172.31.0.22"
+  bundle           = local.bundle
+  host_kernel      = local.host_kernel
+  depends_on       = [hopbox_server.first]
+}
+```
+
+Give each server its own vRack address. `depends_on` makes Terraform update the first server before the others in a [rolling upgrade](/reference/terraform-provider/#rolling-upgrade). Apply:
+
+```sh
+terraform apply
+```
+
+The servers enroll at the internal listener of the first server, which the install lists. List the servers on the first server:
+
+```sh
+ssh -i ~/.ssh/id_ed25519 debian@"$(terraform output -raw ipv4)" sudo hopboxd admin server list
+```
+
+The output shows four servers, each `ready`: the first server, `edge2` with the roles `dns,edge`, and the two nodes, `node2` in the pool `big`.
+
+### 4. Add a second control server
+
+A second control server shares the control store with the first one, so the install must run on the external Postgres first. Move the store as [Run the control store on an external Postgres](/guide/external-postgres/#move-a-one-server-install-to-the-external-postgres) shows. Then add the server:
+
+```hcl
+resource "hopbox_server" "cp2" {
+  ovh_service_name = "ns5678901.ip-198-51-100.eu"
+  roles            = ["control", "node"]
+  vrack_address    = "172.31.0.13"
+  bundle           = local.bundle
+  host_kernel      = local.host_kernel
+  depends_on       = [hopbox_server.first]
+
+
+  copy_control_from = {
+    address  = hopbox_server.first.vrack_address
+    host_key = hopbox_server.first.ssh_host_key
+    user     = hopbox_server.first.ssh_user
+  }
+}
+```
+
+`copy_control_from` names the live control server that `cp2` copies from, with its pinned host key. Apply. Before the reinstall, the provider logs in to the first server through the jump host, and reads its key-encryption keys and the settings of its external Postgres. It checks the fingerprint of each key against the admin API, and writes the files on `cp2` before the install. So both control servers seal with the same keys, and use the same store ([hopbox Terraform provider](/reference/terraform-provider/#control-servers)). If the first server still runs the bundled Postgres, the apply stops before the reinstall with `the control server runs the bundled Postgres`.
+
+Check that both control processes are live:
+
+```sh
+ssh -i ~/.ssh/id_ed25519 debian@"$(terraform output -raw ipv4)" sudo hopboxd admin control list
+```
+
+The output shows two live processes, with the internal URLs `https://172.31.0.11:7443` and `https://172.31.0.13:7443`.
+
+### 5. Replace an edge server
+
+To replace `edge2` with the server `ns6789012.ip-198-51-100.eu`, change its service name and its vRack address in `main.tf`:
+
+```hcl
+resource "hopbox_server" "edge2" {
+  ovh_service_name   = "ns6789012.ip-198-51-100.eu"
+  roles              = ["edge", "dns"]
+  vrack_address      = "172.31.0.14"
+  floating_addresses = ["203.0.113.6"]
+  bundle             = local.bundle
+  host_kernel        = local.host_kernel
+  depends_on         = [hopbox_server.first]
+
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+```
+
+Apply. With `create_before_destroy`, Terraform creates the new server first. The new server takes `203.0.113.6` once it is ready, so the address keeps answering. Then Terraform destroys the old server: the provider decommissions it, and takes it out of the vRack. The old server and the new one run side by side for a while, so they need two vRack addresses.
 
 ## Import a server into a new state
 
@@ -5073,7 +5303,7 @@ file:1  0
 file:2  3  current
 ```
 
-[Sealing](/reference/sealing/#several-control-servers) gives the steps and the errors. hopbox does not copy key files between servers yet, so you copy them over SSH.
+[Sealing](/reference/sealing/#several-control-servers) gives the steps and the errors. The hopbox Terraform provider copies the key files to a new control server that it sets up ([hopbox Terraform provider](/reference/terraform-provider/#control-servers)). You copy a staged key yourself, over SSH.
 
 ## Stop hopboxd
 

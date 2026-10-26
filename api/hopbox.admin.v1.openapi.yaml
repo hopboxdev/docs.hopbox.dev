@@ -2815,6 +2815,15 @@ components:
           description: |-
             stop_time is the clean stop of the process. It is absent while the process runs, and after
              an end without a stop. A stopped process keeps its record for 24 hours.
+        kekFingerprints:
+          type: array
+          items:
+            type: string
+          title: kek_fingerprints
+          description: |-
+            kek_fingerprints are the fingerprints of the key files of kek_ids, each
+             <key ID>=<fingerprint>, such as file:2=9f86d081884c7d659a2feaa0c55ad015. A fingerprint tells
+             whether two key files hold the same key, and nothing of the key.
       title: ControlProcess
       additionalProperties: false
       description: |-

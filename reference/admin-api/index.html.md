@@ -1073,6 +1073,7 @@ The request `ListControlProcessesRequest` has no fields. The response `ListContr
 | `schema_version` | int32 | The number of the newest migration that the `hopboxd` of the process knows. |
 | `kek_ids` | list of string | The key-encryption keys that the process can open, staged keys too. |
 | `kek_current` | string | The key-encryption key with which the process seals new values. |
+| `kek_fingerprints` | list of string | The fingerprint of each key file of `kek_ids`, as `<key ID>=<fingerprint>`, such as `file:2=9f86d081884c7d659a2feaa0c55ad015` ([Sealing](/reference/sealing/index.html.md#key-fingerprints)). It tells whether two key files hold the same key, and nothing of the key. The hopbox Terraform provider checks a copy of the key files against it. A control process of a release before this field reports none. |
 | `maintenance` | bool | `true` when the process applies maintenance mode. |
 | `drained` | bool | `true` in maintenance mode once no call, control channel, or leader job of the process runs. |
 | `start_time` | Timestamp | The start of the process. |

@@ -382,7 +382,7 @@ file:1	0
 file:2	3	current
 ```
 
-[Sealing](/reference/sealing/index.html.md#several-control-servers) gives the steps and the errors. hopbox does not copy key files between servers yet, so you copy them over SSH.
+[Sealing](/reference/sealing/index.html.md#several-control-servers) gives the steps and the errors. The hopbox Terraform provider copies the key files to a new control server that it sets up ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#control-servers)). You copy a staged key yourself, over SSH.
 
 ## Stop hopboxd
 
