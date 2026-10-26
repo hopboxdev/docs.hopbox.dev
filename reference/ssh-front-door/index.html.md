@@ -214,7 +214,7 @@ Each sign-in that `AuthorizeSSH` allows writes one audit entry `machine.ssh` in 
 | Org | The org of the machine. The org owners and the org admins read the entry with `ListAuditEntries` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#listauditentries)). An org member reads no entry of the org, as for every audit entry. Instance admins read every entry. |
 | Actor | The kind `ssh_key`, the account of the key, and the ID of the SSH key as the credential ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#ssh-keys)). |
 | Target | The kind `machine`, and the machine ID. |
-| `name` | The name of the machine. |
+| `name` | The name of the machine. The entry goes without it when the audit log refuses the name, as for a name from before a new credential pattern ([Domain rules](/reference/domain-rules/index.html.md#machine-names)). The target ID still names the machine. |
 | `linux_user` | The user name of the connection. |
 | `fingerprint` | The SHA256 fingerprint of the key, such as `SHA256:FXuRc2JyZfKx3tXHxoblBpr+f1jfrmFaGfkF4S5o0Ho`. |
 | `client_ip` | The IP address of the client, as the edge server saw it. |

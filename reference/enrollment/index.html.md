@@ -185,6 +185,8 @@ All servers of a pool have identical hardware. So the first server that enrolls 
 | RAM | `MemTotal` of `/proc/meminfo` |
 | Disks | The size of each whole disk under `/sys/block`. A whole disk has a `device` entry and `removable` 0, so loop devices, RAID and device-mapper volumes, zram, and optical drives do not count. A disk of size 0 does not count either. |
 
+On Linux, `hopboxd enroll` refuses a new server whose CPU is not amd64, before it reads these facts. In v1, every server has an Intel or AMD CPU. Also, only the `/proc/cpuinfo` of amd64 names the vendor, the family, and the model of the CPU fingerprint ([the control channel](/reference/control-channel/index.html.md)).
+
 On a Mac, which enrolls only the `dns` and the `edge` roles in development ([Serve the domain of an install with the DNS role](/guide/dns-role/index.html.md)), `hopboxd enroll` reads the CPU model, the CPU threads, and the RAM with `sysctl`: `machdep.cpu.brand_string`, `hw.logicalcpu`, and `hw.memsize`. It reports no disk.
 
 The control role compares a new server with the hardware of its pool:
@@ -213,6 +215,7 @@ A pool whose servers are all decommissioned takes the hardware of its next serve
 | `enroll at <url>: unavailable: ...` with a TLS or a connection error | No control role listens at this URL of `channel.control_urls`, or the install has no CA yet, so its handshakes fail. With several URLs, the error holds one such line for each URL. |
 | `enroll at <url>: unauthenticated: the enrollment token is not valid...` | The control role refused the token ([Errors of Enroll](#errors-of-enroll)). |
 | `enroll at <url>: invalid_argument: ...` | The control role refused the request, for example a role that it does not know. |
+| `read the hardware of the server: hostinfo: a server of hopbox needs an amd64 CPU from Intel or AMD, and this host runs <arch>` | A new server on Linux, with a CPU that is not amd64, such as `arm64` ([Hardware of a pool](#hardware-of-a-pool)). |
 | `read the hardware of the server: ...` | `enroll` cannot read `/proc/cpuinfo`, `/proc/meminfo`, or `/sys/block`. Off Linux, the message ends with `the CPU and memory facts need Linux`. |
 | `enroll at <url>: failed_precondition: the hardware of this server differs from the pool <pool>: ...` | The server has other hardware than the first server of its pool ([Hardware of a pool](#hardware-of-a-pool)). |
 | `node: the control plane sent another CA than the token names` | The answer holds another CA certificate. |

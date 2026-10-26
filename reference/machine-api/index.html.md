@@ -66,7 +66,7 @@ These rules hold for each caller that acts in the org of the machine:
 
 A caller that cannot read a machine gets `not_found`, with the same message as for a machine that does not exist. So the call tells nothing about the private machines of others.
 
-`RenameMachine`, `UpdateMachine`, `SetMachineURLPort`, and `SetMachineURLVisibility` check their fields before they look up the machine. So a bad value gets `invalid_argument`, also for a machine that does not exist, or that the caller cannot read. The check reads only the request, so it tells nothing about the machine. An anonymous caller still gets `unauthenticated` first. A caller that can read the machine, but not do the action, gets `permission_denied` with the message `permission denied: a caller of kind <kind> may not do <action>`.
+`RenameMachine`, `UpdateMachine`, `SetMachineURLPort`, and `SetMachineURLVisibility` check their fields before they look up the machine. So a bad value gets `invalid_argument`, also for a machine that does not exist, or that the caller cannot read. The check reads only the request, so it tells nothing about the machine. One check of `RenameMachine` comes after the lookup: a new name that looks like a credential ([Domain rules](/reference/domain-rules/index.html.md#machine-names)). So a rename of a machine to its own name never fails on it. An anonymous caller still gets `unauthenticated` first. A caller that can read the machine, but not do the action, gets `permission_denied` with the message `permission denied: a caller of kind <kind> may not do <action>`.
 
 The API listener resolves session cookies, CLI tokens, and API keys ([the API server](/reference/api/index.html.md#request-gate)). A CLI token acts as its account. A member key acts as its account, in the org of the key only. An org key acts as a member of its org without private machines.
 
@@ -242,6 +242,7 @@ A create that fails at any step leaves nothing behind: no machine, no name, no p
 | Error | Code |
 | --- | --- |
 | A bad name, start command, or auto-delete timeout, for example `invalid argument: invalid machine config: the start command holds a NUL byte` | `invalid_argument` |
+| A name that looks like a credential, such as `xoxb-` with 10 more digits: `invalid argument: invalid name: the machine name looks like a credential. A machine name is public: it is in the machine URL, in DNS, and in the audit log. Pick another name` ([Domain rules](/reference/domain-rules/index.html.md#machine-names)) | `invalid_argument` |
 | An unknown size: `invalid argument: the install has no size "<size>"` | `invalid_argument` |
 | A retired size: `invalid argument: the size "<size>" is retired and takes no new machine. Pick another size` | `invalid_argument` |
 | The org was deleted after the policy check: `not found: the org <id> was deleted` | `not_found` |
@@ -460,7 +461,7 @@ Gives a machine a new name. The old name stays reserved for the org for 7 days, 
 | Procedure | `/hopbox.v1.MachineService/RenameMachine` |
 | Policy action | `machine.rename`: those who use the machine |
 | Idempotent option | no. A second call finds the new name, and changes nothing. |
-| Audit entry | action `machine.rename`, target kind `machine`, details `old_name`, `new_name`, and `name` (the old name) |
+| Audit entry | action `machine.rename`, target kind `machine`, details `old_name`, `new_name`, and `name` (the old name). Each entry of a machine goes without the refused name details, each of these three that looks like a credential ([Domain rules](/reference/domain-rules/index.html.md#machine-names)). |
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -475,7 +476,7 @@ Two renames that swap the names of two machines at the same time lock both name 
 
 | Error | Code |
 | --- | --- |
-| A bad new name | `invalid_argument` |
+| A bad new name, also a name that looks like a credential, with the message of `CreateMachine` | `invalid_argument` |
 | The new name is taken, with a free name in the message and in the detail `MachineNameTaken`, as for `CreateMachine` | `already_exists` |
 | The org holds 100 reserved names: `usage limit exceeded: the org holds 100 reserved machine names, the most that it can hold. A name stays reserved for 7 days after its rename or delete` | `resource_exhausted` |
 | The target is `deleted` | `failed_precondition` |

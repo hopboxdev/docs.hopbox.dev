@@ -148,6 +148,15 @@ A machine name is the first label of the machine URL, such as `box1` in `box1.ex
 | `xn--bx-0ia` | `invalid name: the machine name "xn--bx-0ia" must not have "--" in the third and fourth places` |
 | `ns1` | `reserved machine name: "ns1"` |
 
+A create and a rename also refuse a new name that looks like a credential, with `ValidateNewMachineName`. The check uses the patterns of the audit log ([Control store tables](/reference/control-store/index.html.md#record-an-entry)), in `LooksLikeCredential`. A machine name is public. It is in the machine URL, in DNS, and in the audit entry of the create or the rename. Examples are `xoxb-` with 10 more digits, which has the form of a Slack token, and `dev-sk-proj-` with 20 more letters.
+
+| Name | Result |
+| --- | --- |
+| `xoxb-123456789` | valid, because a Slack token has at least 10 characters after `xoxb-` |
+| `xoxb-` with 10 more digits | `invalid name: the machine name looks like a credential. A machine name is public: it is in the machine URL, in DNS, and in the audit log. Pick another name` |
+
+A lookup by name, the routes of the edge, and the machine URL use only the rules of `ValidateMachineName`. An action on a machine whose name the audit log refuses writes its audit entry without the refused name details: each of `name`, `old_name`, and `new_name` that looks like a credential. The target ID of the entry names the machine. A rename of a machine to its own name changes nothing, and passes before the credential check. So a new pattern in the audit log never cuts off a machine that holds its name already.
+
 ### Machine name suggestions
 
 A create without a name, or with a name that is taken, needs other names. `SuggestMachineNames(base, n)` returns up to `n` + 3 valid names close to `base`, in order of preference. The caller keeps the first one that is free. The machine API asks for `n` = 9.
@@ -158,7 +167,7 @@ A create without a name, or with a name that is taken, needs other names. `Sugge
 | Another valid name, such as `web` | It adds `-2`, `-3`, and so on: `web-2`, `web-3`. |
 | An empty or invalid name | `box1`, `box2`, and so on. |
 
-3 names with a random suffix follow the `n` numbered names, for example `web-k3x9q`. The suffix has 5 characters from `a` to `z` and `0` to `9`. These names help in an org whose numbers are all taken. Each suggestion is a valid name. A stem that is too long is cut, so the name fits in 63 characters. A final number of 1 to 9 digits counts, but a final number of 0 or of more digits does not. The list never holds the base itself.
+3 names with a random suffix follow the `n` numbered names, for example `web-k3x9q`. The suffix has 5 characters from `a` to `z` and `0` to `9`. These names help in an org whose numbers are all taken. Each suggestion is a valid name, and none looks like a credential. A base whose every suggestion looks like a credential gets `box1`, `box2`, and so on. An example is `xoxb-abcdefgh`: each number or suffix makes it a Slack token. A stem that is too long is cut, so the name fits in 63 characters. A final number of 1 to 9 digits counts, but a final number of 0 or of more digits does not. The list never holds the base itself.
 
 ### Name reservation
 
