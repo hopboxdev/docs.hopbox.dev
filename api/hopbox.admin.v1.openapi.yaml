@@ -3702,6 +3702,12 @@ components:
           type: string
           title: server_id
           description: server_id is the UUID of the node of the machine.
+        address:
+          type: string
+          title: address
+          description: |-
+            address is the IPv4 address of the machine on the network of its node, such as 10.240.0.2.
+             Only ListMachines fills it. It is empty in other responses, and for a machine without an address.
       title: Machine
       additionalProperties: false
       description: Machine is a machine with the facts that only instance admins see.

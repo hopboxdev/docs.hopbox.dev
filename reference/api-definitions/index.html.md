@@ -135,6 +135,7 @@ service OrgService {
 | `protoc-gen-go-mcp` | `github.com/redpanda-data/protoc-gen-go-mcp` v0.0.0-20260729122341-6334690a62b6 | `hopbox.v1` | `gen/hopbox/v1/hopboxv1mcp/*.pb.mcp.go`, one MCP tool for each unary method, for each file with a service. The plugin skips streaming methods. The MCP server in `internal/mcp` serves these tools ([the MCP server](/reference/mcp/index.html.md)). |
 | `protoc-gen-connect-openapi` | `github.com/sudorandom/protoc-gen-connect-openapi` v0.28.0 | `hopbox.v1` and `hopbox.admin.v1`, one run each | `docs/reference/api/hopbox.v1.openapi.yaml` and `docs/reference/api/hopbox.admin.v1.openapi.yaml`, one OpenAPI 3.1 document for each package |
 | `protoc-gen-es` | `@bufbuild/protoc-gen-es` 2.16.0 | every package except `hopbox.admin.v1`, `hopbox.cluster.v1`, and `hopbox.guest.v1` | `web/packages/sdk/src/gen/<path>/*_pb.ts`, TypeScript with `target=ts` and `import_extension=js`, so a relative import between generated files ends in `.js`, as Node.js ES modules require |
+| `protoc-gen-es` | `@bufbuild/protoc-gen-es` 2.16.0 | `hopbox.admin.v1`, with the types of `hopbox.v1` that it uses | `web/apps/console/src/gen/<path>/*_pb.ts`, with the same options. The Admin area of the console calls the admin API with this code ([Console](/reference/console/index.html.md#admin-area)). The SDK never includes the admin API. |
 
 buf is `github.com/bufbuild/buf` v1.74.0.
 
@@ -155,7 +156,7 @@ The output folders are in git. Do not edit a file in them by hand. The next `mak
 | Target | What it does |
 | --- | --- |
 | `generate` | Runs `buf generate`, then sqlc for the store queries ([the bundled Postgres](/reference/postgres/index.html.md#queries)). If `web/packages/sdk/node_modules/.bin/protoc-gen-es` is missing, it fails with a message. Run `corepack pnpm install` first. |
-| `check-generate` | Runs `make generate`. It then looks for a changed, added, or deleted file in `gen/`, `docs/reference/api/`, `web/packages/sdk/src/gen/`, and `internal/store/db/`. If git sees one, it prints the changed files and fails. |
+| `check-generate` | Runs `make generate`. It then looks for a changed, added, or deleted file in `gen/`, `docs/reference/api/`, `web/packages/sdk/src/gen/`, `web/apps/console/src/gen/`, and `internal/store/db/`. If git sees one, it prints the changed files and fails. |
 | `lint` | Runs golangci-lint, then `buf lint`, then the docs check, which makes sure that the docs and the code agree. |
 | `breaking` | Runs `buf breaking --against '.git#ref=<BREAKING_AGAINST>'`. If that ref has no `proto/` folder, it prints a message and passes. If the ref does not exist, it fails. |
 

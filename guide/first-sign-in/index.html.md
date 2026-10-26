@@ -118,7 +118,7 @@ curl -s -X POST -H 'Content-Type: application/json' -H 'Connect-Protocol-Version
 
 ## Read the audit log of the install
 
-An instance admin reads the audit log of the whole install:
+An instance admin reads the audit log of the whole install. With a session, the sign-in must be at most 10 minutes old ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#recent-sign-in)):
 
 ```sh
 browser -d '{"wholeInstall":true}' http://127.0.0.1:7080/hopbox.v1.AuditService/ListAuditEntries

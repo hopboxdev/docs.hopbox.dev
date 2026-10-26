@@ -62,5 +62,6 @@ If your sign-in is older than 10 minutes, "Link GitHub" and "Link Google" send y
 | API keys | the tab of an org | Create a key for a script. Copy the key at once: the console shows it only once. |
 | Env vars | the tab of an org | Set env vars and secrets for the machines of the org. |
 | Settings | the tab of an org | Rename, leave, or delete the org, and see its limits. |
+| Admin area | "Admin" at the top right, only for an instance admin | Operate the whole install: servers, pools, sizes, images, orgs, machines, instance admins, admin keys, the configuration of the install, and the audit log ([Use the Admin area](/guide/admin-area/index.html.md)). |
 
 "Sign out" at the top right ends the session.

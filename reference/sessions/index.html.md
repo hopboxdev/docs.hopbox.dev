@@ -9,7 +9,7 @@ A person signs in to the console of an install with a magic link, with GitHub, o
 | Credential | Lifetime | Use | Source |
 | --- | --- | --- | --- |
 | Session | 30 days after the sign-in. After 7 days without a call, it ends before that. | many calls | A phase 1 default |
-| Recent sign-in of a session | 10 minutes after the sign-in | the calls that need it ([Recent sign-in](#recent-sign-in)) | A phase 2 default |
+| Recent sign-in of a session | 10 minutes after the sign-in | the calls that need it, such as the Admin area of the console ([Recent sign-in](#recent-sign-in)) | A phase 2 default |
 | Magic link | 15 minutes | once | the same |
 | First-admin login link | 15 minutes | once | the same |
 | Flow of a sign-in with GitHub or Google | 10 minutes | once | [Sign-in with GitHub and Google](/reference/oauth/index.html.md#start) |
@@ -83,8 +83,10 @@ A call that a session taken over must not reach needs a recent sign-in. These ca
 | `ApproveDevice` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#approvedevice)) | The approval makes a CLI sign-in whose refresh token lives 30 days and renews with each use. So the CLI sign-in can outlive the session. |
 | `RequestMagicLink` with `link` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#requestmagiclink)) | The link adds a sign-in method to the account. The method outlives the session. |
 | `GET /auth/{provider}/start?link=1` ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#link-to-a-signed-in-account)) | The same. This endpoint is not a call of the API. It sends an older session to the sign-in page of the console instead of an error. |
+| Each call of the admin API that a session can make ([the admin API](/reference/admin-api/index.html.md#admin-sessions)), the reads too | An instance admin operates the whole install. A session lives for days in a browser, so the Admin area of the console works only for 10 minutes after each sign-in. |
+| `ListAuditEntries` with `whole_install`, or for an org in which the instance admin is not an owner or an admin ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#listauditentries)) | An instance admin reads these audit logs as in the Admin area. A CLI token of an instance admin reads them without this rule. An org owner or org admin reads the log of its own org without it. |
 
-The rule applies only to a console session, because only a session has a sign-in in a browser. Such a call first runs its policy check, then the check of the sign-in:
+The rule applies only to a console session, because only a session has a sign-in in a browser. Such a call gives these results:
 
 | Caller | Result |
 | --- | --- |
@@ -92,11 +94,11 @@ The rule applies only to a console session, because only a session has a sign-in
 | A session whose sign-in is more than 10 minutes old | `permission_denied` with the message `permission denied: this action needs a sign-in within the last 10 minutes. Sign in again, then retry`, and the detail `hopbox.v1.RecentSignInRequired` with `max_age` 10 minutes ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#recentsigninrequired)). |
 | Any other caller, such as a CLI token, an API key, or local root | The check of the sign-in passes it, and the policy of the call decides. For example, `ApproveDevice` takes only a session. So a CLI token or a key gets the policy refusal `permission denied: a caller of kind <kind> may not do auth.approve_device`, without the detail. An anonymous caller gets `unauthenticated`. |
 
-Only the refusal of an old session has the detail. So a client knows from the detail that a new sign-in fixes the error. The other calls of an old session keep working.
+Only the refusal of an old session has the detail. So a client knows from the detail that a new sign-in fixes the error. The other calls of an old session keep working. On the admin API, the session of an account that is not an instance admin gets the refusal of the policy without the detail. A new sign-in does not change that refusal.
 
 To get a recent sign-in, the person signs in again in the same browser. The new sign-in ends the old session of that browser and starts a new one ([What a sign-in does](#what-a-sign-in-does)). The sessions of the account in other browsers stay. The console shows the sign-in page for this with `/signin?again=1` ([Console](/reference/console/index.html.md#sign-in)).
 
-The code of the check is `service.RequireRecentSignIn`. An operation calls it after its policy check. The check refuses only a session with an older sign-in, so an admin key and local root keep the calls that their policy allows.
+The policy check enforces the rule for the admin API and for `ListAuditEntries` ([the API server](/reference/api/index.html.md#callers-and-policy)). Their rules allow the session of an instance admin only with a recent sign-in. A rule can refuse a session with an older sign-in, and allow the same session with a recent one. In that case, `policy.Authorize` returns the error of this section. `ApproveDevice`, `RequestMagicLink` with `link`, and the start of a link with GitHub or Google call `service.RequireRecentSignIn` after their policy check. Both checks refuse only a session with an older sign-in, so an admin key and local root keep the calls that their policy allows.
 
 ## Magic links
 

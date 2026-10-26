@@ -121,9 +121,9 @@ The default org of a new key is the personal org of the caller. A personal org t
 
 An admin API key has install scope and calls the admin API on the API listener ([the admin API](/reference/admin-api/index.html.md#where-the-admin-api-is-served)). The hopbox Terraform provider uses one. It belongs to no account and no org, so it has its own table ([Control store tables](/reference/control-store/index.html.md#admin_keys)). It expires like an API key.
 
-The caller `admin_key` can do every admin call except the calls of `KeyringService`, `LoginLinkService`, and `AdminKeyService` ([the API server](/reference/api/index.html.md#callers-and-policy)). These calls are for root on a control server only. So no key makes another key.
+The caller `admin_key` can do every admin call except the calls of `KeyringService`, `MailService`, `LoginLinkService`, and `AdminKeyService` ([the API server](/reference/api/index.html.md#callers-and-policy)). So no key makes another key.
 
-Root makes admin keys in two ways, through the admin socket:
+Root on a control server makes admin keys in two ways, through the admin socket:
 
 - `hopboxd admin admin-key create` makes a key and prints it once ([hopboxd](/reference/hopboxd/index.html.md#admin-admin-key-create)).
 - `hopboxd admin admin-key register --sha256` registers a key from the SHA-256 of a key that you made yourself, so the secret never reaches the server ([hopboxd](/reference/hopboxd/index.html.md#admin-admin-key-register)). The first server of an install gets its first key this way. `hopboxd install --bootstrap-admin-key-hash` writes the hash to a file, and the control role registers it at its first start ([Server layout](/reference/server-layout/index.html.md#the-bootstrap-admin-api-key)). A second registration of the same hash returns the first key, unchanged. If that key expired, the registration fails with `failed_precondition`.
@@ -136,6 +136,8 @@ HASH="$(printf '%s' "$KEY" | shasum -a 256 | cut -d' ' -f1)"
 ```
 
 The key has 50 characters. Keep `$KEY` as a secret, and pass only `$HASH` to the server. In Go, `auth.NewPrefixedToken(auth.AdminKeyPrefix)` makes such a key, and the service operation `RegisterAdminKey` of `internal/service` registers its hash for `hopboxd install`. [Run the control role on a laptop](/guide/run-hopboxd/index.html.md#make-an-admin-api-key) makes and registers admin API keys on a laptop install.
+
+An instance admin also makes, lists, and revokes admin keys with an admin session, the session of a sign-in within the last 10 minutes ([the admin API](/reference/admin-api/index.html.md#admin-sessions)). The response of `CreateAdminKey` holds the secret once, as for root. An admin session cannot register a hash.
 
 ## SSH keys
 

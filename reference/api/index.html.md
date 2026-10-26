@@ -20,7 +20,7 @@ gRPC needs HTTP/2. Without TLS, a client must start HTTP/2 with prior knowledge,
 
 The clients of the install do not reach this listener. They reach the edge servers, which forward the requests of the domain of the install to the internal listener of the control role ([the edge role](/reference/edge/index.html.md#forwarded-requests)). The internal listener serves these requests with the same handler as this listener, with the address of each client as the peer ([the internal listener](/reference/internal-listener/index.html.md#forwarded-requests)). This listener stays on loopback for the processes and the SSH tunnels of the server. Its peers are loopback addresses, so the rate limits of a client skip them ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#rate-limits)).
 
-The listener serves the admin API too, for admin API keys. The edge servers forward it too, so the admin API is public behind the edge, for admin API keys. On this listener, the policy refuses every admin call of every other caller ([Callers and policy](#callers-and-policy)). Root on the server calls the admin API through the admin socket ([the admin API](/reference/admin-api/index.html.md#the-admin-socket)).
+The listener serves the admin API too, for admin API keys and for the Admin area of the console. The edge servers forward it too, so the admin API is public behind the edge. On this listener, the policy refuses every admin call of every other caller ([Callers and policy](#callers-and-policy)). The Admin area calls a part of the admin API with an admin session: the session of an instance admin with a sign-in within the last 10 minutes ([the admin API](/reference/admin-api/index.html.md#admin-sessions)). Root on the server calls the admin API through the admin socket ([the admin API](/reference/admin-api/index.html.md#the-admin-socket)).
 
 | HTTP server setting | Value |
 | --- | --- |
@@ -110,15 +110,15 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | Action | Operation | Resource | Allowed callers |
 | --- | --- | --- | --- |
 | `install.get_info` | `InstallService.GetInstallInfo` | the install | every caller, also `anonymous` |
-| `install_config.get` | `InstallConfigService.GetInstallConfig` | the install | `local_root`, `admin_key` |
-| `install_config.update` | `InstallConfigService.UpdateInstallConfig` | the install | `local_root`, `admin_key` |
+| `install_config.get` | `InstallConfigService.GetInstallConfig` | the install | `local_root`, `admin_key`, an admin `session` |
+| `install_config.update` | `InstallConfigService.UpdateInstallConfig` | the install | `local_root`, `admin_key`, an admin `session` |
 | `certificate.get` | `CertificateService.GetCertificate` | the install | `local_root`, `admin_key` |
-| `smtp_config.get` | `InstallConfigService.GetSMTPConfig` | the install | `local_root`, `admin_key` |
-| `smtp_config.set` | `InstallConfigService.SetSMTPConfig` | the install | `local_root`, `admin_key` |
-| `smtp_config.clear` | `InstallConfigService.ClearSMTPConfig` | the install | `local_root`, `admin_key` |
-| `oauth_config.get` | `InstallConfigService.GetOAuthConfig` | the install | `local_root`, `admin_key` |
-| `oauth_config.set` | `InstallConfigService.SetOAuthClient` | the install | `local_root`, `admin_key` |
-| `oauth_config.clear` | `InstallConfigService.ClearOAuthClient` | the install | `local_root`, `admin_key` |
+| `smtp_config.get` | `InstallConfigService.GetSMTPConfig` | the install | `local_root`, `admin_key`, an admin `session` |
+| `smtp_config.set` | `InstallConfigService.SetSMTPConfig` | the install | `local_root`, `admin_key`, an admin `session` |
+| `smtp_config.clear` | `InstallConfigService.ClearSMTPConfig` | the install | `local_root`, `admin_key`, an admin `session` |
+| `oauth_config.get` | `InstallConfigService.GetOAuthConfig` | the install | `local_root`, `admin_key`, an admin `session` |
+| `oauth_config.set` | `InstallConfigService.SetOAuthClient` | the install | `local_root`, `admin_key`, an admin `session` |
+| `oauth_config.clear` | `InstallConfigService.ClearOAuthClient` | the install | `local_root`, `admin_key`, an admin `session` |
 | `keyring.rotate` | `KeyringService.RotateKEK` | the install | `local_root` only |
 | `keyring.list` | `KeyringService.ListKEKs` | the install | `local_root` only |
 | `keyring.rewrap` | `KeyringService.RewrapSealedValues` | the install | `local_root` only |
@@ -127,15 +127,15 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `mail_file.list` | `MailService.ListMailFiles` | the install | `local_root` only |
 | `mail_file.get` | `MailService.GetMailFile` | the install | `local_root` only |
 | `login_link.create` | `LoginLinkService.CreateLoginLink` | the install | `local_root` only |
-| `instance_admin.list` | `InstanceAdminService.ListInstanceAdmins` | the install | `local_root`, `admin_key` |
-| `instance_admin.grant` | `InstanceAdminService.GrantInstanceAdmin` | the install | `local_root`, `admin_key` |
-| `instance_admin.revoke` | `InstanceAdminService.RevokeInstanceAdmin` | the install | `local_root`, `admin_key` |
+| `instance_admin.list` | `InstanceAdminService.ListInstanceAdmins` | the install | `local_root`, `admin_key`, an admin `session` |
+| `instance_admin.grant` | `InstanceAdminService.GrantInstanceAdmin` | the install | `local_root`, `admin_key`, an admin `session` |
+| `instance_admin.revoke` | `InstanceAdminService.RevokeInstanceAdmin` | the install | `local_root`, `admin_key`, an admin `session` |
 | `admin_account.list_sign_in_methods` | admin `AccountService.ListAccountSignInMethods` | the install | `local_root`, `admin_key` |
 | `admin_account.remove_sign_in_method` | admin `AccountService.RemoveAccountSignInMethod` | the install | `local_root`, `admin_key` |
-| `admin_key.create` | `AdminKeyService.CreateAdminKey` | the install | `local_root` only |
+| `admin_key.create` | `AdminKeyService.CreateAdminKey` | the install | `local_root`, an admin `session` |
 | `admin_key.register` | `AdminKeyService.RegisterAdminKey` | the install | `local_root` only |
-| `admin_key.list` | `AdminKeyService.ListAdminKeys` | the install | `local_root` only |
-| `admin_key.revoke` | `AdminKeyService.RevokeAdminKey` | the install | `local_root` only |
+| `admin_key.list` | `AdminKeyService.ListAdminKeys` | the install | `local_root`, an admin `session` |
+| `admin_key.revoke` | `AdminKeyService.RevokeAdminKey` | the install | `local_root`, an admin `session` |
 | `auth.request_magic_link` | `AuthService.RequestMagicLink` | the install | `anonymous`, `session` |
 | `auth.verify_magic_link` | `AuthService.VerifyMagicLink` | the install | `anonymous`, `session` |
 | `auth.verify_login_link` | `AuthService.VerifyLoginLink` | the install | `anonymous`, `session` |
@@ -161,8 +161,8 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `api_key.create` | `APIKeyService.CreateAPIKey` | the new key: its org with the role of the caller, its kind, and its account | a `session` or `cli_token`. A member key for itself needs the role `member` or more. An org key needs `admin` or `owner`. |
 | `api_key.list` | `APIKeyService.ListAPIKeys` | the org, with the role of the caller in it | a `session` or `cli_token` with a role in the org. The call returns only the keys that the caller can revoke. |
 | `api_key.revoke` | `APIKeyService.RevokeAPIKey` | the key: its org with the role of the caller, its kind, and its account | a `session` or `cli_token`. Its own member key needs the role `member` or more. Any other key needs `admin` or `owner`. |
-| `audit.list_org` | `AuditService.ListAuditEntries` for one org | the org, with the role of the caller in it | a `session` or `cli_token` with the role `owner` or `admin` in the org. Also a `member_key` of such an account in the org of the key, and a `session` or `cli_token` of an instance admin. |
-| `audit.list_install` | `AuditService.ListAuditEntries` for the whole install | the install | a `session` or `cli_token` of an instance admin |
+| `audit.list_org` | `AuditService.ListAuditEntries` for one org | the org, with the role of the caller in it | a `session` or `cli_token` with the role `owner` or `admin` in the org. Also a `member_key` of such an account in the org of the key, a `cli_token` of an instance admin, and an admin `session`. |
+| `audit.list_install` | `AuditService.ListAuditEntries` for the whole install | the install | a `cli_token` of an instance admin, or an admin `session` |
 | `org.create` | `OrgService.CreateOrg` | the install | `session`, `cli_token` |
 | `org.list` | `OrgService.ListOrgs` | the account of the caller | the `session` or `cli_token` of the account |
 | `org.get` | `OrgService.GetOrg` | the org, with the role of the caller in it | a `session`, `cli_token`, or `member_key` with a role in the org, or an `org_key` of the org |
@@ -180,12 +180,12 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `var.list` | `VarService.ListVars` | the org, with the role of the caller in it | a `session`, `cli_token`, or `member_key` with a role in the org, or an `org_key` of the org. The call returns the org-level values and the private values of the caller ([the env var API](/reference/vars-api/index.html.md)). |
 | `var.set` | `VarService.SetVar` | the value: its org with the role of the caller, its scope, and its owner | a `session`, `cli_token`, or `member_key`. A shared or an all value needs the role `admin` or `owner`. A private value needs the role `member` or more, and the account of the caller as its owner. |
 | `var.delete` | `VarService.DeleteVar` | the value: its org with the role of the caller, its scope, and its owner | as `var.set` |
-| `org.list_all` | admin `OrgService.ListOrgs` | the install | `local_root`, `admin_key` |
-| `org.suspend` | admin `OrgService.SuspendOrg` | the install | `local_root`, `admin_key` |
-| `org.unsuspend` | admin `OrgService.UnsuspendOrg` | the install | `local_root`, `admin_key` |
-| `org.set_limits` | admin `OrgService.SetOrgLimits` | the install | `local_root`, `admin_key` |
-| `org_limits.get_defaults` | admin `OrgService.GetDefaultOrgLimits` | the install | `local_root`, `admin_key` |
-| `org_limits.set_defaults` | admin `OrgService.SetDefaultOrgLimits` | the install | `local_root`, `admin_key` |
+| `org.list_all` | admin `OrgService.ListOrgs` | the install | `local_root`, `admin_key`, an admin `session` |
+| `org.suspend` | admin `OrgService.SuspendOrg` | the install | `local_root`, `admin_key`, an admin `session` |
+| `org.unsuspend` | admin `OrgService.UnsuspendOrg` | the install | `local_root`, `admin_key`, an admin `session` |
+| `org.set_limits` | admin `OrgService.SetOrgLimits` | the install | `local_root`, `admin_key`, an admin `session` |
+| `org_limits.get_defaults` | admin `OrgService.GetDefaultOrgLimits` | the install | `local_root`, `admin_key`, an admin `session` |
+| `org_limits.set_defaults` | admin `OrgService.SetDefaultOrgLimits` | the install | `local_root`, `admin_key`, an admin `session` |
 | `machine.create` | `MachineService.CreateMachine` | the org, with the role of the caller in it | a caller that acts in the org: a `session` or a `cli_token` with a role in the org. Also a `member_key` of the org whose account has a role in it, and an `org_key` of the org. |
 | `machine.list` | `MachineService.ListMachines` | the org, with the role of the caller in it | a caller that acts in the org, as for `machine.create`. The list holds only the machines that `machine.get` allows. |
 | `machine.watch` | `MachineService.WatchMachines` | the org, with the role of the caller in it | a caller that acts in the org, as for `machine.create`. The stream holds only the machines that `machine.get` allows. |
@@ -204,26 +204,29 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `machine.exec` | `MachineService.Exec`, `Upload`, `Download`, `StreamMachineLogs`, and the WebSocket `/api/ws/exec` | the machine | as for `machine.start` |
 | `machine.ssh` | an SSH connection through the front door, in `EdgeService.AuthorizeSSH` ([the SSH front door](/reference/ssh-front-door/index.html.md#who-opens-a-machine)) | the machine | an `ssh_key` of an account that uses the machine, as for `machine.exec`. No other caller kind. |
 | `machine.open_url` | `GET /auth/machine`, and `EdgeService.AuthorizeMachineRequest` for the account of a token ([the edge role](/reference/edge/index.html.md#private-machine-urls)) | the machine | a `session` of an account that uses the machine, as for `machine.start`. No other caller kind. |
-| `machine.list_all` | admin `MachineService.ListMachines` | the install | `local_root`, `admin_key` |
-| `machine.admin_stop` | admin `MachineService.StopMachine` | the install | `local_root`, `admin_key` |
-| `machine.admin_delete` | admin `MachineService.DeleteMachine` | the install | `local_root`, `admin_key` |
+| `machine.list_all` | admin `MachineService.ListMachines` | the install | `local_root`, `admin_key`, an admin `session` |
+| `machine.admin_stop` | admin `MachineService.StopMachine` | the install | `local_root`, `admin_key`, an admin `session` |
+| `machine.admin_delete` | admin `MachineService.DeleteMachine` | the install | `local_root`, `admin_key`, an admin `session` |
 | `image.register` | admin `ImageService.RegisterImage`, and the start of the control role for the default image of its release ([hopboxd](/reference/hopboxd/index.html.md#the-default-image-of-the-release)) | the install | `local_root`, `admin_key` |
-| `image.list` | admin `ImageService.ListImages` | the install | `local_root`, `admin_key` |
-| `pool.create` | `PoolService.CreatePool` | the install | `local_root`, `admin_key` |
-| `pool.get` | `PoolService.GetPool` | the install | `local_root`, `admin_key` |
-| `pool.list` | `PoolService.ListPools` | the install | `local_root`, `admin_key` |
-| `pool.delete` | `PoolService.DeletePool` | the install | `local_root`, `admin_key` |
-| `size.create` | `SizeService.CreateSize` | the install | `local_root`, `admin_key` |
-| `size.get` | `SizeService.GetSize` | the install | `local_root`, `admin_key` |
-| `size.list` | admin `SizeService.ListSizes` | the install | `local_root`, `admin_key` |
-| `size.retire` | `SizeService.RetireSize` | the install | `local_root`, `admin_key` |
+| `image.list` | admin `ImageService.ListImages` | the install | `local_root`, `admin_key`, an admin `session` |
+| `pool.create` | `PoolService.CreatePool` | the install | `local_root`, `admin_key`, an admin `session` |
+| `pool.get` | `PoolService.GetPool` | the install | `local_root`, `admin_key`, an admin `session` |
+| `pool.list` | `PoolService.ListPools` | the install | `local_root`, `admin_key`, an admin `session` |
+| `pool.delete` | `PoolService.DeletePool` | the install | `local_root`, `admin_key`, an admin `session` |
+| `size.create` | `SizeService.CreateSize` | the install | `local_root`, `admin_key`, an admin `session` |
+| `size.get` | `SizeService.GetSize` | the install | `local_root`, `admin_key`, an admin `session` |
+| `size.list` | admin `SizeService.ListSizes` | the install | `local_root`, `admin_key`, an admin `session` |
+| `size.retire` | `SizeService.RetireSize` | the install | `local_root`, `admin_key`, an admin `session` |
 | `health.check` | `grpc.health.v1.Health`, `Check` and `Watch` | the install | every caller, also `anonymous` |
 | `reflection.read` | `grpc.reflection.v1.ServerReflection` and `grpc.reflection.v1alpha.ServerReflection` | the install | every caller, also `anonymous` |
 | `enrollment_token.create` | `ServerService.CreateEnrollmentToken` | the install | `local_root`, `admin_key` |
-| `server.list` | `ServerService.ListServers` | the install | `local_root`, `admin_key` |
-| `server.get` | `ServerService.GetServer` | the install | `local_root`, `admin_key` |
-| `server.cordon` | `ServerService.CordonServer` | the install | `local_root`, `admin_key` |
-| `server.uncordon` | `ServerService.UncordonServer` | the install | `local_root`, `admin_key` |
+| `server.list` | `ServerService.ListServers` | the install | `local_root`, `admin_key`, an admin `session` |
+| `server.get` | `ServerService.GetServer` | the install | `local_root`, `admin_key`, an admin `session` |
+| `server.cordon` | `ServerService.CordonServer` | the install | `local_root`, `admin_key`, an admin `session` |
+| `server.uncordon` | `ServerService.UncordonServer` | the install | `local_root`, `admin_key`, an admin `session` |
+| `server.set_labels` | `ServerService.SetServerLabels` | the install | `local_root`, `admin_key`, an admin `session` |
+| `server.decommission` | `ServerService.DecommissionServer` | the install | `local_root`, `admin_key` |
+| `control.list_processes` | `ServerService.ListControlProcesses` | the install | `local_root`, `admin_key` |
 | `server.enroll` | `EnrollmentService.Enroll` | the install | every caller, also `anonymous`. The enrollment token is the credential ([Enrollment and the install PKI](/reference/enrollment/index.html.md)). |
 | `server.channel` | `ControlService.Channel` | the server of the caller | `server`, for its own server only |
 | `server.heartbeat` | a heartbeat on `ControlService.Channel` | the server of the caller | `server`, for its own server only |
@@ -251,7 +254,9 @@ For an org, the service layer reads the role of the caller in the org before the
 
 Health and reflection do not call the service layer, so the API runs the policy check for them before their handler.
 
-A refused `anonymous` caller gets `unauthenticated` with the fixed message `this call needs a credential`, which names no action. Any other refused caller gets `permission_denied`, and the message names the caller kind and the action. The design lets an instance admin call the admin API from the console with a recent sign-in. That session arrives with the Admin area of the console in phase 2, so a `session` is refused today.
+An admin `session` is the `session` of an instance admin whose sign-in is at most 10 minutes old ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#recent-sign-in)). The Admin area of the console calls the admin API with it. Every other `session` is refused on these actions, and so is the `cli_token` of an instance admin. [The admin API](/reference/admin-api/index.html.md#admin-sessions) lists the calls.
+
+A refused `anonymous` caller gets `unauthenticated` with the fixed message `this call needs a credential`, which names no action. Any other refused caller gets `permission_denied`, and the message names the caller kind and the action. One case is different. Sometimes the check refuses the `session` of an instance admin only because its sign-in is too old. The check then returns the error of a recent sign-in instead ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#recent-sign-in)). That error has the detail `hopbox.v1.RecentSignInRequired`, so the console asks the person to sign in again.
 
 ## Idempotency keys
 

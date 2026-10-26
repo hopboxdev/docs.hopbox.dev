@@ -599,7 +599,7 @@ Returns entries of the audit log ([Control store tables](/reference/control-stor
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.v1.AuditService/ListAuditEntries` |
-| Policy action | `audit.list_org` for one org: a `session` or `cli_token` with the role `owner` or `admin` in the org. Also a `member_key` of such an account, in the org of the key, and a `session` or `cli_token` of an instance admin. `audit.list_install` for the whole install: a `session` or `cli_token` of an instance admin. |
+| Policy action | `audit.list_org` for one org: a `session` or `cli_token` with the role `owner` or `admin` in the org. Also a `member_key` of such an account, in the org of the key, and a `cli_token` of an instance admin. Also the `session` of an instance admin with a sign-in within the last 10 minutes. `audit.list_install` for the whole install: a `cli_token` of an instance admin, or the `session` of an instance admin with a sign-in within the last 10 minutes ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#recent-sign-in)). |
 | Idempotent option | no |
 | Audit entry | none |
 
@@ -630,6 +630,7 @@ The response `ListAuditEntriesResponse` has the fields `entries`, a repeated `Au
 | --- | --- |
 | A caller without the role in the org, or a member. The org can also not exist. | `permission_denied` |
 | `whole_install` from a caller that is not an instance admin | `permission_denied` |
+| A session of an instance admin whose sign-in is more than 10 minutes old, with `whole_install` or an org where it is not an owner or an admin | `permission_denied` with the detail `hopbox.v1.RecentSignInRequired` ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#recent-sign-in)) |
 | `whole_install` with `org_id` | `invalid_argument` |
 | An `org_id` that is not a UUID | `invalid_argument` |
 | A page size out of range | `invalid_argument` |

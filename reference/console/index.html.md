@@ -12,7 +12,7 @@ The first console holds the parts of phase 1:
 - the switch that makes a URL public
 - the web terminal
 
-It also has the pages that the links of the API open, the account page, and the pages of an org. The Admin area for instance admins comes in phase 2.
+It also has the pages that the links of the API open, the account page, and the pages of an org. Phase 2 adds the Admin area for instance admins ([Admin area](#admin-area)).
 
 ## Where hopboxd serves it
 
@@ -51,12 +51,44 @@ A page that needs a session sends a browser without one to `/signin?return_to=<p
 | `/orgs/<org ID>/api-keys` | yes | The API keys of the org. A new key shows its secret once. | `ListAPIKeys`, `CreateAPIKey`, `RevokeAPIKey` |
 | `/orgs/<org ID>/vars` | yes | The env vars and secrets of the org. A secret shows no value. | `ListVars`, `SetVar`, `DeleteVar` |
 | `/orgs/<org ID>/settings` | yes | The name, the usage and the limits of the org, and the leave and delete actions. | `GetOrg`, `UpdateOrg`, `GetOrgUsage`, `LeaveOrg`, `DeleteOrg` |
+| `/admin/...` | yes, of an instance admin | The Admin area ([Admin area](#admin-area)). | the admin API |
 
 Every page of an org also calls `GetOrg`. Each page shows the actions that the role of the account allows. The service layer still decides each call ([the API server](/reference/api/index.html.md)), and the page shows its error.
 
 A form, or the question before a delete or another action that cannot be undone, opens in a modal dialog. The dialog keeps the focus inside it. The title of the dialog is its accessible name. The Cancel button, the Escape key, and a click on the dark backdrop close it. A click inside the dialog, or a drag that starts inside it, does not close it.
 
 A path with no page shows "Page not found". A path with a file extension, or under `/assets/`, that names no file of the build gets `404` with the text `the console has no file <path>`.
+
+## Admin area
+
+The Admin area is the part of the console for instance admins. [Use the Admin area](/guide/admin-area/index.html.md) shows how to use it. The code is in `web/apps/console/src/admin`.
+
+Only an instance admin sees the link "Admin" at the top right. The routes under `/admin` read `instance_admin` of `GetAccount` before they load. For any other account, each of them shows "Page not found". This only hides the pages. The server decides each call: the admin API takes a session only from an instance admin with a sign-in within the last 10 minutes ([the admin API](/reference/admin-api/index.html.md#admin-sessions)).
+
+| Path | What it does | Calls |
+| --- | --- | --- |
+| `/admin` | Opens `/admin/servers`. | none |
+| `/admin/servers` | The servers, with their state, their last heartbeat, their compat class, their labels, and their count of machines. The cordon and uncordon actions. | `ListServers`, `CordonServer`, `UncordonServer` |
+| `/admin/servers/<server ID>` | One server: its roles, its pool, its status and problems, its heartbeat, its compat class, its CPU, its capacity, its versions, and its certificate. Its cordon, and a form for its labels. | `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels` |
+| `/admin/pools` | The pools, with their OVHcloud plan, their hardware, and their counts of servers and sizes. A form that creates a pool, and the delete action. | `ListPools`, `CreatePool`, `DeletePool` |
+| `/admin/sizes` | The sizes, with their resources, their pool, and their labels. With "Show retired sizes", also the retired ones. A form that creates a size, and the retire action. | `ListSizes`, `ListPools`, `CreateSize`, `RetireSize` |
+| `/admin/images` | The machine images, with their digest, their arch, their disk, and their times. It has no action. | `ListImages` |
+| `/admin/orgs` | The orgs, with their members, their usage, their limits, and their suspension, page by page. The suspend, unsuspend, and limits actions, and a form for the default limits. | `ListOrgs`, `SuspendOrg`, `UnsuspendOrg`, `SetOrgLimits`, `GetDefaultOrgLimits`, `SetDefaultOrgLimits` |
+| `/admin/machines?org=<org ID>` | The machines of every org, or of one org with `org`, page by page. Each row has the org, the state, the node, the address, and the size. The stop and delete actions. While a machine changes its state, the page reads the list again every 2 seconds. | `ListMachines`, `ListServers`, `StopMachine`, `DeleteMachine` |
+| `/admin/admins` | The instance admins. A form that makes an account an instance admin by its verified email, and the revoke action. | `ListInstanceAdmins`, `GrantInstanceAdmin`, `RevokeInstanceAdmin`, `GetAccount` |
+| `/admin/admin-keys` | The admin API keys. A new key shows its secret once. The revoke action. | `ListAdminKeys`, `CreateAdminKey`, `RevokeAdminKey` |
+| `/admin/config` | The domain, the public addresses, the ACME settings, the mail transport, and maintenance mode. A form that changes the domain. A form for the SMTP server, and a form for the app of GitHub and of Google. | `GetInstallConfig`, `UpdateInstallConfig`, `GetSMTPConfig`, `SetSMTPConfig`, `ClearSMTPConfig`, `GetOAuthConfig`, `SetOAuthClient`, `ClearOAuthClient` |
+| `/admin/audit` | The audit log of the whole install, newest first, page by page. | `ListAuditEntries` with `whole_install` |
+
+The calls of the admin API go to the services `hopbox.admin.v1.*`. Each read of the admin API writes an audit entry. So each load of a page of the Admin area adds entries to the audit log ([the admin API](/reference/admin-api/index.html.md#where-the-admin-api-is-served)).
+
+The Admin area keeps the rules for instance admins:
+
+- It has no shell, no web terminal, and no file access for a machine. The machine list has no link to the page of a machine.
+- It shows no secret value. No call of the admin API returns the SMTP password, an OAuth client secret, or key material. No call returns the secret of an admin key after its create. The forms of a password and a client secret are write-only: they start empty, and an empty field keeps the value that is set now. After a save, the page empties the field, and the cache of the console drops the request.
+- The secret of a new admin key shows once, as `hopboxd admin admin-key create` prints it once. When the page closes, the cache of the console drops it.
+
+Each call needs a sign-in within the last 10 minutes. After an older one, a call fails with `permission_denied` and the detail `RecentSignInRequired`. The page then shows "This step needs a sign-in within the last 10 min" and the button "Sign in again" ([Sign-in](#sign-in)).
 
 ## Look
 
@@ -110,7 +142,7 @@ The sign-in page asks `GetInstallInfo` for the sign-in methods:
 
 A magic link or a login link opens its own page, often in a new tab. So the sign-in page keeps its return path in the local storage of the browser for 15 minutes, the lifetime of a link. The page of the link then opens that path.
 
-Some steps need a recent sign-in, at most 10 minutes old ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#recent-sign-in)). In the console, the approval of a CLI sign-in on `/device` and the link of a sign-in method on `/account` are such steps. A link of GitHub or Google starts on the browser endpoint, which sends an older session to `/signin?again=1&return_to=/account` itself ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#link-to-a-signed-in-account)). A call of such a step with an older session fails with `permission_denied` and the detail `RecentSignInRequired`. The page then links to `/signin?again=1&return_to=<path of the page>`. With `again=1`, the sign-in page shows the methods to a person who is signed in already. The new sign-in replaces the session of the browser, and the page of the step opens again.
+Some steps need a recent sign-in, at most 10 minutes old ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#recent-sign-in)). In the console, these steps are the approval of a CLI sign-in on `/device` and the link of a sign-in method on `/account`. Each call of the Admin area is such a step too. A link of GitHub or Google starts on the browser endpoint, which sends an older session to `/signin?again=1&return_to=/account` itself ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#link-to-a-signed-in-account)). A call of such a step with an older session fails with `permission_denied` and the detail `RecentSignInRequired`. The page then links to `/signin?again=1&return_to=<path of the page>`. With `again=1`, the sign-in page shows the methods to a person who is signed in already. The new sign-in replaces the session of the browser, and the page of the step opens again.
 
 The console checks a return path with the rules of the server. A good path has these properties:
 
@@ -130,6 +162,8 @@ A call that fails with `unauthenticated` on a page that needs a session sends th
 ## Calls
 
 The console calls the API with the TypeScript SDK `@hopbox/sdk` of the workspace, in its browser runtime ([TypeScript SDK](/reference/ts-sdk/index.html.md)). The session cookie authenticates each call, so the client has no credential. Each call is a Connect `POST` with the binary format.
+
+The SDK never includes the admin API. So the Admin area has its own generated code of `hopbox.admin.v1` in `web/apps/console/src/gen` ([API definitions](/reference/api-definitions/index.html.md#generators-and-outputs)). It calls the admin API on the same transport of the SDK, with the same retries and idempotency keys.
 
 The pages read and change data with TanStack Query and connect-query on the transport of the SDK. The transport already retries a call that is safe to run again, and puts an idempotency key on each create. A read call gets a retry after `unavailable`, `resource_exhausted`, or `deadline_exceeded`. A change without an idempotency key gets one only after an answer with `Hopbox-Not-Run: 1`, because `fetch` does not tell a refused connection from a lost answer ([TypeScript SDK](/reference/ts-sdk/index.html.md#retries)). So TanStack Query never retries a call itself. A read stays fresh for 15 seconds. A change reads the data of its service again.
 
@@ -209,7 +243,7 @@ Each file has an `ETag` from its SHA-256, and a request with a matching `If-None
 
 1. It builds the SDK into `web/packages/sdk/dist/` with `tsc`.
 2. It type-checks the console with `tsc`.
-3. Vite writes the build to `internal/console/dist/`: `index.html`, and the hashed files under `assets/`, the icon and the two fonts among them. The terminal and xterm.js load in a chunk of their own, only on the terminal page.
+3. Vite writes the build to `internal/console/dist/`: `index.html`, and the hashed files under `assets/`, the icon and the two fonts among them. The terminal and xterm.js load in a chunk of their own, only on the terminal page. When an instance admin opens a page of the Admin area, the page loads in a chunk of its own.
 
 `make build` runs `make console` first, so each `hopboxd` holds the console of its own commit. `tools/bundle` refuses a `hopboxd` without the console, so no release ships without it ([Release bundle](/reference/release-bundle/index.html.md)). `internal/console` embeds `internal/console/dist/` with `go:embed`. Git ignores the build, apart from the empty file `.gitkeep`, which `go:embed` needs. The same lockfile gives the same files, so the build is reproducible.
 
@@ -234,7 +268,7 @@ The console pins each package to an exact version in `web/apps/console/package.j
 
 | Test | What it checks | Command |
 | --- | --- | --- |
-| `web/apps/console/test/*.test.ts` | With vitest: the rules of the return path and the browser storage, the live machine list, the labels, and the error texts. Also the clicks that close a dialog, and the colors that the web terminal takes from the tokens. | `make test-console`, or `node_modules/.bin/vitest run` in `web/apps/console` |
+| `web/apps/console/test/*.test.ts` | With vitest: the rules of the return path and the browser storage, the live machine list, the labels, and the error texts. Also the clicks that close a dialog, and the colors that the web terminal takes from the tokens. For the Admin area: the form of labels and of amounts, the labels of the server states, and the copy of the machine states. | `make test-console`, or `node_modules/.bin/vitest run` in `web/apps/console` |
 | `internal/console` | the routes, the headers, the cache, gzip, and the page of a binary without the console | `make test` |
 | `TestConsoleTakesOnlyTheFreePaths` in `internal/api` | that the console hides no API route | `make test` |
 | `TestConsole` in `internal/control` | the whole console in Chromium with Playwright, `web/apps/console/e2e` | `make test-console` only |
@@ -251,11 +285,21 @@ The console pins each package to an exact version in `web/apps/console/package.j
 8. Checks that a click on the backdrop and the Escape key close a dialog, and that a click or a drag inside it does not.
 9. Creates an org, and finds it in the org switcher.
 10. Signs out, and checks that each page then asks for a sign-in.
-11. Opens `/device?code=<code>` without a session, signs in with a second login link, comes back to the code, and approves it.
-12. Makes the session 11 minutes old, and opens `/device?code=<code>` with a second code. The approval fails and asks for a sign-in again. The suite signs in with a third login link, comes back to the code, and approves it. After the run, the Go test polls both device sign-ins and gets the CLI tokens of the account.
-13. Turns on the file mail transport, and links the email `ann.work@example.org` on `/account`. It opens the link from the mail file, and finds the email link in the sign-in methods. Then it makes the session 11 minutes old, and checks that a second link asks for a sign-in again.
-14. Checks that no page error and no policy violation happened.
+11. Drops the cookies of the browser, and opens `/device?code=<code>` without a session. It signs in with a new login link, comes back to the code, and approves it.
+12. Signs in, makes the session 11 minutes old, and opens `/device?code=<code>` with a second code. The approval fails and asks for a sign-in again. The suite signs in with a new login link, comes back to the code, and approves it. After the run, the Go test polls both device sign-ins and gets the CLI tokens of the account.
+13. Opens a second browser with the session of `user1@example.org`, who is not an instance admin. The console shows no "Admin" link, and each page under `/admin` shows "Page not found". A call of the admin API from that page gets `permission_denied` without the detail `RecentSignInRequired`.
+14. Opens the Admin area. It cordons and uncordons the server of the test, and sets its labels. A label without `=` shows an error.
+15. Creates a pool and a size in it, retires the size, deletes the pool, and finds the image `default`.
+16. Sets the limits of the org `Team`, suspends it with a reason, and unsuspends it. It checks both dialogs at a desktop and a phone width. It finds `box1` in the machine list with its address, finds no link or button of a terminal or a shell, and stops `box1`.
+17. Makes `user1@example.org` an instance admin, and revokes the role. Creates an admin key, which shows its secret once: after a visit to another page, the page no longer holds the secret. Then it revokes the key.
+18. Sets the SMTP server and the GitHub app with a password and a client secret. The fields empty after the save, and the page says only that each secret is set. The page and the audit log never hold either secret.
+19. Checks that each page of the Admin area fits a phone width of 360 pixels without a horizontal scroll.
+20. Makes the session 11 minutes old, and clicks "Cordon". The action fails and asks for a sign-in again, and the server stays `ready`. The suite signs in with a new login link, comes back to `/admin/servers`, and the cordon works. After the run, the Go test reads the audit log: each action of the Admin area has the actor kind `session`. The test also finds the new SMTP server of the install.
+21. Turns on the file mail transport, and links the email `ann.work@example.org` on `/account`. It opens the link from the mail file, and finds the email link in the sign-in methods. Then it makes the session 11 minutes old, and checks that a second link asks for a sign-in again.
+22. Checks that no page error and no policy violation happened.
 
-`TestConsole` gives Playwright the install in env vars, so you do not set them yourself. `HOPBOX_E2E_PROXY` is the proxy that serves the console and the API. `HOPBOX_E2E_LOGIN_LINK`, `HOPBOX_E2E_LOGIN_LINK_2`, and `HOPBOX_E2E_LOGIN_LINK_3` are the three login links. `HOPBOX_E2E_USER_CODE` and `HOPBOX_E2E_USER_CODE_2` are the codes of the two device sign-ins. A `POST` to `HOPBOX_E2E_AGE_SESSIONS`, a URL on loopback, makes every session of the install 11 minutes old. A `POST` to `HOPBOX_E2E_MAIL`, a URL on loopback, turns on the file mail transport. A `GET` of it returns the link in the newest mail file. `HOPBOX_E2E_TEAM_ORG` is the ID of the org `Team`, where `bob@example.org` is a member of the account of the suite. The others are `HOPBOX_E2E_URL`, `HOPBOX_E2E_SSH_KEY`, and `HOPBOX_E2E_MACHINE`.
+Steps 12, 14 to 21 each start with a new sign-in through a login link, and step 11 starts without cookies. So they need no session from the steps before them, and their order does not matter. Each sign-in goes through the page of the link and the real sign-in of the API, as for a person.
+
+`TestConsole` gives Playwright the install in env vars, so you do not set them yourself. `HOPBOX_E2E_PROXY` is the proxy that serves the console and the API. `HOPBOX_E2E_LOGIN_LINK` is the first login link of `ann@example.org`, the account of the suite and an instance admin. A `POST` to `HOPBOX_E2E_LOGIN`, a URL on loopback, returns a new login link of that account. `HOPBOX_E2E_USER_COOKIE` is the session token of `user1@example.org`, an account with a verified email that is not an instance admin. `HOPBOX_E2E_USER_CODE` and `HOPBOX_E2E_USER_CODE_2` are the codes of the two device sign-ins. A `POST` to `HOPBOX_E2E_AGE_SESSIONS`, a URL on loopback, makes every session of `ann@example.org` 11 minutes old. A `POST` to `HOPBOX_E2E_MAIL`, a URL on loopback, turns on the file mail transport. A `GET` of it returns the link in the newest mail file. `HOPBOX_E2E_TEAM_ORG` is the ID of the org `Team`, where `bob@example.org` is a member of the account of the suite. The others are `HOPBOX_E2E_URL`, `HOPBOX_E2E_SSH_KEY`, and `HOPBOX_E2E_MACHINE`.
 
 Without `HOPBOX_TEST_CONSOLE`, `TestConsole` skips. `make test-console` sets the variable, and `make test` does not, so `make test` needs no browser. The test needs `corepack pnpm install`, a build of the console, and the Chromium of Playwright: run `web/apps/console/node_modules/.bin/playwright install chromium` once. If one of them is missing, the test fails.

@@ -9,8 +9,8 @@ The admin API is the API service `hopbox.admin.v1`. Instance admins and root on 
 | Listener | Callers that the policy allows | Use |
 | --- | --- | --- |
 | The admin socket, `<run_dir>/admin.sock` | `local_root` | `hopboxd admin` on the server ([hopboxd](/reference/hopboxd/index.html.md#admin)) |
-| The API listener, `control.api_listen` | `admin_key`, except for the calls of `KeyringService`, `MailService`, `LoginLinkService`, and `AdminKeyService` | The hopbox Terraform provider and scripts, with an admin API key in the header `Authorization: Bearer hbxadm_...` ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#admin-api-keys)). |
-| The domain of the install, through the edge servers, which forward it to the internal listener ([the edge role](/reference/edge/index.html.md#forwarded-requests)) | as on the API listener | The same callers from outside the server, such as `https://example.com/hopbox.admin.v1.ServerService/ListServers`. The admin API is public behind the edge, for admin API keys. |
+| The API listener, `control.api_listen` | `admin_key`, except for the calls of `KeyringService`, `MailService`, `LoginLinkService`, and `AdminKeyService`. An [admin session](#admin-sessions), for the calls of the Admin area. | The hopbox Terraform provider and scripts, with an admin API key in the header `Authorization: Bearer hbxadm_...` ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#admin-api-keys)). The Admin area of the console, with the session cookie ([Console](/reference/console/index.html.md#admin-area)). |
+| The domain of the install, through the edge servers, which forward it to the internal listener ([the edge role](/reference/edge/index.html.md#forwarded-requests)) | as on the API listener | The same callers from outside the server, such as `https://example.com/hopbox.admin.v1.ServerService/ListServers`. The admin API is public behind the edge, for admin API keys and admin sessions. |
 
 The admin API has these services:
 
@@ -30,7 +30,46 @@ The admin API has these services:
 | `hopbox.admin.v1.MachineService` | `ListMachines`, `StopMachine`, `DeleteMachine` |
 | `hopbox.admin.v1.ImageService` | `RegisterImage`, `ListImages` |
 
-A session of an instance admin cannot call the admin API yet. Sessions with a recent sign-in arrive with the Admin area of the console in phase 2.
+### Admin sessions
+
+An admin session is the console session of an instance admin whose sign-in is at most 10 minutes old ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#recent-sign-in)). The Admin area of the console calls the admin API with it ([Console](/reference/console/index.html.md#admin-area)). The cookie rules of the public API hold for these calls too. Each call must carry the `Origin` header of the install and the header `Connect-Protocol-Version: 1` ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#calls-with-the-cookie)). So a page of another site cannot make an admin call with the cookie of a browser.
+
+An admin session can make these calls, and no other call of the admin API:
+
+| Service | Calls |
+| --- | --- |
+| `hopbox.admin.v1.InstallConfigService` | `GetInstallConfig`, `UpdateInstallConfig`, `GetSMTPConfig`, `SetSMTPConfig`, `ClearSMTPConfig`, `GetOAuthConfig`, `SetOAuthClient`, `ClearOAuthClient` |
+| `hopbox.admin.v1.InstanceAdminService` | `ListInstanceAdmins`, `GrantInstanceAdmin`, `RevokeInstanceAdmin` |
+| `hopbox.admin.v1.AdminKeyService` | `CreateAdminKey`, `ListAdminKeys`, `RevokeAdminKey` |
+| `hopbox.admin.v1.ServerService` | `ListServers`, `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels` |
+| `hopbox.admin.v1.PoolService` | `CreatePool`, `GetPool`, `ListPools`, `DeletePool` |
+| `hopbox.admin.v1.SizeService` | `CreateSize`, `GetSize`, `ListSizes`, `RetireSize` |
+| `hopbox.admin.v1.OrgService` | `ListOrgs`, `SuspendOrg`, `UnsuspendOrg`, `SetOrgLimits`, `GetDefaultOrgLimits`, `SetDefaultOrgLimits` |
+| `hopbox.admin.v1.MachineService` | `ListMachines`, `StopMachine`, `DeleteMachine` |
+| `hopbox.admin.v1.ImageService` | `ListImages` |
+
+The Admin area also reads the audit log of the whole install with `ListAuditEntries` of the public API, under the same rule. The same rule holds for the audit log of an org in which the instance admin is not an owner or an admin ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#listauditentries)).
+
+The other calls hand out a secret, or change what only root on a control server or the hopbox Terraform provider changes:
+
+| Calls | Reason |
+| --- | --- |
+| `SetMaintenance`, `CreateLoginLink`, `RegisterAdminKey`, and the calls of `KeyringService` and `MailService` | Only root on a control server makes them ([The admin socket](#the-admin-socket)). |
+| `CreateEnrollmentToken` and `DecommissionServer` | The hopbox Terraform provider adds and removes servers. An enrollment token is a secret. |
+| `RegisterImage`, `GetCertificate`, `ListControlProcesses`, and the calls of `AccountService` | No page of the Admin area uses them. They stay with root on a control server and with admin API keys. |
+
+The policy check of the service layer decides each call, the reads too ([the API server](/reference/api/index.html.md#callers-and-policy)). The console only hides the pages of the Admin area from other accounts. It is not the check.
+
+| Caller | Result |
+| --- | --- |
+| The session of an instance admin, at most 10 minutes after its sign-in, on a call of the table | The call runs. Its audit entry has the actor kind `session`, the account, and the session. |
+| The session of an instance admin, more than 10 minutes after its sign-in, on a call of the table | `permission_denied` with the message `permission denied: this action needs a sign-in within the last 10 minutes. Sign in again, then retry`, and the detail `hopbox.v1.RecentSignInRequired` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#recentsigninrequired)). The call writes no audit entry. |
+| The session of an instance admin, on any other call | `permission_denied` without the detail. A new sign-in does not change it. |
+| The session of an account that is not an instance admin | `permission_denied` without the detail, on every call. |
+| The CLI token of an instance admin | `permission_denied`. The hopbox CLI never calls the admin API. |
+| A session cookie without the `Origin` of the install, or without the Connect protocol | `unauthenticated` with the message `the credential is not valid` ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#calls-with-the-cookie)) |
+
+The gate reads the instance admin role and the age of the sign-in with the session on each call. So a revoke of the role closes the admin API to the sessions of the account at once.
 
 The internal listener does not serve the admin API ([the internal listener](/reference/internal-listener/index.html.md)).
 
@@ -126,7 +165,7 @@ Returns the general config of the install.
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.InstallConfigService/GetInstallConfig` |
-| Policy action | `install_config.get`: `local_root` and `admin_key` |
+| Policy action | `install_config.get`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `install_config.get`, no target |
 
@@ -139,7 +178,7 @@ Changes the fields that the request sets, and keeps the others. It returns the c
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.InstallConfigService/UpdateInstallConfig` |
-| Policy action | `install_config.update`: `local_root` and `admin_key` |
+| Policy action | `install_config.update`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call with the same request sets the same values again. |
 | Audit entry | action `install_config.update`, no target, details `domain` (the new domain), `old_domain`, `public_addresses` (the new addresses, joined by commas), and `old_public_addresses`. Also `acme_directory_url`, `acme_email`, `acme_terms_agreed` (`true` or `false`), and `mail_transport` (`smtp` or `file`), each with its `old_` detail. |
 
@@ -211,7 +250,7 @@ Returns the SMTP config of the install, without its password ([SMTP config](/ref
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.InstallConfigService/GetSMTPConfig` |
-| Policy action | `smtp_config.get`: `local_root` and `admin_key` |
+| Policy action | `smtp_config.get`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `smtp_config.get`, no target |
 
@@ -236,7 +275,7 @@ Replaces the SMTP config, and returns it. The password is sealed with the curren
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.InstallConfigService/SetSMTPConfig` |
-| Policy action | `smtp_config.set`: `local_root` and `admin_key` |
+| Policy action | `smtp_config.set`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call with the same request sets the same values again. |
 | Audit entry | action `smtp_config.set`, no target. The details are `host`, `port`, `tls`, `username`, `from`, `old_host`, and `password_changed` (`true` or `false`). They never hold the password. |
 
@@ -261,7 +300,7 @@ Removes the SMTP config and its password, so the install sends no more sign-in l
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.InstallConfigService/ClearSMTPConfig` |
-| Policy action | `smtp_config.clear`: `local_root` and `admin_key` |
+| Policy action | `smtp_config.clear`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `smtp_config.clear`, no target, details `old_host` |
 
@@ -292,7 +331,7 @@ Returns the client of each provider, without its secret, and the redirect URI to
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.InstallConfigService/GetOAuthConfig` |
-| Policy action | `oauth_config.get`: `local_root` and `admin_key` |
+| Policy action | `oauth_config.get`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `oauth_config.get`, no target |
 
@@ -311,7 +350,7 @@ Sets the client of one provider, and returns it. The secret is sealed with the c
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.InstallConfigService/SetOAuthClient` |
-| Policy action | `oauth_config.set`: `local_root` and `admin_key` |
+| Policy action | `oauth_config.set`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call with the same request sets the same values again. |
 | Audit entry | action `oauth_config.set`, no target. The details are `provider` (`github` or `google`), `client_id`, `old_client_id`, and `secret_changed` (`true` or `false`). They never hold the secret. |
 
@@ -343,7 +382,7 @@ Removes the client of one provider and its secret, so nobody can start a sign-in
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.InstallConfigService/ClearOAuthClient` |
-| Policy action | `oauth_config.clear`: `local_root` and `admin_key` |
+| Policy action | `oauth_config.clear`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `oauth_config.clear`, no target, details `provider` and `old_client_id` |
 
@@ -659,7 +698,7 @@ Lists the instance admins, in the order of their grant.
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.InstanceAdminService/ListInstanceAdmins` |
-| Policy action | `instance_admin.list`: `local_root` and `admin_key` |
+| Policy action | `instance_admin.list`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `instance_admin.list`, no target |
 
@@ -679,7 +718,7 @@ Makes an account an instance admin. A grant to an instance admin changes nothing
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.InstanceAdminService/GrantInstanceAdmin` |
-| Policy action | `instance_admin.grant`: `local_root` and `admin_key` |
+| Policy action | `instance_admin.grant`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `instance_admin.grant`, target kind `account`, details `already` (`true` for an account that was an instance admin already) |
 
@@ -699,7 +738,7 @@ Takes the instance admin role from an account. Its sessions lose the role at the
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.InstanceAdminService/RevokeInstanceAdmin` |
-| Policy action | `instance_admin.revoke`: `local_root` and `admin_key` |
+| Policy action | `instance_admin.revoke`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `instance_admin.revoke`, target kind `account` |
 
@@ -793,7 +832,7 @@ Makes an admin API key. The response holds the only copy of the key.
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.AdminKeyService/CreateAdminKey` |
-| Policy action | `admin_key.create`: `local_root` only |
+| Policy action | `admin_key.create`: `local_root` and an [admin session](#admin-sessions). An admin API key never manages admin keys. |
 | Idempotent option | yes. The install keeps no copy of the secret. So a retry with the same idempotency key fails with `already_exists` and the ID of the key. |
 | Audit entry | action `admin_key.create`, target kind `admin_key`, details `name` and `expire_time` |
 
@@ -840,7 +879,7 @@ Lists the admin API keys, oldest first. An expired key stays in the list for 30 
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.AdminKeyService/ListAdminKeys` |
-| Policy action | `admin_key.list`: `local_root` only |
+| Policy action | `admin_key.list`: `local_root` and an [admin session](#admin-sessions). An admin API key never manages admin keys. |
 | Idempotent option | no |
 | Audit entry | action `admin_key.list`, no target |
 
@@ -853,7 +892,7 @@ Deletes an admin API key at once. The next call with the key gets `unauthenticat
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.AdminKeyService/RevokeAdminKey` |
-| Policy action | `admin_key.revoke`: `local_root` only |
+| Policy action | `admin_key.revoke`: `local_root` and an [admin session](#admin-sessions). An admin API key never manages admin keys. |
 | Idempotent option | no |
 | Audit entry | action `admin_key.revoke`, target kind `admin_key`, details `name` |
 
@@ -1003,7 +1042,7 @@ Returns every enrolled server, oldest enrollment first. The list has no pages.
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.ServerService/ListServers` |
-| Policy action | `server.list`: `local_root` and `admin_key` |
+| Policy action | `server.list`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `server.list`, no target |
 
@@ -1049,7 +1088,7 @@ Returns one server.
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.ServerService/GetServer` |
-| Policy action | `server.get`: `local_root` and `admin_key` |
+| Policy action | `server.get`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `server.get`, target kind `server`, target ID the server ID |
 
@@ -1062,7 +1101,7 @@ Stops new machines from landing on a server. Its machines keep running. The call
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.ServerService/CordonServer` |
-| Policy action | `server.cordon`: `local_root` and `admin_key` |
+| Policy action | `server.cordon`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call changes nothing. |
 | Audit entry | action `server.cordon`, target kind `server`, target ID the server ID, details `old_state` and `state` |
 
@@ -1075,7 +1114,7 @@ Lets new machines land on a cordoned server again. The call clears the flag `cor
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.ServerService/UncordonServer` |
-| Policy action | `server.uncordon`: `local_root` and `admin_key` |
+| Policy action | `server.uncordon`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call changes nothing. |
 | Audit entry | action `server.uncordon`, target kind `server`, target ID the server ID, details `old_state` and `state` |
 
@@ -1088,7 +1127,7 @@ Replaces the labels of a server. Placement filters use labels. The hopbox Terraf
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.ServerService/SetServerLabels` |
-| Policy action | `server.set_labels`: `local_root` and `admin_key` |
+| Policy action | `server.set_labels`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call with the same labels changes only the row version. |
 | Audit entry | action `server.set_labels`, target kind `server`, target ID the server ID. The details `old_labels` and `labels` hold `key=value` pairs, sorted by key and joined by commas. |
 
@@ -1171,7 +1210,7 @@ Adds a pool.
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.PoolService/CreatePool` |
-| Policy action | `pool.create`: `local_root` and `admin_key` |
+| Policy action | `pool.create`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | yes. A retry with the same key returns the first result. |
 | Audit entry | action `pool.create`, target kind `pool`, target ID the pool ID, details `name` and `ovh_plan` |
 
@@ -1191,7 +1230,7 @@ Returns one pool.
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.PoolService/GetPool` |
-| Policy action | `pool.get`: `local_root` and `admin_key` |
+| Policy action | `pool.get`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `pool.get`, target kind `pool`, target ID the pool ID |
 
@@ -1204,7 +1243,7 @@ Returns every pool, by name. The list has no pages, and it leaves out the delete
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.PoolService/ListPools` |
-| Policy action | `pool.list`: `local_root` and `admin_key` |
+| Policy action | `pool.list`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `pool.list`, no target |
 
@@ -1225,7 +1264,7 @@ The call locks the row of the pool. An enrollment into the pool and a create of 
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.PoolService/DeletePool` |
-| Policy action | `pool.delete`: `local_root` and `admin_key` |
+| Policy action | `pool.delete`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call fails with `not_found`. |
 | Audit entry | action `pool.delete`, target kind `pool`, target ID the pool ID, detail `name` |
 
@@ -1283,7 +1322,7 @@ Adds a size. The call takes a share lock on the row of the pool that the size na
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.SizeService/CreateSize` |
-| Policy action | `size.create`: `local_root` and `admin_key` |
+| Policy action | `size.create`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | yes. A retry with the same key returns the first result. |
 | Audit entry | action `size.create`, target kind `size`, target ID the name of the size. The details are `vcpus`, `memory_bytes`, `disk_bytes`, `pool`, and `labels`, the `key=value` pairs sorted by key and joined by commas. |
 
@@ -1307,7 +1346,7 @@ Returns one size, also a retired one.
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.SizeService/GetSize` |
-| Policy action | `size.get`: `local_root` and `admin_key` |
+| Policy action | `size.get`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `size.get`, target kind `size`, target ID the name of the size |
 
@@ -1320,7 +1359,7 @@ Returns the sizes, smallest first: by vCPUs, then RAM, then name. The list has n
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.SizeService/ListSizes` |
-| Policy action | `size.list`: `local_root` and `admin_key` |
+| Policy action | `size.list`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `size.list`, no target |
 
@@ -1333,7 +1372,7 @@ Stops new machines of a size. A create with the size fails from then on ([the ma
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.SizeService/RetireSize` |
-| Policy action | `size.retire`: `local_root` and `admin_key` |
+| Policy action | `size.retire`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call changes nothing. |
 | Audit entry | action `size.retire`, target kind `size`, target ID the name of the size, detail `already`: `true` for a size that was retired already |
 
@@ -1391,7 +1430,7 @@ Lists every org of the install, oldest first, one page at a time.
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.OrgService/ListOrgs` |
-| Policy action | `org.list_all`: `local_root` and `admin_key` |
+| Policy action | `org.list_all`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `org.list_all`, no org, no target |
 
@@ -1409,7 +1448,7 @@ Suspends an org, for example to handle abuse ([the org API](/reference/org-api/i
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.OrgService/SuspendOrg` |
-| Policy action | `org.suspend`: `local_root` and `admin_key` |
+| Policy action | `org.suspend`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call changes nothing. |
 | Audit entry | action `org.suspend`, org the org, target kind `org`, details `reason` and `already`. The reason is that of the suspension. `already` is `true` for an org that was suspended already. |
 
@@ -1432,7 +1471,7 @@ Ends the suspension of an org. Its machines stay stopped until their users start
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.OrgService/UnsuspendOrg` |
-| Policy action | `org.unsuspend`: `local_root` and `admin_key` |
+| Policy action | `org.unsuspend`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `org.unsuspend`, org the org, target kind `org`, details `old_reason` and `already` (`true` for an org that was not suspended) |
 
@@ -1445,7 +1484,7 @@ Replaces the limit overrides of one org. A limit that the request leaves out tak
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.OrgService/SetOrgLimits` |
-| Policy action | `org.set_limits`: `local_root` and `admin_key` |
+| Policy action | `org.set_limits`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call sets the same overrides again. |
 | Audit entry | action `org.set_limits`, org the org, target kind `org`. The details are `machines`, `vcpus`, `memory_bytes`, and `disk_bytes`, then the same keys with the prefix `old_`. Each value is a number, or `default` for a limit without an override. |
 
@@ -1464,7 +1503,7 @@ Returns the limits of every org without an override. They live in the row of `in
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.OrgService/GetDefaultOrgLimits` |
-| Policy action | `org_limits.get_defaults`: `local_root` and `admin_key` |
+| Policy action | `org_limits.get_defaults`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `org_limits.get_defaults`, no target |
 
@@ -1484,7 +1523,7 @@ Changes the limits of every org without an override, and returns them. A limit t
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.OrgService/SetDefaultOrgLimits` |
-| Policy action | `org_limits.set_defaults`: `local_root` and `admin_key` |
+| Policy action | `org_limits.set_defaults`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `org_limits.set_defaults`, no target. The details are the new limits and the old ones, as for `SetOrgLimits`, with `max_orgs_per_account` and `old_max_orgs_per_account`. |
 
@@ -1520,6 +1559,7 @@ The message `Machine` of this service is a machine with the facts that only inst
 | --- | --- | --- |
 | `machine` | `hopbox.v1.Machine` | The machine as its users see it ([the machine API](/reference/machine-api/index.html.md#machine)), but without its `start_command`, which is always empty here. A start command can hold data of the org, and an instance admin sees the metadata of an org, not its contents. |
 | `server_id` | string | The UUID of the node of the machine. |
+| `address` | string | The IPv4 address of the machine on the network of its node, such as `10.240.0.2` ([the node network](/reference/node-network/index.html.md#addresses)). Only `ListMachines` fills it. It is empty in the responses of `StopMachine` and `DeleteMachine`. |
 
 A call on one machine names it with `id` or `name`, as in the public API ([the machine API](/reference/machine-api/index.html.md#naming-a-machine)). The admin calls skip the role check and the suspension check of the public API.
 
@@ -1530,7 +1570,7 @@ Lists the machines of every org, or of one org, one page at a time, in the order
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.MachineService/ListMachines` |
-| Policy action | `machine.list_all`: `local_root` and `admin_key` |
+| Policy action | `machine.list_all`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `machine.list_all`, no target. With `org_id`, the entry has that org and the detail `org_id`. Without it, the entry has no org. |
 
@@ -1549,7 +1589,7 @@ Sets the target of any machine to `stopped`, and waits for it for up to 60 s. It
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.MachineService/StopMachine` |
-| Policy action | `machine.admin_stop`: `local_root` and `admin_key` |
+| Policy action | `machine.admin_stop`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call finds the target `stopped`, and changes nothing. |
 | Audit entry | action `machine.admin_stop`, org the org of the machine, target kind `machine`, details `name` and `old_target` |
 
@@ -1562,7 +1602,7 @@ Sets the target of any machine to `deleted`, and waits for it for up to 60 s. It
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.MachineService/DeleteMachine` |
-| Policy action | `machine.admin_delete`: `local_root` and `admin_key` |
+| Policy action | `machine.admin_delete`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call fails with `failed_precondition`. |
 | Audit entry | action `machine.admin_delete`, org the org of the machine, target kind `machine`, details `name` |
 
@@ -1641,7 +1681,7 @@ Lists the images of the install, by name, newest first.
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.ImageService/ListImages` |
-| Policy action | `image.list`: `local_root` and `admin_key` |
+| Policy action | `image.list`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
 | Audit entry | action `image.list`, no target |
 
