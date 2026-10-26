@@ -42,11 +42,21 @@ The CLI prints a link such as `https://example.com/device?code=WDJB-MJHT`. Open 
 
 The approval needs a sign-in within the last 10 minutes ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#recent-sign-in)). If you signed in earlier, the page says so and shows "Sign in again". Click it, and sign in. The console then opens the page of the code again. Click "Approve" again.
 
+## Link another sign-in method
+
+Your account can hold several sign-in methods. Once it has GitHub or Google, a new method joins it only through a link from your session ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#link-a-new-sign-in-method)). A sign-in with a new method fails then, also with the same email. A link needs a sign-in within the last 10 minutes.
+
+1. Open "Account" at the top right.
+2. Under "Sign-in methods", click "Link GitHub" or "Link Google". The console shows a button only for a provider of the install that the account does not hold yet. Approve at the provider. The console opens "Account" again, with the new method in the list.
+3. To link an email, such as `ann.work@example.org`, type it in the field "Email" and click "Email me a link". Open the link in the same browser. The console adds the email and opens "Account" again.
+
+If your sign-in is older than 10 minutes, "Link GitHub" and "Link Google" send you to sign in again first, then back to "Account". "Email me a link" shows a notice and the button "Sign in again" instead, which also brings you back to "Account". After the new sign-in, start the link again.
+
 ## More pages
 
 | Page | Where | What you do there |
 | --- | --- | --- |
-| Account | the name at the top right | Change the display name. See the emails and the sign-in methods. Add and remove SSH keys. End a CLI sign-in. |
+| Account | the name at the top right | Change the display name. See the emails and the sign-in methods. Link and remove sign-in methods. Add and remove SSH keys. End a CLI sign-in. |
 | Orgs | "All orgs" in the org list at the top | See your orgs, and create one. |
 | Members | the tab of an org | Change roles. Invite people by email, and copy the link of an invitation. |
 | API keys | the tab of an org | Create a key for a script. Copy the key at once: the console shows it only once. |

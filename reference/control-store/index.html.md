@@ -440,7 +440,7 @@ Migration `0007_accounts.sql`. One row per email of an account.
 | `id` | `uuid`, primary key | A UUIDv7. |
 | `account_id` | `uuid` | The account. A delete of the account deletes the row. |
 | `email` | `text` | The email, in lower case. Unique for each account. |
-| `verified_at` | `timestamptz`, can be null | The time of the proof of the email by a sign-in method. Null for an email that no method proved, such as the email of a login link. |
+| `verified_at` | `timestamptz`, can be null | The time of the proof of the email by a sign-in method. Null for an email that no method proved, such as the email of a login link. A link from a session sets it, unless another account holds the email as verified ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#link-a-new-sign-in-method)). |
 | `version` | `bigint` | The row version. |
 | `created_at` | `timestamptz` | When the email joined the account. |
 
@@ -613,6 +613,7 @@ Migration `0009_sign_in.sql`. One row per magic link ([Sessions, cookies, and si
 | `used_at` | `timestamptz`, can be null | The sign-in with the link. One statement checks and sets it, so the link works once. |
 | `version` | `bigint` | The row version. |
 | `created_at` | `timestamptz` | The request. |
+| `link_session_id` | `uuid`, can be null | The session that asked for a link of the email to its account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#link-a-new-sign-in-method)). Null for a sign-in link. Only this session can use the link. Migration `0048_sign_in_links.sql` adds it. It has no foreign key, so the row stays for the rate limits after the session ends. The migration runs with schema version 44 ([the bundled Postgres](/reference/postgres/index.html.md#two-releases-on-one-store)). A `hopboxd` of schema version 44 to 47 writes a null, and ignores the column when it ends a link. So a link that such a `hopboxd` ends works as a magic link of that release. |
 
 ## login_links
 
@@ -645,6 +646,7 @@ Migration `0035_oauth_sign_in.sql`. One row per sign-in with GitHub or Google th
 | `used_at` | `timestamptz`, can be null | The callback of the flow. One statement checks and sets it, so the flow works once. |
 | `version` | `bigint` | The row version. |
 | `created_at` | `timestamptz` | The start. |
+| `link_session_id` | `uuid`, can be null | The session that started a link of the identity to its account ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#link-to-a-signed-in-account)). Null for a sign-in. The callback needs this session. Migration `0048_sign_in_links.sql` adds it, without a foreign key. A `hopboxd` of schema version 44 to 47 ignores the column, so a callback that it ends works as a sign-in of that release. |
 
 ## instance_admins
 

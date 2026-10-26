@@ -713,7 +713,7 @@ The request `RevokeInstanceAdminRequest` has the field `account_id`. The respons
 
 ## AccountService
 
-`hopbox.admin.v1.AccountService` lets an operator recover the sign-in of an account. A person can lose the only sign-in method of the account, for example the GitHub user. A new GitHub user with the same verified email then fails, because the account holds the old one ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#recover-a-lost-identity)). The operator removes the old method, and the new GitHub user then links through the verified email.
+`hopbox.admin.v1.AccountService` lets an operator recover the sign-in of an account. A person can lose the only sign-in method of the account, for example the GitHub user. A new GitHub user with the same verified email then fails, because the account has an identity of a provider ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#recover-a-lost-identity)). The operator removes the old method. The account then has no identity of a provider, so a magic link or the new GitHub user links through the verified email.
 
 ### ListAccountSignInMethods
 
@@ -744,7 +744,7 @@ The request `ListAccountSignInMethodsRequest` has the oneof `account`: `account_
 
 ### RemoveAccountSignInMethod
 
-Removes one sign-in method of an account. The emails of the account stay. A later sign-in that proves a verified email of the account links its method again ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)). The removal does not end the sessions or the CLI sign-ins that the method started. The person ends them with `SignOut` and `EndCLISignIn` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#endclisignin)).
+Removes one sign-in method of an account. The emails of the account stay. While the account has no identity of GitHub or Google, a later sign-in that proves a verified email of the account links its method again ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)). The removal does not end the sessions or the CLI sign-ins that the method started. The person ends them with `SignOut` and `EndCLISignIn` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#endclisignin)).
 
 | Item | Value |
 | --- | --- |

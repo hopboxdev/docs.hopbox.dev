@@ -42,7 +42,7 @@ browser() {
 | Field | Type | Description |
 | --- | --- | --- |
 | `email` | string | The address, in lower case. |
-| `verified` | bool | `true` for an email that a sign-in method proved. Only a verified email links other sign-in methods to the account. The email of a login link stays unverified. |
+| `verified` | bool | `true` for an email that a sign-in method proved. Only a verified email links other sign-in methods to the account, and only while the account has no identity of GitHub or Google ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)). The email of a login link stays unverified, until a link from a session proves it ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#link-a-new-sign-in-method)). |
 | `verify_time` | `google.protobuf.Timestamp` | The time of the proof. It is unset for an email that is not verified. |
 
 ### SignInMethod
@@ -135,20 +135,29 @@ A public key of an account ([CLI tokens, API keys, admin API keys, and SSH keys]
 
 ### RequestMagicLink
 
-Sends a sign-in link to an email ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#magic-links)). It answers the same for an email with or without an account, so the call tells nothing about who has an account.
+Sends a sign-in link to an email ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#magic-links)). It answers the same for an email with or without an account, so the call tells nothing about who has an account. With `link`, it sends a link that adds the email as a sign-in method of the account of the session instead ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#link-a-new-sign-in-method)).
 
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.v1.AuthService/RequestMagicLink` |
-| Policy action | `auth.request_magic_link`: `anonymous` and `session` |
+| Policy action | `auth.request_magic_link`: `anonymous` and `session`. With `link`: `account.link_sign_in_method`, the `session` of the account, with a sign-in within the last 10 minutes ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#recent-sign-in)). |
 | Idempotent option | no. Each call sends a new link. |
-| Audit entry | action `auth.request_magic_link`, actor the caller, target kind `magic_link`, target ID the UUID of the link, details `email` and `client_ip` |
+| Audit entry | action `auth.request_magic_link`, actor the caller, target kind `magic_link`, target ID the UUID of the link, details `email` and `client_ip`. With `link`, also `purpose` with the value `link`. |
 
-The request `RequestMagicLinkRequest` has the field `email`, a string, such as `ann@example.org`. The server takes the email in lower case, without spaces around it ([Domain rules](/reference/domain-rules/index.html.md#emails)). The response `RequestMagicLinkResponse` has no fields.
+The request `RequestMagicLinkRequest` has these fields. The response `RequestMagicLinkResponse` has no fields.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `email` | string | The address that gets the link, such as `ann@example.org`. The server takes the email in lower case, without spaces around it ([Domain rules](/reference/domain-rules/index.html.md#emails)). |
+| `link` | bool | `true` for a link that adds the email to the account of the session. Only that session can use the link. The email has the subject `Add your email to your account on <domain>`. |
 
 | Error | Code |
 | --- | --- |
 | The email breaks a rule, such as `Ann <ann@example.org>` | `invalid_argument` |
+| `link` without a session: `this call needs a credential` | `unauthenticated` |
+| `link` with a caller that is not a session, such as a CLI token | `permission_denied` |
+| `link` with an email that the account signs in with already. The call sends no mail. | `already_exists` |
+| `link` with a session whose sign-in is more than 10 minutes old: `permission denied: this action needs a sign-in within the last 10 minutes. Sign in again, then retry`, with the detail `RecentSignInRequired` | `permission_denied` |
 | The install has no SMTP config and the transport `smtp`: `failed precondition: this install has no SMTP config, so it sends no sign-in links` | `failed_precondition` |
 | The install has no domain | `failed_precondition` |
 | The SMTP password does not open, for example after the loss of its key-encryption key | `internal` |
@@ -166,29 +175,42 @@ curl -s -X POST -H 'Content-Type: application/json' -d '{"email":"ann@example.or
 {}
 ```
 
+A link of an email to the account of the session:
+
+```sh
+browser -d '{"email":"ann.work@example.org","link":true}' $API/hopbox.v1.AuthService/RequestMagicLink
+```
+
 ### VerifyMagicLink
 
-Signs in with the token of a magic link, and sets the session cookie ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)). The link works once, within 15 minutes.
+Signs in with the token of a magic link, and sets the session cookie ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)). The link works once, within 15 minutes. The token of a link from `RequestMagicLink` with `link` adds the email to the account of the session that asked for it, and sets no cookie ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#link-a-new-sign-in-method)).
 
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.v1.AuthService/VerifyMagicLink` |
 | Policy action | `auth.verify_magic_link`: `anonymous` and `session` |
 | Idempotent option | no |
-| Audit entries | `account.create` for a new account, then `auth.sign_in` ([Audit entries](#audit-entries)) |
+| Audit entries | `account.create` for a new account, then `auth.sign_in` ([Audit entries](#audit-entries)). A link writes only `account.link_sign_in_method`. |
 
-The request `VerifyMagicLinkRequest` has the field `token`, a string: the value after `#token=` in the link. The response `VerifyMagicLinkResponse` has these fields, and the header `Set-Cookie` with the session cookie:
+The request `VerifyMagicLinkRequest` has the field `token`, a string: the value after `#token=` in the link. The response `VerifyMagicLinkResponse` has these fields, and the header `Set-Cookie` with the session cookie. A link has no `Set-Cookie`.
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `account` | `Account` | The account of the new session. |
+| `account` | `Account` | The account of the new session, or the account that the link added the email to. |
 | `new_account` | bool | `true` for an account that this sign-in created. |
-| `session_expire_time` | `google.protobuf.Timestamp` | The end of the session, 30 days after the sign-in. After 7 days without a call, the session ends before that. |
+| `session_expire_time` | `google.protobuf.Timestamp` | The end of the session, 30 days after the sign-in. After 7 days without a call, the session ends before that. Unset for a link. |
+| `linked` | bool | `true` when the link added its email to the account of the session. No new session starts, and the session cookie stays. |
 
 | Error | Code |
 | --- | --- |
 | The call does not carry the `Origin` of the install and the Connect protocol header. The link stays unused. | `permission_denied` |
 | The token is unknown, used, or expired: `the sign-in link is not valid: it is unknown, used, or expired. Ask for a new link` | `unauthenticated` |
+| The account of the email has GitHub or Google, and no email method for this email ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)): `the sign-in conflicts with a sign-in method of the account: the account of ann@example.org signs in with GitHub or Google, so a new sign-in method joins it only through a link. ...` | `failed_precondition` |
+| A link, and the caller is not the session that asked for it. The link stays unused: `permission denied: this link adds an email to the account of the session that asked for it. Open it in the browser where you asked for it, while you are signed in there` | `permission_denied` |
+| A link, and another account signs in with the email: `the sign-in conflicts with a sign-in method of the account: this email ann.work@example.org signs in to another account. Remove it from that account first` | `failed_precondition` |
+| A link, and another account holds the email as verified: `the sign-in conflicts with a sign-in method of the account: the email kim@example.org is a verified email of another account, so it signs in only to that account` | `failed_precondition` |
+| A link, and the account has the email method already | `already_exists` |
+| A link, and the session that asked for it ended: `this call needs a credential: the session that started the link ended. Sign in again, then link the method again` | `unauthenticated` |
 
 ### VerifyLoginLink
 
@@ -507,7 +529,7 @@ browser -d '{}' $API/hopbox.v1.AccountService/ListSignInMethods
 
 ### RemoveSignInMethod
 
-Removes one sign-in method of the account. An account keeps at least one. The emails of the account stay, so a later sign-in that proves a verified email links its method again. The removal does not end the sessions or the CLI sign-ins that the method started. End them with `SignOut` and [EndCLISignIn](#endclisignin).
+Removes one sign-in method of the account. An account keeps at least one. The emails of the account stay. While the account has no identity of GitHub or Google, a later sign-in that proves a verified email links its method again ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)). The removal does not end the sessions or the CLI sign-ins that the method started. End them with `SignOut` and [EndCLISignIn](#endclisignin).
 
 | Item | Value |
 | --- | --- |
@@ -789,6 +811,7 @@ The sign-in calls write these entries in the transaction of the sign-in. Their a
 | --- | --- | --- | --- |
 | `account.create` | A sign-in created the account. | the account | `method`, `email`, `personal_org` |
 | `account.link_sign_in_method` | A sign-in linked its method to the account through a verified email. | the new method | `kind`, `email` |
+| `account.link_sign_in_method` | A link from a session added a method to the account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#link-a-new-sign-in-method)). The actor is that session, not a new one. | the new method | `kind`, `email`, `session`, and `magic_link` or the details of the provider: `oauth_flow`, `subject`, and for GitHub `login` |
 | `auth.sign_in` | Every sign-in with a link. | the session | `method` (`email_link` or `login_link`), `email`, `new_account`, and `magic_link` or `login_link`: the UUID of the link |
 | `auth.sign_in` | Every sign-in with GitHub or Google ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#audit-entries)). | the session | `method` (`github` or `google`), `email`, `new_account`, `oauth_flow`, `subject`, and for GitHub `login` |
 | `auth.sign_in` | A poll of a device flow took the CLI tokens. The actor is the new CLI sign-in, with actor kind `cli_token`. | the CLI sign-in, target kind `cli_sign_in` | `method` (`device`), `client_name`, `device_sign_in` |

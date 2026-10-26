@@ -152,6 +152,7 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `account.delete` | `AccountService.DeleteAccount` | the account of the caller | the `session` or `cli_token` of the account |
 | `account.list_sign_in_methods` | `AccountService.ListSignInMethods` | the account of the caller | the `session` or `cli_token` of the account |
 | `account.remove_sign_in_method` | `AccountService.RemoveSignInMethod` | the account of the caller | the `session` or `cli_token` of the account |
+| `account.link_sign_in_method` | `AuthService.RequestMagicLink` with `link`, and `GET /auth/{provider}/start?link=1` ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#link-to-a-signed-in-account)) | the account of the caller | the `session` of the account, with a sign-in within the last 10 minutes ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#recent-sign-in)) |
 | `auth.list_cli_sign_ins` | `AccountService.ListCLISignIns` | the account of the caller | the `session` or `cli_token` of the account |
 | `auth.end_cli_sign_in` | `AccountService.EndCLISignIn` | the account of the caller | the `session` of the account. A stolen CLI token thus cannot end the other sign-ins of its owner. |
 | `ssh_key.add` | `SSHKeyService.AddSSHKey` | the account of the caller | the `session` or `cli_token` of the account |

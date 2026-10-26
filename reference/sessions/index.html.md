@@ -2,7 +2,7 @@
 
 > The session cookie, the lifetimes, the check against cross-site requests, the magic links and login links, what a sign-in does, and the rate limits.
 
-A person signs in to the console of an install with a magic link, with GitHub, or with Google. On the first day, the first instance admin signs in with a first-admin login link. A sign-in starts a session, and a cookie holds the session in the browser. This page gives the cookie, the lifetimes, the check against cross-site requests, the recent sign-in, the form of the links, and the rate limits. [The sign-in, account, and audit API](/reference/auth-api/index.html.md) lists the calls. [Sign-in with GitHub and Google](/reference/oauth/index.html.md) covers the sign-in with GitHub and Google. [CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md) covers the credentials of the hopbox CLI, scripts, and SSH clients. The code is in `internal/auth`, `internal/service`, and `internal/api`.
+A person signs in to the console of an install with a magic link, with GitHub, or with Google. On the first day, the first instance admin signs in with a first-admin login link. A sign-in starts a session, and a cookie holds the session in the browser. This page gives the cookie, the lifetimes, the check against cross-site requests, the recent sign-in, the form of the links, the link of a new sign-in method, and the rate limits. [The sign-in, account, and audit API](/reference/auth-api/index.html.md) lists the calls. [Sign-in with GitHub and Google](/reference/oauth/index.html.md) covers the sign-in with GitHub and Google. [CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md) covers the credentials of the hopbox CLI, scripts, and SSH clients. The code is in `internal/auth`, `internal/service`, and `internal/api`.
 
 ## Lifetimes
 
@@ -81,6 +81,8 @@ A call that a session taken over must not reach needs a recent sign-in. These ca
 | Call | Reason |
 | --- | --- |
 | `ApproveDevice` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#approvedevice)) | The approval makes a CLI sign-in whose refresh token lives 30 days and renews with each use. So the CLI sign-in can outlive the session. |
+| `RequestMagicLink` with `link` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#requestmagiclink)) | The link adds a sign-in method to the account. The method outlives the session. |
+| `GET /auth/{provider}/start?link=1` ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#link-to-a-signed-in-account)) | The same. This endpoint is not a call of the API. It sends an older session to the sign-in page of the console instead of an error. |
 
 The rule applies only to a console session, because only a session has a sign-in in a browser. Such a call first runs its policy check, then the check of the sign-in:
 
@@ -122,6 +124,20 @@ The link works once, for 15 minutes. If you did not ask for it, you can ignore t
 
 The server sends the email in the call, after the link commits, and waits at most 20 s for the SMTP server. With the file transport, the server writes the email to a file in `<data_dir>/mail` and sends nothing.
 
+A link that adds an email to an account has another subject and text ([Link a new sign-in method](#link-a-new-sign-in-method)):
+
+```text
+From: hopbox <no-reply@example.org>
+To: ann.work@example.org
+Subject: Add your email to your account on example.com
+
+Open this link to add ann.work@example.org as a sign-in method of your account on example.com:
+
+https://example.com/auth/email#token=<token>
+
+Open it in the browser where you asked for it. The link works once, for 15 minutes. If you did not ask for it, you can ignore this email.
+```
+
 ### Rate limits
 
 `RequestMagicLink` counts the links of the last hour in the control store, so the limits hold across every control server.
@@ -131,7 +147,7 @@ The server sends the email in the call, after the link commits, and waits at mos
 | Links for one email | 5 per hour | `resource_exhausted`: `too many requests: this email got the most sign-in links of an hour. Use one of them, or wait` |
 | Links from one client | 20 per hour | `resource_exhausted`: `too many requests: this client asked for the most sign-in links of an hour. Wait, then retry` |
 
-A client is one IPv4 address, or one IPv6 /64, because one IPv6 host often holds a whole /64. An IPv4 address in IPv6 form counts as its IPv4 address. The address is the peer of the request. Behind the edge, the peer is the address of the client that the edge forwards. Only a server with the edge role can name it ([the internal listener](/reference/internal-listener/index.html.md#forwarded-requests)). The limit of a client skips a loopback peer, such as `127.0.0.1` or `::1`. A loopback peer is a process or an SSH tunnel on the same server, on the API listener. It stands for every client, so a limit on it blocks everyone. Each request takes a transaction lock (`LockKeyMagicLinks`, [the bundled Postgres](/reference/postgres/index.html.md#advisory-lock-keys)), so requests at the same time cannot pass a limit together. A request whose email fails to send still counts. The messages never say how many links an email got, so they tell nothing about the activity of others.
+A client is one IPv4 address, or one IPv6 /64, because one IPv6 host often holds a whole /64. An IPv4 address in IPv6 form counts as its IPv4 address. The address is the peer of the request. Behind the edge, the peer is the address of the client that the edge forwards. Only a server with the edge role can name it ([the internal listener](/reference/internal-listener/index.html.md#forwarded-requests)). The limit of a client skips a loopback peer, such as `127.0.0.1` or `::1`. A loopback peer is a process or an SSH tunnel on the same server, on the API listener. It stands for every client, so a limit on it blocks everyone. Each request takes a transaction lock (`LockKeyMagicLinks`, [the bundled Postgres](/reference/postgres/index.html.md#advisory-lock-keys)), so requests at the same time cannot pass a limit together. A request whose email fails to send still counts. A link of an email to an account counts as a magic link ([Link a new sign-in method](#link-a-new-sign-in-method)). The messages never say how many links an email got, so they tell nothing about the activity of others.
 
 ## First-admin login links
 
@@ -148,9 +164,15 @@ The console page `/auth/login-link` reads the token and calls `VerifyLoginLink`.
 Each sign-in proves an identity: a method and an email. It then reaches one account:
 
 1. If the account of an earlier sign-in holds the method, the sign-in reaches that account. A magic link names its method by the email. A login link names its method by the email too, apart from magic links. GitHub and Google name their method by the subject at the provider, so a new email at the provider reaches the same account.
-2. Else, the method can prove the email, and an account can hold that email as verified. In that case, the sign-in links the method to that account. A magic link proves its email. GitHub and Google prove the email that the provider verified, and nothing else passes ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#providers)). A login link proves no email.
+2. Else, the method can prove the email, and an account can hold that email as verified. If that account has no identity of a provider, the sign-in links the method to it. An identity of a provider is a method of GitHub or Google. A magic link proves its email. GitHub and Google prove the email that the provider verified, and nothing else passes ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#providers)). A login link proves no email.
 
-   A link of GitHub or Google has one more rule. The account must not hold a method of the same provider with another subject, whatever its email. For example, an account with the GitHub user 1 never links the GitHub user 2. A domain can lapse, and its new owner can then prove an old address of the account at GitHub. The email of a method follows the provider, so a rule by email misses an old address. The rule stops only a second identity of the same provider. The holder of the mailbox of a lapsed domain still has other ways in. That person can sign in with a magic link, or with a provider that the account has not used yet. Such a sign-in fails with `failed_precondition`, or `409` at the callback of [Sign-in with GitHub and Google](/reference/oauth/index.html.md#errors). It changes nothing. A person who lost the old identity signs in another way, removes the old method, and signs in again. Without another method, the operator removes it with `hopboxd admin account sign-in-method remove` ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#recover-a-lost-identity)).
+   If the account has an identity of a provider, the sign-in fails and changes nothing. Then only a link from a session adds a method to the account ([Link a new sign-in method](#link-a-new-sign-in-method)). The error is `failed_precondition` from `VerifyMagicLink`, or `409` at the callback of [Sign-in with GitHub and Google](/reference/oauth/index.html.md#errors), with this message:
+
+   ```text
+   the sign-in conflicts with a sign-in method of the account: the account of dana@example.org signs in with GitHub or Google, so a new sign-in method joins it only through a link. Sign in with a method of the account, then link Google on the account page. If you lost every method of the account, the operator removes the lost one with hopboxd admin account sign-in-method remove
+   ```
+
+   The rule protects an account against a lapsed domain. The new owner of the domain can prove an old address of the account, with a magic link or at a provider. The email of a method follows the provider, so a rule by email misses an old address. So once the account has an identity at a provider, the email alone links nothing. A person who lost every method of the account gets help from the operator ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#recover-a-lost-identity)).
 3. Else, the sign-in creates an account with the email, the method, and a personal org named `Personal`, with the account as its owner. A magic link, GitHub, and Google mark the email verified. A login link leaves it unverified. GitHub and Google also give the account the name of the person at the provider as its display name. The display name stays empty for a name that breaks the rules of [Domain rules](/reference/domain-rules/index.html.md#display-names). At GitHub, an empty name falls back to the login.
 
 So the email of a login link never links to another account. A magic link, GitHub, or Google with the same email reaches another account. A second login link for the same email reaches the account of the first one. A verified email belongs to at most one account.
@@ -161,9 +183,32 @@ A sign-in also does these steps:
 - A sign-in from a browser that has a session ends that session. The new one replaces it.
 - It starts a session and records the sign-in in the audit log ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#audit-entries)). A link of a method to an account by its verified email gets its own entry.
 
-A refused link writes the log record `sign-in link refused` at level info, with `component=service` and `kind`, never the token.
+A refused link writes the log record `sign-in link refused` at level info, with `component=service` and `kind`, never the token. A refusal for a reason other than the token has the field `reason` too: `another session asked for the link`, or `the account needs a link for a new sign-in method`.
 
 Two first sign-ins with one email at the same time make one account: each sign-in takes a transaction lock (`LockKeySignIn`).
+
+## Link a new sign-in method
+
+A person who is signed in adds a new sign-in method to the account. Once the account has an identity of GitHub or Google, this is the only way in for a new method. The console offers it on `/account` ([Console](/reference/console/index.html.md#pages)). Each link needs a session with a recent sign-in ([Recent sign-in](#recent-sign-in)).
+
+| Method | Start | End |
+| --- | --- | --- |
+| Email link | `RequestMagicLink` with `link` and the email ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#requestmagiclink)). The email gets a link. | The person opens the link in the same browser. `VerifyMagicLink` with the session of the request adds the email method. |
+| GitHub or Google | The browser opens `/auth/<provider>/start?link=1` ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#link-to-a-signed-in-account)). | The callback of the provider comes back with the same session, and adds the identity. |
+
+A link needs a recent sign-in when it starts. From then on, it binds to its session for its lifetime, so it ends also after those 10 minutes. A link binds to the session that started it. The link works only with the session cookie of that session, so the same browser must open it. Another browser, another session, or a browser without a session gets `permission_denied` from `VerifyMagicLink`, and the link stays unused. At the callback of a provider, another caller gets `400`. A sign-out ends the session, so its links never work after it. A link that ends after its session ended fails with `unauthenticated`: `this call needs a credential: the session that started the link ended. Sign in again, then link the method again`, or `403` at the callback. A magic link then stays unused. So a person cannot add a method to the account of another person, also with the mailbox of that person.
+
+A link starts no session and sets no cookie. The session of the browser stays. A link does these steps in one transaction:
+
+1. It takes the transaction lock `LockKeySignIn`, and checks that the session is still live. A share lock on the session row keeps a sign-out from ending it before the link commits.
+2. It refuses a method that signs in to another account: `failed_precondition`, or `409` at the callback. The message names the method, for example `this Google identity signs in to another account. Remove it from that account first`.
+3. It refuses a method that the account has: `already_exists`, or `409` at the callback. `RequestMagicLink` refuses an email method of the account before it sends the mail.
+4. It refuses an email that another account holds as verified: `failed_precondition` with `the email kim@example.org is a verified email of another account, so it signs in only to that account`. The method of an email decides where a magic link of that email signs in. So without this step, the holder of the mailbox could move the magic links of another account to the own account.
+5. It refuses a second identity of the same provider: `the account already signs in with another GitHub identity. Remove that method first, then link the new one`.
+6. It adds the method. The email of the method becomes a verified email of the account. For an identity of a provider, this step skips an email that another account holds as verified. An unverified email of the account, such as the email of a login link, becomes verified.
+7. It writes the audit entry `account.link_sign_in_method` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#audit-entries)).
+
+A link of GitHub or Google needs no match between its email and the emails of the account. The session proves the account, and the provider proves the identity. So a login-link account, whose email is unverified, can link GitHub or Google (plan question Q23).
 
 ## Sweep
 

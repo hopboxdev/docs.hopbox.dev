@@ -619,6 +619,8 @@ paths:
       description: |-
         RequestMagicLink sends a sign-in link to an email. It answers the same for every email,
          so it tells nothing about who has an account.
+         With link, it sends a link that adds the email to the account of the session instead.
+         The session needs a recent sign-in. An older one gets permission_denied with the detail RecentSignInRequired.
       operationId: hopbox.v1.AuthService.RequestMagicLink
       parameters:
         - name: Connect-Protocol-Version
@@ -779,7 +781,10 @@ paths:
       tags:
         - hopbox.v1.AuthService
       summary: VerifyMagicLink
-      description: VerifyMagicLink signs in with the token of a magic link, and sets the session cookie.
+      description: |-
+        VerifyMagicLink signs in with the token of a magic link, and sets the session cookie.
+         The token of a link from RequestMagicLink with link adds the email to the account of the session
+         that asked for it, and sets no cookie. Only that session can use it.
       operationId: hopbox.v1.AuthService.VerifyMagicLink
       parameters:
         - name: Connect-Protocol-Version
@@ -4370,6 +4375,12 @@ components:
           type: string
           title: email
           description: email is the address that gets the link, such as ann@example.org.
+        link:
+          type: boolean
+          title: link
+          description: |-
+            link asks for a link that adds the email as a sign-in method of the account of the session.
+             It needs a session with a recent sign-in.
       title: RequestMagicLinkRequest
       additionalProperties: false
       description: RequestMagicLinkRequest names the email.
@@ -5341,10 +5352,16 @@ components:
           title: session_expire_time
           description: |-
             session_expire_time is the end of the session, 30 days after the sign-in.
-             A session that no call uses for 7 days ends before.
+             A session that no call uses for 7 days ends before. It is unset when linked is true.
+        linked:
+          type: boolean
+          title: linked
+          description: |-
+            linked is true when the link added its email to the account of the session.
+             No new session starts then, and the session cookie stays.
       title: VerifyMagicLinkResponse
       additionalProperties: false
-      description: VerifyMagicLinkResponse names the account of the new session.
+      description: VerifyMagicLinkResponse names the account of the new session, or the account that the link added the email to.
     hopbox.v1.WatchMachinesRequest:
       type: object
       properties:

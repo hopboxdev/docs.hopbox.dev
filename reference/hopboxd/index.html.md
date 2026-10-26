@@ -966,7 +966,7 @@ Removes one sign-in method of an account. It calls `RemoveAccountSignInMethod` (
 | --- | --- | --- | --- |
 | `--account-id` | string | none, required | The UUID of the account, as `list` prints it. |
 | `--method-id` | string | none, required | The UUID of the method. |
-| `--allow-last` | bool | `false` | Removes also the last method. The account then signs in only through a new method that proves one of its verified emails. An account without a verified email keeps its last method, and the command fails with `failed_precondition`. |
+| `--allow-last` | bool | `false` | Removes also the last method. The account then has no identity of a provider, so it signs in through a new method that proves one of its verified emails, such as a magic link. An account without a verified email keeps its last method, and the command fails with `failed_precondition`. |
 
 ### admin enrollment-token create
 

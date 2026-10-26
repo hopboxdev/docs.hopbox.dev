@@ -1094,16 +1094,26 @@ The CLI prints a link such as `https://example.com/device?code=WDJB-MJHT`. Open 
 
 The approval needs a sign-in within the last 10 minutes ([Sessions, cookies, and sign-in links](/reference/sessions/#recent-sign-in)). If you signed in earlier, the page says so and shows “Sign in again”. Click it, and sign in. The console then opens the page of the code again. Click “Approve” again.
 
+## Link another sign-in method
+
+Your account can hold several sign-in methods. Once it has GitHub or Google, a new method joins it only through a link from your session ([Sessions, cookies, and sign-in links](/reference/sessions/#link-a-new-sign-in-method)). A sign-in with a new method fails then, also with the same email. A link needs a sign-in within the last 10 minutes.
+
+1. Open “Account” at the top right.
+2. Under “Sign-in methods”, click “Link GitHub” or “Link Google”. The console shows a button only for a provider of the install that the account does not hold yet. Approve at the provider. The console opens “Account” again, with the new method in the list.
+3. To link an email, such as `ann.work@example.org`, type it in the field “Email” and click “Email me a link”. Open the link in the same browser. The console adds the email and opens “Account” again.
+
+If your sign-in is older than 10 minutes, “Link GitHub” and “Link Google” send you to sign in again first, then back to “Account”. “Email me a link” shows a notice and the button “Sign in again” instead, which also brings you back to “Account”. After the new sign-in, start the link again.
+
 ## More pages
 
-| Page     | Where                                 | What you do there                                                                                            |
-| -------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Account  | the name at the top right             | Change the display name. See the emails and the sign-in methods. Add and remove SSH keys. End a CLI sign-in. |
-| Orgs     | “All orgs” in the org list at the top | See your orgs, and create one.                                                                               |
-| Members  | the tab of an org                     | Change roles. Invite people by email, and copy the link of an invitation.                                    |
-| API keys | the tab of an org                     | Create a key for a script. Copy the key at once: the console shows it only once.                             |
-| Env vars | the tab of an org                     | Set env vars and secrets for the machines of the org.                                                        |
-| Settings | the tab of an org                     | Rename, leave, or delete the org, and see its limits.                                                        |
+| Page     | Where                                 | What you do there                                                                                                                             |
+| -------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Account  | the name at the top right             | Change the display name. See the emails and the sign-in methods. Link and remove sign-in methods. Add and remove SSH keys. End a CLI sign-in. |
+| Orgs     | “All orgs” in the org list at the top | See your orgs, and create one.                                                                                                                |
+| Members  | the tab of an org                     | Change roles. Invite people by email, and copy the link of an invitation.                                                                     |
+| API keys | the tab of an org                     | Create a key for a script. Copy the key at once: the console shows it only once.                                                              |
+| Env vars | the tab of an org                     | Set env vars and secrets for the machines of the org.                                                                                         |
+| Settings | the tab of an org                     | Rename, leave, or delete the org, and see its limits.                                                                                         |
 
 “Sign out” at the top right ends the session.
 
@@ -2386,7 +2396,7 @@ curl -s -D /tmp/hb/headers -X POST -H 'Content-Type: application/json' \
 {"account":{"id":"01a143f9-1cee-7ec0-9238-7976abaacfd6", "emails":[{"email":"root@example.org"}], "instanceAdmin":true, "personalOrgId":"01a143f9-1cee-7ec1-a648-71fea47ae54f", "version":"1", "createTime":"2026-10-16T09:09:21.774252Z"}, "newAccount":true, "sessionExpireTime":"2026-11-15T09:09:21.774252Z"}
 ```
 
-The link created your account, made it an instance admin, and gave it a personal org. Your email stays unverified. So a later magic link or GitHub sign-in with the same email reaches another account ([Sessions, cookies, and sign-in links](/reference/sessions/#what-a-sign-in-does)).
+The link created your account, made it an instance admin, and gave it a personal org. Your email stays unverified. So a later magic link or GitHub sign-in with the same email reaches another account ([Sessions, cookies, and sign-in links](/reference/sessions/#what-a-sign-in-does)). To sign in to this account with a magic link, link your email from the session ([Link your email to your account](#link-your-email-to-your-account)).
 
 The two headers `Origin` and `Connect-Protocol-Version` are what the console sends. Without them, the call fails with `permission_denied`, so no page of another site can sign a browser in. Try the link a second time, and it fails with `unauthenticated`: it works once.
 
@@ -2543,6 +2553,47 @@ When the install gets an SMTP server, set its config, then switch back:
 admin config set --mail-transport smtp
 ```
 
+## Link your email to your account
+
+The email of your login-link account is unverified, so it links no magic link. Link it from your session instead ([Sessions, cookies, and sign-in links](/reference/sessions/#link-a-new-sign-in-method)). The link needs a sign-in within the last 10 minutes. If your sign-in is older, the call fails with `permission_denied`. Then print a new login link, and sign in with it again as in [Sign in with the link](#sign-in-with-the-link).
+
+Ask for a link of your email, with the session cookie and `"link":true`. This example uses the file transport of [Magic links without an SMTP server](#magic-links-without-an-smtp-server), so `admin mail show` prints the mail:
+
+```sh
+browser -d '{"email":"root@example.org","link":true}' \
+  http://127.0.0.1:7080/hopbox.v1.AuthService/RequestMagicLink
+admin mail show
+```
+
+```text
+name  20261016T091842.551203000Z-0b2e6f8c1d3a4e57.eml
+create_time  2026-10-16T09:18:42Z
+to  <root@example.org>
+subject  Add your email to your account on example.com
+
+
+Open this link to add root@example.org as a sign-in method of your account on example.com:
+
+
+https://example.com/auth/email#token=cXV1eGNvcmdlZ3JhdWx0Z2FycGx5d2FsZG9mcmVkcGx1
+
+
+Open it in the browser where you asked for it. The link works once, for 15 minutes. If you did not ask for it, you can ignore this email.
+```
+
+Use the token with the same session cookie:
+
+```sh
+TOKEN=cXV1eGNvcmdlZ3JhdWx0Z2FycGx5d2FsZG9mcmVkcGx1
+browser -d "{\"token\":\"$TOKEN\"}" http://127.0.0.1:7080/hopbox.v1.AuthService/VerifyMagicLink
+```
+
+```json
+{"account":{"id":"01a143f9-1cee-7ec0-9238-7976abaacfd6", "emails":[{"email":"root@example.org", "verified":true, "verifyTime":"2026-10-16T09:19:03.402871Z"}], "instanceAdmin":true, "personalOrgId":"01a143f9-1cee-7ec1-a648-71fea47ae54f", "version":"1", "createTime":"2026-10-16T09:09:21.774252Z"}, "linked":true}
+```
+
+The response has `linked` and no `Set-Cookie`, so your session stays. Your account now has the email link as a sign-in method, and the email is verified. A magic link to `root@example.org` now signs in to this account. Without the session cookie, the call fails with `permission_denied`, and the link stays unused: only the session that asked for the link can use it.
+
 ## Keep a second instance admin
 
 An install keeps at least one instance admin, so `admin instance-admin revoke` refuses the last one. Make a second admin first, for example the account of Ann, by her verified email:
@@ -2553,7 +2604,7 @@ admin instance-admin list
 ```
 
 ```text
-01a143f9-1cee-7ec0-9238-7976abaacfd6  root@example.org (unverified)  2026-10-16T09:09:21Z
+01a143f9-1cee-7ec0-9238-7976abaacfd6  root@example.org  2026-10-16T09:09:21Z
 01a14411-5a20-7d3e-9f0e-0c6c2b3e4a51  ann@example.org  2026-10-16T09:20:02Z
 ```
 
@@ -2737,7 +2788,44 @@ Your login-link account from [First sign-in on a new install](/guide/first-sign-
 admin instance-admin grant --email ann@example.org
 ```
 
-A sign-in with Google works in the same way, with `/auth/google/start` and the cookie `__Host-hopbox_oauth_google`. If an account holds the same verified email, Google links to that account. So you get one account with two sign-in methods ([Sessions, cookies, and sign-in links](/reference/sessions/#what-a-sign-in-does)).
+A sign-in with Google works in the same way, with `/auth/google/start` and the cookie `__Host-hopbox_oauth_google`.
+
+## Link Google to your account
+
+Your account now has an identity of a provider: the GitHub user. So a verified email alone no longer adds a sign-in method to it ([Sessions, cookies, and sign-in links](/reference/sessions/#what-a-sign-in-does)). A Google sign-in with `ann@example.org` now fails with `409`. The rule protects the account if the domain of the email lapses and a new owner proves the address. To add Google, link it from your signed-in session. In the console, this is the button Link Google on `/account`.
+
+The link needs a sign-in within the last 10 minutes ([Sessions, cookies, and sign-in links](/reference/sessions/#recent-sign-in)). If your GitHub sign-in is older, run the steps of [Sign in with GitHub](#sign-in-with-github) again first.
+
+Start the link with the session cookie and `link=1`:
+
+```sh
+curl -s -o /dev/null -D /tmp/hb/link -H "Cookie: $COOKIE" \
+  'http://127.0.0.1:7080/auth/google/start?link=1&return_to=%2Faccount'
+sed -n 's/^Location: //p' /tmp/hb/link
+```
+
+```text
+https://accounts.google.com/o/oauth2/v2/auth?client_id=...&code_challenge=...&code_challenge_method=S256&nonce=...&redirect_uri=https%3A%2F%2Fexample.com%2Fauth%2Fgoogle%2Fcallback&response_type=code&scope=openid+email+profile&state=...
+```
+
+With an older sign-in, the `Location` is `/signin?again=1&return_to=%2Faccount` instead.
+
+Open the URL in the browser, and choose your Google account. As before, copy the URL of the refused callback. Send it with the state cookie of the link and the session cookie:
+
+```sh
+CALLBACK='https://example.com/auth/google/callback?state=...&code=...'
+STATE=$(sed -n 's/^Set-Cookie: \(__Host-hopbox_oauth_google=[^;]*\).*/\1/p' /tmp/hb/link)
+curl -s -D /tmp/hb/linked -H "Cookie: $STATE; $COOKIE" "http://127.0.0.1:7080${CALLBACK#https://example.com}"
+grep -E '^(HTTP/|Location:|Set-Cookie:)' /tmp/hb/linked
+```
+
+```text
+HTTP/1.1 303 See Other
+Location: /account
+Set-Cookie: __Host-hopbox_oauth_google=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax
+```
+
+The callback added the Google account to your account. It set no session cookie, so your session stays. `ListSignInMethods` now lists GitHub and Google, and both sign in to the same account. The link works only with the session that started it. Another browser gets `400` at the callback ([Sign-in with GitHub and Google](/reference/oauth/#link-to-a-signed-in-account)).
 
 After the sign-ins, remove the line `127.0.0.1 example.com` from `/etc/hosts`. This command works on macOS and Linux, and keeps a copy of the old file in `/etc/hosts.bak`:
 
@@ -2761,13 +2849,13 @@ When the edge role serves the install over HTTPS, open `https://example.com/auth
 
 The failed step answers with a plain text page that says why, and a request ID for the server log ([Sign-in with GitHub and Google](/reference/oauth/#errors)).
 
-| Message                                                                                  | What to do                                                                                                                                                                                                                                                          |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `the sign-in is not valid: it did not start in this browser, it was used, or it expired` | Start the sign-in again. A flow lasts 10 minutes, and works once.                                                                                                                                                                                                   |
-| `the provider has not verified an email of this account`                                 | At GitHub, verify an email and make it the primary email. At Google, use an account with a verified email.                                                                                                                                                          |
-| `the provider did not approve the sign-in: GitHub refused the sign-in code`              | Compare the client secret and the redirect URI with the app at GitHub. The log record `oauth sign-in refused by the provider` has the answer of GitHub.                                                                                                             |
-| `failed precondition: this install has no GitHub client`                                 | Run `admin config oauth set github`.                                                                                                                                                                                                                                |
-| `the sign-in conflicts with a sign-in method of the account`                             | The account holds another GitHub user. If the person lost it, sign in with a magic link and remove the old method. Without another method, run `admin account sign-in-method remove` ([Sign-in with GitHub and Google](/reference/oauth/#recover-a-lost-identity)). |
+| Message                                                                                  | What to do                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `the sign-in is not valid: it did not start in this browser, it was used, or it expired` | Start the sign-in again. A flow lasts 10 minutes, and works once.                                                                                                                                                                                                                                                                                                               |
+| `the provider has not verified an email of this account`                                 | At GitHub, verify an email and make it the primary email. At Google, use an account with a verified email.                                                                                                                                                                                                                                                                      |
+| `the provider did not approve the sign-in: GitHub refused the sign-in code`              | Compare the client secret and the redirect URI with the app at GitHub. The log record `oauth sign-in refused by the provider` has the answer of GitHub.                                                                                                                                                                                                                         |
+| `failed precondition: this install has no GitHub client`                                 | Run `admin config oauth set github`.                                                                                                                                                                                                                                                                                                                                            |
+| `the sign-in conflicts with a sign-in method of the account`                             | The account of the email has GitHub or Google, so a new method needs a link. Sign in with a method of the account, then link the new one on `/account` ([Link Google to your account](#link-google-to-your-account)). If the person lost every method, run `admin account sign-in-method remove` ([Sign-in with GitHub and Google](/reference/oauth/#recover-a-lost-identity)). |
 
 To turn a provider off, clear its client. The accounts keep their sign-in methods, which work again after a new set:
 

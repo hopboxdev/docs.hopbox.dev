@@ -161,7 +161,44 @@ Your login-link account from [First sign-in on a new install](/guide/first-sign-
 admin instance-admin grant --email ann@example.org
 ```
 
-A sign-in with Google works in the same way, with `/auth/google/start` and the cookie `__Host-hopbox_oauth_google`. If an account holds the same verified email, Google links to that account. So you get one account with two sign-in methods ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)).
+A sign-in with Google works in the same way, with `/auth/google/start` and the cookie `__Host-hopbox_oauth_google`.
+
+## Link Google to your account
+
+Your account now has an identity of a provider: the GitHub user. So a verified email alone no longer adds a sign-in method to it ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)). A Google sign-in with `ann@example.org` now fails with `409`. The rule protects the account if the domain of the email lapses and a new owner proves the address. To add Google, link it from your signed-in session. In the console, this is the button Link Google on `/account`.
+
+The link needs a sign-in within the last 10 minutes ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#recent-sign-in)). If your GitHub sign-in is older, run the steps of [Sign in with GitHub](#sign-in-with-github) again first.
+
+Start the link with the session cookie and `link=1`:
+
+```sh
+curl -s -o /dev/null -D /tmp/hb/link -H "Cookie: $COOKIE" \
+  'http://127.0.0.1:7080/auth/google/start?link=1&return_to=%2Faccount'
+sed -n 's/^Location: //p' /tmp/hb/link
+```
+
+```text
+https://accounts.google.com/o/oauth2/v2/auth?client_id=...&code_challenge=...&code_challenge_method=S256&nonce=...&redirect_uri=https%3A%2F%2Fexample.com%2Fauth%2Fgoogle%2Fcallback&response_type=code&scope=openid+email+profile&state=...
+```
+
+With an older sign-in, the `Location` is `/signin?again=1&return_to=%2Faccount` instead.
+
+Open the URL in the browser, and choose your Google account. As before, copy the URL of the refused callback. Send it with the state cookie of the link and the session cookie:
+
+```sh
+CALLBACK='https://example.com/auth/google/callback?state=...&code=...'
+STATE=$(sed -n 's/^Set-Cookie: \(__Host-hopbox_oauth_google=[^;]*\).*/\1/p' /tmp/hb/link)
+curl -s -D /tmp/hb/linked -H "Cookie: $STATE; $COOKIE" "http://127.0.0.1:7080${CALLBACK#https://example.com}"
+grep -E '^(HTTP/|Location:|Set-Cookie:)' /tmp/hb/linked
+```
+
+```text
+HTTP/1.1 303 See Other
+Location: /account
+Set-Cookie: __Host-hopbox_oauth_google=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax
+```
+
+The callback added the Google account to your account. It set no session cookie, so your session stays. `ListSignInMethods` now lists GitHub and Google, and both sign in to the same account. The link works only with the session that started it. Another browser gets `400` at the callback ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#link-to-a-signed-in-account)).
 
 After the sign-ins, remove the line `127.0.0.1 example.com` from `/etc/hosts`. This command works on macOS and Linux, and keeps a copy of the old file in `/etc/hosts.bak`:
 
@@ -191,7 +228,7 @@ The failed step answers with a plain text page that says why, and a request ID f
 | `the provider has not verified an email of this account` | At GitHub, verify an email and make it the primary email. At Google, use an account with a verified email. |
 | `the provider did not approve the sign-in: GitHub refused the sign-in code` | Compare the client secret and the redirect URI with the app at GitHub. The log record `oauth sign-in refused by the provider` has the answer of GitHub. |
 | `failed precondition: this install has no GitHub client` | Run `admin config oauth set github`. |
-| `the sign-in conflicts with a sign-in method of the account` | The account holds another GitHub user. If the person lost it, sign in with a magic link and remove the old method. Without another method, run `admin account sign-in-method remove` ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#recover-a-lost-identity)). |
+| `the sign-in conflicts with a sign-in method of the account` | The account of the email has GitHub or Google, so a new method needs a link. Sign in with a method of the account, then link the new one on `/account` ([Link Google to your account](#link-google-to-your-account)). If the person lost every method, run `admin account sign-in-method remove` ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#recover-a-lost-identity)). |
 
 To turn a provider off, clear its client. The accounts keep their sign-in methods, which work again after a new set:
 

@@ -78,7 +78,7 @@ curl -s -D /tmp/hb/headers -X POST -H 'Content-Type: application/json' \
 {"account":{"id":"01a143f9-1cee-7ec0-9238-7976abaacfd6", "emails":[{"email":"root@example.org"}], "instanceAdmin":true, "personalOrgId":"01a143f9-1cee-7ec1-a648-71fea47ae54f", "version":"1", "createTime":"2026-10-16T09:09:21.774252Z"}, "newAccount":true, "sessionExpireTime":"2026-11-15T09:09:21.774252Z"}
 ```
 
-The link created your account, made it an instance admin, and gave it a personal org. Your email stays unverified. So a later magic link or GitHub sign-in with the same email reaches another account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)).
+The link created your account, made it an instance admin, and gave it a personal org. Your email stays unverified. So a later magic link or GitHub sign-in with the same email reaches another account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)). To sign in to this account with a magic link, link your email from the session ([Link your email to your account](#link-your-email-to-your-account)).
 
 The two headers `Origin` and `Connect-Protocol-Version` are what the console sends. Without them, the call fails with `permission_denied`, so no page of another site can sign a browser in. Try the link a second time, and it fails with `unauthenticated`: it works once.
 
@@ -232,6 +232,44 @@ When the install gets an SMTP server, set its config, then switch back:
 admin config set --mail-transport smtp
 ```
 
+## Link your email to your account
+
+The email of your login-link account is unverified, so it links no magic link. Link it from your session instead ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#link-a-new-sign-in-method)). The link needs a sign-in within the last 10 minutes. If your sign-in is older, the call fails with `permission_denied`. Then print a new login link, and sign in with it again as in [Sign in with the link](#sign-in-with-the-link).
+
+Ask for a link of your email, with the session cookie and `"link":true`. This example uses the file transport of [Magic links without an SMTP server](#magic-links-without-an-smtp-server), so `admin mail show` prints the mail:
+
+```sh
+browser -d '{"email":"root@example.org","link":true}' \
+  http://127.0.0.1:7080/hopbox.v1.AuthService/RequestMagicLink
+admin mail show
+```
+
+```text
+name	20261016T091842.551203000Z-0b2e6f8c1d3a4e57.eml
+create_time	2026-10-16T09:18:42Z
+to	<root@example.org>
+subject	Add your email to your account on example.com
+
+Open this link to add root@example.org as a sign-in method of your account on example.com:
+
+https://example.com/auth/email#token=cXV1eGNvcmdlZ3JhdWx0Z2FycGx5d2FsZG9mcmVkcGx1
+
+Open it in the browser where you asked for it. The link works once, for 15 minutes. If you did not ask for it, you can ignore this email.
+```
+
+Use the token with the same session cookie:
+
+```sh
+TOKEN=cXV1eGNvcmdlZ3JhdWx0Z2FycGx5d2FsZG9mcmVkcGx1
+browser -d "{\"token\":\"$TOKEN\"}" http://127.0.0.1:7080/hopbox.v1.AuthService/VerifyMagicLink
+```
+
+```json
+{"account":{"id":"01a143f9-1cee-7ec0-9238-7976abaacfd6", "emails":[{"email":"root@example.org", "verified":true, "verifyTime":"2026-10-16T09:19:03.402871Z"}], "instanceAdmin":true, "personalOrgId":"01a143f9-1cee-7ec1-a648-71fea47ae54f", "version":"1", "createTime":"2026-10-16T09:09:21.774252Z"}, "linked":true}
+```
+
+The response has `linked` and no `Set-Cookie`, so your session stays. Your account now has the email link as a sign-in method, and the email is verified. A magic link to `root@example.org` now signs in to this account. Without the session cookie, the call fails with `permission_denied`, and the link stays unused: only the session that asked for the link can use it.
+
 ## Keep a second instance admin
 
 An install keeps at least one instance admin, so `admin instance-admin revoke` refuses the last one. Make a second admin first, for example the account of Ann, by her verified email:
@@ -242,7 +280,7 @@ admin instance-admin list
 ```
 
 ```text
-01a143f9-1cee-7ec0-9238-7976abaacfd6	root@example.org (unverified)	2026-10-16T09:09:21Z
+01a143f9-1cee-7ec0-9238-7976abaacfd6	root@example.org	2026-10-16T09:09:21Z
 01a14411-5a20-7d3e-9f0e-0c6c2b3e4a51	ann@example.org	2026-10-16T09:20:02Z
 ```
 

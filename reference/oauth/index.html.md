@@ -2,7 +2,7 @@
 
 > The sign-in with GitHub and Google: its config, redirect URIs, browser endpoints, checks, cookies, errors, limits, logs, and audit entries.
 
-A person can sign in to an install with GitHub or Google. The operator registers an OAuth app at each provider and gives hopbox the client ID and the client secret. hopbox cannot register these apps itself, because each app has redirect URIs on the domain of one install. This page gives the config, the browser endpoints, and the checks of a sign-in. It also gives the cookies, the errors, the rate limits, the logs, and the audit entries. [Sessions, cookies, and sign-in links](/reference/sessions/index.html.md) covers the session that a sign-in starts. [Sign in with GitHub and Google](/guide/github-google-sign-in/index.html.md) sets up both providers step by step. The code is in `internal/auth/oauth`, `internal/service/oauth.go`, and `internal/api/oauth.go`.
+A person can sign in to an install with GitHub or Google. The operator registers an OAuth app at each provider and gives hopbox the client ID and the client secret. hopbox cannot register these apps itself, because each app has redirect URIs on the domain of one install. This page gives the config, the browser endpoints, and the checks of a sign-in. It also gives the link of an identity to a signed-in account, the cookies, the errors, the rate limits, the logs, and the audit entries. [Sessions, cookies, and sign-in links](/reference/sessions/index.html.md) covers the session that a sign-in starts. [Sign in with GitHub and Google](/guide/github-google-sign-in/index.html.md) sets up both providers step by step. The code is in `internal/auth/oauth`, `internal/service/oauth.go`, and `internal/api/oauth.go`.
 
 ## Providers
 
@@ -47,8 +47,8 @@ Each provider has two endpoints on the API listener. The edge servers forward th
 
 | Endpoint | Query parameters | Answer |
 | --- | --- | --- |
-| `GET /auth/{provider}/start` | `return_to`: optional, the path on the install to open after the sign-in. The default is `/`. | `303 See Other` to the authorization URL of the provider, with the state cookie |
-| `GET /auth/{provider}/callback` | `code`, `state`, and `error`, which the provider sets | `303 See Other` to the return path, with the session cookie |
+| `GET /auth/{provider}/start` | `return_to`: optional, the path on the install to open after the sign-in. The default is `/`. `link`: optional, `1` for a link of the identity to the account of the session ([Link to a signed-in account](#link-to-a-signed-in-account)). Another value of `link`, or two of them, gets `400`. | `303 See Other` to the authorization URL of the provider, with the state cookie |
+| `GET /auth/{provider}/callback` | `code`, `state`, and `error`, which the provider sets | `303 See Other` to the return path, with the session cookie. A link sets no session cookie. |
 
 `{provider}` is `github` or `google`. Another name gets `404 Not Found`.
 
@@ -85,14 +85,34 @@ The callback ends a sign-in in these steps. Any failed step ends the sign-in wit
 5. If the provider sent `error`, the sign-in ends. The flow stays used.
 6. The server trades the code for a token at the provider, with the client secret, the redirect URI, and the PKCE verifier.
 7. For GitHub, the server reads `GET /user` and `GET /user/emails`. For Google, it checks the ID token ([Checks of the ID token of Google](#checks-of-the-id-token-of-google)).
-8. The provider must prove a verified email. The server then signs the person in, as [Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does) gives.
-9. The response sets the session cookie and sends the browser to the return path.
+8. The provider must prove a verified email. The server then signs the person in, as [Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does) gives. A flow of a link adds the identity to the account instead ([Link to a signed-in account](#link-to-a-signed-in-account)).
+9. The response sets the session cookie and sends the browser to the return path. After a link, it only sends the browser to the return path.
 
 The callback is the one request that sets the session cookie without the `Origin` check of [Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#calls-with-the-cookie). The provider sends the browser back from its own site, so the request has no `Origin` of the install. Step 3 replaces the check. Another site can start a flow in its own browser and send the callback URL to a victim. But the browser of the victim does not have the state cookie of that flow, so the callback fails. A machine subdomain cannot set the cookie either, because of the `__Host-` prefix.
 
 The calls to the provider run outside of any database transaction, with a limit of 20 s for the whole exchange.
 
 If the browser has a live session, the new session replaces it, as for any sign-in.
+
+### Link to a signed-in account
+
+A person who is signed in links a GitHub user or a Google account to the account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#link-a-new-sign-in-method)). Once the account has an identity of a provider, this is the only way to add another one. The browser opens the start with `link=1`, and the console sends it there from `/account`:
+
+```text
+https://example.com/auth/google/start?link=1&return_to=%2Faccount
+```
+
+The start reads the session cookie of the browser. It checks the session in this order:
+
+| Session | Answer |
+| --- | --- |
+| No live session | `303 See Other` to `/signin?return_to=<path>`. After the sign-in, the console opens the return path, where the person starts the link again. |
+| A session whose sign-in is more than 10 minutes old ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#recent-sign-in)) | `303 See Other` to `/signin?again=1&return_to=<path>`. |
+| A session with a recent sign-in | The start of a sign-in, as above. The flow also records the session in `oauth_flows.link_session_id`. |
+
+A return path of `/` leaves out `return_to`. A return path that breaks a rule gets the error page instead of the redirect. The limits of starts count a link as a start.
+
+The callback of a link must come with the session cookie of the same session. Another session, or a browser without a session, gets `400` at step 4, and the flow is used. The exchange with the provider runs as for a sign-in. The callback then adds the identity to the account, with the checks of [Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#link-a-new-sign-in-method). It sets no session cookie, and the session of the browser stays. The callback sends the browser to the return path, for example `/account`.
 
 ### Checks of the ID token of Google
 
@@ -148,7 +168,12 @@ Request ID: <request ID>
 | `403 Forbidden` | The provider refused the code, the token, or the ID token. | `the provider did not approve the sign-in: GitHub refused the sign-in code. Start the sign-in again. If this repeats, the operator must check the GitHub client` |
 | `403 Forbidden` | The email of the provider has a character that is not ASCII. | `the provider has not verified an email of this account: hopbox cannot use the email that GitHub gave: invalid email: ... holds a character that is not ASCII` |
 | `403 Forbidden` | The provider proved no verified email. | `the provider has not verified an email of this account: verify an email at GitHub, make it the primary email there, and sign in again` |
-| `409 Conflict` | The account of the verified email holds another identity of the same provider ([Recover a lost identity](#recover-a-lost-identity)). | `the sign-in conflicts with a sign-in method of the account: the account of dana@example.org already signs in with another GitHub identity. If you lost that identity, ...` |
+| `400 Bad Request` | The parameter `link` of the start is not `1`, or comes twice. | `invalid argument: the parameter link must be 1` |
+| `409 Conflict` | The account of the verified email has an identity of a provider, so a new method joins it only through a link ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)). | `the sign-in conflicts with a sign-in method of the account: the account of dana@example.org signs in with GitHub or Google, so a new sign-in method joins it only through a link. Sign in with a method of the account, then link Google on the account page. If you lost every method of the account, the operator removes the lost one with hopboxd admin account sign-in-method remove` |
+| `409 Conflict` | A link: the identity signs in to another account. | `the sign-in conflicts with a sign-in method of the account: this Google identity signs in to another account. Remove it from that account first` |
+| `409 Conflict` | A link: the account has another identity of the same provider. | `the sign-in conflicts with a sign-in method of the account: the account already signs in with another GitHub identity. Remove that method first, then link the new one` |
+| `403 Forbidden` | A link: the session ended between the start and the callback. | `this call needs a credential: the session that started the link ended. Sign in again, then link the method again` |
+| `409 Conflict` | A link: the account has this identity already. | `already exists: the account already signs in with this GitHub identity` |
 | `404 Not Found` | The provider name is unknown. | `no sign-in provider "gitlab". Use github or google` |
 | `404 Not Found` | The install has no client for the provider, or no domain. | `failed precondition: this install has no GitHub client, so it offers no sign-in with GitHub` |
 | `429 Too Many Requests` | A rate limit refused the request. | the message of the limit, see below |
@@ -159,22 +184,24 @@ The messages say Google instead of GitHub for a sign-in with Google. A value of 
 
 ## Recover a lost identity
 
-A person can lose the GitHub user or the Google account that the account signs in with. A new GitHub user with a verified email of the account then gets `409`. The account holds the identity of another GitHub user. That rule stops a second identity of the same provider, for example at the new owner of a lapsed domain ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)). It does not stop the holder of the mailbox of a lapsed domain from other ways in. That person can still sign in with a magic link, or with a provider that the account has not used yet. The person recovers in one of two ways.
+A person can lose the GitHub user or the Google account that the account signs in with. A sign-in with a new GitHub user and a verified email of the account then gets `409`. The account has an identity of a provider, so the email links no new method ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)). The rule stops the new owner of a lapsed domain, who can prove an old address of the account. The person recovers in one of two ways.
 
-With another sign-in method of the account:
+With another sign-in method of the account, such as its email link or Google:
 
-1. Sign in with a magic link to the verified email, or with the other provider.
-2. List the methods with `ListSignInMethods`, and remove the old GitHub method with `RemoveSignInMethod` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#removesigninmethod)).
-3. Sign in with the new GitHub user. It links through the verified email.
+1. Sign in with that method.
+2. On `/account`, remove the old GitHub method. The API call is `RemoveSignInMethod` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#removesigninmethod)).
+3. On `/account`, select "Link GitHub", and approve the new GitHub user at GitHub ([Link to a signed-in account](#link-to-a-signed-in-account)).
 
-Without another method, for example on an install without SMTP, the operator removes the old method:
+Without another method, for example on an install without SMTP, an instance admin removes the lost method on a control server:
 
 ```sh
 sudo hopboxd admin account sign-in-method list --email dana@example.org
 sudo hopboxd admin account sign-in-method remove --account-id <account> --method-id <method> --allow-last
 ```
 
-Then the person signs in with the new GitHub user, which links through the verified email ([hopboxd](/reference/hopboxd/index.html.md#admin-account-sign-in-method-remove)). The operator must first make sure that the person holds the email. Otherwise the removal hands the account to the new owner of the address. The audit log of the personal org records the removal, with the actor.
+The account then has no method, and so no identity of a provider. A sign-in that proves a verified email of the account links to it again. No other account holds an email link of that email, because a link refuses the verified email of another account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#link-a-new-sign-in-method)) ([hopboxd](/reference/hopboxd/index.html.md#admin-account-sign-in-method-remove)). The person signs in with a magic link to that email, or with the new GitHub user. Then the person links the other methods from `/account`.
+
+The operator must first make sure that the person holds the email. Otherwise the removal hands the account to the holder of the address. The audit log of the personal org records the removal, with the actor.
 
 The message of the `409` names both ways.
 
@@ -198,12 +225,13 @@ Each record has `component=api` or `component=service`, and never holds a state,
 
 | Record | Level | Fields | When |
 | --- | --- | --- | --- |
-| `oauth sign-in started` | info | `provider`, `request_id` | A start sent the browser to the provider. |
+| `oauth sign-in started` | info | `provider`, `link`, `request_id` | A start sent the browser to the provider. `link` is `true` for a link to a signed-in account. |
 | `oauth sign-in start refused` | info | `provider`, `sec_fetch_site`, `request_id` | A start came from another site. |
 | `oauth sign-in start failed` | warn | `provider`, `err`, `request_id` | The discovery document of Google did not load. |
 | `oauth sign-in` | info | `provider`, `account`, `new_account`, `request_id` | A callback signed a person in. |
-| `oauth sign-in refused` | info | `provider`, `request_id`, `reason`, and `err` for an email | A callback failed a check of the state, had no code, or had no verified email. |
-| `oauth sign-in refused` | warn | `provider`, `request_id`, `reason`, `subject` | The account of the email holds another identity of the provider. |
+| `oauth link` | info | `provider`, `account`, `request_id` | A callback linked an identity to the account of the session. |
+| `oauth sign-in refused` | info | `provider`, `request_id`, `reason`, and `err` for an email | A callback failed a check of the state, had no code, or had no verified email. The callback of a link came without its session: `the link did not come back with the session that started it`. |
+| `oauth sign-in refused` | warn | `provider`, `request_id`, `reason`, `subject` | The account of the email has an identity of a provider: `the account needs a link for a new sign-in method`. Or a link found the identity on another account, or another identity of the provider on the account: `the identity or the account holds another link`. |
 | `oauth sign-in denied by the provider` | info | `provider`, `request_id`, `error` | The callback had the `error` parameter. |
 | `oauth sign-in refused by the provider` | warn | `provider`, `request_id`, `err` | The provider refused the code or the token. A repeat can mean a wrong client secret or redirect URI. |
 | `oauth sign-in failed` | warn or error | `provider`, `err`, `request_id` | The provider did not answer (warn), or another failure (error). |
@@ -221,7 +249,7 @@ A sign-in writes the entries of [the sign-in, account, and audit API](/reference
 | `subject` | the subject at the provider |
 | `login` | the GitHub login. Google has no login, so a sign-in with Google has no `login`. |
 
-A first sign-in also writes `account.create`, and a link by a verified email writes `account.link_sign_in_method` with the `kind` `github` or `google`. A start, a refused callback, and a failed callback write no entry, because no account acts. The log records above cover them.
+A first sign-in also writes `account.create`, and a link by a verified email writes `account.link_sign_in_method` with the `kind` `github` or `google`. A link to a signed-in account writes only `account.link_sign_in_method`, with the session as the actor. Its details are `kind`, `email`, `session`, `oauth_flow`, `subject`, and for GitHub `login`. A start, a refused callback, and a failed callback write no entry, because no account acts. The log records above cover them.
 
 The calls of the config write the entries of [the admin API](/reference/admin-api/index.html.md#getoauthconfig): `oauth_config.get`, `oauth_config.set`, and `oauth_config.clear`.
 
