@@ -11515,6 +11515,8 @@ The audit log never stores a secret value. `Record` refuses an entry in these ca
 | encrypted data | `plaintext`, `ciphertext`                              |
 | credentials    | `credential`, `credentials`, `authorization`, `cookie` |
 
+The value of the detail `fingerprint` skips the patterns of the two value rules when it is an SSH key fingerprint: `SHA256:` and 43 base64 characters. A fingerprint is a hash, and its base64 can hold a token prefix such as `eyJ` by chance. Any other value of that detail goes through the patterns.
+
 ### Audit errors
 
 | Error                                                                               | Go value             | Cause                                                                      |
