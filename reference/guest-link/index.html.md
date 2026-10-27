@@ -99,7 +99,7 @@ Both nonces are new on each link, so an old proof never works again. The role di
 
 ## Versions
 
-A guest link version is a whole number from 1. This build speaks versions 1 and 2. Version 2 adds `ExecControl` on `Link`. On version 1, the node sends the resizes and the signals of an exec on `Exec`. On version 2, it sends them as `ExecControl`.
+A guest link version is a whole number from 1. This build speaks versions 1 to 3. Version 2 adds `ExecControl` on `Link`. On version 1, the node sends the resizes and the signals of an exec on `Exec`. From version 2 on, it sends them as `ExecControl`. Version 3 adds the credit of `Exec` ([Credit of an exec](#credit-of-an-exec)). On a link of version 3, the guest agent acks the messages of the node on `Exec`, and the node sends them on credit. The negotiated version of the link decides, not the build of the guest agent or of `hopboxd`.
 
 | Rule | Detail |
 | --- | --- |
@@ -202,19 +202,34 @@ The guest agent builds the env of a command in four steps. A later value replace
 | `ExecRequest.attach_id` | guest | the attach ID, always the first message |
 | `ExecRequest.stdout`, `stderr` | guest | output |
 | `ExecRequest.exit` | guest | the end of the command, always the last message |
+| `ExecRequest.read` | guest | from version 3 on, an ack: what the messages of the node cost that the guest agent took off the call since its last ack |
 | `ExecResponse.stdin` | node | input |
 | `ExecResponse.stdin_eof` | node | the end of the input. Without a terminal, the guest agent closes the input of the command. With a terminal, it sends the end-of-file character, Ctrl-D. |
 | `ExecResponse.resize` | node | a new size of the terminal |
 | `ExecResponse.signal` | node | a signal for the process group of the command, by name, for example `SIGINT`. The guest agent ignores a name that it does not know. |
 | `ExecResponse.control` | node | from version 2 on, the copy of an `ExecControl` that the node sent on `Link` |
 
-On version 2, the node sends `resize` and `signal` as `ExecControl` on `Link` instead. On `Exec`, they wait behind the input that the command did not read yet. On `Link`, they reach a command that reads no input at once. The node queues each `ExecControl` for `Link`, at most 64 for each link. A guest agent that reads `Link` slowly never blocks the node: once the queue is full, the node refuses the next resize or signal, and `Process.Resize` or `Process.Signal` returns an error. The client of the exec does not learn of the refusal. The node logs `a resize or a signal of an exec did not reach the guest agent` at level warn, with `component=access`, `machine`, `err`, and `missed`, at most once a minute for each exec. A guest agent of version 2 takes them on both paths. An `ExecControl` for an exec whose command did not start yet waits for the start, and the guest agent applies it then, in order. At most 16 wait for each exec, and the guest agent drops the next one.
+From version 2 on, the node sends `resize` and `signal` as `ExecControl` on `Link` instead. On `Exec`, they wait behind the input that the command did not read yet. On `Link`, they reach a command that reads no input at once. The node queues each `ExecControl` for `Link`, at most 64 for each link. A guest agent that reads `Link` slowly never blocks the node: once the queue is full, the node refuses the next resize or signal, and `Process.Resize` or `Process.Signal` returns an error. The client of the exec does not learn of the refusal. The node logs `a resize or a signal of an exec did not reach the guest agent` at level warn, with `component=access`, `machine`, `err`, and `missed`, at most once a minute for each exec. A guest agent of version 2 or later takes them on both paths. An `ExecControl` for an exec whose command did not start yet waits for the start, and the guest agent applies it then, in order. At most 16 wait for each exec, and the guest agent drops the next one.
 
 `Link` and `Exec` are two calls. So the guest agent can read a control on `Link` after the input that came after it on `Exec`. A shell can then print the old size of the terminal. The node prevents this with a copy of each `ExecControl` that it queued. It sends the copies as `ExecResponse.control` at once, and always before the next `stdin` or `stdin_eof`. A resize right after a resize replaces the copy of the older one while that copy waits.
 
 The guest agent keeps the highest `seq` that it applied for each exec. It ignores a control whose `seq` is not higher. So the first copy to arrive takes effect, and the other does nothing. A `seq` of 0 comes from an older node, and the guest agent always applies that control. The result: a resize or a signal takes effect before any input that the node sends after `Process.Resize` or `Process.Signal` returns. A guest agent from an older image ignores the copies and keeps the old order.
 
-The copies wait only while the guest agent reads no messages of the exec. At most 64 copies wait for each exec. Once 64 wait, the node refuses the next resize or signal, and `Process.Resize` or `Process.Signal` returns an error. A resize right after a waiting resize replaces it, so the node still takes it. The node logs the refusal as a control that did not reach the guest agent.
+The copies wait only while the guest agent reads no messages of the exec. From version 3 on, they also wait for the credit of the call ([Credit of an exec](#credit-of-an-exec)). At most 64 copies wait for each exec. Once 64 wait, the node refuses the next resize or signal, and `Process.Resize` or `Process.Signal` returns an error. A resize right after a waiting resize replaces it, so the node still takes it. The node logs the refusal as a control that did not reach the guest agent.
+
+#### Credit of an exec
+
+The HTTP/2 server of Go queues the WINDOW_UPDATE of a call behind the DATA of the same call ([golang/go#82615](https://github.com/golang/go/issues/82615)). The node is the HTTP/2 server. While its input for a command waits for the window of the guest agent, the node sends no WINDOW_UPDATE on the call, although it reads all output. Then the guest agent can send no more than 256 KiB of output. A command that blocks on its output before it reads more input, such as `gzip` or `cat`, then stops for good. This happens when the input fills the queue of the guest agent (64 chunks, 2 MiB), the pipe of the command, and the window of the call.
+
+From version 3 on, the node sends on credit:
+
+- The node keeps at most 128 KiB in flight on the call (`protocol.ExecCredit`), half of the window of the guest agent. A message costs its size as `proto.Size` counts it, plus 32 (`protocol.ExecMessageCost`). One message costs at most 96 KiB, so it always fits next to the part that the guest agent did not ack yet. A send that needs more waits until an ack comes or the command ends.
+- The guest agent counts the cost of each message that it takes off the call. Once the count reaches 32 KiB (`protocol.ExecAckAfter`), it sends the count in `ExecRequest.read`. It sends from its own goroutine, so a wait of the output never holds back the input. It sends no ack after the exit.
+- The node clamps each ack to 128 KiB and never counts less than nothing in flight. A guest agent that acks more than it took, or before it took it, can only make the node wait for HTTP/2 flow control on its own call, as before version 3. The calls of other machines never see its acks.
+- `Process.Signal` refuses a name of more than 32 bytes (`protocol.MaxSignalName`), and each input message holds at most 32 KiB. So every message costs at least its bytes on the wire.
+- The node takes the acks in its reader of the call, behind the output. So a consumer of the output that stops reading stops the input too, but no command can stop its own output.
+
+On version 2 and before, the node sends without a bound, and such a command can still stop. `TestExecWritesBeforeItReads` checks a command that writes 1 MiB before it reads 8 MiB of input. `TestExecCopiesBothWays` checks 4 MiB through `cat` with and without the credit. `TestExecWritesBeforeItReadsThroughEveryHop` runs the same command through the control role, the control channel, and the guest link. It needs the credit of both hops ([the control channel](/reference/control-channel/index.html.md#credit-of-a-data-stream)).
 
 `ExecExit` reports the end:
 
