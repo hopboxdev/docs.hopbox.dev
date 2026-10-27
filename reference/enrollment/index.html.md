@@ -198,7 +198,7 @@ The control role compares a new server with the hardware of its pool:
 | RAM | At most 2% apart, because the firmware of two servers of one model can keep a few MiB more or less (`domain.HardwareTolerance`) |
 | Disks | The same count, and each disk at most 2% apart from the disk of the same rank, in the order of size |
 
-The pool `default` and each pool from before this rule have no hardware yet. The next server that enrolls into such a pool records it, not the servers that the pool holds already. A move of an install enrolls new servers beside its old server in the pool `default`. The old server can be another model, so a record of its hardware would refuse the new servers.
+The pool `default` and each pool from before this rule have no hardware yet. The next server that enrolls into such a pool records it, not the servers that the pool holds already. An install from before this rule can enroll a server of another model beside its old server in the pool `default`. The pool records no hardware of the old server, so it takes that new server.
 
 A pool whose servers are all decommissioned takes the hardware of its next server. So an instance admin who wants another model in a pool decommissions every server of the pool first. Only an enrollment adds a server, and each enrollment holds the lock of the server registry and the lock of the pool, so no server joins between the count of the live servers and the record of the hardware. The same hardware again leaves the pool and its version as they are.
 

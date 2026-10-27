@@ -290,7 +290,4 @@ The firewall logs with `component=hostfw`. A check logs a state only after a cha
 
 ## Later milestones
 
-Later milestones of phase 2 add to the table (the build plan of phase 2):
-
-- N17 adds the UDP ports of the egress tunnels to the vRack zone, and the forward and NAT rules of the egress of the machines.
-- N21 adds the ports of the one-time move of ks, whose control channel and disk copy cross the public internet.
+N17, a later milestone of phase 2, adds the UDP ports of the egress tunnels to the vRack zone, and the forward and NAT rules of the egress of the machines (the build plan of phase 2).
