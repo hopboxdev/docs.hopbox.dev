@@ -225,7 +225,7 @@ From version 3 on, the node sends on credit:
 
 - The node keeps at most 128 KiB in flight on the call (`protocol.ExecCredit`), half of the window of the guest agent. A message costs its size as `proto.Size` counts it, plus 32 (`protocol.ExecMessageCost`). One message costs at most 96 KiB, so it always fits next to the part that the guest agent did not ack yet. A send that needs more waits until an ack comes or the command ends.
 - The guest agent counts the cost of each message that it takes off the call. Once the count reaches 32 KiB (`protocol.ExecAckAfter`), it sends the count in `ExecRequest.read`. It sends from its own goroutine, so a wait of the output never holds back the input. It sends no ack after the exit.
-- The node clamps each ack to 128 KiB and never counts less than nothing in flight. A guest agent that acks more than it took, or before it took it, can only make the node wait for HTTP/2 flow control on its own call, as before version 3. The calls of other machines never see its acks.
+- The node clamps each ack to 128 KiB and never lets the count in flight go below 0. A guest agent that acks more than it took, or before it took it, can only make the node wait for HTTP/2 flow control on its own call, as before version 3. The calls of other machines never see its acks.
 - `Process.Signal` refuses a name of more than 32 bytes (`protocol.MaxSignalName`), and each input message holds at most 32 KiB. So every message costs at least its bytes on the wire.
 - The node takes the acks in its reader of the call, behind the output. So a consumer of the output that stops reading stops the input too, but no command can stop its own output.
 

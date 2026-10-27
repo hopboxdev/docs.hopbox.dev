@@ -9588,6 +9588,8 @@ The request `DeleteAccountRequest` and the response `DeleteAccountResponse` have
 
 An instance admin that is not the last one loses the role with the delete. The delete locks the account, then each org of the account, before the check ([Control store tables](/reference/control-store/#orgs)). So two owners of one org that delete their accounts at the same time leave one owner.
 
+A call that runs at the same time as the delete, with a session or a CLI token of the account, can pass the check of its credential before the delete ends. When such a call then reads the account or its personal org, it fails with `not_found`, because the account no longer exists. A `GetAccount` or a second `DeleteAccount` of the deleted account gets `not_found` too.
+
 ### ListSignInMethods
 
 Lists the sign-in methods of the account, oldest first.
@@ -17927,7 +17929,7 @@ From version 3 on, the node sends on credit:
 
 * The node keeps at most 128 KiB in flight on the call (`protocol.ExecCredit`), half of the window of the guest agent. A message costs its size as `proto.Size` counts it, plus 32 (`protocol.ExecMessageCost`). One message costs at most 96 KiB, so it always fits next to the part that the guest agent did not ack yet. A send that needs more waits until an ack comes or the command ends.
 * The guest agent counts the cost of each message that it takes off the call. Once the count reaches 32 KiB (`protocol.ExecAckAfter`), it sends the count in `ExecRequest.read`. It sends from its own goroutine, so a wait of the output never holds back the input. It sends no ack after the exit.
-* The node clamps each ack to 128 KiB and never counts less than nothing in flight. A guest agent that acks more than it took, or before it took it, can only make the node wait for HTTP/2 flow control on its own call, as before version 3. The calls of other machines never see its acks.
+* The node clamps each ack to 128 KiB and never lets the count in flight go below 0. A guest agent that acks more than it took, or before it took it, can only make the node wait for HTTP/2 flow control on its own call, as before version 3. The calls of other machines never see its acks.
 * `Process.Signal` refuses a name of more than 32 bytes (`protocol.MaxSignalName`), and each input message holds at most 32 KiB. So every message costs at least its bytes on the wire.
 * The node takes the acks in its reader of the call, behind the output. So a consumer of the output that stops reading stops the input too, but no command can stop its own output.
 
@@ -23383,7 +23385,7 @@ The machine unit of `hopboxd run` sets up the network before it starts the execu
 
 1. It finds the resolvers of the machines. See [The resolvers of the machines](#the-resolvers-of-the-machines).
 2. It reads `net.ipv4.ip_forward`. When forwarding is off, or the file of the [forward guard](#the-forward-guard) exists, the table gets the guard.
-3. It finds the tap devices that an earlier `hopboxd` connected: up, with the alias `hopbox machine <id>`, and with a `/32` route to an address of the install range.
+3. It finds the tap devices that an earlier `hopboxd` connected: up, with the alias `hopbox machine <id>`, and with a `/32` route to an address of the install range. The kernel interrupts a list of devices or routes when they change during the list, for example while a machine starts. Then `hopboxd` lists again, 10 ms later, and lists up to 8 times in all. Each list of devices, addresses, routes, rules, flows, or sockets of the node network, of the mesh, and of the IPv6 egress does the same. Only the lists of this step, of the tap devices and their routes, stop the start after 8 interrupted lists. The start then fails with `netcfg: find the tap devices of the machines: the kernel interrupted 8 dumps in a row: results may be incomplete or inconsistent`. The other lists, such as those of the connection cut of step 6 and of the IPv6 egress, log the error and do not stop the start. The lists of nftables and of WireGuard go through another netlink library, which does not report an interrupted list. Such a list can come back incomplete without an error.
 4. It reads the set `edges` of the table that an earlier `hopboxd` installed. Without such a table, the set starts empty. A failed read starts the set empty too, and logs `cannot read the edge servers of the table before this start, so the edge servers reach no machine until the first mesh` at level warn.
 5. It replaces the table `inet hopbox_node` with the rules above, with the elements of these devices, and with these edge servers, in one netlink batch. No packet sees a table that is half made.
 6. It ends the connections that machines opened to the node while the table was gone. See [The table must stay](#the-table-must-stay).

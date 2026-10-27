@@ -506,6 +506,8 @@ The request `DeleteAccountRequest` and the response `DeleteAccountResponse` have
 
 An instance admin that is not the last one loses the role with the delete. The delete locks the account, then each org of the account, before the check ([Control store tables](/reference/control-store/index.html.md#orgs)). So two owners of one org that delete their accounts at the same time leave one owner.
 
+A call that runs at the same time as the delete, with a session or a CLI token of the account, can pass the check of its credential before the delete ends. When such a call then reads the account or its personal org, it fails with `not_found`, because the account no longer exists. A `GetAccount` or a second `DeleteAccount` of the deleted account gets `not_found` too.
+
 ### ListSignInMethods
 
 Lists the sign-in methods of the account, oldest first.
