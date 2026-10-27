@@ -6105,11 +6105,13 @@ These messages carry the part of a node in the cold moves ([Cold move](/referenc
 
 ### AttachStreamRequest and AttachStreamResponse
 
-| Message                | Field       | Type   | Description                                                                            |
-| ---------------------- | ----------- | ------ | -------------------------------------------------------------------------------------- |
-| `AttachStreamRequest`  | `stream_id` | string | The ID from `OpenStream` in the first message. Empty after it.                         |
-| `AttachStreamRequest`  | `data`      | bytes  | The next bytes from the server, at most 64 KiB. The first message can carry bytes too. |
-| `AttachStreamResponse` | `data`      | bytes  | The next bytes from the control role, at most 64 KiB.                                  |
+| Message                | Field       | Type   | Description                                                                                                                                                                                           |
+| ---------------------- | ----------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AttachStreamRequest`  | `stream_id` | string | The ID from `OpenStream` in the first message. Empty after it.                                                                                                                                        |
+| `AttachStreamRequest`  | `data`      | bytes  | The next bytes from the server, at most 64 KiB. The first message can carry bytes too.                                                                                                                |
+| `AttachStreamRequest`  | `acks`      | bool   | True in the first message of a server that reports `read`. The control role then keeps at most 128 KiB of the stream in flight ([Credit of a data stream](#credit-of-a-data-stream)).                 |
+| `AttachStreamRequest`  | `read`      | uint64 | The cost of the messages of the control role that the server took off the stream since its last report: the bytes of their data, and 64 for each message. A message with only `read` carries no data. |
+| `AttachStreamResponse` | `data`      | bytes  | The next bytes from the control role, at most 64 KiB.                                                                                                                                                 |
 
 ## The heartbeat
 
@@ -6339,6 +6341,21 @@ A close on one side ends a write that waits for the other side:
 
 * `channel.Stream.Close` on the control side ends the call of `AttachStream`. A `Write` that still waits for flow control fails at once, because the handler sets a write deadline in the past (`api.AbortWrites`).
 * `node.Stream.Close` on the server side closes the request side first, so the last bytes go out. While a `Write` waits for the control role, it cancels the call instead, and the `Write` fails at once.
+
+### Credit of a data stream
+
+The HTTP/2 server of Go queues the WINDOW_UPDATE of a stream behind the DATA of the same stream ([golang/go#82615](https://github.com/golang/go/issues/82615)). While the DATA of the control role waits for the window of the server, the control role sends no WINDOW_UPDATE on that stream, although it reads every byte. Then the server can send no more than one window. Sometimes the server stops reading because it waits for its own write. An example is an exec whose command blocks on its output before it reads more input, such as `gzip`. Then the stream stops for good. The connection-level WINDOW_UPDATE frames still go out, so the other streams go on. This section fixes the hop from the control role to the node. On the next hop of an exec, the node is the HTTP/2 server of the guest link, and the same stop can happen there until the guest link has a credit of its own.
+
+So the control role sends on credit to a server that sets `acks` in its first message:
+
+* The control role keeps at most 128 KiB in flight on the stream (`machinestream.AttachCredit`), half of the window of the server. A message costs its bytes of data and 64 more (`machinestream.MessageCost`). A `Write` that needs more waits, and fails with `io.ErrClosedPipe` when the stream ends first.
+* The server counts the cost of each message that it takes off the stream. Once the count reaches 32 KiB (`machinestream.AttachAckAfter`), it sends the count in `read`, in a message of its own. A `Read` never waits for this send.
+* The control role takes the messages of the server off the stream also while no `Read` waits, so an ack reaches it without a `Read`. It holds one message with data until a `Read` takes it, and the messages behind that one wait. So once the server sent bytes, a `Write` on the control side goes on only while its user keeps reading. For example, a user that writes 1 MiB to an echo and reads only after the `Write` returns stops once the server echoed more than one message. The server has the same rule: its ack waits for a `Write` of its own that waits for the control role. Every user of `channel.Stream` reads while it writes.
+* The control role reads the end of the server’s side after every byte before it. From then on, it sends without a bound, because no ack comes any more. It also sends no more WINDOW_UPDATE on the stream, so nothing waits for one.
+
+The DATA of the control role never waits for the window of the server, so its WINDOW_UPDATE frames always go out. A server of the release before, which does not set `acks`, gets the bytes without a bound, as before, and its streams can still stop. A control role of the release before reads a message with only `read` as a message without data.
+
+`TestStreamCarriesBothWaysWhileTheServerWrites` checks a server that writes 1 MiB before it reads, while the control role writes 1 MiB. `TestStreamWithoutAcks` checks a server without `acks` and a server that closed its side. `TestStreamManySmallWrites` checks that 4096 one-byte writes cost the same on both sides. `TestStreamCloseEndsAWriteThatWaitsForCredit` and `TestStreamCloseWithUnreadBytes` check that a `Close` ends the call while a `Write` waits for credit, or while a message of the server waits for a `Read`.
 
 ## Streams through another control process
 
