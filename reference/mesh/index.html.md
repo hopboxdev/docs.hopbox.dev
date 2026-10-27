@@ -103,6 +103,10 @@ peer: <public key of a node>
   transfer: 18.42 KiB received, 9.10 KiB sent
 ```
 
+## The host firewall
+
+The [host firewall](/reference/host-firewall/index.html.md) of each server takes the port `51820` only from the vRack range, on the vRack interface. It takes port 22 of the vRack interface only from the vRack addresses of the edge servers. The device hands these addresses to the host firewall with each new mesh: the endpoints of the peers with the role `edge` ([the host firewall](/reference/host-firewall/index.html.md#the-jump-hosts)).
+
 ## Traffic of the edge servers to machines
 
 An edge server opens its connections to a machine on another node from its mesh address, over the mesh. An edge server without the node role binds each such connection to `hbm0`, so it never leaves through another interface ([the edge role](/reference/edge/index.html.md#the-way-to-the-machines)). On the node, the table `inet hopbox_node` lets a new TCP connection from `hbm0` reach a tap device only from an edge server. It gives that connection the mark of the node ([the node network](/reference/node-network/index.html.md#what-can-reach-a-machine)). The device hands the mesh addresses of the edge servers to the node network with each new mesh. Each server of the mesh is a peer, but only an edge server reaches a machine.
@@ -205,5 +209,4 @@ The other parts of the mesh log with their own components:
 
 ## Not in this milestone
 
-- The host firewall, which takes the port `51820` only from the vRack range: N16.
 - The egress tunnels `hbe0`, `hbe1`, and so on, and the IPv6 `/64` of each node subnet: N17.

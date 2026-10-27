@@ -50,6 +50,7 @@ The JSON output is one object on one line, with these fields:
 | `go` | string | yes | The Go version that built the binary, for example `go1.27.1`. |
 | `os` | string | yes | The operating system of the build, for example `linux`. |
 | `arch` | string | yes | The CPU architecture of the build, for example `amd64`. |
+| `features` | array of strings | no | The capabilities that a tool reads from the version. Only `hopboxd` has the field: `host-firewall` from the release with the host firewall on ([the host firewall](/reference/host-firewall/index.html.md)). The Terraform provider reads it after each move of a server to another release. |
 
 Example:
 

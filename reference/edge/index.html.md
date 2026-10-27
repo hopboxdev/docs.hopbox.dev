@@ -311,7 +311,7 @@ The unit `channel` of `hopboxd run` checks the parts at its start and then every
 | The table holds another route, or another rule with a source looks up the table | It removes that route or that rule. A rule without a source stays. |
 | The bootstrap config names no address | It removes the addresses of the blocks of the rules of the table from the vRack interface, then each route of the table, then each rule with a source. The rules go last, because they name the blocks. So a check that fails on the way keeps them, and the next check tries again. A server that stops being an edge server, or whose config drops `edge.public_ipv6`, lets the address go. |
 
-The host firewall of a later milestone opens the public ports on this address, and the egress of the machines uses the same table (the build plan of phase 2, N16 and N17). Until that firewall exists, each listener of the edge server on every address, such as `sshd` on port 22, also takes connections at this address from the internet.
+The [host firewall](/reference/host-firewall/index.html.md#the-address-of-the-56) opens the public ports of the edge server on this address, from every source, and no other port. It also drops each packet of the block that leaves through another interface than the vRack interface. The egress of the machines of a later milestone uses the same table `hopbox_egress6` (the build plan of phase 2, N17).
 
 ## EdgeService
 

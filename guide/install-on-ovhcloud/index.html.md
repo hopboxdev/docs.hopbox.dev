@@ -351,7 +351,7 @@ provider "hopbox" {
 }
 ```
 
-From then on, every SSH step of a server without the role `edge` goes through the first server, to the vRack address of the server ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#jump-host)). After the bastion firewall, the nodes and the control servers keep no SSH port open on the internet. The jump host is then the only way in.
+From then on, every SSH step of a server without the role `edge` goes through the first server. It dials the vRack address of the server ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#jump-host)). The host firewall of each node and each control server closes its public address once `hopboxd` runs on it ([the host firewall](/reference/host-firewall/index.html.md)). Port 22 of its vRack address then takes only the vRack addresses of the edge servers. So an edge server as the jump host is then the only way in.
 
 ### 3. Add an edge server and the nodes
 
@@ -410,6 +410,20 @@ ssh -i ~/.ssh/id_ed25519 debian@"$(terraform output -raw ipv4)" sudo hopboxd adm
 ```
 
 The output shows four servers, each `ready`: the first server, `edge2` with the roles `dns,edge`, and the two nodes, `node2` in the pool `big`.
+
+Check the host firewall of `node1`. From your laptop, a connection to its public address must time out, also on port 22:
+
+```sh
+nc -vz -w 3 "$(terraform state show -no-color hopbox_server.node1 | awk '$1 == "ipv4" {gsub(/"/, "", $3); print $3}')" 22
+```
+
+Through the jump host, list the jump hosts that `node1` takes on port 22:
+
+```sh
+ssh -i ~/.ssh/id_ed25519 -J debian@203.0.113.5 debian@172.31.0.21 sudo nft list set inet hopbox_host jump_hosts
+```
+
+The set holds `172.31.0.11` and `172.31.0.12`, the vRack addresses of the two edge servers. If it is empty, wait 10 s and list it again: until the first mesh, port 22 takes the whole vRack range ([the host firewall](/reference/host-firewall/index.html.md#the-jump-hosts)).
 
 ### 4. Add a second control server
 
@@ -551,6 +565,14 @@ terraform import hopbox_server.first ns1234567.ip-198-51-100.eu
 
 The import logs in with the key of the operators. It reads the server ID, the version, and the domain from the server. The new state has no `admin_api_key`. Make a new admin API key as in step 6. The new state also forgets a cordon that a failed kernel reboot left. Check the server with `sudo hopboxd admin server get <id>`. If it shows `cordoned	true` and nobody cordoned it on purpose, run `sudo hopboxd admin server uncordon <id>`. The first plan after the import shows an update of `bundle`. If the bundle of `main.tf` is the release that the server runs, the apply changes nothing on the server.
 
+The host firewall of a node or a control server closes its public address. So with `ssh_jump_host`, give its vRack address after the service name, with a comma:
+
+```sh
+terraform import hopbox_server.node1 ns2345678.ip-198-51-100.eu,172.31.0.21
+```
+
+The import then logs in at the vRack address through the jump host. An edge server keeps SSH open on its public address, so it takes the service name alone.
+
 ## Order a new server
 
 The provider can order the server in place of a server that your account rents. The apply pays for it with the preferred payment method of the account. It rents the server by the month, without a commitment.
@@ -628,7 +650,7 @@ After the create, the plan refuses each change that orders a new server: another
 terraform destroy
 ```
 
-The destroy decommissions the server in the install, and stops `hopboxd` on it. It refuses a server that holds machines. Delete the machines first. The OVHcloud server stays rented, with its disks as they are. With `ovh_service_name`, another apply of `main.tf` erases the server again and makes a new install.
+The destroy decommissions the server in the install, and stops `hopboxd` on it. Then it removes the table of the host firewall, so the public address of the server takes SSH again. A node or a control server leaves the vRack only after that. If the table stays, the destroy keeps the server in the vRack, and fails with the commands to run. It refuses a server that holds machines. Delete the machines first. The OVHcloud server stays rented, with its disks as they are. With `ovh_service_name`, another apply of `main.tf` erases the server again and makes a new install.
 
 The destroy never cancels an order and never ends a rental, also for a server that the provider ordered. For an ordered server, remove `prevent_destroy` from `main.tf` before the destroy. After the destroy, another apply of `main.tf` with the order attributes orders and pays for a new server. To make a new install on the same server, replace the order attributes with `ovh_service_name` of that server first. To stop paying for the server, end its rental in the OVHcloud manager, and remove the resource from `main.tf`.
 
@@ -658,5 +680,9 @@ The destroy never cancels an order and never ends a rental, also for a server th
 | `an earlier apply checked out the OVHcloud cart <cart ID> for the ovh_order_key "<key>"` | An apply ordered a server and lost the order, for example because Terraform stopped during the checkout. Find the order of that cart in the OVHcloud manager. Set `ovh_order_id = <order ID>` in the resource, and apply. The apply follows that order. |
 | `the order <id> is cancelled at OVHcloud` | No server comes from the order. Run `terraform state rm hopbox_server.first`, and apply to order again. |
 | `The order of a server cannot change` or `The change orders a new server` | The change needs a new server. Add a new resource with its own `ovh_order_key`, and remove the old one. |
+| `the server <name> has a vrack_address and no role edge, so its host firewall closes its public address once hopboxd runs, ...` | Set `ssh_jump_host` in the provider block, as in [2. Set the jump host and the admin API](#2-set-the-jump-host-and-the-admin-api), and apply again. |
+| `the server <id> keeps its host firewall, because ...` | The destroy kept the server in the vRack. Fix the cause that the error names, or run its commands on the server through the jump host. Then run `terraform destroy` again. |
+| `log in to the server <name> to import it at its public address through the jump host: ...` | The host firewall of the server closes its public address. Import it with its vRack address, as in [Import a server into a new state](#import-a-server-into-a-new-state). |
+| `the server at the vRack address <address> does not hold the public address <address> of the server <name>, so it is another server` | The import ID names the vRack address of another server. Read the vRack address of the server in your Terraform files, and import again. |
 
 After a failed create of a server that your account rents, Terraform marks the server as tainted. The next apply starts again with a new reinstall. With `lifecycle { prevent_destroy = true }`, Terraform refuses that apply with `Instance cannot be destroyed`. Then run `terraform state rm hopbox_server.first`, and apply again. `terraform untaint` does not help, because the state then holds a server without `hopboxd`, and the next apply installs nothing. A failed create of an ordered server works another way: see [Order a new server](#order-a-new-server).

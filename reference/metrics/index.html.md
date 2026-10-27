@@ -182,6 +182,19 @@ A server with the mesh device `hbm0` serves these metrics ([the mesh](/reference
 curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_mesh_'
 ```
 
+## Metrics of the host firewall
+
+Every server on Linux serves these metrics of its table `inet hopbox_host` ([the host firewall](/reference/host-firewall/index.html.md#metrics)).
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_host_firewall_repairs_total` | counter | none | The installs of the table `inet hopbox_host` after it lost a part outside `hopboxd` ([the host firewall](/reference/host-firewall/index.html.md#the-table-must-stay)). |
+| `hopbox_host_firewall_up` | gauge | none | 1 when the last check found the table whole or installed it. 0 when its install failed. A host without nftables serves neither metric. |
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_host_firewall_'
+```
+
 ## Metrics of the cold moves
 
 A node whose driver keeps its disks in files counts the bytes of the disks that it serves and pulls for the cold moves ([Cold move](/reference/cold-move/index.html.md#metrics)). The pulls also count in `hopbox_executor_actions_total` with the action `pull`.

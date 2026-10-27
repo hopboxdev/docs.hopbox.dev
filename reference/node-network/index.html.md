@@ -275,7 +275,7 @@ In the gap, a machine can open a connection to a service of the node. Such a con
 
 The node logs `ended the connections that machines opened to the node without the table`, at level warn, with the counts of `sockets` and `flows`. A connect and a disconnect also repair the table before they try again, so a boot and a delete go on. The metric `hopbox_node_network_repairs_total` counts the repairs. The counters of the machines start again from zero. The count of their inbound traffic starts from zero too, so a request right after a repair still counts as a use.
 
-The SSH front door keeps its own table `inet hopbox_edge` in the same way. Every 2 s, it checks the table. If the table lost a part, the front door installs it again ([the SSH front door](/reference/ssh-front-door/index.html.md)).
+The SSH front door keeps its own table `inet hopbox_edge` in the same way. Every 2 s, it checks the table. If the table lost a part, the front door installs it again ([the SSH front door](/reference/ssh-front-door/index.html.md)). The host firewall keeps its table `inet hopbox_host` in the same way, on every server ([the host firewall](/reference/host-firewall/index.html.md#the-table-must-stay)). That table takes each packet of a tap device in its chain `input`, and leaves it to the table `inet hopbox_node`. It does not filter the traffic that the node forwards.
 
 ### A host with Docker
 
