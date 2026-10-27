@@ -2,7 +2,7 @@
 
 > The DNS role: its listeners, zone, answers, and push. Also its TXT records, the parent zone, metrics, and logs.
 
-The DNS role is an authoritative DNS server for the domain of the install. An authoritative server answers from its own zones, and never asks another server. The control role builds the zone and pushes it to each server with the DNS role over the control channel ([the control channel](/reference/control-channel/index.html.md)). This page covers the listeners, the zone, the answers, the push, and the TXT records. It also covers the records of the parent zone, the metrics, and the logs.
+The DNS role is an authoritative DNS server for the domain of the install. An authoritative server answers from its own zones, and never asks another server. The control role builds the zone and pushes it to each server with the DNS role over the control channel ([the control channel](/reference/control-channel/index.html.md)). This page covers the listeners, the zone, the answers, the rate limit on UDP, the push, the zones on the disk, and the TXT records. It also covers the records of the parent zone, the metrics, and the logs.
 
 The code is in `internal/dns` (the server), `internal/service/dns.go` (the zone), and `internal/control/channel` (the push). The server uses [miekg/dns](https://github.com/miekg/dns).
 
@@ -15,6 +15,7 @@ The DNS role listens on UDP and on TCP at each address of `dns.listen` in the bo
 | Default address | `:53`: port 53 on every IPv4 and IPv6 address of the server |
 | Addresses | 1 to 16. Each one is `host:port`. The host is an IP address, or empty for every address. |
 | Port `0` | A free port. UDP and TCP of one address get the same port. |
+| An address that the server does not hold | On Linux, the DNS role opens the socket all the same, with the option `IP_FREEBIND` or `IPV6_FREEBIND`, and takes queries once the address exists. An edge server gets its public IPv6 address from a check after the start of the unit `dns` ([the edge role](/reference/edge/index.html.md#the-public-ipv6-address)), so its `dns.listen` can name that address. A typo in an address then gives no error at the start: the socket gets no query. On macOS, each address must exist at the start. |
 | TCP limits | 2 s to read a query, 2 s to write an answer, and 8 s without a query before the server closes the connection |
 | TCP connections | At most 512 open connections at each address. A connection past the bound waits in the backlog of the kernel until another connection closes. So a client that holds many connections cannot take every file descriptor of `hopboxd`. |
 | TCP connections of one source | At most 16 open connections from each source at each address. A source is an IPv4 address, or the /64 of an IPv6 address. The server closes a connection past this bound at once. So one client cannot take all 512 connections. |
@@ -26,7 +27,7 @@ The unit `dns` of `hopboxd run` opens every socket at its start ([hopboxd](/refe
 
 Port 53 needs root, or the capability `CAP_NET_BIND_SERVICE`. The unit `hopboxd.service` runs `hopboxd` as root ([Server layout](/reference/server-layout/index.html.md#hopboxdservice)). On a laptop, use a high port, such as `127.0.0.1:15353`.
 
-A stub resolver on the server can hold port 53 on a loopback address. An example is `systemd-resolved` on `127.0.0.53:53`. Then set `dns.listen` to the public addresses of the server, such as `["203.0.113.10:53", "[2001:db8::10]:53"]`.
+A stub resolver on the server can hold port 53 on a loopback address. An example is `systemd-resolved` on `127.0.0.53:53`. Then set `dns.listen` to the public addresses of the server, such as `["203.0.113.10:53", "[2001:db8::10]:53"]`. On an edge server with `edge.public_ipv6`, list that address too, such as `["203.0.113.101:53", "[2001:db8:0:100::11]:53"]`.
 
 ## The zone of the install
 
@@ -73,7 +74,7 @@ The DNS role answers each query from the zones that it has. It never asks anothe
 
 | Query | Response code | `AA` flag | Answer |
 | --- | --- | --- | --- |
-| Before the first zones arrive | `SERVFAIL` | no | none |
+| Before the first zones arrive, on a server without [zones on the disk](#zones-on-the-disk) | `SERVFAIL` | no | none |
 | A name outside every zone, such as `example.org` or the parent `com` | `REFUSED` | no | none |
 | A name of the zone with records of the type | `NOERROR` | yes | the records |
 | A name of the zone without records of the type | `NOERROR` | yes | none. The authority section holds the SOA. |
@@ -92,6 +93,22 @@ The wildcard follows RFC 4592. For each name that does not exist, the DNS role f
 An answer keeps the case of the name in the query. A negative answer holds the SOA with a TTL of 60 seconds.
 
 A query with EDNS gets an OPT record with a UDP size of 1232 bytes. Over UDP, an answer fits in 512 bytes, or in the UDP size of the query up to 1232 bytes. An answer that does not fit loses records and gets the `TC` flag, and the client asks again over TCP. A TCP answer is never cut.
+
+## Rate limit on UDP
+
+A UDP query can carry the forged address of another host as its source. Without a bound, an attacker sends queries in the name of a victim, and the DNS role sends its answers to the victim. The rate limit bounds the answers that one client network gets for one answer, as response rate limiting (RRL) does in BIND. TCP needs a handshake from the real source, so TCP has no rate limit.
+
+| Item | Value |
+| --- | --- |
+| Bound | 20 answers each second for one client network and one answer. A bucket holds one second of answers, and fills again at 20 answers each second. |
+| Client network | The IPv4 `/24` or the IPv6 `/56` of the source address. A forged source can change its last bits at will. |
+| One answer | The kind of the answer and its name. The kinds are: records, no records of the type, `NXDOMAIN`, and an error such as `REFUSED` or `SERVFAIL`. An answer with records also has the type of the query. An answer without records of the type has none, as in BIND. So a client cannot get a new bound for each of the 65,536 query types of one name. A wildcard answer has the name of the wildcard. So each machine name, such as `box1.example.com` and `box2.example.com`, counts as one answer `*.example.com`. An `NXDOMAIN` has the domain of its zone as its name. An error has no name, so each error counts against one bound for each client network. |
+| Over the bound | The first answer over the bound slips, then every second one. The others drop. |
+| Slip | A short answer: the header with the `TC` flag, the question, and the OPT record when the query has one. It has no record. A real client then asks again over TCP. The slip is never larger than its query, so it cannot amplify an attack. |
+| Drop | The DNS role sends nothing. |
+| Memory | A table of 65,536 buckets of a fixed size. A hash with a random seed maps each pair of client network and answer to one bucket, as in Knot DNS. Two pairs with the same bucket share its answers. So a flood of many pairs cannot grow the table. It only takes answers from the buckets that it hits, and a client in another bucket keeps its full bound. |
+
+A resolver keeps an answer for its TTL of 60 seconds, so a real resolver asks for the same answer far less than 20 times a second. A slip or a drop counts in `hopbox_dns_rate_limited_total`, not in `hopbox_dns_queries_total` ([Metrics](#metrics)).
 
 ## How the zones reach the DNS role
 
@@ -120,9 +137,47 @@ The DNS role checks each set before it serves it. If one rule fails, it refuses 
 | SOA | exactly 1, at the origin |
 | NS | at least 1 at the origin, and none below it. The DNS role serves no delegation. |
 
-The DNS role also refuses a set with a lower serial than the set that it serves, with the error `dns: old zones`. A set with the same serial replaces the set that it serves. A new channel sends such a set.
+The DNS role also refuses a set with a lower serial than the set that it serves, with the error `dns: old zones`. A set with the same serial replaces the set that it serves. A new channel sends such a set. The zones on the disk are the one exception: the first set of the control plane replaces them, whatever its serial ([Zones on the disk](#zones-on-the-disk)).
 
 A zone answers for each name below its origin. When two zones cover a name, the zone with the longer origin answers.
+
+## Zones on the disk
+
+The DNS role keeps the last set of the control plane in the file `<data_dir>/dns/zones` ([Server layout](/reference/server-layout/index.html.md)). After a restart of `hopboxd`, it answers from that file while no control server answers. So the domain of the install, and the URL of each machine, keep their names through a restart of a DNS server during an outage of the control plane.
+
+| Item | Value |
+| --- | --- |
+| File | `<data_dir>/dns/zones`, mode 0600, in the dir `<data_dir>/dns` with mode 0700. Both belong to the user of `hopboxd`, root on a server. |
+| Write | After each set of the control plane that the DNS role takes, unless the file holds the same set already. The DNS role writes a new file in the same dir, syncs it to the disk, and renames it over the old file. So a crash leaves the old file or the new file, never a part of one. |
+| Content | A header line `hopbox-dns-zones 1 <sha256>`, then the set in the binary form of the message `DNSZones`. The sha256 is the hash of the set. |
+| Read | Once, at the start of the unit `dns`, before the DNS role opens its sockets. |
+
+The DNS role serves the file only if it passes every check. Otherwise it starts without zones, and answers `SERVFAIL` until the first set of the control plane arrives:
+
+- The dir and the file are no symlinks, and belong to the user of `hopboxd`.
+- No other user can write the dir, and no other user can read or write the file.
+- The file has at most 64 MiB, and starts with the header.
+- The sha256 of the set matches the header.
+- The set passes every rule of [How the zones reach the DNS role](#how-the-zones-reach-the-dns-role).
+
+The control plane holds the truth of the zones. So the first set of the control plane replaces the zones of the file, also with a lower serial. A lower serial comes after a restore of an older control store. After that first set, the rule of the serial holds again: the DNS role refuses a set with a lower serial than the set that it serves.
+
+If a write of the file fails, the DNS role serves the new set, and removes the old file. So a restart does not serve zones that are older than the zones of the last push. The restart then waits for the control plane. If the removal fails too, the log record names both errors, and a restart serves the older zones of the file until the first set of the control plane arrives.
+
+A crash during a write can leave a temp file `.zones.<random>.tmp` in the dir. The start of the unit `dns` removes such files.
+
+`hopbox_dns_zone_serial` and the heartbeat show the serial of the zones of the file while the DNS role serves them ([The serial of each DNS server](#the-serial-of-each-dns-server)).
+
+## The serial of each DNS server
+
+Each heartbeat of a server with the DNS role carries the serial of the zones that it serves, in `dns_zone_serial` ([the control channel](/reference/control-channel/index.html.md#heartbeat)). The control role keeps it in the registry, so the admin API and `hopboxd admin server get` show it ([the admin API](/reference/admin-api/index.html.md#server)):
+
+```console
+$ sudo hopboxd admin server get 01a14404-ce7b-72d9-b18e-5006c3e462db | grep dns_zone_serial
+dns_zone_serial	1792249094
+```
+
+A DNS server that serves an older serial than the other DNS servers lags. It can have lost its channel, or it serves the zones on its disk. The serial of a heartbeat is at most 5 seconds old, one heartbeat. A server without the DNS role, or a DNS role without zones, shows no serial.
 
 ## TXT records
 
@@ -180,7 +235,7 @@ Make these records in the parent zone, at your registrar or your DNS provider:
 
 The glue records must hold the same addresses as `ns1` and `ns2` in the zone of the install. A resolver that finds two different answers can use either.
 
-A delegated zone needs at least 2 name servers. An install with one public address in a family points both glue records of that family at it. A bigger install runs the DNS role on two edge servers, each with its own address.
+A delegated zone needs at least 2 name servers. An install with one public address in a family points both glue records of that family at it. A bigger install runs the DNS role on two edge servers, each with its own address. List the addresses of the first edge server first, so `ns1` is that server and `ns2` the other one ([Run edge servers apart from the nodes](/guide/edge-servers/index.html.md)).
 
 The DNS role of each name server must listen on port 53 of its public address, on UDP and TCP. Open both in every firewall in front of the server.
 
@@ -201,16 +256,19 @@ The last step of the trace names `ns1.example.com` or `ns2.example.com`, and ans
 
 ## Metrics
 
-The DNS role adds these metrics to the metrics listener of `hopboxd` ([Metrics](/reference/metrics/index.html.md)). A server without the DNS role has neither metric.
+The DNS role adds these metrics to the metrics listener of `hopboxd` ([Metrics](/reference/metrics/index.html.md)). A server without the DNS role has none of them.
 
 | Metric | Type | Labels | Description |
 | --- | --- | --- | --- |
-| `hopbox_dns_queries_total` | counter | `transport`, `rcode` | The queries that the DNS role answered. `transport` is `udp` or `tcp`. `rcode` is the response code, such as `NOERROR`, `NXDOMAIN`, `REFUSED`, `SERVFAIL`, `FORMERR`, `NOTIMP`, or `BADVERS`. |
+| `hopbox_dns_queries_total` | counter | `transport`, `rcode` | The queries that the DNS role answered. `transport` is `udp` or `tcp`. `rcode` is the response code, such as `NOERROR`, `NXDOMAIN`, `REFUSED`, `SERVFAIL`, `FORMERR`, `NOTIMP`, or `BADVERS`. An answer over the [rate limit](#rate-limit-on-udp) does not count here. |
+| `hopbox_dns_rate_limited_total` | counter | `action` | The UDP answers over the rate limit. `action` is `slip` or `drop`. |
 | `hopbox_dns_zone_serial` | gauge | none | The serial of the zones that the DNS role serves, or 0 before the first zones arrive. |
 
 ```text
 hopbox_dns_queries_total{rcode="NOERROR",transport="udp"} 3
 hopbox_dns_queries_total{rcode="REFUSED",transport="udp"} 2
+hopbox_dns_rate_limited_total{action="drop"} 4
+hopbox_dns_rate_limited_total{action="slip"} 5
 hopbox_dns_zone_serial 1.792249094e+09
 ```
 
@@ -221,7 +279,12 @@ The DNS role writes these records with `component=dns`. It writes no record for 
 | Level | Message | Fields | When |
 | --- | --- | --- | --- |
 | info | `dns listening` | `network` (`udp` or `tcp`), `addr` | Once for each socket, at the start of the unit `dns`. |
-| info | `serving dns zones` | `serial`, `zones` (the origins, with the final dot), `records` | The DNS role serves a set with a new serial. |
+| info | `serving dns zones` | `serial`, `zones` (the origins, with the final dot), `records` | The DNS role serves a set of the control plane with a new serial, or the first set of the control plane after the zones on the disk. |
+| info | `serving the dns zones on the disk until the control plane sends its zones` | `serial`, `zones`, `records` | At the start of the unit `dns`, the file of [Zones on the disk](#zones-on-the-disk) passed every check. |
+| warn | `the dns role does not serve the zones on the disk, and waits for the zones of the control plane` | `err` | At the start of the unit `dns`, the file failed a check. The field `err` names the check. |
+| info | `the control plane sent older zones than the zones on the disk, and the dns role serves them` | `serial`, `disk_serial` | The first set of the control plane had a lower serial than the zones on the disk, such as after a restore of an older control store. |
+| warn | `cannot keep the dns zones on the disk. The dns role serves them, and a restart waits for the control plane` | `serial`, `err` | A write of the file failed, such as on a full disk. The DNS role removed the old file. If the removal failed too, `err` names both errors. |
+| warn | `cannot remove the temp files of the dns zones on the disk` | `dir`, `err` | At the start of the unit `dns`, the removal of the temp files of a cut write failed. |
 | debug | `dns: write a response failed` | `transport`, `remote`, `err` | The answer to a client failed, for example because the client closed its TCP connection. |
 
 The channel writes these records about the zones ([the control channel](/reference/control-channel/index.html.md#logs)):

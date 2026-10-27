@@ -940,6 +940,7 @@ The message `Server` is one enrolled server, with the facts of its last heartbea
 | `version` | int64 | The row version. It grows by 1 with each change, such as each heartbeat. |
 | `update_time` | `google.protobuf.Timestamp` | The time of the last change. |
 | `mesh` | `ServerMesh` | The part of the server in the mesh. Absent until the server reports the key of its WireGuard device, and for a server outside the mesh ([the mesh](/reference/mesh/index.html.md)). |
+| `dns_zone_serial` | optional uint32 | The serial of the zones that the DNS role of the server served at its last heartbeat. Absent on a server without the DNS role, and before its first zones. Compare it with the serial of the zones of the install to find a DNS server that lags ([the DNS role](/reference/dns/index.html.md#the-serial-of-each-dns-server)). |
 | `drain` | `ServerDrain` | The drain of the server (field 26). Absent when the server does not drain, and after the decommission. |
 
 The message `ServerMesh` has these fields:

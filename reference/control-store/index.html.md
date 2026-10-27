@@ -766,7 +766,7 @@ Migration `0034_acme.sql`. The state of the attempts of the ACME job ([the certi
 
 ## servers
 
-Migrations `0015_servers.sql`, `0030_server_labels.sql`, `0045_control_processes.sql` (the column `channel_process`), and `0050_machine_moves.sql` (the column `disk_transfer_version`), and `0051_server_drains.sql` (the states `draining` and `shutting_down`). The server registry: one row per enrolled server. Enrollment inserts the row, and each heartbeat on the control channel writes the facts of the server ([the control channel](/reference/control-channel/index.html.md)).
+Migrations `0015_servers.sql`, `0030_server_labels.sql`, `0045_control_processes.sql` (the column `channel_process`), `0050_machine_moves.sql` (the column `disk_transfer_version`), `0051_server_drains.sql` (the states `draining` and `shutting_down`), and `0052_dns_zone_serial.sql` (the column `dns_zone_serial`). The server registry: one row per enrolled server. Enrollment inserts the row, and each heartbeat on the control channel writes the facts of the server ([the control channel](/reference/control-channel/index.html.md)).
 
 | Column | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -793,6 +793,7 @@ Migrations `0015_servers.sql`, `0030_server_labels.sql`, `0045_control_processes
 | `disk_transfer_version` | `text` | empty | The `hopboxd_version` of the last heartbeat that said `disk_transfer`. Each other heartbeat of a release that knows the field sets it empty. A node is the source or the target of a cold move only while it equals `hopboxd_version` ([Cold move](/reference/cold-move/index.html.md#two-releases)). |
 | `last_heartbeat_at` | `timestamptz` | null | The time of the last heartbeat. Null before the first one. |
 | `channel_process` | `uuid` | null | The control process that holds the control channel of the server, a row of `control_processes` ([control_processes](#control_processes)). Each recorded heartbeat of a channel that its process still holds sets it. Other heartbeats leave it as it is. The hub clears it when the last channel of the server in that process ends, if it still names that process. Another control process reads it to forward a data stream ([the control channel](/reference/control-channel/index.html.md#streams-through-another-control-process)). Migration `0045_control_processes.sql` adds it. Null before the first heartbeat on a control process of a release with the migration. |
+| `dns_zone_serial` | `bigint` | null | The serial of the zones that the DNS role of the server served at its last heartbeat, from 0 to 4294967295 ([the DNS role](/reference/dns/index.html.md#the-serial-of-each-dns-server)). Each heartbeat sets it, and a heartbeat without it sets null. Migration `0052_dns_zone_serial.sql` adds it, with `oldest_schema_version` 44. A control process of schema version 44 to 51 never reads it, and its heartbeats leave it as it is. So while such a process holds the channel of a server, the column keeps the serial of an older heartbeat. |
 | `enrolled_at` | `timestamptz` | the time of the insert | When the server enrolled. |
 | `version` | `bigint` | `1` | The row version. Each heartbeat adds 1. |
 | `created_at` | `timestamptz` | the time of the insert | When the row was made. |

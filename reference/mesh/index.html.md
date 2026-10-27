@@ -105,7 +105,7 @@ peer: <public key of a node>
 
 ## Traffic of the edge servers to machines
 
-An edge server opens its connections to a machine on another node from its mesh address, over the mesh. On the node, the table `inet hopbox_node` lets a new TCP connection from `hbm0` reach a tap device only from an edge server. It gives that connection the mark of the node ([the node network](/reference/node-network/index.html.md#what-can-reach-a-machine)). The device hands the mesh addresses of the edge servers to the node network with each new mesh. Each server of the mesh is a peer, but only an edge server reaches a machine.
+An edge server opens its connections to a machine on another node from its mesh address, over the mesh. An edge server without the node role binds each such connection to `hbm0`, so it never leaves through another interface ([the edge role](/reference/edge/index.html.md#the-way-to-the-machines)). On the node, the table `inet hopbox_node` lets a new TCP connection from `hbm0` reach a tap device only from an edge server. It gives that connection the mark of the node ([the node network](/reference/node-network/index.html.md#what-can-reach-a-machine)). The device hands the mesh addresses of the edge servers to the node network with each new mesh. Each server of the mesh is a peer, but only an edge server reaches a machine.
 
 ## A restart, a stop, and a reboot
 
@@ -205,6 +205,5 @@ The other parts of the mesh log with their own components:
 
 ## Not in this milestone
 
-- The edge servers apart from the nodes, which dial the machines over the mesh: N15 of the build plan of phase 2.
 - The host firewall, which takes the port `51820` only from the vRack range: N16.
 - The egress tunnels `hbe0`, `hbe1`, and so on, and the IPv6 `/64` of each node subnet: N17.

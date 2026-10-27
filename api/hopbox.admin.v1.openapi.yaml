@@ -4815,6 +4815,14 @@ components:
           description: |-
             mesh is the part of the server in the mesh. It is absent until the server reports the
              public key of its WireGuard device, and on a server without an address on the vRack.
+        dnsZoneSerial:
+          type:
+            - integer
+            - "null"
+          title: dns_zone_serial
+          description: |-
+            dns_zone_serial is the serial of the zones that the DNS role of the server served at its last
+             heartbeat. It is absent on a server without the DNS role, and before its first zones.
         drain:
           allOf:
             - $ref: '#/components/schemas/hopbox.admin.v1.ServerDrain'

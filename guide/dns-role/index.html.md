@@ -12,7 +12,7 @@ The release files of hopbox are not public yet. The hopbox team gives them on re
 
 The DNS role holds no zone of its own. The control role builds the zone from the install config: the domain, the public addresses, and the TXT records of ACME. Then it pushes the zone over the control channel to each server with the DNS role ([the control channel](/reference/control-channel/index.html.md)). So a server with the DNS role enrolls with the control role, as a node does.
 
-Each change of the domain or the addresses raises the serial of the zone. Within a second, the DNS role answers with the new zone.
+Each change of the domain or the addresses raises the serial of the zone. Within a second, the DNS role answers with the new zone. The DNS role keeps the last zone on its disk, so after a restart it answers while no control server answers ([the DNS role](/reference/dns/index.html.md#zones-on-the-disk)). It bounds the UDP answers of each client network. So forged queries send a victim at most 20 full answers each second for each answer of the zone ([the DNS role](/reference/dns/index.html.md#rate-limit-on-udp)).
 
 ## What you need
 
@@ -67,7 +67,7 @@ H=./bin/darwin_arm64/hopboxd
 C=/tmp/hbd/hopboxd.toml
 ```
 
-The DNS role has no zone yet, so it answers `SERVFAIL`. A resolver then asks another name server:
+The DNS role has no zone yet, on the control channel or on its disk, so it answers `SERVFAIL`. A resolver then asks another name server:
 
 ```text
 $ dig @127.0.0.1 -p 15353 example.com A +norec | grep status
@@ -203,7 +203,7 @@ Press Ctrl-C in the first terminal. `hopboxd` stops the unit `channel` first, th
 
 ## Delegate the domain of the install
 
-In this example, the install serves `example.com` from one server, with the public addresses `203.0.113.10` and `2001:db8::10`. A delegated zone needs two name servers. The install has one server, so both name servers point at it.
+In this example, the install serves `example.com` from one server, with the public addresses `203.0.113.10` and `2001:db8::10`. A delegated zone needs two name servers. The install has one server, so both name servers point at it. A bigger install runs the DNS role on two edge servers, one for each name server ([Run edge servers apart from the nodes](/guide/edge-servers/index.html.md)).
 
 ### Give the server the DNS role
 

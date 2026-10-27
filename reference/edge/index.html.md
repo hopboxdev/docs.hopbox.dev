@@ -2,7 +2,7 @@
 
 > The edge role: its listeners, TLS, routing, and forwarded requests. Also the machine URLs, their sign-in, EdgeService, metrics, and logs.
 
-The edge role is the HTTPS front of an install. It takes the HTTPS traffic of every client, and it routes each request by its host name. The domain of the install goes to the control role, which serves the API and the console. A machine URL, such as `box1.example.com`, goes to its machine. A private machine URL needs a sign-in first. This page covers the listeners, TLS, the routing, and the forwarded requests. It also covers the machine URLs, the sign-in of a private machine URL, `EdgeService`, the metrics, and the logs. The edge role also runs the SSH front door of the machines, which [the SSH front door](/reference/ssh-front-door/index.html.md) covers.
+The edge role is the HTTPS front of an install. It takes the HTTPS traffic of every client, and it routes each request by its host name. The domain of the install goes to the control role, which serves the API and the console. A machine URL, such as `box1.example.com`, goes to its machine. A private machine URL needs a sign-in first. This page covers the listeners, TLS, the routing, and the forwarded requests. It also covers the machine URLs, the sign-in of a private machine URL, the public IPv6 address of an edge server, `EdgeService`, the metrics, and the logs. The edge role also runs the SSH front door of the machines, which [the SSH front door](/reference/ssh-front-door/index.html.md) covers.
 
 The edge role is in `internal/edge`. The pushes of the control role are in `internal/control/channel/edge.go`. The routes and the sign-in are in `internal/service/edge.go`. `EdgeService`, `/auth/machine`, and the forwarded requests are in `internal/api/edge.go`.
 
@@ -131,7 +131,7 @@ The HTTP listener answers each request for the domain or a name under it with `3
 
 ## Forwarded requests
 
-The edge role forwards each request of the domain to the internal listeners of the control servers, at `channel.control_urls` of the bootstrap config ([the internal listener](/reference/internal-listener/index.html.md#forwarded-requests)). It sends the requests to the control servers in turn, one request after the other. Its `EdgeService` calls, such as the machine URL sign-in and the checks of the SSH front door, go the same way. A request that got no connection, because a dial or the TLS handshake failed, goes to the next control server with its body unread. The edge role then skips that control server for 10 s, so the next requests try the others first. A request that reached a control server and failed before its answer came does not go again, but the edge skips that control server for 10 s too. A request whose client went away, or whose deadline ended, marks no control server and goes to no other one. A short deadline of a caller says nothing of the control server. A dead control server still gets skipped: its connection fails the ping within 10 s, and a new dial to it fails within 3 s. A new connection to a control server has 3 s for its dial and 3 s for its TLS handshake: the control servers sit on the vRack, so a slower one is gone, and the request goes on to the next control server well within the deadline of its call. A control server that died hard leaves its HTTP/2 connection half open. So the edge pings a connection to a control server that sent nothing for 5 s, and closes it when the answer does not come within 5 s. The requests on it then fail, and the next requests go to the others. This covers Connect, gRPC, gRPC-Web, streams in both directions, trailers, the sign-in pages under `/auth/`, and the WebSocket of exec (`/api/ws/exec`). The admin API is public behind the edge too, for admin API keys.
+The edge role forwards each request of the domain to the internal listeners of the control servers ([the internal listener](/reference/internal-listener/index.html.md#forwarded-requests)). It uses the dial order of the control channel: the URLs of the live control servers that the control role sent and the server keeps, then the URLs of `channel.control_urls` of the bootstrap config that are not among them ([the control channel](/reference/control-channel/index.html.md#control-urls)). Each new list of the control role replaces the order at once. A control server that stays in the order keeps its skip. It sends the requests to the live control servers in turn, one request after the other. It tries the other URLs of `channel.control_urls` in order after them, as fallbacks. Without a list from the control role, it sends the requests to the URLs of `channel.control_urls` in turn. Its `EdgeService` calls, such as the machine URL sign-in and the checks of the SSH front door, go the same way. A request that got no connection, because a dial or the TLS handshake failed, goes to the next control server with its body unread. The edge role then skips that control server for 10 s, so the next requests try the others first. A request that reached a control server and failed before its answer came does not go again, but the edge skips that control server for 10 s too. A request whose client went away, or whose deadline ended, marks no control server and goes to no other one. A short deadline of a caller says nothing of the control server. A dead control server still gets skipped: its connection fails the ping within 10 s, and a new dial to it fails within 3 s. A new connection to a control server has 3 s for its dial and 3 s for its TLS handshake: the control servers sit on the vRack, so a slower one is gone, and the request goes on to the next control server well within the deadline of its call. A control server that died hard leaves its HTTP/2 connection half open. So the edge pings a connection to a control server that sent nothing for 5 s, and closes it when the answer does not come within 5 s. The requests on it then fail, and the next requests go to the others. This covers Connect, gRPC, gRPC-Web, streams in both directions, trailers, the sign-in pages under `/auth/`, and the WebSocket of exec (`/api/ws/exec`). The admin API is public behind the edge too, for admin API keys.
 
 | Item | Value |
 | --- | --- |
@@ -171,7 +171,7 @@ The edge role keeps each request that it forwards to a machine until it ends, su
 
 ### What a machine gets
 
-The edge role forwards a request to `http://<address>:<url port>` over HTTP/1.1, without TLS. The address is the address of the machine on its node ([the node network](/reference/node-network/index.html.md)). In phase 1, the edge role runs on the node of the machine, so the traffic stays on that server.
+The edge role forwards a request to `http://<address>:<url port>` over HTTP/1.1, without TLS. The address is the address of the machine on its node ([the node network](/reference/node-network/index.html.md)). How the request reaches that address depends on the roles of the edge server ([The way to the machines](#the-way-to-the-machines)).
 
 | Item | Value |
 | --- | --- |
@@ -191,6 +191,21 @@ The edge role also drops these `Set-Cookie` headers of an answer of a machine:
 - A cookie with a `Domain` attribute other than the machine host. Such a cookie can reach the console and the other machines of the install, which are on the same site as the machine.
 
 A cookie without a `Domain` attribute, or with the machine host as its domain, passes.
+
+### The way to the machines
+
+An edge server reaches each machine at the address of its route record. The way to that address depends on the roles of the edge server:
+
+| Edge server | The way to a machine |
+| --- | --- |
+| With the node role, such as the first server of an install | The routes of the host. A machine of this server is behind its tap device. A machine of another node is behind the mesh device `hbm0`, with the route of the node subnet of that node ([the mesh](/reference/mesh/index.html.md#routes)). |
+| Without the node role, an edge server apart from the nodes | Only the mesh device `hbm0`. Each connection to a machine is bound to the device. So it leaves from the mesh address of the edge server, and never through another interface, such as the uplink, also while the mesh has no route to the address. The edge server refuses an address outside the machine range `10.240.0.0/12`. |
+
+The node of the machine lets a connection from `hbm0` reach the machine only from the mesh address of an edge server. The control role names the edge servers in each mesh that it pushes, and the table `inet hopbox_node` of the node keeps them in its set `edges` ([the node network](/reference/node-network/index.html.md#what-can-reach-a-machine)). The machine sees the mesh address of the edge server as the source of each connection. The header `X-Forwarded-For` holds the address of the client.
+
+The same rules hold for the SSH front door ([the SSH front door](/reference/ssh-front-door/index.html.md#the-mesh)).
+
+An edge server without the node role and without a mesh device reaches no machine. Its machine URLs answer `502 Bad Gateway`, and it logs `forwarding a request to a machine failed` with an error such as `This edge server reaches the machines only over the mesh, and has no mesh device hbm0 yet`. [The mesh](/reference/mesh/index.html.md#which-servers-join) lists why a server stays out of the mesh.
 
 ## Private machine URLs
 
@@ -259,6 +274,45 @@ A request from the page of the machine itself has `Sec-Fetch-Site: same-origin`,
 
 The answer is a plain text page with the reason and the request ID.
 
+## The public IPv6 address
+
+The IPv6 block of the install, a `/56` at OVHcloud, lives in the vRack, not on a server (plan question Q63). Each edge server holds one address of the block on its vRack interface. A new edge server takes the same address, so the `AAAA` records of the zone never change. The public addresses of the install list these addresses beside the floating IPv4 addresses ([the DNS role](/reference/dns/index.html.md#the-zone-of-the-install)).
+
+The bootstrap config names the address and the gateway of the block ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)):
+
+```toml
+[edge]
+public_ipv6 = "2001:db8:0:100::11/56"
+public_ipv6_gateway = "2001:db8:0:100::1"
+```
+
+The vRack interface is the interface that holds the one vRack address of the server, as the mesh finds it ([the mesh](/reference/mesh/index.html.md#which-servers-join)). The uplink of the server does not route the block. So the replies from the address must leave through the vRack too. `hopboxd` keeps these parts:
+
+| Part | Value |
+| --- | --- |
+| Address | The address of `edge.public_ipv6`, with the prefix length of the block, on the vRack interface. The kernel runs duplicate address detection on it, so it takes traffic up to about 2 s after `hopboxd` adds it. Duplicate address detection must be on: the sysctl `net.ipv6.conf.<device>.accept_dad` is 1, the default of Linux. Without it, the new server of a replaced edge takes the address while the old one still holds it, and a check logs an error. |
+| Routing table | `hopbox_egress6`, the table number 26806. It holds one route: the default route via `edge.public_ipv6_gateway` on the vRack interface, with the flag `onlink` and the protocol 106. |
+| Rule | `from <block> lookup 26806`, with the priority 26806, before the main table at 32766. Each packet with a source in the block takes the table. The other packets of the server keep the main table and the uplink. |
+
+```console
+$ ip -6 rule show table 26806
+26806:	from 2001:db8:0:100::/56 lookup 26806 proto 106
+$ ip -6 route show table 26806
+default via 2001:db8:0:100::1 dev enp3s0f1 proto 106 metric 1024 onlink pref medium
+```
+
+The unit `channel` of `hopboxd run` checks the parts at its start and then every 2 s ([hopboxd](/reference/hopboxd/index.html.md#run)). Every server that enrolls runs this check, also a server without the edge role. A check sets again each part that changed outside `hopboxd`, such as after `ip -6 rule flush`. A stop of `hopboxd` leaves the parts, so the traffic of the address goes on while `hopboxd` restarts.
+
+| Case | What a check does |
+| --- | --- |
+| The server has no vRack address, or more than one | It sets nothing, and logs it at level error. The next check tries again. |
+| Another host on the vRack holds the address | Duplicate address detection fails, and the address takes no traffic. The check removes the address and adds it again. So the address works again once the other host lets it go, such as the old server after the replacement of an edge server. The check logs the conflict once. |
+| The vRack interface holds another address of the block, or an address of the block of an older rule of the table | It removes that address. |
+| The table holds another route, or another rule with a source looks up the table | It removes that route or that rule. A rule without a source stays. |
+| The bootstrap config names no address | It removes the addresses of the blocks of the rules of the table from the vRack interface, then each route of the table, then each rule with a source. The rules go last, because they name the blocks. So a check that fails on the way keeps them, and the next check tries again. A server that stops being an edge server, or whose config drops `edge.public_ipv6`, lets the address go. |
+
+The host firewall of a later milestone opens the public ports on this address, and the egress of the machines uses the same table (the build plan of phase 2, N16 and N17). Until that firewall exists, each listener of the edge server on every address, such as `sshd` on port 22, also takes connections at this address from the internet.
+
 ## EdgeService
 
 `hopbox.cluster.v1.EdgeService` serves the edge servers on the internal listener ([the internal listener](/reference/internal-listener/index.html.md)). Every call needs the certificate of a server with the edge role. Another server gets `permission_denied`.
@@ -302,6 +356,22 @@ The edge role logs with `component=edge`.
 | `trading a machine URL code failed` | warn | `ExchangeMachineCode` failed without an answer, with `machine` and `err`. |
 | `ended the open requests of a machine URL sign-in that lost its access` | info | A check refused a token with open requests. The fields are `machine`, `open_requests`, and `code`. |
 | `ended the open requests of machine URLs that changed` | info | New routes ended open requests, with `open_requests` ([Machine URLs](#machine-urls)). |
+
+The public IPv6 address logs with `component=egress`:
+
+| Message | Level | When |
+| --- | --- | --- |
+| `this edge server holds its public IPv6 address on the vRack` | info | A check found every part in place, and the address passed duplicate address detection, for the first time or after a change. The fields are `address`, `gateway`, `device`, and `table`. |
+| `the vRack interface runs no duplicate address detection, so this edge server can take the public IPv6 address that another one holds. Set the sysctl net.ipv6.conf.<device>.accept_dad to 1` | error | `accept_dad` is 0 for the vRack interface and for `all`, with `device`. A check logs it again only after a change. |
+| `the public IPv6 address of this edge server lost a part outside hopboxd, so hopboxd set it again` | warn | A check set again what changed outside `hopboxd`, with `device` and `parts`: `address`, `route`, or `rule`. |
+| `another host on the vRack holds the public IPv6 address of this edge server, so it takes no traffic. hopboxd tries the address again at each check` | error | Duplicate address detection failed, with `address` and `device`. |
+| `this edge server has no address on the vRack, so it holds no public IPv6 address. The next check tries again` | error | The server has no address in `172.31.0.0/16`, with `address`. |
+| `cannot find the vRack interface, so this edge server holds no public IPv6 address. The next check tries again` | error | The server has more than one address in `172.31.0.0/16`, or the read of its links failed, with `err`. |
+| `cannot set the public IPv6 address of this edge server. The next check tries again` | error | A change of the kernel failed, with `address`, `device`, and `err`. |
+| `removed the public IPv6 address of this edge server, because the bootstrap config names none` | info | A check removed the parts of an older config, with `removed`. |
+| `cannot remove the old public IPv6 address of this edge server. The next check tries again` | error | That removal failed, with `err`. |
+
+A check logs a state only after a change of the state, so a check every 2 s does not repeat a line.
 
 The edge role can refuse a certificate or routes that the control role pushed. The agent of the control channel then logs `the edge role refused a push of the control plane, and keeps what it has` at error level, with `push` and `err`.
 

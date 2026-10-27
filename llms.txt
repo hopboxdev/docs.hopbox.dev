@@ -36,6 +36,7 @@ Each guide, reference page, and release note also has a Markdown copy at its URL
 - [Serve the domain of an install with the DNS role](https://docs.hopbox.dev/guide/dns-role/index.html.md): How to run the DNS role, set the domain and the public addresses, and query the zone. Also how to delegate the domain of an install.
 - [Get the wildcard certificate of an install](https://docs.hopbox.dev/guide/acme-certificate/index.html.md): How to get the wildcard certificate of an install, first from the test CA Pebble on a Mac, then from Let's Encrypt on a server.
 - [Run the edge role and open machine URLs](https://docs.hopbox.dev/guide/machine-urls/index.html.md): How to run the edge role on a Mac and call the API through it. Also how a private URL, its port, and a public URL work.
+- [Run edge servers apart from the nodes](https://docs.hopbox.dev/guide/edge-servers/index.html.md): How to add two edge servers apart from the nodes, with floating IPv4 addresses and IPv6 addresses of the vRack block, point the zone at both, and reach a machine through each one.
 - [Run the control store on an external Postgres](https://docs.hopbox.dev/guide/external-postgres/index.html.md): How to run the control store on an external Postgres, such as managed PostgreSQL: the database, the CA and password files, the config, and the checks. Also how to move a one-server install there with hopboxd admin db export and maintenance mode.
 
 ## Guides: Develop on a laptop

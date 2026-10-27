@@ -204,6 +204,10 @@ curl -s https://box1.example.com/
 
 To make it private again, set `URL_VISIBILITY_PRIVATE`.
 
+### Edge servers apart from the nodes
+
+In this guide, one server runs every role, so the edge role reaches each machine on the same server. A bigger install runs the edge role on servers of its own. Such an edge server reaches each machine over the mesh, and the machine sees the mesh address of the edge server as the client ([Run edge servers apart from the nodes](/guide/edge-servers/index.html.md)).
+
 ### What the code of the machine sees
 
 The request reaches the machine over plain HTTP, with these headers:

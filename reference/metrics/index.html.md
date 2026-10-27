@@ -83,6 +83,7 @@ A server with the DNS role adds these metrics to the listener of its `hopboxd ru
 | Metric | Type | Labels | Description |
 | --- | --- | --- | --- |
 | `hopbox_dns_queries_total` | counter | `transport`, `rcode` | The DNS queries that the DNS role answered. |
+| `hopbox_dns_rate_limited_total` | counter | `action` | The UDP answers over the rate limit of their client network. `action` is `slip`, a short answer with the TC flag, or `drop`, no answer ([the DNS role](/reference/dns/index.html.md#rate-limit-on-udp)). |
 | `hopbox_dns_zone_serial` | gauge | none | The serial of the zones that the DNS role serves. It is 0 before the first zones arrive. |
 
 | Label | Values |

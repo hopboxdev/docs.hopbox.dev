@@ -33,7 +33,8 @@ The install makes the paths of the roles in the bootstrap config. `<data_dir>` i
 | `<data_dir>/executor` | root | 0700 | node | The node-local state of the executors: one file for each machine ([the node executor](/reference/executor/index.html.md#node-local-state)). |
 | `<data_dir>/network` | root | 0700 | node | The state of the node network. The file `forward-guard`, mode 0600, exists once `hopboxd` turned IPv4 forwarding on, and keeps the forward guard of the table ([the node network](/reference/node-network/index.html.md#the-forward-guard)). |
 | `<data_dir>/logs` | root | 0700 | node | The logs of the machines: one directory per machine, with mode 0700, and segment files with mode 0600 ([Machine logs](/reference/machine-logs/index.html.md#files)). |
-| `<data_dir>/server` | root | 0700 | node, dns, edge | The identity of the enrolled server ([Enrollment and the install PKI](/reference/enrollment/index.html.md)). |
+| `<data_dir>/dns` | root | 0700 | dns | The last zones that the DNS role got from the control plane, in the file `zones`, mode 0600. The DNS role answers from them after a restart while no control server answers ([the DNS role](/reference/dns/index.html.md#zones-on-the-disk)). |
+| `<data_dir>/server` | root | 0700 | node, dns, edge | The identity of the enrolled server ([Enrollment and the install PKI](/reference/enrollment/index.html.md)), and the file `control-urls` with mode `0600`: the URLs of the live control servers that the control role sent last, one per line ([the control channel](/reference/control-channel/index.html.md#control-urls)). |
 | `/etc/systemd/system/hopboxd.service` | root | 0644 | every role | The unit of `hopboxd`. See [systemd units](#systemd-units). |
 | `/etc/systemd/system/hopbox-machines.slice` | root | 0644 | every role | The slice of the machines. |
 | `/etc/sysctl.d/60-hopbox.conf` | root | 0644 | node | The reserved SSH ports at boot. See [Reserved ports](#reserved-ports). |

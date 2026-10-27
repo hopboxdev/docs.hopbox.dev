@@ -104,7 +104,7 @@ After the sign-in, the front door reads the route of the port ([the edge role](/
 
 | Item | Value |
 | --- | --- |
-| Address | The address of the route record of the machine, port 22. |
+| Address | The address of the route record of the machine, port 22. An edge server without the node role reaches it only over the mesh ([The mesh](#the-mesh)). |
 | User | The user name of the client. |
 | Key | The client key of the install. |
 | Host key | Only a host key that the guest agent of the machine reported. The executor sends the host keys of the guest with each report of running ([the executor protocol](/reference/executor-protocol/index.html.md#machinereport)), and the route record keeps them. So the front door does not sign in to another honest guest at an old address. Every guest accepts the client key, so the host key is what tells two machines apart. A guest can show a host key that the route of another machine holds, such as after a copy of a disk. The guest that reports the key second then does not get that key in its route. If the guest has no other key, it loses SSH. An honest guest loses it too. When the first route lets the key go, because its guest changed its keys or its machine stopped, the second route gets the key in the same transaction. If another transaction locks the second route, or a `hopboxd` of v0.1.0 let the key go, a leader job gives the key within a minute ([Control store tables](/reference/control-store/index.html.md#route_host_keys)). A hostile guest can show a stolen host key. The guard against it is the hold of a released address: no new machine gets the address of a deleted machine for 5 minutes, much longer than a machine lease ([the node network](/reference/node-network/index.html.md#the-hold-of-a-released-address)). |
@@ -123,6 +123,17 @@ When the front door cannot reach the machine, the client stays signed in, and ea
 | `the machine is gone` | The routes name no machine at the port any more. |
 
 A machine in standby or hibernated does not wake at a connection before phase 3.
+
+## The mesh
+
+The front door reaches the OpenSSH server of a machine in the same way as the edge role reaches a machine URL ([the edge role](/reference/edge/index.html.md#the-way-to-the-machines)):
+
+- On an edge server with the node role, the routes of the host decide: the tap device of a machine of this server, or the mesh device `hbm0` for a machine of another node.
+- On an edge server without the node role, each connection to a machine is bound to `hbm0`, and leaves from the mesh address of the edge server. An address outside the machine range `10.240.0.0/12` fails at once.
+
+So the OpenSSH server of the machine sees the mesh address of the edge server as the client. The audit entry `machine.ssh` keeps the address of the real client ([Audit](#audit)).
+
+When the edge server has no mesh device yet, each channel fails with the reason `the front door cannot reach the OpenSSH server of the machine`, and the log record of that reason has an `err` such as `This edge server reaches the machines only over the mesh, and has no mesh device hbm0 yet`.
 
 ## Channels and requests
 
@@ -286,4 +297,3 @@ The control role logs each refusal of `AuthorizeSSH` as `refused an SSH connecti
 ## Not in phase 1
 
 - A machine in standby or hibernated wakes at the first packet to its SSH port (phase 3).
-- The mesh (phase 2). In phase 1, the front door runs on the node of the machine, and reaches the machine at its address there ([the node network](/reference/node-network/index.html.md)).

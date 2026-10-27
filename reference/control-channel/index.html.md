@@ -12,7 +12,7 @@ The server opens every connection. It opens `Channel` and keeps it open. When th
 
 On a server with the control role and a role that enrolls, the control role runs in the same `hopboxd` as the `channel` unit. The `channel` unit still connects over mutual TLS.
 
-Each server keeps one channel, whatever its roles. The node role, the DNS role, and the edge role use the same channel of their server. The DNS role gets its zones on it ([DNS zones](#dns-zones)). The edge role gets its certificate, its routes, and the access changes on it ([Edge pushes](#edge-pushes)). The mesh device of the server gets its peers on it ([Mesh pushes](#mesh-pushes)). Today, `node`, `dns`, and `edge` are the roles that enroll.
+Each server keeps one channel, whatever its roles. The node role, the DNS role, and the edge role use the same channel of their server. The DNS role gets its zones on it ([DNS zones](#dns-zones)). The edge role gets its certificate, its routes, and the access changes on it ([Edge pushes](#edge-pushes)). The mesh device of the server gets its peers on it ([Mesh pushes](#mesh-pushes)). Every server gets the URLs of the live control servers on it ([Control URLs](#control-urls)). Today, `node`, `dns`, and `edge` are the roles that enroll.
 
 ## ControlService
 
@@ -31,6 +31,7 @@ Both calls need the certificate of a server. The policy lets a server act only f
 | `server.attach_stream` | open `AttachStream` | the server of which the control role asked the stream |
 | `server.read_dns_zones` | read the zones that the server serves, before a push of `dns_zones` | the same server, with a certificate that carries the role `dns` |
 | `server.read_mesh_peers` | read the mesh as the server sees it, before a push of `mesh_peers` | the same server |
+| `server.read_control_urls` | read the internal listeners of the live control processes on the vRack, before a push of `control_urls` | the same server |
 | `server.read_disk_transfers` | read the part of the server in the cold moves, before a push of `disk_transfers` | the same server, with a certificate that carries the role `node` |
 | `server.read_edge_certificate` | read the certificate of the install with its key, before a push of `edge_certificate` | the same server, with a certificate that carries the role `edge` |
 | `server.read_edge_routes` | read the routes of the machine URLs, before a push of `edge_routes` | the same server, with a certificate that carries the role `edge` |
@@ -66,6 +67,7 @@ Each message from the control role holds one of these fields:
 | `edge_ssh_keys` | `EdgeSSHKeys` | The keys of the SSH front door. Only a server with the edge role gets it. |
 | `mesh_peers` | `MeshPeers` | The mesh address of the server and the other servers of the mesh. Only a server whose heartbeat holds `mesh` gets it ([Mesh pushes](#mesh-pushes)). |
 | `disk_transfers` | `DiskTransfers` | The disks that the node serves to other nodes, and the machines whose old files it removes. Only a server whose heartbeat says `disk_transfer` gets it ([Disk transfers](#disk-transfers)). |
+| `control_urls` | `ControlURLs` | The internal listeners of the live control processes on the vRack. Every server gets it ([Control URLs](#control-urls)). |
 
 A message without a known field ends the channel with `invalid_argument`. A server that gets a message that it does not know logs `the control plane sent a message that this hopboxd does not know. Upgrade hopboxd` and goes on.
 
@@ -100,6 +102,7 @@ The heartbeat holds these values.
 | `executor` | bool | Tells that the server runs machine executors. | |
 | `leases` | repeated `MachineLease` | The machine leases that the executors hold. The control role renews them ([the executor protocol](/reference/executor-protocol/index.html.md#renewals)). | at most 4096 |
 | `mesh` | `MeshMember` | The part of the server in the mesh: the public key of its WireGuard device and its vRack address. It is absent on a server outside the mesh ([the mesh](/reference/mesh/index.html.md#which-servers-join)). | the key has 32 bytes. The address is an IPv4 address in `172.31.0.0/16`. A part that breaks this limit ends no channel: the control role records the heartbeat without it. |
+| `dns_zone_serial` | optional uint32 | The serial of the zones that the DNS role of the server serves, also the zones on its disk after a restart ([the DNS role](/reference/dns/index.html.md#zones-on-the-disk)). It is absent on a server without the DNS role, and before its first zones. The control role records it in `servers.dns_zone_serial`. A heartbeat without it clears the column. | none |
 | `inbound_machines` | repeated string | The IDs of the machines of the server with inbound traffic since the last heartbeat. The control role sets `last_activity_at` of each machine of the server in this list, at most once a minute for each machine ([the node network](/reference/node-network/index.html.md#inbound-traffic-as-a-use)). The IDs of other servers change nothing. | at most 4096, each a UUID |
 | `disk_transfer` | bool | Tells that the server serves and pulls the disks of the cold moves ([Cold move](/reference/cold-move/index.html.md#two-releases)). The control role records the `hopboxd_version` of the heartbeat with it. | |
 | `removed_machines` | repeated string | The IDs of the machines of the last `remove` of `DiskTransfers` whose old files the server removed ([Disk transfers](#disk-transfers)). | at most 4096, each a UUID |
@@ -250,6 +253,14 @@ These messages carry the part of a node in the cold moves ([Cold move](/referenc
 | `DiskExport` | `target_server_id` | string | The ID of the one node that can pull the disk, a UUID. |
 | `DiskExport` | `target_serials` | repeated string | The serials of the certificates of that node that are not retired and not expired. The disk listener serves the disk only to a client certificate with one of these serials. |
 
+### ControlURLs
+
+This message carries the control servers that a server dials ([Control URLs](#control-urls)). Each `ControlURLs` replaces the one before it.
+
+| Message | Field | Type | Description |
+| --- | --- | --- | --- |
+| `ControlURLs` | `urls` | repeated string | The internal listeners of the live control processes, each `https://<address>:<port>` with an address in the vRack range `172.31.0.0/16`, such as `https://172.31.0.11:7443`. Sorted, none twice, 1 to 8 of them. |
+
 ### AttachStreamRequest and AttachStreamResponse
 
 | Message | Field | Type | Description |
@@ -283,6 +294,7 @@ On a server, the `Collector` of `internal/node` gathers the facts. It reads some
 | `allocations`, `actions`, `leases`, `executor` | the executors of the node ([the node executor](/reference/executor/index.html.md)). A server with the node role runs the executors. A server without it sends empty lists and `executor` false. | each heartbeat |
 | `inbound_machines` | the inbound counters of the table `inet hopbox_node` ([the node network](/reference/node-network/index.html.md#counters)). A server without the node role sends an empty list. | each heartbeat |
 | `disk_transfer`, `removed_machines` | the disk listener and the executors of the node ([Cold move](/reference/cold-move/index.html.md)). A node whose driver keeps no disk in files, and a server without the node role, send false and an empty list. | each heartbeat |
+| `dns_zone_serial` | the serial of the zones that the DNS role serves, the value of `hopbox_dns_zone_serial` ([the DNS role](/reference/dns/index.html.md#metrics)). A server without the DNS role, or without zones, leaves it out. | each heartbeat |
 
 A server without the node role runs no machine. So it skips the preflight checks and the snapshot version. Its `status` is always `SERVER_STATUS_OK`, its `problems` come only from the host, the CPU, and the capacity, and its `compatibility_class` is empty.
 
@@ -448,6 +460,18 @@ A heartbeat whose `mesh` breaks its limit is recorded without its part of the me
 A node takes part in the cold moves with the field `disk_transfer` of its heartbeats ([Cold move](/reference/cold-move/index.html.md)). The control role records such a heartbeat. Then it reads the part of the node in the moves, under the policy action `server.read_disk_transfers`. It keeps the SHA-256 of the last `DiskTransfers` that it sent on the channel, and sends `disk_transfers` only after a change, as for the mesh. So the first heartbeat of each channel sends it, and a new step of a move reaches the node within 5 s. A failed read logs `reading the moves of a node failed. The next heartbeat tries again` at level warn. The channel stays open.
 
 The agent hands each `DiskTransfers` to the node role (`node.Agent.Moves`). The disk listener takes `serve`. It ends the streams of each disk that the new message no longer lists, or lists with another node or other serials. The executors take `remove`. The heartbeats then name each machine of `remove` whose files the node removed in `removed_machines`, until a later `DiskTransfers` names it no more. The control role records the removal in the transaction of the heartbeat. A server that takes part in no move logs `the control plane sent the disks of cold moves to a server that takes part in no move` at level warn, and drops the message.
+
+## Control URLs
+
+A server dials the control servers of `channel.control_urls` ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)). That list is fixed at the install of the server. The control servers of the install change later: a new one starts, an old one leaves. So the control role also sends the URLs of the live control servers on the channel.
+
+After each heartbeat that it records, the control role reads the live rows of `control_processes` ([Control store tables](/reference/control-store/index.html.md)) under the policy action `server.read_control_urls`. It keeps each internal listener whose URL is `https` and whose address is in the vRack range `172.31.0.0/16`. A URL without a port gets port 443, such as `https://172.31.0.22:443` for `https://172.31.0.22`. A listener on loopback serves only its own server, so the list leaves it out. The list is sorted, has no URL twice, and holds at most 8 URLs. The control role keeps the SHA-256 of the last list that it sent on the channel, and sends `control_urls` only after a change, as for the mesh. It never sends an empty list. So the first heartbeat of each channel sends the list, and a control server that starts or stops reaches each server within 5 s. A failed read logs `reading the control URLs for a server failed. The next heartbeat tries again` at level warn. The channel stays open.
+
+The agent takes a list only when each URL is `https://<address>:<port>` with an address in `172.31.0.0/16`, the list has 1 to 8 URLs, and no URL comes twice. Otherwise, it logs `the control plane sent control URLs that this server refuses, and it keeps the URLs that it has` at level error, and keeps the last list that it took. A new list replaces the old one, so a control server that left does not stay in it. The agent writes the list to `<data_dir>/server/control-urls` ([Server layout](/reference/server-layout/index.html.md)), one URL per line, with mode `0600`, through a temp file and a rename. Then it logs `the control plane sent new control URLs` at level info, with the field `urls`. If the write fails, the old file stays. The next start then dials the older list first, because some of its URLs can still be live. The agent logs `cannot keep the control URLs of the control plane. This server dials them until hopboxd stops, and tries the write again at each heartbeat` at level error, once until a write works. It dials the new list until it stops. It writes the file again at each heartbeat, and at the next push, also when that push sends the same list. After a good write, it logs `kept the control URLs of the control plane on the disk after a failed write` at level info, with the field `urls`.
+
+The dial order is the kept list first, because it is the live set, and then each URL of `channel.control_urls` that is not in it. Without a kept list, the dial order is `channel.control_urls`. At its start, the agent reads the kept file. It refuses a file that is not a regular file of the user of `hopboxd`, that group or others can write, that has more than 4096 bytes, or whose list fails the checks of a list from the channel. Then it logs `ignoring the control URLs that this server kept. It dials channel.control_urls until the control plane sends new ones` at level warn, with `err`. The edge role forwards to the control servers in the same order ([the edge role](/reference/edge/index.html.md#forwarded-requests)), and gets each new order from the agent. It spreads its requests over the kept list, or over `channel.control_urls` without one, and tries the other URLs only after them.
+
+A server of the release before this one does not know `control_urls`. It drops the message with the warning `the control plane sent a message that this hopboxd does not know. Upgrade hopboxd`, once for each channel and each change of the list ([Messages of two releases](#messages-of-two-releases)). It keeps dialing `channel.control_urls`.
 
 ## Data streams
 
@@ -654,9 +678,9 @@ On the server, `node.Agent.Handlers` maps each kind to a `StreamHandler`, `func(
 The `channel` unit of `hopboxd run` runs the agent of `internal/node` ([hopboxd](/reference/hopboxd/index.html.md#run)). It runs on each server with a role other than `control`. The agent takes these steps:
 
 1. It reads the identity from `<data_dir>/server`. Without one, it logs `waiting for the enrollment of this server` once and looks again every 2 seconds. So `hopboxd run` can start before `hopboxd enroll`.
-2. It dials one URL of `channel.control_urls` with its certificate, and checks that the peer is the control role of its install CA. The first channel goes to the URL that a CRC-32 of the server ID picks, so the channels of a fleet spread over the control servers.
+2. It dials one URL of the dial order with its certificate, and checks that the peer is the control role of its install CA. The dial order is the kept list of the control role, then the URLs of `channel.control_urls` that are not in it ([Control URLs](#control-urls)). The first channel goes to the URL that a CRC-32 of the server ID picks among the kept URLs, or among `channel.control_urls` without a kept list. So the channels of a fleet spread over the control servers.
 3. It opens `Channel`, sends a heartbeat at once, and then one every 5 seconds.
-4. After any drop, it waits and dials again. The wait starts at 1 second and doubles up to 10 seconds. Each wait is a random time between half the wait and the whole wait. A channel that lasted more than 1 minute starts the waits from 1 second again. After a lost or refused channel, the next dial goes to the next URL of the list, round the list. A renewal of the certificate dials the same URL again. After 20 seconds of silence, the leader marks a server `unresponsive`. The longest wait stays well under that. So a short stop of the control role never shows as one.
+4. After any drop, it waits and dials again. The wait starts at 1 second and doubles up to 10 seconds. Each wait is a random time between half the wait and the whole wait. A channel that lasted more than 1 minute starts the waits from 1 second again. After a lost or refused channel, the next dial goes to the next URL of the dial order, round the order. If the URL of the lost channel left the order, the next dial goes to the URL that the CRC-32 picks. A renewal of the certificate dials the same URL again. After 20 seconds of silence, the leader marks a server `unresponsive`. The longest wait stays well under that. So a short stop of the control role never shows as one.
 5. The control plane can refuse the server with `unauthenticated` or `permission_denied`, for example after a decommission or a retired certificate. Then the agent logs `the control plane refuses this server. hopboxd retries every minute` once at level error, with `err`. After that, it dials only once a minute. The first channel that works ends the slow retries.
 
 When the unit stops, the agent closes the channel. The control role then ends it at once.
@@ -675,6 +699,7 @@ The control side writes these records with `component=channel` and the field `se
 | `recording a heartbeat failed` | warn | `err`. The channel stays open. |
 | `reading the dns zones of a server failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
 | `reading the mesh for a server failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
+| `reading the control URLs for a server failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
 | `the edge server gets no certificate yet` | info | `err`. The install has no certificate, or one of an old domain. |
 | `reading the certificate for an edge server failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
 | `reading the routes for an edge server failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
@@ -714,6 +739,11 @@ The server side writes these records with `component=node`:
 | `the control plane sent edge data to a server without the edge role` | warn | `server`, `push` |
 | `the mesh device refused the mesh of the control plane, and keeps the peers that it has` | error | `server`, `address`, `peers`, `err` |
 | `the control plane sent the mesh to a server outside the mesh` | warn | `server` |
+| `the control plane sent new control URLs` | info | `server`, `urls` |
+| `the control plane sent control URLs that this server refuses, and it keeps the URLs that it has` | error | `server`, `err` |
+| `cannot keep the control URLs of the control plane. This server dials them until hopboxd stops, and tries the write again at each heartbeat` | error | `server`, `err` |
+| `kept the control URLs of the control plane on the disk after a failed write` | info | `server`, `urls` |
+| `ignoring the control URLs that this server kept. It dials channel.control_urls until the control plane sends new ones` | warn | `err` |
 | `cannot refuse a stream` | warn | `stream` (the kind), `err` |
 | `cannot attach a stream` | warn | `stream` (the kind), `err` |
 | `the control plane sent a machine spec, but this server runs no machine executor` | warn | `server`. Once per channel. |
