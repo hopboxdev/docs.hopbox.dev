@@ -1744,11 +1744,11 @@ There is no way to stop a drain. A server that drains stays cordoned until its d
 
 # Run edge servers apart from the nodes
 
-> How to add two edge servers apart from the nodes, with floating IPv4 addresses and IPv6 addresses of the vRack block, point the zone at both, and reach a machine through each one.
+> How to add two edge servers apart from the nodes, with floating IPv4 addresses and IPv6 addresses of the vRack block. Also how to point the zone at both, reach a machine through each one, and check the egress of the machines.
 
 The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
 
-An edge server takes the public traffic of an install: the URL of each machine, SSH, the API, and the console. A small install runs every role on one server. A bigger install runs the edge role and the DNS role on two servers of their own, `edge1` and `edge2`. The install then has two name servers. When one edge server stops, the other one takes the traffic. This guide adds two edge servers to an install on the vRack, and checks a machine through each one.
+An edge server takes the public traffic of an install: the URL of each machine, SSH, the API, and the console. It also takes the egress of the machines to the internet ([the egress of the machines](/reference/egress/)). A small install runs every role on one server. A bigger install runs the edge role and the DNS role on two servers of their own, `edge1` and `edge2`. The install then has two name servers. When one edge server stops, the other one takes the traffic. This guide adds two edge servers to an install on the vRack, and checks a machine through each one.
 
 An edge server without the node role reaches each machine over the mesh, the WireGuard device `hbm0` between the servers ([the mesh](/reference/mesh/)). [The edge role](/reference/edge/#the-way-to-the-machines) covers the way to the machines in full.
 
@@ -1789,11 +1789,12 @@ listen = ["203.0.113.101:53", "[2001:db8:0:100::11]:53"]
 [edge]
 public_ipv6 = "2001:db8:0:100::11/56"
 public_ipv6_gateway = "2001:db8:0:100::1"
+public_ipv4 = "203.0.113.101"
 ```
 
 On `edge2`, write the same file with `203.0.113.102` and `2001:db8:0:100::12`.
 
-The tested OS runs `systemd-resolved` on port 53 of a loopback address. So `dns.listen` names the public addresses of the server, not every address ([the DNS role](/reference/dns/#listeners)). The DNS role takes queries on the IPv6 address once `hopboxd` sets it. `edge.public_ipv6` names the address of the server with the prefix length of the block ([the bootstrap config of hopboxd](/reference/hopboxd-config/#keys)).
+The tested OS runs `systemd-resolved` on port 53 of a loopback address. So `dns.listen` names the public addresses of the server, not every address ([the DNS role](/reference/dns/#listeners)). The DNS role takes queries on the IPv6 address once `hopboxd` sets it. `edge.public_ipv6` names the address of the server with the prefix length of the block ([the bootstrap config of hopboxd](/reference/hopboxd-config/#keys)). `edge.public_ipv4` names the floating address from which the egress of the machines leaves. The Terraform provider writes these keys for you ([hopbox Terraform provider](/reference/terraform-provider/#edge-servers-and-floating-addresses)).
 
 ### Install and enroll each edge server
 
@@ -1830,7 +1831,7 @@ ip -6 rule show table 26806
 ip -6 route show table 26806
 ```
 
-The vRack interface holds `2001:db8:0:100::11/56`. The rule sends each packet from the block to the table, and the table holds one default route via `2001:db8:0:100::1`. So the replies of the IPv6 address leave through the vRack, not through the uplink. The log of `hopboxd` shows the line `this edge server holds its public IPv6 address on the vRack` ([the edge role](/reference/edge/#the-public-ipv6-address)).
+The vRack interface holds `2001:db8:0:100::11/56`. The rule sends each packet from the block to the table. The table holds a default route via `2001:db8:0:100::1`, and an `unreachable` default route with a higher metric behind it. So the replies of the IPv6 address leave through the vRack, not through the uplink. The log of `hopboxd` shows the line `this edge server holds its public IPv6 address on the vRack` ([the edge role](/reference/edge/#the-public-ipv6-address)).
 
 ## Point the zone at both edge servers
 
@@ -1883,9 +1884,30 @@ ssh -p 10022 user@2001:db8:0:100::12
 
 The code of the machine sees the mesh address of the edge server as the client, such as `10.239.0.3`. The header `X-Forwarded-For` of a request holds the address of the real client ([the edge role](/reference/edge/#what-a-machine-gets)).
 
+## Check the egress of the machines
+
+Each node sends the egress of its machines through an egress tunnel to one edge server. The hash of the machine address picks the edge server ([the egress of the machines](/reference/egress/#the-hash-of-a-machine)). On `edge1`, check its tunnel, and the routes of the replies back into it:
+
+```sh
+sudo wg show hbe0 allowed-ips
+ip rule show table 26819
+ip -6 rule show table 26806
+```
+
+The tunnel has each node as a peer, with its subnet and the IPv6 `/64` of that subnet. The rule `fwmark 0x68620100 lookup 26819` sends the replies back into the tunnel. The rule `from fd65:1c74:e769::/48 lookup 26806` sends the IPv6 egress of the machines to the gateway of the block.
+
+In a machine, ask a server on the internet for the address that it sees:
+
+```sh
+hopbox exec box1 curl -sS https://ifconfig.me
+hopbox exec box1 curl -6 -sS https://ifconfig.me
+```
+
+The commands print the floating address and the IPv6 address of one edge server, such as `203.0.113.101` and `2001:db8:0:100::11`. Both families of one machine leave through the same edge server. An edge server without `edge.public_ipv4` gives the IPv4 egress the address of its uplink, and logs a warning at its start. An edge server without `edge.public_ipv6` refuses the IPv6 egress.
+
 ## When an edge server stops
 
-The other edge server goes on: it answers DNS, the machine URLs, SSH, and the API. A resolver that gets no answer from one name server asks the other one. The address of the stopped edge server gives no answer to a client. It answers again when the edge server is back, or when its replacement takes the address.
+The other edge server goes on: it answers DNS, the machine URLs, SSH, and the API. A resolver that gets no answer from one name server asks the other one. The control role marks the stopped edge server `unresponsive` after 20 s. At their next heartbeat, the nodes then send all the egress of their machines to the other edge server. The address of the stopped edge server gives no answer to a client. It answers again when the edge server is back, or when its replacement takes the address.
 
 A DNS server keeps the last zones of the control plane on its disk ([the DNS role](/reference/dns/#zones-on-the-disk)). So an edge server that restarts while no control server runs answers with those zones. Its log shows `serving the dns zones on the disk until the control plane sends its zones`.
 
@@ -1894,7 +1916,7 @@ A DNS server keeps the last zones of the control plane on its disk ([the DNS rol
 The new server takes the same addresses as the old one:
 
 1. The Terraform provider moves the floating IPv4 address to the new server.
-2. Write the bootstrap config of the new server with the same `edge.public_ipv6`, then install and enroll it as above.
+2. Write the bootstrap config of the new server with the same `edge.public_ipv6` and `edge.public_ipv4`, then install and enroll it as above.
 3. While the old server still holds the IPv6 address, duplicate address detection fails on the new server. The new server logs `another host on the vRack holds the public IPv6 address of this edge server, so it takes no traffic`, and tries the address again at each check, every 2 seconds. Once the old server is gone, the new server takes the address.
 
 The public addresses of the install stay the same, so the zone and the glue records need no change.
@@ -3980,7 +4002,7 @@ resource "hopbox_server" "node2" {
 }
 ```
 
-Give each server its own vRack address. `public_ipv6` gives `edge2` its address of the IPv6 block, with the prefix length of the block. The provider writes it to the bootstrap config of the server, and `hopboxd` holds it on the vRack interface ([the edge role](/reference/edge/#the-public-ipv6-address)). `depends_on` makes Terraform update the first server before the others in a [rolling upgrade](/reference/terraform-provider/#rolling-upgrade). Apply:
+Give each server its own vRack address. `public_ipv6` gives `edge2` its address of the IPv6 block, with the prefix length of the block. The provider writes it to the bootstrap config of the server, and `hopboxd` holds it on the vRack interface ([the edge role](/reference/edge/#the-public-ipv6-address)). The provider also writes the first floating address to `edge.public_ipv4`, the source of the egress of the machines ([the egress of the machines](/reference/egress/#the-source-addresses)). `depends_on` makes Terraform update the first server before the others in a [rolling upgrade](/reference/terraform-provider/#rolling-upgrade). Apply:
 
 ```sh
 terraform apply
@@ -4917,6 +4939,19 @@ default via 169.254.0.1 dev eth0 onlink
 169.254.169.254 dev eth0 scope link
 ```
 
+The machine also has one IPv6 address, which follows from its IPv4 address, and an IPv6 default route through `fe80::1` ([the egress of the machines](/reference/egress/#the-ipv6-addresses-of-the-machines)):
+
+```sh
+hopbox exec box1 ip -6 addr show eth0 scope global
+hopbox exec box1 ip -6 route show default
+```
+
+```text
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1420 state UP qlen 1000
+    inet6 fd65:1c74:e769::af0:1/128 scope global nodad
+default via fe80::1 dev eth0 metric 1024 pref medium
+```
+
 The guest agent wrote the resolvers of the node to `/etc/resolv.conf` of the machine:
 
 ```sh
@@ -4928,21 +4963,51 @@ The node routes the address to the tap device of the machine. The tap device has
 ```sh
 ip -d link show | grep -B1 'alias hopbox machine'
 ip route show 10.240.0.1
+ip -6 route show fd65:1c74:e769::af0:1
 ```
 
 ```text
 10.240.0.1 dev hbt3f2c9a0b1d4e proto static scope link
+fd65:1c74:e769::af0:1 dev hbt3f2c9a0b1d4e proto static metric 1024 pref medium
 ```
 
 ## Check the egress
 
-A machine reaches the internet. The node gives its packets the address of the server:
+The server of this guide has the node role and the edge role, so it is the local exit of its machines ([the egress of the machines](/reference/egress/#the-local-exit)). A machine reaches the internet. The node gives its packets the address of the server:
 
 ```sh
 hopbox exec box1 curl -sS https://ifconfig.me
 ```
 
-The command prints the public address of the server, not the address of the machine.
+The command prints the public address of the server, not the address of the machine. With `edge.public_ipv4` in the bootstrap config, it prints that address.
+
+Over IPv6, the egress needs `edge.public_ipv6`, an address of the IPv6 block of the install on the vRack ([the edge role](/reference/edge/#the-public-ipv6-address)). Without it, the connect fails at once:
+
+```sh
+hopbox exec box1 curl -6 -m 3 -sS https://ifconfig.me
+```
+
+With `edge.public_ipv6`, the command prints that address.
+
+### With edge servers apart
+
+Edge servers can run apart from the nodes. A node then sends the egress of its machines through an egress tunnel to one edge server ([the egress of the machines](/reference/egress/)). The hash of the machine address picks the edge server. So `curl https://ifconfig.me` in a machine prints the floating address of that edge server, and `curl -6` its address of the IPv6 block.
+
+On the node, list the tunnels, one for each edge server, and their rules:
+
+```sh
+sudo wg show all endpoints
+ip rule show | grep 'proto 107'
+```
+
+```text
+hbe0  <public key of edge1>  172.31.0.21:51821
+hbe1  <public key of edge2>  172.31.0.22:51821
+26820:  from all fwmark 0x68620000 lookup 26820 proto 107
+26821:  from all fwmark 0x68620001 lookup 26821 proto 107
+```
+
+When an edge server stops, the next mesh drops it, and its machines move to the other tunnel. The move waits for the unresponsive time of 20 s, a sweep of the leader, and a heartbeat of the node. The test fleet checks that it takes at most 40 s.
 
 ## Check what the machine cannot reach
 
@@ -4952,6 +5017,7 @@ A machine reaches no service of its node, no private range, and no other machine
 hopbox exec box1 curl -m 3 http://169.254.0.1:9464/metrics
 hopbox exec box1 curl -m 3 http://192.168.1.1/
 hopbox exec box1 curl -m 3 http://10.240.0.2:8000/
+hopbox exec box1 curl -m 3 'http://[fd65:1c74:e769::af0:2]:8000/'
 ```
 
 ```text
@@ -4968,13 +5034,20 @@ The node keeps its rules in the nftables table `inet hopbox_node`:
 sudo nft list table inet hopbox_node
 ```
 
-The sets `machines` and `inbound` hold the tap device of each machine, each with its counter:
+The sets `machines`, `machines6`, and `inbound` hold the tap device of each machine, each with its counter:
 
 ```text
   set machines {
     type ifname . ipv4_addr
     counter
     elements = { "hbt3f2c9a0b1d4e" . 10.240.0.1 counter packets 1520 bytes 194311 }
+  }
+
+
+  set machines6 {
+    type ifname . ipv6_addr
+    counter
+    elements = { "hbt3f2c9a0b1d4e" . fd65:1c74:e769::af0:1 counter packets 0 bytes 0 }
   }
 
 
@@ -5033,7 +5106,7 @@ curl -m 3 http://10.240.0.1:8000/
 
 The machine sees the mesh address of the edge server as the source. A server without the edge role cannot open a connection to a machine, and the command times out there.
 
-On the vRack itself, only WireGuard packets on UDP port 51820 go between the servers of the mesh, apart from the control channel. The metrics of the mesh show the handshake and the bytes of each peer:
+On the vRack itself, only WireGuard packets go between the servers of the mesh, apart from the control channel. The mesh uses UDP port 51820, and the egress tunnels the ports from 51821. The metrics of the mesh show the handshake and the bytes of each peer:
 
 ```sh
 curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_mesh_'
@@ -5061,16 +5134,18 @@ sudo systemctl restart hopboxd
 
 ## When something fails
 
-| What you see                                                                                               | Cause and fix                                                                                                                                                                                                          |
-| ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `hopboxd` stops at its start with `the host names no resolver that a machine can reach`                    | The resolv.conf of the server names only a loopback resolver. Set `network.nameservers`.                                                                                                                               |
-| The log of `hopboxd` has `the machine boots without network`                                               | The machine has no address, for example on a node without the node network. Its tap device stays down.                                                                                                                 |
-| The egress of a machine times out, but the edge reaches the machine                                        | A host with Docker drops forwarded packets in the chain `FORWARD` of iptables. Accept the tap devices in the chain `DOCKER-USER`, as in [Docker on the server](#docker-on-the-server), or run the node without Docker. |
-| The log of `hopboxd` has `the nftables table inet hopbox_node lost a part outside hopboxd`                 | Something flushed the ruleset, such as a restart of `nftables.service`. `hopboxd` installed the table again. Find what flushed it, and stop it.                                                                        |
-| `no capacity: the subnet ... has no free machine address`                                                  | The node holds 4094 machines and held addresses. Delete a machine, and wait 5 minutes for the hold of its address.                                                                                                     |
-| The log of `hopboxd` has `this server has more than one address on the vRack, so it stays out of the mesh` | Two addresses of the server are in `172.31.0.0/16`. Remove the address that the provider did not set.                                                                                                                  |
-| The log of `hopboxd` has `cannot set up the mesh device. The next check tries again`                       | The kernel has no module `wireguard`, or another device has the name `hbm0`. Load the module with `sudo modprobe wireguard`, or remove the other device.                                                               |
-| `wg show hbm0` lists no peer                                                                               | The control role sends the mesh only to a server whose heartbeat carries its part of the mesh. Check that `hopboxd admin server get` shows `mesh_address` for the server.                                              |
+| What you see                                                                                               | Cause and fix                                                                                                                                                                                                                                             |
+| ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hopboxd` stops at its start with `the host names no resolver that a machine can reach`                    | The resolv.conf of the server names only a loopback resolver. Set `network.nameservers`.                                                                                                                                                                  |
+| The log of `hopboxd` has `the machine boots without network`                                               | The machine has no address, for example on a node without the node network. Its tap device stays down.                                                                                                                                                    |
+| The egress of a machine times out, but the edge reaches the machine                                        | A host with Docker drops forwarded packets in the chain `FORWARD` of iptables. Accept the tap devices in the chain `DOCKER-USER`, as in [Docker on the server](#docker-on-the-server), or run the node without Docker.                                    |
+| The log of `hopboxd` has `the nftables table inet hopbox_node lost a part outside hopboxd`                 | Something flushed the ruleset, such as a restart of `nftables.service`. `hopboxd` installed the table again. Find what flushed it, and stop it.                                                                                                           |
+| `no capacity: the subnet ... has no free machine address`                                                  | The node holds 4094 machines and held addresses. Delete a machine, and wait 5 minutes for the hold of its address.                                                                                                                                        |
+| The log of `hopboxd` has `this server has more than one address on the vRack, so it stays out of the mesh` | Two addresses of the server are in `172.31.0.0/16`. Remove the address that the provider did not set.                                                                                                                                                     |
+| The log of `hopboxd` has `cannot set up the mesh device. The next check tries again`                       | The kernel has no module `wireguard`, or another device has the name `hbm0`. Load the module with `sudo modprobe wireguard`, or remove the other device.                                                                                                  |
+| On a node without the edge role, each connect of a machine to the internet fails at once                   | The node has no egress edge, so its egress fails closed. Check that `sudo wg show all endpoints` lists a tunnel `hbe0`, and that an edge server is `ready` in `hopboxd admin server list` ([the egress of the machines](/reference/egress/#fail-closed)). |
+| The log of `hopboxd` has `the reverse path filter is on`                                                   | The kernel drops the packets of the egress tunnels, and an edge server takes no egress. Set the sysctl `net.ipv4.conf.all.rp_filter` to 0 ([the egress of the machines](/reference/egress/#the-reverse-path-filter)).                                     |
+| `wg show hbm0` lists no peer                                                                               | The control role sends the mesh only to a server whose heartbeat carries its part of the mesh. Check that `hopboxd admin server get` shows `mesh_address` for the server.                                                                                 |
 
 # Work in a team org
 

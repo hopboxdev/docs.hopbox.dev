@@ -229,7 +229,7 @@ The leader sweep frees the subnet of a decommissioned node, with the other sweep
 | Disk | The same bytes, with the same holes. |
 | Memory | Lost. A running machine boots again on the target. |
 | Name, URL, SSH port | The same. |
-| Address | The same address of the subnet of its first node. The target node routes its `/32` to the tap device of the machine, and the mesh peer of the target allows the `/32` ([the node network](/reference/node-network/index.html.md#addresses), [the mesh](/reference/mesh/index.html.md#allowed-ips)). |
+| Address | The same address of the subnet of its first node, and the same IPv6 address. The target node routes the `/32` and the `/128` to the tap device of the machine. The mesh peer of the target allows both ([the node network](/reference/node-network/index.html.md#moved-machines), [the mesh](/reference/mesh/index.html.md#allowed-ips)). |
 | Route record | Dropped at the stop, and written again with the lease of the target at the report of `running`. So no traffic goes to the source after the move. |
 | Target state | The same. During the stop, the spec of the source has the target `stopped`, and the machine row keeps its own target. So the usage of its org and of its node stay as they are. |
 | Lifecycle calls | They change the machine row as usual. During the stop, the spec stays `stopped`, apart from a delete. On the target, the machine reaches the target of the row once its disk is whole. |

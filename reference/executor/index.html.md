@@ -212,6 +212,7 @@ The histogram has the buckets 0.01, 0.05, 0.1, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 
 | `Metrics` | none | The metrics of `executor.NewMetrics(registerer)`. |
 | `Logs` | none | The logs of the start commands, an `executor.LogSink`: `Append(id, entry)` takes a line and must not block, and `Remove(id)` drops the log of a deleted machine. Nil drops the lines. |
 | `Nameservers` | none | A func that returns the resolvers of the machines of the node, such as `Nameservers` of a `netcfg.Network`. Nil gives a machine no resolver. |
+| `IPv6` | none | A func that reports whether the node gives the machines IPv6, such as `IPv6` of a `netcfg.Network`. Then the guest of a machine with an address gets `address6` and `gateway6` ([Guest link](/reference/guest-link/index.html.md)). Nil gives a machine no IPv6. |
 | `Puller` | none | Pulls the disk of a machine that moves to the node, such as a `transfer.Client` ([Cold move](/reference/cold-move/index.html.md)). Nil, or a driver that is no `vmm.Mover`, pulls none, and a moving machine waits. |
 
 The `Manager` is the `Machines` of the agent of the node, `node.Agent.Machines`. The agent calls these methods:

@@ -106,6 +106,7 @@ The heartbeat holds these values.
 | `inbound_machines` | repeated string | The IDs of the machines of the server with inbound traffic since the last heartbeat. The control role sets `last_activity_at` of each machine of the server in this list, at most once a minute for each machine ([the node network](/reference/node-network/index.html.md#inbound-traffic-as-a-use)). The IDs of other servers change nothing. | at most 4096, each a UUID |
 | `disk_transfer` | bool | Tells that the server serves and pulls the disks of the cold moves ([Cold move](/reference/cold-move/index.html.md#two-releases)). The control role records the `hopboxd_version` of the heartbeat with it. | |
 | `removed_machines` | repeated string | The IDs of the machines of the last `remove` of `DiskTransfers` whose old files the server removed ([Disk transfers](#disk-transfers)). | at most 4096, each a UUID |
+| `egress_exit` | bool | Tells that the server takes the egress of the machines of the other nodes. It is true on an edge server whose egress tunnel `hbe0` is ready ([the egress of the machines](/reference/egress/index.html.md#egress-edges)). The control role records the `hopboxd_version` of the heartbeat with it, in `servers.egress_exit_version`. A server of a release before the egress tunnels never sends it. | |
 
 `CPUFingerprint`:
 
@@ -235,11 +236,13 @@ These messages carry the mesh ([the mesh](/reference/mesh/index.html.md)). Each 
 | `MeshMember` | `vrack_address` | string | The IPv4 address of the server on the vRack, in `172.31.0.0/16`, such as `172.31.0.12`. |
 | `MeshPeers` | `address` | string | The mesh address of the server, in `10.239.0.0/16`, such as `10.239.0.3`. |
 | `MeshPeers` | `peers` | repeated `MeshPeer` | The other servers of the mesh that are not decommissioned, in the order of their mesh addresses. At most 4096. |
+| `MeshPeers` | `egress_marked` | bool | True from a control role that sets `MeshPeer.egress`, from N17 on. A control role of an older release never sets it. A node then keeps the egress tunnels that it has, and does not read the missing `egress` as no egress edge ([the egress of the machines](/reference/egress/index.html.md#a-control-role-of-an-older-release)). |
 | `MeshPeer` | `server_id` | string | The ID of the server, a UUID. |
 | `MeshPeer` | `public_key` | bytes | The public key of its WireGuard device: 32 bytes. |
 | `MeshPeer` | `endpoint` | string | Its vRack address and the UDP port `51820`, such as `172.31.0.12:51820`. |
 | `MeshPeer` | `allowed_ips` | repeated string | The prefixes that WireGuard sends to this peer, and takes from it ([the mesh](/reference/mesh/index.html.md#allowed-ips)). |
 | `MeshPeer` | `roles` | repeated string | The roles of the peer, sorted, such as `node` or `edge`. |
+| `MeshPeer` | `egress` | bool | True for an egress edge: a peer with the edge role and the state `ready`, `cordoned`, or `draining`, whose `egress_exit_version` equals its `hopboxd_version` ([the egress of the machines](/reference/egress/index.html.md#egress-edges)). A node without the edge role makes one egress tunnel to each such peer, in the order of the peers. |
 
 ### DiskTransfers and DiskExport
 
@@ -295,6 +298,7 @@ On a server, the `Collector` of `internal/node` gathers the facts. It reads some
 | `inbound_machines` | the inbound counters of the table `inet hopbox_node` ([the node network](/reference/node-network/index.html.md#counters)). A server without the node role sends an empty list. | each heartbeat |
 | `disk_transfer`, `removed_machines` | the disk listener and the executors of the node ([Cold move](/reference/cold-move/index.html.md)). A node whose driver keeps no disk in files, and a server without the node role, send false and an empty list. | each heartbeat |
 | `dns_zone_serial` | the serial of the zones that the DNS role serves, the value of `hopbox_dns_zone_serial` ([the DNS role](/reference/dns/index.html.md#metrics)). A server without the DNS role, or without zones, leaves it out. | each heartbeat |
+| `egress_exit` | the last check of the egress tunnel `hbe0` of an edge server ([the egress of the machines](/reference/egress/index.html.md#egress-edges)). A server without the edge role sends false. | each heartbeat |
 
 A server without the node role runs no machine. So it skips the preflight checks and the snapshot version. Its `status` is always `SERVER_STATUS_OK`, its `problems` come only from the host, the CPU, and the capacity, and its `compatibility_class` is empty.
 

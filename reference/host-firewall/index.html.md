@@ -1,10 +1,10 @@
 # The host firewall
 
-> The host firewall of every server, the nftables table inet hopbox_host: its zones and ports, the jump hosts, the ways in that it keeps, the address of the /56, its repair, metrics, logs, and tests.
+> The host firewall of every server, the nftables table inet hopbox_host. It covers the zones and ports, the jump hosts, the ways in that it keeps, and the address of the /56. It also covers the egress chains of an edge server, the repair, metrics, logs, and tests.
 
 The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
 
-The host firewall is the nftables table `inet hopbox_host` of every server of an install. It makes the edge servers the bastion of the install (rules 2 and 5). Only an edge server takes traffic from the internet. A control server or a node takes no new connection on its public address. On the vRack and on the mesh, each server takes only the ports of its roles. Operators reach a server that is not an edge server by SSH only through an edge server as a jump host.
+The host firewall is the nftables table `inet hopbox_host` of every server of an install. It makes the edge servers the bastion of the install (rules 2 and 5). Only an edge server takes traffic from the internet. A control server or a node takes no new connection on its public address. On the vRack and on the mesh, each server takes only the ports of its roles. Operators reach a server that is not an edge server by SSH only through an edge server as a jump host. On an edge server, the table also forwards and translates the egress of the machines ([The egress of the machines](#the-egress-of-the-machines)).
 
 The firewall is in `internal/hostfw`. `hopboxd run` starts it on every server, right after the metrics listener and before the units of the roles ([hopboxd](/reference/hopboxd/index.html.md#run)). The provider block of the Terraform provider names the jump host in `ssh_jump_host` ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#jump-host)).
 
@@ -20,7 +20,7 @@ The table sorts each new connection by the interface that takes it. A zone is th
 | vRack | The interface that holds the one vRack address of the server, as the mesh finds it ([the mesh](/reference/mesh/index.html.md#which-servers-join)) | The vRack range `172.31.0.0/16`, or the jump hosts for port 22. The `/56` of the install is not part of the vRack range. |
 | Mesh | `hbm0` | The mesh range `10.239.0.0/16`. |
 | Tap devices | The tap devices of the machines on a node, `hbt*` | The table takes them, and leaves them to the table `inet hopbox_node` ([the node network](/reference/node-network/index.html.md#the-table-inet-hopbox_node)), which owns all traffic of the machines. |
-| Public | Each other interface, such as the uplink | Every source. |
+| Public | Each other interface, such as the uplink. The egress tunnels `hbe*` are in it too, so a machine reaches the public ports of an edge server through its tunnel. | Every source. |
 
 On an edge server, the address of the `/56` on the vRack interface is in the public zone too ([The address of the /56](#the-address-of-the-56)). Each zone ends with a drop, so a port that no role opens takes nothing. The replies of the connections of the server pass in every zone, and so do the ICMP messages of [ICMP and DHCPv6](#icmp-and-dhcpv6).
 
@@ -32,6 +32,8 @@ Each role opens its ports. A server with more than one role opens the ports of e
 | --- | --- | --- | --- | --- |
 | Every server | vRack | TCP 22 | The jump hosts | The SSH of the operators and of the provider through an edge server ([The jump hosts](#the-jump-hosts)). |
 | A server that enrolls: `node`, `dns`, or `edge` | vRack | UDP 51820 | The vRack range | The WireGuard packets of the mesh ([the mesh](/reference/mesh/index.html.md#values)). |
+| `edge`, on a server that enrolls | vRack | UDP 51821 | The vRack range | The egress tunnel `hbe0`, which takes the egress of the nodes ([the egress of the machines](/reference/egress/index.html.md#the-tunnel-of-an-edge-server)). |
+| `node` without `edge`, on a server that enrolls | vRack | UDP 51821 to 51836 | The vRack range | The egress tunnels `hbe0` to `hbe15` of the node ([the egress of the machines](/reference/egress/index.html.md#the-tunnels-of-a-node)). |
 | `control` | vRack | TCP 7443, the port of `control.internal_listen` | The vRack range | The internal listener: the enrollment, the control channels, and the API and the console that the edge servers forward ([the internal listener](/reference/internal-listener/index.html.md)). |
 | `node` | Mesh | TCP 7444 | The mesh range | The disk listener of the cold moves ([Cold move](/reference/cold-move/index.html.md#the-disk-listener)). |
 | `edge` | Public | TCP 22 | Every source | The `sshd` of the operators. The edge server is the jump host. |
@@ -83,9 +85,42 @@ The provider reaches a server without the role `edge` through the jump host of `
 
 An edge server holds one address of the `/56` of the install on its vRack interface ([the edge role](/reference/edge/index.html.md#the-public-ipv6-address)). The vRack carries the public IPv6 traffic of that address. So the address takes the public ports of the server from every source, as the uplink does. The other addresses of the vRack interface keep the rules of the vRack zone.
 
-The provider of the uplink does not route the `/56`. So on an edge server with `edge.public_ipv6`, the chain `postrouting` drops some packets. It drops each packet with a source in the `/56` that leaves through an interface other than the vRack interface and loopback. If the rule or the route of the table `hopbox_egress6` is gone, a reply of the `/56` still never leaves through the uplink.
+The provider of the uplink does not route the `/56`. So on an edge server with `edge.public_ipv6`, the chain `postrouting` drops some packets. It drops each packet with a source in the `/56` that leaves through another interface than these: the vRack interface, loopback, the egress tunnels, and the tap devices. If the rule or the route of the table `hopbox_egress6` is gone, a reply of the `/56` still never leaves through the uplink. A reply from another address of the `/56` to a machine leaves through a tunnel or a tap device, so it passes. The gateway of the `/56` and another edge server can send such a reply.
 
-The chain runs at the priority `srcnat + 10`, after the source NAT at `srcnat`. So it also drops a packet that a source NAT gives an address of the `/56`. The NAT66 of the egress of N17 is such a source NAT. A rule of N17 that changes the source of a packet must run at `srcnat` or before, never after the guard.
+The chain runs at the priority `srcnat + 10`, after the source NAT at `srcnat`. So it also drops a packet that a source NAT gives an address of the `/56`. The NAT66 of the egress is such a source NAT, at `srcnat` ([The egress of the machines](#the-egress-of-the-machines)). A rule that changes the source of a packet must run at `srcnat` or before, never after the guard.
+
+## The egress of the machines
+
+An edge server that enrolls takes the egress of the machines of the nodes from its egress tunnel `hbe0` ([the egress of the machines](/reference/egress/index.html.md)). Its table then has five more chains:
+
+| Chain | Hook and priority | What it does |
+| --- | --- | --- |
+| `egress_mark` | prerouting, mangle | Puts the conntrack mark bit `0x20000000` on each new connection from a tunnel. Puts the packet mark `0x68620100` on each reply of such a connection. The rule of that mark routes the reply back into the tunnel, and not over the mesh ([the egress of the machines](/reference/egress/index.html.md#the-tunnel-of-an-edge-server)). |
+| `egress_output` | output, mangle, of the type `route` | Puts the same mark on each reply of the server itself. A machine reaches a public port of its own edge server, and the reply goes back through the tunnel (plan question Q52). |
+| `forward` | forward, filter | Sends each packet from a tunnel to the chain `egress`. Lets the replies into a tunnel, and drops each other packet into a tunnel. Drops the forwarded traffic of the other interfaces, as [The forward guard](#the-forward-guard) says. |
+| `egress` | none, the chain `forward` jumps to it | Drops the private ranges of the node table, which hold the mesh range and the vRack range. Drops each IPv6 destination outside `2000::/3`. Accepts IPv4 to the public zone. Accepts IPv6 only to the vRack interface, and only with `edge.public_ipv6`. Refuses the rest: TCP with a reset, and other packets with ICMP administratively prohibited. |
+| `egress_nat` | postrouting, srcnat, of the type `nat` | Translates the source of the egress from a tunnel. IPv4 to the public zone gets `edge.public_ipv4`, or the masquerade without that key. IPv6 to the vRack interface gets the address of `edge.public_ipv6`. |
+
+The table of the node network translates the egress of the machines of a node with the edge role. So the chain `egress_nat` takes the egress of a tunnel alone ([the node network](/reference/node-network/index.html.md#the-table-inet-hopbox_node)).
+
+The IPv4 egress leaves through the uplink, and the IPv6 egress through the vRack interface, where the `/56` lives. Without `edge.public_ipv4`, `hopboxd` logs `this edge server has no edge.public_ipv4, so the egress of the machines leaves from the address of its output interface` at level warn, at each start.
+
+### The forward guard
+
+At the start of an edge server that enrolls, the host firewall reads `net.ipv4.ip_forward`. When it is `0`, the firewall turns it on for the egress, after the install of the table. Then the chain `forward` drops each forwarded IPv4 packet that touches neither a tunnel nor a tap device:
+
+```text
+		meta nfproto ipv4 iifname != "hbe*" oifname != "hbe*" drop
+```
+
+On a server with the node role, the rule also names the tap devices: `iifname != "hbt*" oifname != "hbt*"`. The file `<data_dir>/hostfw/forward-guard` records that `hopboxd` turned forwarding on ([Server layout](/reference/server-layout/index.html.md#paths)). Each later start finds forwarding on, reads the file, and keeps the guard. Something else can turn forwarding on before the first start of `hopboxd`, such as Docker. The table then has no guard for IPv4, and the forwarding of that host stays as it was. To remove the guard, remove the file and restart `hopboxd`:
+
+```sh
+sudo rm /var/lib/hopbox/hostfw/forward-guard
+sudo systemctl restart hopboxd
+```
+
+IPv6 forwarding is one switch for the whole host. The firewall turns it on at each start of an edge server that enrolls, also after the install of the table ([the egress of the machines](/reference/egress/index.html.md#ipv6-forwarding)). So the chain `forward` always drops each forwarded IPv6 packet that touches neither a tunnel nor a tap device.
 
 ## ICMP and DHCPv6
 
@@ -136,6 +171,7 @@ table inet hopbox_host {
 		meta nfproto ipv4 ip saddr @jump_hosts meta l4proto tcp th dport 22 accept
 		meta nfproto ipv4 ip saddr 172.31.0.0/16 meta l4proto udp th dport 51820 accept
 		meta nfproto ipv4 ip saddr 172.31.0.0/16 meta l4proto tcp th dport 7443 accept
+		meta nfproto ipv4 ip saddr 172.31.0.0/16 meta l4proto udp th dport 51821-51836 accept
 		drop
 	}
 
@@ -152,13 +188,14 @@ table inet hopbox_host {
 
 While the set `jump_hosts` is empty, its rule is `meta nfproto ipv4 ip saddr 172.31.0.0/16 meta l4proto tcp th dport 22 accept`. On a server without a vRack address, the table has no chain `vrack`, and the chain `public` opens port 22 first.
 
-On an edge server with the DNS role and `edge.public_ipv6 = "2001:db8:0:100::11/56"`, these chains differ:
+On an edge server with the DNS role, `edge.public_ipv6 = "2001:db8:0:100::11/56"`, and `edge.public_ipv4 = "203.0.113.101"`, these chains differ. The edge server enrolls, and `hopboxd` turned IPv4 forwarding on, so the table has the chains of the egress too:
 
 ```text
 	chain vrack {
 		meta nfproto ipv6 ip6 daddr 2001:db8:0:100::11 jump public
 		meta nfproto ipv4 ip saddr @jump_hosts meta l4proto tcp th dport 22 accept
 		meta nfproto ipv4 ip saddr 172.31.0.0/16 meta l4proto udp th dport 51820 accept
+		meta nfproto ipv4 ip saddr 172.31.0.0/16 meta l4proto udp th dport 51821 accept
 		drop
 	}
 
@@ -178,9 +215,55 @@ On an edge server with the DNS role and `edge.public_ipv6 = "2001:db8:0:100::11/
 
 	chain postrouting {
 		type filter hook postrouting priority srcnat + 10; policy accept;
-		meta nfproto ipv6 ip6 saddr 2001:db8:0:100::/56 oifname != "lo" oifname != "enp3s0f1" drop
+		meta nfproto ipv6 ip6 saddr 2001:db8:0:100::/56 oifname != "lo" oifname != "enp3s0f1" oifname != "hbe*" drop
+	}
+
+	chain egress_mark {
+		type filter hook prerouting priority mangle; policy accept;
+		iifname "hbe*" ct state new ct mark set ct mark | 0x20000000
+		ct direction reply ct mark & 0x20000000 == 0x20000000 meta mark set 0x68620100
+	}
+
+	chain egress_output {
+		type route hook output priority mangle; policy accept;
+		ct direction reply ct mark & 0x20000000 == 0x20000000 meta mark set 0x68620100
+	}
+
+	chain forward {
+		type filter hook forward priority filter; policy accept;
+		iifname "hbe*" jump egress
+		oifname "hbe*" ct state established,related accept
+		oifname "hbe*" drop
+		meta nfproto ipv4 iifname != "hbe*" oifname != "hbe*" drop
+		meta nfproto ipv6 iifname != "hbe*" oifname != "hbe*" drop
+	}
+
+	chain egress {
+		meta nfproto ipv4 ip daddr 0.0.0.0/8 drop
+		meta nfproto ipv4 ip daddr 10.0.0.0/8 drop
+		meta nfproto ipv4 ip daddr 100.64.0.0/10 drop
+		meta nfproto ipv4 ip daddr 127.0.0.0/8 drop
+		meta nfproto ipv4 ip daddr 169.254.0.0/16 drop
+		meta nfproto ipv4 ip daddr 172.16.0.0/12 drop
+		meta nfproto ipv4 ip daddr 192.0.0.0/24 drop
+		meta nfproto ipv4 ip daddr 192.168.0.0/16 drop
+		meta nfproto ipv4 ip daddr 198.18.0.0/15 drop
+		meta nfproto ipv4 ip daddr 224.0.0.0/3 drop
+		meta nfproto ipv6 ip6 daddr != 2000::/3 drop
+		meta nfproto ipv4 oifname != "lo" oifname != "hbm0" oifname != "hbe*" oifname != "enp3s0f1" accept
+		meta nfproto ipv6 oifname "enp3s0f1" accept
+		meta l4proto tcp reject with tcp reset
+		reject with icmpx admin-prohibited
+	}
+
+	chain egress_nat {
+		type nat hook postrouting priority srcnat; policy accept;
+		iifname "hbe*" meta nfproto ipv4 ip saddr 10.240.0.0/12 oifname != "lo" oifname != "hbm0" oifname != "hbe*" oifname != "enp3s0f1" snat ip to 203.0.113.101
+		iifname "hbe*" meta nfproto ipv6 ip6 saddr fd65:1c74:e769::/48 oifname "enp3s0f1" snat ip6 to 2001:db8:0:100::11
 	}
 ```
+
+Without `edge.public_ipv4`, the rule of IPv4 in `egress_nat` ends with `masquerade`. Without `edge.public_ipv6`, the chain `egress` has no rule of IPv6 to the vRack interface, and `egress_nat` has no rule of IPv6. On a server with the node role, more rules name the tap devices `hbt*`. These are the rules of the guard, of `postrouting`, and of the public zone in `egress` and `egress_nat`.
 
 `internal/hostfw/testdata` holds both tables, and a test compares them with the rules of the code. `nft list table inet hopbox_host` prints the same rules in its own words.
 
@@ -194,7 +277,7 @@ A server can have three tables of `hopboxd`. Each table sees each packet of its 
 | `inet hopbox_node` | A node | What the machines reach, and what reaches a machine ([the node network](/reference/node-network/index.html.md#the-table-inet-hopbox_node)). |
 | `inet hopbox_edge` | An edge server | The redirect of the SSH ports to the SSH front door ([the SSH front door](/reference/ssh-front-door/index.html.md)). |
 
-The table `inet hopbox_host` filters only the input hook, and the postrouting hook on an edge server with a `/56` address. So it does not touch the traffic that a node forwards between the mesh and its machines.
+On a server that is not an edge server, the table `inet hopbox_host` filters only the input hook. So it does not touch the traffic that a node forwards between the mesh, its machines, and its egress tunnels. On an edge server with a `/56` address, it also filters the postrouting hook. On an edge server that enrolls, it also has the chains of [The egress of the machines](#the-egress-of-the-machines).
 
 ## At the start and at the stop of hopboxd
 
@@ -202,8 +285,10 @@ The unit `host firewall` of `hopboxd run` takes these steps at its start:
 
 1. It reads the set `jump_hosts` of the table that an earlier `hopboxd` installed. Without such a table, the set starts empty.
 2. It finds the vRack interface.
-3. It replaces the table with the rules of the roles, in one netlink batch. No packet sees a table that is half made. If the batch fails, the start of `hopboxd` fails, and the table before it stays.
-4. It starts to watch the table.
+3. On an edge server that enrolls, it reads `net.ipv4.ip_forward` and the file of [the forward guard](#the-forward-guard).
+4. It replaces the table with the rules of the roles, in one netlink batch. No packet sees a table that is half made. If the batch fails, the start of `hopboxd` fails, and the table before it stays.
+5. On an edge server that enrolls, it turns on the IPv4 forwarding that step 3 found off. Then it turns on IPv6 forwarding ([the egress of the machines](/reference/egress/index.html.md#ipv6-forwarding)).
+6. It starts to watch the table.
 
 The stop of `hopboxd` ends the watch, and keeps the table.
 
@@ -269,6 +354,9 @@ The firewall logs with `component=hostfw`. A check logs a state only after a cha
 | `cannot watch nftables, so the host firewall checks its table only every <interval>` | warn | `err` | The watch of nftables did not start. The interval is 2 s. |
 | `the watch of nftables ended, so the host firewall checks its table only every <interval>` | warn | | The watch of nftables stopped. The interval is 2 s. |
 | `the host firewall opens no public port for this listener, so it takes no connection from outside the server` | warn | `key`, `listen`, `proto` | The start found a public listener of the config on a port that the table does not open ([Ports](#ports)). |
+| `turned on IPv4 forwarding for the egress of the machines, and drops the forwarded traffic of other interfaces` | info | `guard_file` | At the start of an edge server, IPv4 forwarding was off. The firewall turned it on, with the forward guard in place ([The forward guard](#the-forward-guard)). |
+| `turned on IPv6 forwarding for the egress of the machines, and keeps the router advertisements of the interfaces` | info | `accept_ra_2` | At the start of an edge server, IPv6 forwarding was off, or an interface had `accept_ra` 1 ([the egress of the machines](/reference/egress/index.html.md#ipv6-forwarding)). |
+| `this edge server has no edge.public_ipv4, so the egress of the machines leaves from the address of its output interface` | warn | | The start of an edge server without `edge.public_ipv4` ([The egress of the machines](#the-egress-of-the-machines)). |
 | `cannot read the edge servers for the host firewall, so it keeps the last ones. The next read tries again` | warn | `err`, `retry_in` | A read of the jump hosts from the store failed, on a server without the mesh. The control role logs it with `component=control`. |
 
 ## Errors
@@ -277,19 +365,18 @@ The firewall logs with `component=hostfw`. A check logs a state only after a cha
 | --- | --- |
 | `hostfw: install the nftables table inet hopbox_host: ... hopboxd needs CAP_NET_ADMIN and the kernel needs nf_tables` | The start cannot make the table. `hopboxd` stops, and systemd starts it again. |
 | `hostfw: read the vRack interface of the server: ...` | The start cannot read `<data_dir>/hostfw/vrack-interface`. `hopboxd` stops. |
+| `hostfw: read the IPv4 forwarding of the host: ...` or `hostfw: record the forward guard: ...` | The start of an edge server cannot read `net.ipv4.ip_forward`, or cannot write `<data_dir>/hostfw/forward-guard`. `hopboxd` stops. |
+| `hostfw: turn on IPv4 forwarding: ...` or `hostfw: turn on IPv6 forwarding: ...` | The start of an edge server cannot write the sysctl. The table is in place. `hopboxd` stops. |
 
 ## Tests
 
 | Test | Where it runs | What it checks |
 | --- | --- | --- |
-| The tests of `internal/hostfw` without root | `make test`, also on a Mac | The ports of each role, the tables of `testdata`, the drop at the end of each zone, the mesh range, and the tap prefix. The ways in of [Never a lockout](#never-a-lockout), a lost vRack address, and the rules of the `/56`. An install after each change, a repair, the wait after a repair, a failed install, and the jump hosts of a restart. The warning about a closed listener, and the stop of the unit. |
+| The tests of `internal/hostfw` without root | `make test`, also on a Mac | The ports of each role, the tables of `testdata`, the drop at the end of each zone, the mesh range, and the tap prefix. The ways in of [Never a lockout](#never-a-lockout), a lost vRack address, and the rules of the `/56`. An install after each change, a repair, the wait after a repair, a failed install, and the jump hosts of a restart. The warning about a closed listener, and the stop of the unit. The chains of the egress with and without the keys, on a server with the node role, and the family of each match. The order of the install and of the switches of forwarding, and the guard file after a restart. |
 | `TestHostFirewall` of `internal/hostfw` | `make test-linux`, as root in a privileged container | A control server with the node role in network namespaces, with the real kernel. The public interface takes nothing. The vRack interface takes the ports of the roles from the vRack range, and port 22 from the jump hosts alone. The mesh device takes the disk listener from the mesh range alone. A flush of the ruleset, a flush of the set, and a replace of a rule each come back within 2 s. A batch that the kernel refuses keeps the table. A restart keeps the jump hosts. A lost vRack address keeps the public interface closed, also after a restart. A server that never had a vRack address keeps port 22 on its public interface. |
 | `TestEdgeHostFirewall` of `internal/hostfw` | `make test-linux` | An edge server with the DNS role. The table reads back whole. The public ports and the SSH ports through the redirect are open, and port 2222 is closed. The address of the `/56` on the vRack interface takes the public ports. No packet of the `/56` leaves through the uplink, also one that a source NAT gives an address of the `/56`. The same packets arrive before the setup. |
+| `TestEdgeEgress` of `internal/hostfw` | `make test-linux` | An edge server in network namespaces. The internet is on its uplink, and the gateway of the `/56` on its vRack interface. A machine is behind a veth pair named `hbe0`. The machine reaches the internet with the floating address. It reaches the gateway of the `/56` with the address of the edge server in the `/56`. It reaches a public port of its edge server, and the reply comes back through the tunnel, not over the mesh. It reaches no vRack address, and no IPv6 address through the uplink. The forward guard drops the traffic from the internet to the vRack. |
 | `TestBastionFirewall` of `test/fleet` | `make test-fleet` | A control server, two nodes, and two edge servers. A scan from `inet0` finds only the public ports of the edges. It probes each public address, each floating address, and each address of the `/56` through `gw6`. A scan from `gw6` of the vRack addresses finds no port. Port 22 of the vRack takes the edges alone. SSH through each edge reaches each other server after each change of the table. A node that loses its vRack address keeps its public address closed. A decommissioned edge leaves the jump hosts. |
 | `TestImportBehindTheJumpHost`, `TestFleetOnTheVRack`, `TestNoJumpHostRefusesAServerBehindTheFirewall`, and `TestDestroyKeepsTheFirewalledServerInTheVRack` of `internal/tfprovider` | `make test` | The import of a node at its vRack address through the jump host. A server behind the firewall needs `ssh_jump_host`. A destroy removes the table, and keeps the server in the vRack while the table stays. |
 | `TestMoveToAReleaseWithoutTheFirewallDropsIt` of `internal/tfprovider` | `make test` | After a move to a release whose version names no host firewall, the provider removes the table. After a move to a release with it, the table stays. |
 | `TestDropHostFirewallRunsNft` of `internal/tfprovider/hostsetup` | `make test` | The script of the destroy deletes the table with `nft`. If `nft` is missing and `apt-get` cannot install it, the script fails. |
-
-## Later milestones
-
-N17, a later milestone of phase 2, adds the UDP ports of the egress tunnels to the vRack zone, and the forward and NAT rules of the egress of the machines (the build plan of phase 2).

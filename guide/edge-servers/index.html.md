@@ -1,10 +1,10 @@
 # Run edge servers apart from the nodes
 
-> How to add two edge servers apart from the nodes, with floating IPv4 addresses and IPv6 addresses of the vRack block, point the zone at both, and reach a machine through each one.
+> How to add two edge servers apart from the nodes, with floating IPv4 addresses and IPv6 addresses of the vRack block. Also how to point the zone at both, reach a machine through each one, and check the egress of the machines.
 
 The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
 
-An edge server takes the public traffic of an install: the URL of each machine, SSH, the API, and the console. A small install runs every role on one server. A bigger install runs the edge role and the DNS role on two servers of their own, `edge1` and `edge2`. The install then has two name servers. When one edge server stops, the other one takes the traffic. This guide adds two edge servers to an install on the vRack, and checks a machine through each one.
+An edge server takes the public traffic of an install: the URL of each machine, SSH, the API, and the console. It also takes the egress of the machines to the internet ([the egress of the machines](/reference/egress/index.html.md)). A small install runs every role on one server. A bigger install runs the edge role and the DNS role on two servers of their own, `edge1` and `edge2`. The install then has two name servers. When one edge server stops, the other one takes the traffic. This guide adds two edge servers to an install on the vRack, and checks a machine through each one.
 
 An edge server without the node role reaches each machine over the mesh, the WireGuard device `hbm0` between the servers ([the mesh](/reference/mesh/index.html.md)). [The edge role](/reference/edge/index.html.md#the-way-to-the-machines) covers the way to the machines in full.
 
@@ -43,11 +43,12 @@ listen = ["203.0.113.101:53", "[2001:db8:0:100::11]:53"]
 [edge]
 public_ipv6 = "2001:db8:0:100::11/56"
 public_ipv6_gateway = "2001:db8:0:100::1"
+public_ipv4 = "203.0.113.101"
 ```
 
 On `edge2`, write the same file with `203.0.113.102` and `2001:db8:0:100::12`.
 
-The tested OS runs `systemd-resolved` on port 53 of a loopback address. So `dns.listen` names the public addresses of the server, not every address ([the DNS role](/reference/dns/index.html.md#listeners)). The DNS role takes queries on the IPv6 address once `hopboxd` sets it. `edge.public_ipv6` names the address of the server with the prefix length of the block ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)).
+The tested OS runs `systemd-resolved` on port 53 of a loopback address. So `dns.listen` names the public addresses of the server, not every address ([the DNS role](/reference/dns/index.html.md#listeners)). The DNS role takes queries on the IPv6 address once `hopboxd` sets it. `edge.public_ipv6` names the address of the server with the prefix length of the block ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)). `edge.public_ipv4` names the floating address from which the egress of the machines leaves. The Terraform provider writes these keys for you ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#edge-servers-and-floating-addresses)).
 
 ### Install and enroll each edge server
 
@@ -84,7 +85,7 @@ ip -6 rule show table 26806
 ip -6 route show table 26806
 ```
 
-The vRack interface holds `2001:db8:0:100::11/56`. The rule sends each packet from the block to the table, and the table holds one default route via `2001:db8:0:100::1`. So the replies of the IPv6 address leave through the vRack, not through the uplink. The log of `hopboxd` shows the line `this edge server holds its public IPv6 address on the vRack` ([the edge role](/reference/edge/index.html.md#the-public-ipv6-address)).
+The vRack interface holds `2001:db8:0:100::11/56`. The rule sends each packet from the block to the table. The table holds a default route via `2001:db8:0:100::1`, and an `unreachable` default route with a higher metric behind it. So the replies of the IPv6 address leave through the vRack, not through the uplink. The log of `hopboxd` shows the line `this edge server holds its public IPv6 address on the vRack` ([the edge role](/reference/edge/index.html.md#the-public-ipv6-address)).
 
 ## Point the zone at both edge servers
 
@@ -137,9 +138,30 @@ ssh -p 10022 user@2001:db8:0:100::12
 
 The code of the machine sees the mesh address of the edge server as the client, such as `10.239.0.3`. The header `X-Forwarded-For` of a request holds the address of the real client ([the edge role](/reference/edge/index.html.md#what-a-machine-gets)).
 
+## Check the egress of the machines
+
+Each node sends the egress of its machines through an egress tunnel to one edge server. The hash of the machine address picks the edge server ([the egress of the machines](/reference/egress/index.html.md#the-hash-of-a-machine)). On `edge1`, check its tunnel, and the routes of the replies back into it:
+
+```sh
+sudo wg show hbe0 allowed-ips
+ip rule show table 26819
+ip -6 rule show table 26806
+```
+
+The tunnel has each node as a peer, with its subnet and the IPv6 `/64` of that subnet. The rule `fwmark 0x68620100 lookup 26819` sends the replies back into the tunnel. The rule `from fd65:1c74:e769::/48 lookup 26806` sends the IPv6 egress of the machines to the gateway of the block.
+
+In a machine, ask a server on the internet for the address that it sees:
+
+```sh
+hopbox exec box1 curl -sS https://ifconfig.me
+hopbox exec box1 curl -6 -sS https://ifconfig.me
+```
+
+The commands print the floating address and the IPv6 address of one edge server, such as `203.0.113.101` and `2001:db8:0:100::11`. Both families of one machine leave through the same edge server. An edge server without `edge.public_ipv4` gives the IPv4 egress the address of its uplink, and logs a warning at its start. An edge server without `edge.public_ipv6` refuses the IPv6 egress.
+
 ## When an edge server stops
 
-The other edge server goes on: it answers DNS, the machine URLs, SSH, and the API. A resolver that gets no answer from one name server asks the other one. The address of the stopped edge server gives no answer to a client. It answers again when the edge server is back, or when its replacement takes the address.
+The other edge server goes on: it answers DNS, the machine URLs, SSH, and the API. A resolver that gets no answer from one name server asks the other one. The control role marks the stopped edge server `unresponsive` after 20 s. At their next heartbeat, the nodes then send all the egress of their machines to the other edge server. The address of the stopped edge server gives no answer to a client. It answers again when the edge server is back, or when its replacement takes the address.
 
 A DNS server keeps the last zones of the control plane on its disk ([the DNS role](/reference/dns/index.html.md#zones-on-the-disk)). So an edge server that restarts while no control server runs answers with those zones. Its log shows `serving the dns zones on the disk until the control plane sends its zones`.
 
@@ -148,7 +170,7 @@ A DNS server keeps the last zones of the control plane on its disk ([the DNS rol
 The new server takes the same addresses as the old one:
 
 1. The Terraform provider moves the floating IPv4 address to the new server.
-2. Write the bootstrap config of the new server with the same `edge.public_ipv6`, then install and enroll it as above.
+2. Write the bootstrap config of the new server with the same `edge.public_ipv6` and `edge.public_ipv4`, then install and enroll it as above.
 3. While the old server still holds the IPv6 address, duplicate address detection fails on the new server. The new server logs `another host on the vRack holds the public IPv6 address of this edge server, so it takes no traffic`, and tries the address again at each check, every 2 seconds. Once the old server is gone, the new server takes the address.
 
 The public addresses of the install stay the same, so the zone and the glue records need no change.

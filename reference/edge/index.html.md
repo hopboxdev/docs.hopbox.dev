@@ -293,14 +293,17 @@ The vRack interface is the interface that holds the one vRack address of the ser
 | Part | Value |
 | --- | --- |
 | Address | The address of `edge.public_ipv6`, with the prefix length of the block, on the vRack interface. The kernel runs duplicate address detection on it, so it takes traffic up to about 2 s after `hopboxd` adds it. Duplicate address detection must be on: the sysctl `net.ipv6.conf.<device>.accept_dad` is 1, the default of Linux. Without it, the new server of a replaced edge takes the address while the old one still holds it, and a check logs an error. |
-| Routing table | `hopbox_egress6`, the table number 26806. It holds one route: the default route via `edge.public_ipv6_gateway` on the vRack interface, with the flag `onlink` and the protocol 106. |
-| Rule | `from <block> lookup 26806`, with the priority 26806, before the main table at 32766. Each packet with a source in the block takes the table. The other packets of the server keep the main table and the uplink. |
+| Routing table | `hopbox_egress6`, the table number 26806. It holds two default routes, both with the protocol 106. The first one goes via `edge.public_ipv6_gateway` on the vRack interface, with the flag `onlink` and the metric 1024. The second one is `unreachable`, with the metric 4294967295. So while the route of the gateway is gone, a packet of the table gets an error, and never takes the uplink through the main table. |
+| Rule of the block | `from <block> lookup 26806`, with the priority 26806, before the main table at 32766. Each packet with a source in the block takes the table. The other packets of the server keep the main table and the uplink. |
+| Rule of the machines | `from fd65:1c74:e769::/48 lookup 26806`, with the priority 26807 and the protocol 106. The IPv6 egress of the machines takes the table. It comes from the egress tunnel `hbe0`, or from the tap devices of an edge server with the node role ([the egress of the machines](/reference/egress/index.html.md#the-source-addresses)). The host firewall then gives it the address of `edge.public_ipv6`. |
 
 ```console
 $ ip -6 rule show table 26806
 26806:	from 2001:db8:0:100::/56 lookup 26806 proto 106
+26807:	from fd65:1c74:e769::/48 lookup 26806 proto 106
 $ ip -6 route show table 26806
 default via 2001:db8:0:100::1 dev enp3s0f1 proto 106 metric 1024 onlink pref medium
+unreachable default dev lo proto 106 metric 4294967295 pref medium
 ```
 
 The unit `channel` of `hopboxd run` checks the parts at its start and then every 2 s ([hopboxd](/reference/hopboxd/index.html.md#run)). Every server that enrolls runs this check, also a server without the edge role. A check sets again each part that changed outside `hopboxd`, such as after `ip -6 rule flush`. A stop of `hopboxd` leaves the parts, so the traffic of the address goes on while `hopboxd` restarts.
@@ -310,10 +313,14 @@ The unit `channel` of `hopboxd run` checks the parts at its start and then every
 | The server has no vRack address, or more than one | It sets nothing, and logs it at level error. The next check tries again. |
 | Another host on the vRack holds the address | Duplicate address detection fails, and the address takes no traffic. The check removes the address and adds it again. So the address works again once the other host lets it go, such as the old server after the replacement of an edge server. The check logs the conflict once. |
 | The vRack interface holds another address of the block, or an address of the block of an older rule of the table | It removes that address. |
-| The table holds another route, or another rule with a source looks up the table | It removes that route or that rule. A rule without a source stays. |
-| The bootstrap config names no address | It removes the addresses of the blocks of the rules of the table from the vRack interface, then each route of the table, then each rule with a source. The rules go last, because they name the blocks. So a check that fails on the way keeps them, and the next check tries again. A server that stops being an edge server, or whose config drops `edge.public_ipv6`, lets the address go. |
+| The table holds another route, or another rule with a source looks up the table | It removes that route or that rule. A rule without a source stays. A route or a rule of the parts above that is gone comes back. |
+| The bootstrap config names no address | It removes the addresses of the blocks of the rules of the table from the vRack interface. Then it removes each route of the table, and then each rule with a source, also the rule of the machines. The rules go last, because they name the blocks. So a check that fails on the way keeps them, and the next check tries again. A server that stops being an edge server, or whose config drops `edge.public_ipv6`, lets the address go. |
 
-The [host firewall](/reference/host-firewall/index.html.md#the-address-of-the-56) opens the public ports of the edge server on this address, from every source, and no other port. It also drops each packet of the block that leaves through another interface than the vRack interface. The egress of the machines of a later milestone uses the same table `hopbox_egress6` (the build plan of phase 2, N17).
+The [host firewall](/reference/host-firewall/index.html.md#the-address-of-the-56) opens the public ports of the edge server on this address, from every source, and no other port. It also drops each packet of the block that leaves through an interface other than the vRack interface, the egress tunnels, and the tap devices. The IPv6 egress of the machines leaves through the same table `hopbox_egress6`, with the address of `edge.public_ipv6` as its source. Without that key, the edge server refuses the IPv6 egress of the machines ([the egress of the machines](/reference/egress/index.html.md#ipv6-without-an-address-of-the-56)).
+
+## The egress of the machines
+
+Each edge server that enrolls takes the egress of the machines of the nodes through its egress tunnel `hbe0` ([the egress of the machines](/reference/egress/index.html.md)). Its host firewall forwards that egress to the uplink for IPv4, and to the vRack interface for IPv6 ([the host firewall](/reference/host-firewall/index.html.md#the-egress-of-the-machines)). The IPv4 egress gets the source `edge.public_ipv4`, the floating address of the edge server ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)). The IPv6 egress gets the address of `edge.public_ipv6`. An edge server with the node role is the local exit of its own machines ([the egress of the machines](/reference/egress/index.html.md#the-local-exit)).
 
 ## EdgeService
 

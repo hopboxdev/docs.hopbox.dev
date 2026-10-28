@@ -399,7 +399,7 @@ resource "hopbox_server" "node2" {
 }
 ```
 
-Give each server its own vRack address. `public_ipv6` gives `edge2` its address of the IPv6 block, with the prefix length of the block. The provider writes it to the bootstrap config of the server, and `hopboxd` holds it on the vRack interface ([the edge role](/reference/edge/index.html.md#the-public-ipv6-address)). `depends_on` makes Terraform update the first server before the others in a [rolling upgrade](/reference/terraform-provider/index.html.md#rolling-upgrade). Apply:
+Give each server its own vRack address. `public_ipv6` gives `edge2` its address of the IPv6 block, with the prefix length of the block. The provider writes it to the bootstrap config of the server, and `hopboxd` holds it on the vRack interface ([the edge role](/reference/edge/index.html.md#the-public-ipv6-address)). The provider also writes the first floating address to `edge.public_ipv4`, the source of the egress of the machines ([the egress of the machines](/reference/egress/index.html.md#the-source-addresses)). `depends_on` makes Terraform update the first server before the others in a [rolling upgrade](/reference/terraform-provider/index.html.md#rolling-upgrade). Apply:
 
 ```sh
 terraform apply

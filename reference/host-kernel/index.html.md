@@ -118,6 +118,7 @@ The config has these features that hopbox needs:
 | tap devices | `CONFIG_TUN=m` |
 | cgroup v2 | `CONFIG_CGROUPS=y`, `CONFIG_MEMCG=y`, `CONFIG_BLK_CGROUP=y`, `CONFIG_CGROUP_PIDS=y`, `CONFIG_CPUSETS=y`, `CONFIG_CGROUP_BPF=y` |
 | nftables | `CONFIG_NF_TABLES=m`, `CONFIG_NF_TABLES_INET=y`, `CONFIG_NFT_NAT=m`, `CONFIG_NFT_MASQ=m` |
+| The egress of the machines ([the egress of the machines](/reference/egress/index.html.md)) | `CONFIG_NFT_HASH=m`, `CONFIG_NFT_REJECT=m`, `CONFIG_NFT_REJECT_INET=m` |
 | XFS with reflink | `CONFIG_XFS_FS=m`. Reflink has no option in 6.18. `xfs.ko` always has it. |
 | btrfs | `CONFIG_BTRFS_FS=m` |
 | WireGuard | `CONFIG_WIREGUARD=m` |

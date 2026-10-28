@@ -766,7 +766,7 @@ Migration `0034_acme.sql`. The state of the attempts of the ACME job ([the certi
 
 ## servers
 
-Migrations `0015_servers.sql`, `0030_server_labels.sql`, `0045_control_processes.sql` (the column `channel_process`), `0050_machine_moves.sql` (the column `disk_transfer_version`), `0051_server_drains.sql` (the states `draining` and `shutting_down`), and `0052_dns_zone_serial.sql` (the column `dns_zone_serial`). The server registry: one row per enrolled server. Enrollment inserts the row, and each heartbeat on the control channel writes the facts of the server ([the control channel](/reference/control-channel/index.html.md)).
+Migrations `0015_servers.sql`, `0030_server_labels.sql`, `0045_control_processes.sql` (the column `channel_process`), `0050_machine_moves.sql` (the column `disk_transfer_version`), `0051_server_drains.sql` (the states `draining` and `shutting_down`), `0052_dns_zone_serial.sql` (the column `dns_zone_serial`), and `0053_egress_exit.sql` (the column `egress_exit_version`). The server registry: one row per enrolled server. Enrollment inserts the row, and each heartbeat on the control channel writes the facts of the server ([the control channel](/reference/control-channel/index.html.md)).
 
 | Column | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -794,6 +794,7 @@ Migrations `0015_servers.sql`, `0030_server_labels.sql`, `0045_control_processes
 | `last_heartbeat_at` | `timestamptz` | null | The time of the last heartbeat. Null before the first one. |
 | `channel_process` | `uuid` | null | The control process that holds the control channel of the server, a row of `control_processes` ([control_processes](#control_processes)). Each recorded heartbeat of a channel that its process still holds sets it. Other heartbeats leave it as it is. The hub clears it when the last channel of the server in that process ends, if it still names that process. Another control process reads it to forward a data stream ([the control channel](/reference/control-channel/index.html.md#streams-through-another-control-process)). Migration `0045_control_processes.sql` adds it. Null before the first heartbeat on a control process of a release with the migration. |
 | `dns_zone_serial` | `bigint` | null | The serial of the zones that the DNS role of the server served at its last heartbeat, from 0 to 4294967295 ([the DNS role](/reference/dns/index.html.md#the-serial-of-each-dns-server)). Each heartbeat sets it, and a heartbeat without it sets null. Migration `0052_dns_zone_serial.sql` adds it, with `oldest_schema_version` 44. A control process of schema version 44 to 51 never reads it, and its heartbeats leave it as it is. So while such a process holds the channel of a server, the column keeps the serial of an older heartbeat. |
+| `egress_exit_version` | `text` | empty | The `hopboxd_version` of the last heartbeat that said `egress_exit` ([the control channel](/reference/control-channel/index.html.md#heartbeat)). Each other heartbeat of a release that knows the field sets it empty. An egress edge has this value equal to its `hopboxd_version`, and the state `ready`, `cordoned`, or `draining` ([the egress of the machines](/reference/egress/index.html.md#egress-edges)). The read of the mesh gives this to each peer as `egress` ([mesh_members](#mesh_members)). Migration `0053_egress_exit.sql` adds it, with `oldest_schema_version` 44, as `0050_machine_moves.sql` does for `disk_transfer_version`. A `hopboxd` of schema version 44 to 52 never reads it, and its heartbeats leave it as it is. |
 | `enrolled_at` | `timestamptz` | the time of the insert | When the server enrolled. |
 | `version` | `bigint` | `1` | The row version. Each heartbeat adds 1. |
 | `created_at` | `timestamptz` | the time of the insert | When the row was made. |
@@ -1209,7 +1210,7 @@ The heartbeat of a server writes its row, in the transaction of the heartbeat ([
 
 The migration has the line `-- oldest_schema_version: 44`, because a `hopboxd` of an older release never reads the table ([the bundled Postgres](/reference/postgres/index.html.md#two-releases-on-one-store)). The servers of such a release stay out of the mesh until they upgrade.
 
-A key that the row of another server holds changes nothing: the heartbeat goes on without its part of the mesh. A decommissioned server keeps its row, so no other server takes its address. The read of the mesh leaves out the decommissioned servers.
+A key that the row of another server holds changes nothing: the heartbeat goes on without its part of the mesh. A decommissioned server keeps its row, so no other server takes its address. The read of the mesh leaves out the decommissioned servers. It also reads `servers.egress_exit_version`, `hopboxd_version`, and `state`, which give each edge server its field `egress` ([the egress of the machines](/reference/egress/index.html.md#egress-edges)).
 
 ## machine_moves
 

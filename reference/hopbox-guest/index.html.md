@@ -131,6 +131,7 @@ The agent makes these changes through netlink. They need Linux.
 | --- | --- |
 | The kernel host name. | The configuration has a host name. |
 | The interface comes up and gets its MTU. The configured address becomes its only IPv4 address. The default route goes through the gateway, on-link. | The configuration has a network. |
+| The configured IPv6 address becomes the only global IPv6 address of the interface. The IPv6 default route goes through the IPv6 gateway, such as `fe80::1`. | The network has `address6` ([Guest link](/reference/guest-link/index.html.md)). |
 | The interface comes up and gets a route to the metadata service. If it has no IPv4 address, it gets `169.254.0.2/32`. | The metadata service has an IPv4 link-local address. The change comes before each read of the link key. |
 
 ## Start command

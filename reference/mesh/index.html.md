@@ -63,6 +63,7 @@ Each peer of the device is another server of the mesh:
 | Public key | The key of the last heartbeat of that server. |
 | Endpoint | Its vRack address and port `51820`, such as `172.31.0.12:51820`. |
 | Allowed IPs | See [Allowed IPs](#allowed-ips). WireGuard sends a packet to the peer whose allowed IPs hold its destination. It drops a packet from a peer with a source outside the allowed IPs of that peer. |
+| Egress | True for an edge server that takes the egress of the machines now, an egress edge ([the egress of the machines](/reference/egress/index.html.md#egress-edges)). The device does not use it. It hands the egress edges and the nodes of each mesh to the egress tunnels. |
 
 An unresponsive server stays a peer. So when it comes back, the mesh works again at once. A decommissioned server leaves the mesh of the other servers at their next heartbeat.
 
@@ -70,10 +71,10 @@ An unresponsive server stays a peer. So when it comes back, the mesh works again
 
 | Server | Allowed IPs |
 | --- | --- |
-| A server with the node role | Its mesh address as a `/32`. Its node subnet, such as `10.240.16.0/20`, once it has one: the control role gives a node its subnet at its first machine ([the node network](/reference/node-network/index.html.md#addresses)). The `/32` of each machine on it whose address is outside its subnet, such as a machine that moved to it ([the node network](/reference/node-network/index.html.md#moved-machines)). |
+| A server with the node role | Its mesh address as a `/32`. Its node subnet, such as `10.240.16.0/20`, and the IPv6 `/64` of that subnet, such as `fd65:1c74:e769:1::/64`, once it has one: the control role gives a node its subnet at its first machine ([the node network](/reference/node-network/index.html.md#addresses)). The `/32` and the `/128` of each machine on it whose address is outside its subnet, such as a machine that moved to it ([the node network](/reference/node-network/index.html.md#moved-machines)). |
 | Another server | Its mesh address as a `/32`. |
 
-The device refuses a mesh with an allowed IP outside these ranges: the mesh range, the machine range `10.240.0.0/12`, and the IPv6 unique local range `fc00::/7`, which the IPv6 addresses of machines will use. So no push can route the vRack range, and so the control channel, over the device.
+The device refuses a mesh with an allowed IP outside these ranges: the mesh range, the machine range `10.240.0.0/12`, and the IPv6 range of the machines `fd65:1c74:e769::/48`. So no push can route the vRack range, and so the control channel, over the device.
 
 ## Routes
 
@@ -108,6 +109,10 @@ peer: <public key of a node>
 ## The host firewall
 
 The [host firewall](/reference/host-firewall/index.html.md) of each server takes the port `51820` only from the vRack range, on the vRack interface. It takes port 22 of the vRack interface only from the vRack addresses of the edge servers. The device hands these addresses to the host firewall with each new mesh: the endpoints of the peers with the role `edge` ([the host firewall](/reference/host-firewall/index.html.md#the-jump-hosts)).
+
+## The egress tunnels
+
+The egress tunnels `hbe0`, `hbe1`, and so on run beside `hbm0` on the vRack address, not inside the mesh ([the egress of the machines](/reference/egress/index.html.md)). They use the private key of `hbm0`, so they wait for the device. Their UDP ports start at `51821`. A node without the edge role has one tunnel to each egress edge of the mesh. An edge server has one tunnel with each node of the mesh as a peer. The allowed IPs of a node in that tunnel are its allowed IPs of the mesh outside the mesh range.
 
 ## Traffic of the edge servers to machines
 
@@ -206,9 +211,6 @@ The other parts of the mesh log with their own components:
 | `TestMeshDevice` of `internal/mesh` | `make test-linux`, as root in a privileged container | Two servers in network namespaces with the real kernel WireGuard. It checks the device, and a connection between the mesh addresses and to the subnet of a node. It also checks a new `hopboxd`, a deleted device, and a route that another route holds. |
 | `TestEdgeOverTheMesh` of `internal/node/netcfg` | `make test-linux` | An edge server reaches a machine over the mesh, and a server that is not an edge does not. |
 | `TestMeshPeers` of `internal/service` | `make test` | The mesh addresses, the allowed IPs, a new key, a key of another server, and a decommissioned server. |
+| `TestEgressEdges` of `internal/service` | `make test` | The field `egress` of a peer ([the egress of the machines](/reference/egress/index.html.md#egress-edges)). |
 | `TestMeshReachesEachServer` of `internal/control` | `make test` | The pushes on the control channel. |
 | `TestFleet` of `test/fleet` | `make test-fleet` | Three servers on the bridge `vrack0`. A node and an edge reach each other only over the mesh, and the traffic between them on `vrack0` is WireGuard only. A restart of `hopboxd` keeps the device and its traffic. A new key reaches the edge within a heartbeat. |
-
-## Not in this milestone
-
-- The egress tunnels `hbe0`, `hbe1`, and so on, and the IPv6 `/64` of each node subnet: N17.
