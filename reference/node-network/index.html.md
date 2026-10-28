@@ -255,7 +255,7 @@ When `net.ipv4.ip_forward` is `0` at the start of `hopboxd`, the node turns it o
 
 It drops each forwarded IPv4 packet that touches no tap device. An egress tunnel carries the traffic of the machines alone, so the node routes nothing of a tunnel to another interface. On a node with the edge role, the rule also lets the egress tunnels pass, with `iifname != "hbe*" oifname != "hbe*"`, because the host firewall filters the tunnel of its edge role. Without it, IPv4 forwarding makes the host a router between all its interfaces. The node installs the guarded table first, and only then turns forwarding on.
 
-IPv6 forwarding is one switch for the whole host too. Each start of the node turns it on, after the install of the table ([the egress of the machines](/reference/egress/index.html.md#ipv6-forwarding)). So the chain `forward` always drops each forwarded IPv6 packet that touches no tap device. On a node with the edge role, it also lets the egress tunnels pass.
+IPv6 forwarding is one switch for the whole host too. Each start of the node turns it on, after the install of the table ([the egress of the machines](/reference/egress/index.html.md#ipv6-forwarding)). So the chain `forward` always drops each forwarded IPv6 packet that touches no tap device. On a node with the edge role, it also lets the egress tunnels pass. When the node finds IPv6 forwarding off, it first writes the file `<data_dir>/network/forward-guard-ipv6`. A move of the node to a release from before the egress tunnels turns IPv6 forwarding off only when that file exists, because such a release has no IPv6 rule for the other interfaces ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#releases-with-and-without-the-key)).
 
 The dir `<data_dir>/network` has the mode 0700, which each start sets again. The file `<data_dir>/network/forward-guard` records that `hopboxd` turned forwarding on ([Server layout](/reference/server-layout/index.html.md#paths)). Each later start finds forwarding on, reads the file, and keeps the guard. So a flush of the ruleset followed by a restart of `hopboxd` keeps it too. Something else can turn forwarding on before the first start of `hopboxd`, such as Docker. The table then has no guard, and the forwarding of that host stays as it was.
 
@@ -328,7 +328,7 @@ The machine unit of `hopboxd run` sets up the network before it starts the execu
 6. It replaces the table `inet hopbox_node` in one netlink batch. The new table holds the rules above, these devices, these edge servers, and the marks of these tunnels. No packet sees a table that is half made.
 7. It ends the connections that machines opened to the node while the table was gone. See [The table must stay](#the-table-must-stay).
 8. When forwarding was off, it sets `net.ipv4.ip_forward` to `1`.
-9. It turns on IPv6 forwarding, and keeps the router advertisements of the interfaces ([the egress of the machines](/reference/egress/index.html.md#ipv6-forwarding)).
+9. When IPv6 forwarding is off, it writes the file `<data_dir>/network/forward-guard-ipv6`. It then turns on IPv6 forwarding, and keeps the router advertisements of the interfaces ([the egress of the machines](/reference/egress/index.html.md#ipv6-forwarding)).
 10. It starts to watch the table, apart from the control channel.
 
 So a restart or an upgrade of `hopboxd` keeps the network of the machines that run, and their egress. The edge servers reach the machines also before the first mesh of the control role, which can come late while no control server runs. The first mesh of the new process then sets the set `edges` and the tunnels. The counters start again from zero. The stop of `hopboxd` keeps the table, the devices, the routes, and the tunnels.
@@ -422,6 +422,7 @@ The node network logs with `component=netcfg`.
 | --- | --- |
 | `netcfg: the host names no resolver ...` | See [The resolvers of the machines](#the-resolvers-of-the-machines). |
 | `netcfg: install the nftables table inet hopbox_node: ... hopboxd needs CAP_NET_ADMIN and the kernel needs nf_tables` | The start cannot make the table. The machine unit does not start. |
+| `netcfg: read the IPv6 forwarding of the host: ...` or `netcfg: record the IPv6 forwarding: ...` | The start cannot read `net.ipv6.conf.all.forwarding`, or cannot write `<data_dir>/network/forward-guard-ipv6`. The machine unit does not start. |
 | `firecracker: netcfg: connect the tap device <tap> of machine <id>: ...` | The boot fails, and the driver removes the device. The executor reports the machine `failed`, and the restart policy applies. |
 | `the nftables table inet hopbox_node lost a part outside hopboxd, ...` (error) | A flush of the ruleset or a change of the table. The node installs the table again. See [The table must stay](#the-table-must-stay). |
 | `cannot watch nftables, so the node network checks its table only every 2s` (warning) | The watch of nftables did not start. The check every 2 s still repairs the table. |

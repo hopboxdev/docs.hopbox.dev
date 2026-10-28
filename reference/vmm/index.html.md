@@ -95,16 +95,17 @@ A driver that keeps the disk of each machine in one file is a `vmm.Mover`. A col
 | `SetDelay(d)` | Makes each call wait `d` before it acts. A call whose context ends during the wait fails with the cause of the end. A stop then kills the microVM. |
 | `Ops()` | The calls so far, in order. |
 | `Overlaps()` | Each call that ran while another call of the same machine ran. An executor must never cause one. |
+| `Guarded(id, pgid)` | Whether a watchdog of the running microVM of a machine guards the process group `pgid` (see below). |
 | `Boots(id)`, `Status(id)`, `Root(id)` | How many times a machine booted, what the driver holds of it, and the dir of the `/etc` of its guest. |
 | `DiskPath(id)` | The disk file of a machine, `<dir>/disks/<id>/disk.raw`: a sparse file of the disk size that the first boot makes, at least 1 MiB. The guest agent of the driver never writes to it, so a test of a cold move writes its data. `Delete` removes its dir. |
 | `Close()` | Ends every microVM, at the end of a test. |
 
 The guest agent starts each command, exec or start command, in a process group of its own. So a Ctrl-C in the terminal does not reach the command. A killed test binary also skips `Close()`.
 
-To keep such commands from running on, the driver starts a watchdog for each command (`internal/watchdog`). A watchdog is a `/bin/sh` that waits on a pipe whose write end only the test binary holds. When the test binary dies, for any reason, the kernel closes that end, and the watchdog sends `SIGKILL` to the process group of the command. A `SIGKILL` to the `go` command alone does not end the test binary. So the watchdog fires at the end of the test binary. At the latest, `-test.timeout` ends it.
+To keep such commands from running on, the driver starts a watchdog for each command (`internal/watchdog`). A watchdog is a `/bin/sh` that waits on a pipe whose write end only the test binary holds. When the test binary dies, for any reason, the kernel closes that end, and the watchdog sends `SIGKILL` to the process group of the command. On macOS, a child that a process of the group forks during the kill can miss the signal. So the watchdog sends `SIGKILL` to the group again every 0.1 s while the group exists, for 2 s at most. A `SIGKILL` to the `go` command alone does not end the test binary. So the watchdog fires at the end of the test binary. At the latest, `-test.timeout` ends it.
 
 After a command exits, its background children stay in its process group. So the driver keeps the watchdog until the process group is empty, or until the microVM stops. A real stop ends each process of the microVM. So when the microVM stops, the driver sends `SIGKILL` to each process group that it still keeps, and stops its watchdog.
 
-The guest agent reports each command to the driver through `guest.Options.Started`. A real guest leaves that option empty. The test `TestGuestCommandsEndWithTheTestProcess` in `internal/node/executor` kills a test binary with `SIGKILL`. It checks that the start command of its machine and the children of that command exit within 5 s. It also checks this for a child that outlives its start command, and for an exec of `yes`.
+The guest agent reports each command to the driver through `guest.Options.Started`. A real guest leaves that option empty. The agent reports a command after the command starts. So a test binary that dies before the driver starts the watchdog leaves the command running. The test `TestGuestCommandsEndWithTheTestProcess` in `internal/node/executor` kills a test binary with `SIGKILL` after `Guarded` reports the group of the command. It checks that the start command of its machine and the children of that command exit within 5 s. It also checks this for a child that outlives its start command, and for an exec of `yes`.
 
 The dir of the driver must have a short path. A unix socket path has at most 104 bytes on macOS.
