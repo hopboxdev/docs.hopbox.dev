@@ -91,8 +91,8 @@ A server without the node role runs no machine. So `enroll` runs no preflight ch
 
 ```text
 $ $H admin --config $C server list
-ID                                    POOL     STATE  STATUS  ROLES  HOSTNAME  VERSION  LAST HEARTBEAT
-01a14a5e-b88d-7c9f-81cc-5f5b8e5b1e48  default  ready  ok      dns    macbook   v0.1.0   2026-10-17T14:58:05Z
+ID                                    POOL     STATE  STATUS  ROLES  HOSTNAME  VERSION  LAST HEARTBEAT        PEER ADDRESS
+01a14a5e-b88d-7c9f-81cc-5f5b8e5b1e48  default  ready  ok      dns    macbook   v0.1.0   2026-10-17T14:58:05Z  -
 ```
 
 The install has no domain yet, so the set of zones is empty. The DNS role now refuses every name:

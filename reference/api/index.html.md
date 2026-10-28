@@ -228,6 +228,7 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `server.cordon` | `ServerService.CordonServer` | the install | `local_root`, `admin_key`, an admin `session` |
 | `server.uncordon` | `ServerService.UncordonServer` | the install | `local_root`, `admin_key`, an admin `session` |
 | `server.set_labels` | `ServerService.SetServerLabels` | the install | `local_root`, `admin_key`, an admin `session` |
+| `server.set_peer_address` | `ServerService.SetServerPeerAddress` | the install | `local_root`, `admin_key` |
 | `server.decommission` | `ServerService.DecommissionServer` | the install | `local_root`, `admin_key` |
 | `control.list_processes` | `ServerService.ListControlProcesses` | the install | `local_root`, `admin_key` |
 | `server.enroll` | `EnrollmentService.Enroll` | the install | every caller, also `anonymous`. The enrollment token is the credential ([Enrollment and the install PKI](/reference/enrollment/index.html.md)). |

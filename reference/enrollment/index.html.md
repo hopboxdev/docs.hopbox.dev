@@ -79,9 +79,10 @@ An enrollment token lets one server enroll into one pool.
 | `<id>` | the ID of the token, a UUIDv7 as 32 lowercase hex digits without hyphens |
 | `<secret>` | 32 random bytes as 64 lowercase hex digits |
 | `<cahash>` | the hash of the install CA, 64 lowercase hex digits |
-| Lifetime | 1 hour from its creation |
+| Lifetime | 1 hour from its creation by default. The call that makes it can set another `ttl`, at most 24 hours. |
 | Use | once. The first enrollment that uses the token spends it. |
 | Scope | one pool, by default the pool `default` |
+| Peer address | none by default. A token can name the peer address of its server. The enrollment must then come from that address ([Peer addresses](#peer-addresses)). |
 | Storage | the table `enrollment_tokens` ([Control store tables](/reference/control-store/index.html.md#enrollment_tokens)). It keeps the SHA-256 of the secret, never the secret. |
 
 The text of a token is a secret. Keep it out of logs and shell history. `hopboxd enroll` also takes it from the environment variable `HOPBOX_ENROLLMENT_TOKEN`. The secret scan of the commits refuses the form of a token.
@@ -95,10 +96,33 @@ The leader deletes the tokens that expired more than 1 day ago, every 10 minutes
 The admin call `ServerService.CreateEnrollmentToken` makes a token ([the admin API](/reference/admin-api/index.html.md#createenrollmenttoken)). On a control server, run:
 
 ```sh
-sudo hopboxd admin enrollment-token create [--pool NAME] [--roles ROLE,...] [--json]
+sudo hopboxd admin enrollment-token create [--pool NAME] [--roles ROLE,...] [--peer-address ADDRESS] [--ttl DURATION] [--json]
 ```
 
-The command prints the token on one line, so a script can keep it in a variable. The token allows only its roles: `node`, `dns`, `edge`, or more than one, by default `node`. The row of the token keeps them. The response holds the only copy of the token. The call takes an idempotency key, but the control store keeps no copy of its response, so a retry with the same key fails with `already_exists` and makes no second token ([the admin API](/reference/admin-api/index.html.md#createenrollmenttoken)). A lost token costs only a new token.
+The command prints the token on one line, so a script can keep it in a variable. With `--peer-address`, the server must enroll from that address. `--ttl` sets the lifetime of the token, such as `2h`, at most `24h`. The token allows only its roles: `node`, `dns`, `edge`, or more than one, by default `node`. The row of the token keeps them. The response holds the only copy of the token. The call takes an idempotency key, but the control store keeps no copy of its response, so a retry with the same key fails with `already_exists` and makes no second token ([the admin API](/reference/admin-api/index.html.md#createenrollmenttoken)). A lost token costs only a new token.
+
+### Peer addresses
+
+The peer address of a server is the public address at which the other servers reach it (plan question Q91). It is one public unicast IPv4 address on the uplink of the server, with no NAT. The install refuses a private, loopback, link-local, multicast, or reserved address. It also refuses an address in the shared address space `100.64.0.0/10` of carrier NAT, the mesh range `10.239.0.0/16`, or the machine range `10.240.0.0/12`. The table `servers` keeps it ([Control store tables](/reference/control-store/index.html.md#servers)). A peer address belongs to one server until the server is decommissioned, because the Terraform provider imports a server by its peer address (plan question Q96).
+
+A token can name the peer address of the server that enrolls with it (plan question Q92). The enrollment must then come from that address. The install makes no such token while a control process of a release before migration `0054` is live, because that release enrolls from any address ([the admin API](/reference/admin-api/index.html.md#createenrollmenttoken)). The new server keeps the address as its peer address. A heartbeat never changes a peer address. Only these three paths set it:
+
+- The enrollment with a token that names one. For a server that adds roles to itself, such a token sets the peer address only when the server has none ([Add roles to an enrolled server](#add-roles-to-an-enrolled-server)).
+- `hopboxd install --peer-address` on the first server, which enrolls with a token from its own control role ([hopboxd](/reference/hopboxd/index.html.md#install)).
+- `hopboxd admin server set-peer-address`, such as on a server from before peer addresses ([the admin API](/reference/admin-api/index.html.md#setserverpeeraddress)).
+
+A token without a peer address enrolls as before, and its server gets no peer address. Such a token enrolls from these addresses:
+
+| The install | A token without a peer address enrolls from |
+| --- | --- |
+| No server of the install ever had a peer address. | Any address that reaches the internal listener. |
+| A server of the install has or had a peer address, also a decommissioned one. | Loopback only, such as the node role of a one-server install. |
+
+So once the servers of an install have peer addresses, a token that leaks is no use from another host. The rule stays for good: the decommission of the last server with a peer address does not end it. This is a build default that follows from Q91 and Q92, not an owner decision. The rule also holds when an enrolled server adds roles to itself ([Add roles to an enrolled server](#add-roles-to-an-enrolled-server)). The control role checks the address under the lock of the server registry, which `SetServerPeerAddress` also takes. So the first peer address of an install and an enrollment never overlap.
+
+A control process of a release before migration `0054` ignores both rules. So while such a process is live, `CreateEnrollmentToken` refuses a `peer_address`, and `SetServerPeerAddress` refuses every call ([the admin API](/reference/admin-api/index.html.md#setserverpeeraddress)). A rollback of a control server to such a release still lets that process ignore both rules. It enrolls each live token from any address, until the token expires, at most 24 hours later. Wait for the live tokens to expire before a rollback across migration `0054`, or roll forward again.
+
+While a token with a peer address is not used and not expired, its address is in the set `registered` ([Control store tables](/reference/control-store/index.html.md#enrollment_tokens)). The host firewall of a control server is to open the internal listener to the addresses of that set, so that a new server can enroll. This release does not do that yet. Plan milestone N27 adds it. A long `ttl` then keeps the listener open to that address for that time. So the default lifetime is 1 hour, and the longest is 24 hours.
 
 ## hopboxd enroll
 
@@ -169,7 +193,9 @@ A role that a new release brings, such as `edge`, comes to a server that is enro
 
 1. An operator makes a token for the new roles alone, that names the server, such as `hopboxd admin enrollment-token create --server <id> --roles edge`. Only that server takes the token, so a token that leaks adds no role to another server. No new server enrolls with it.
 2. The server calls `EnrollmentService.Enroll` with the token, a new CSR, and every role, the old ones and the new ones. It calls with its current certificate as the client certificate, so the control role knows which server asks.
-3. The control role checks that the token names the server, and allows each new role. It refuses a list that drops a role of the server with `invalid_argument`. It sets the roles of the server in the registry, issues a certificate with every role, and uses the token. The audit entry is `server.add_roles`, with `old_roles`, `roles`, `token_id`, and `serial`.
+3. The control role checks that the token names the server, and allows each new role. It refuses a list that drops a role of the server with `invalid_argument`. It checks the address of the call as for a new server ([Peer addresses](#peer-addresses)). A token that names a peer address other than the peer address of the server fails with `unauthenticated`. A token that names a peer address gives that address to a server without one. It sets the roles of the server in the registry, issues a certificate with every role, and uses the token. The audit entry is `server.add_roles`, with `old_roles`, `roles`, `token_id`, and `serial`, and `peer_address` when the token gave the server its peer address.
+
+A server keeps one peer address. So `CreateEnrollmentToken` refuses a token with `server_id` and a `peer_address` other than the peer address of that server. A token without `peer_address` works for any server. These rules are build defaults that follow from Q91 and Q92, not owner decisions.
 4. The server saves the new identity. Its old certificate stops at once, because its roles no longer match the registry. So hopboxd must restart to use the new one. `hopboxd install` restarts it, and `hopboxd enroll` says to.
 
 ### Hardware of a pool
@@ -215,6 +241,7 @@ A pool whose servers are all decommissioned takes the hardware of its next serve
 | `enroll at <url>: unavailable: ...` with a TLS or a connection error | No control role listens at this URL of `channel.control_urls`, or the install has no CA yet, so its handshakes fail. With several URLs, the error holds one such line for each URL. |
 | `enroll at <url>: unauthenticated: the enrollment token is not valid...` | The control role refused the token ([Errors of Enroll](#errors-of-enroll)). |
 | `enroll at <url>: invalid_argument: ...` | The control role refused the request, for example a role that it does not know. |
+| `enroll at <url>: permission_denied: permission denied: the enrollment comes from <address>...` | The server enrolled from another address than the peer address of the token, or from an address other than loopback with a token without one ([Peer addresses](#peer-addresses)). |
 | `read the hardware of the server: hostinfo: a server of hopbox needs an amd64 CPU from Intel or AMD, and this host runs <arch>` | A new server on Linux, with a CPU that is not amd64, such as `arm64` ([Hardware of a pool](#hardware-of-a-pool)). |
 | `read the hardware of the server: ...` | `enroll` cannot read `/proc/cpuinfo`, `/proc/meminfo`, or `/sys/block`. Off Linux, the message ends with `the CPU and memory facts need Linux`. |
 | `enroll at <url>: failed_precondition: the hardware of this server differs from the pool <pool>: ...` | The server has other hardware than the first server of its pool ([Hardware of a pool](#hardware-of-a-pool)). |
@@ -292,9 +319,10 @@ The control role checks the request in this order:
 7. For a new server, the hardware: a CPU model, CPU threads, RAM, and no disk of 0 bytes. A server that adds roles to itself skips this check.
 8. In one transaction, it locks the token row. The token must exist, its secret must match, it must not be used, and it must not be expired. Each role of the request must be a role of the token. Otherwise the call fails with `unauthenticated` and the message `the enrollment token is not valid: it allows only the roles <roles>, not <role>. Make a token with --roles`, and the token stays unused.
 9. In the same transaction, the certificate request must parse, its signature must be valid, and its key must be ECDSA P-256. Then the CA signs the certificate. So the CA signs only for a caller that holds a live token, and a bad request leaves the token unused.
-10. In the same transaction, it takes the lock of the server registry and locks the row of the pool of the token. A pool that an instance admin deleted after the make of the token fails with `failed_precondition`, and the token stays unused ([the admin API](/reference/admin-api/index.html.md#deletepool)).
-11. A pool without hardware records the hardware of the request. A pool with hardware compares it with the request ([Hardware of a pool](#hardware-of-a-pool)). Other hardware fails with `failed_precondition`, and the token stays unused. The lock of the pool makes two first enrollments at the same time record the hardware once.
-12. The transaction inserts the server, its certificate, and the use of the token, and writes the audit entry.
+10. In the same transaction, it takes the lock of the server registry. Then it checks the address from which the call came ([Peer addresses](#peer-addresses)). A token with a peer address needs that address. A token without one needs loopback once a server of the install has or had a peer address. Otherwise the call fails with `permission_denied`. The certificate of step 9 then goes nowhere, and the token stays unused.
+11. In the same transaction, it locks the row of the pool of the token. A pool that an instance admin deleted after the make of the token fails with `failed_precondition`, and the token stays unused ([the admin API](/reference/admin-api/index.html.md#deletepool)).
+12. A pool without hardware records the hardware of the request. A pool with hardware compares it with the request ([Hardware of a pool](#hardware-of-a-pool)). Other hardware fails with `failed_precondition`, and the token stays unused. The lock of the pool makes two first enrollments at the same time record the hardware once.
+13. A token with a peer address that another server holds fails with `already_exists`, and the token stays unused. The transaction inserts the server with the peer address of the token, its certificate, and the use of the token, and writes the audit entry.
 
 Two enrollments with one token wait for each other on the row lock, so only one of them succeeds.
 
@@ -310,6 +338,7 @@ The audit entry `server.enroll` has the actor of the caller, most often `anonymo
 | `roles` | The roles, joined by commas. |
 | `serial` | The serial number of the certificate, in hex. |
 | `hardware` | The hardware of the server, as text, such as `AMD EPYC 4244P 6-Core Processor, 12 CPU threads, 62.5 GiB of RAM, disks 960 GB, 960 GB`. |
+| `peer_address` | The peer address of the token, such as `203.0.113.12`. Only an enrollment with a token that names one has it. |
 
 The service also writes the log record `enrolled a server` with `component=service` and the fields `server`, `pool`, `hostname`, and `roles`. The first server of a pool also writes `recorded the hardware of a pool`, with the fields `pool` and `hardware`.
 
@@ -321,10 +350,14 @@ The service also writes the log record `enrolled a server` with `component=servi
 | `unauthenticated` | `the enrollment token is not valid: it was made for another install CA` | The CA hash of the token is not the hash of the install CA. |
 | `unauthenticated` | `the enrollment token is not valid` | No token has the ID, or the secret does not match. |
 | `unauthenticated` | `the enrollment token is not valid: it was used already. Make a new token` | A server enrolled with the token already. |
-| `unauthenticated` | `the enrollment token is not valid: it expired at <time>. Make a new token` | The token is more than 1 hour old. The time is in RFC 3339, in UTC. |
+| `unauthenticated` | `the enrollment token is not valid: it expired at <time>. Make a new token` | The lifetime of the token is over. The time is in RFC 3339, in UTC. |
+| `permission_denied` | `permission denied: the enrollment comes from <address>, but the token allows only the peer address <peer address>` | The token names a peer address, and the call came from another address. `<address>` is `an unknown address` when the call has no network address. |
+| `permission_denied` | `permission denied: the enrollment comes from <address>, and a token without a peer address enrolls only from loopback once a server of the install has a peer address. Make a token with --peer-address` | The token names no peer address, a server of the install has or had one, and the call did not come from loopback. |
 | `invalid_argument` | `invalid argument: unknown server role: the server names no role` | The request has no role. |
 | `invalid_argument` | `invalid argument: unknown server role: "<role>". A server enrolls with the roles: node, dns, edge` | A role that a server cannot enroll with, such as `control`. |
 | `invalid_argument` | `invalid argument: unknown server role: the role "<role>" appears twice` | A role appears twice. |
+| `unauthenticated` | `the enrollment token is not valid: it names the peer address <address>, but the server has the peer address <server address>. Make a token with --peer-address <server address>` | A server that adds roles to itself with a token whose peer address is not its own, such as after `SetServerPeerAddress` changed it. |
+| `already_exists` | `already exists: the server <id> has the peer address <address>. A peer address belongs to one server until its decommission` | Another server that is not decommissioned took the peer address of the token after its make. |
 | `invalid_argument` | `invalid argument: the host name has <n> bytes, more than 253` | The host name is too long. |
 | `invalid_argument` | `invalid argument: the host name "<name>" holds a character that is not printable ASCII` | The host name holds a space, a control character, or a character that is not ASCII. |
 | `invalid_argument` | `invalid argument: pki: the certificate request is not valid: ...` | The request does not parse, its signature is wrong, or its key is not ECDSA P-256. |

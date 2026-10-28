@@ -302,7 +302,7 @@ hopboxd: error: the preflight check failed, so this server cannot run machines
 ```sh
 sudo ./hopboxd install --roles=ROLE,... [--domain=DOMAIN] [--bootstrap-admin-key-hash=HEX]
   [--enroll-token=TOKEN] [--control-url=URL] [--label=KEY=VALUE ...] [--dns-listen=HOST:PORT ...]
-  [--edge-public-ipv4=ADDRESS] [--json]
+  [--edge-public-ipv4=ADDRESS] [--peer-address=ADDRESS] [--json]
 ```
 
 `install` installs the release of the `hopboxd` that runs it. That release is the dir of the binary, with its `manifest.json` ([Release bundle](/reference/release-bundle/index.html.md)). For a first install, run the `hopboxd` of an unpacked bundle. After that, `sudo hopboxd install` runs the current release. `install` must run as root on Linux. The Terraform provider runs it on each new server. [Install hopbox on a Debian 13 server by hand](/guide/install-debian/index.html.md) runs it by hand.
@@ -331,6 +331,7 @@ It takes these steps, in order:
 18. It removes the releases other than the current and the previous one.
 19. With the control role, it reads the domain of the install through the admin socket. If `--domain` names another domain, it sets it. Without `--domain`, an install without a domain fails.
 20. If the server has a role other than control and no identity yet, it enrolls with the enrollment token, as [enroll](#enroll) does.
+21. With `--peer-address`, it reads the server of the identity through the admin socket. If the server has another peer address or none, it sets the address with `SetServerPeerAddress` ([the admin API](/reference/admin-api/index.html.md#setserverpeeraddress)).
 
 Steps 1 to 13 make every check that can refuse. They change nothing that a running `hopboxd` reads: the config, the current release, and the units stay the same until step 14. So a refused install leaves the running `hopboxd` as it was. If a run stops after step 14 and before the restart, the marker stays. The next run then restarts `hopboxd`, also without another change. The install never removes data.
 
@@ -344,6 +345,7 @@ Steps 1 to 13 make every check that can refuse. They change nothing that a runni
 | `--label` | `KEY=VALUE` | the labels of the config | A label of the server, for `channel.labels`. Repeat the flag for each label. With one, it replaces every label of the config. It needs a role that enrolls: `node`, `dns`, `edge`, or more than one. |
 | `--dns-listen` | `HOST:PORT` | the value of the config | An address of the DNS role, for `dns.listen`, such as `203.0.113.5:53`. Repeat the flag for each address. With one, it replaces the list of the config. The rules of `dns.listen` apply ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)). It needs the role `dns`. A change of the list restarts `hopboxd`, as a change of any key of the config does. The Terraform provider runs it after a change of the floating addresses of a server with the DNS role ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#edge-servers-and-floating-addresses)). |
 | `--edge-public-ipv4` | `ADDRESS` | the value of the config | The floating IPv4 address of this edge server, for `edge.public_ipv4`, such as `203.0.113.101`. The egress of the machines leaves from it ([the egress of the machines](/reference/egress/index.html.md#the-source-addresses)). The rules of `edge.public_ipv4` apply ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)). It needs the role `edge`. A change of the key restarts `hopboxd`, and the same value changes nothing. The Terraform provider runs it after a change of the floating addresses of an edge server ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#edge-servers-and-floating-addresses)). |
+| `--peer-address` | `ADDRESS` | none | The peer address of this server: one public unicast IPv4 address on its uplink, such as `203.0.113.12` ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)). It is for the first server, whose roles enroll with a token from its own control role. After the enrollment, the install sets the address through the admin socket, and writes the audit entry `server.set_peer_address`. The same address again changes nothing. It needs the control role and a role that enrolls. A server without the control role gets its peer address from its enrollment token. The install does not keep the address in the config. |
 | `--json` | bool | `false` | Prints one JSON object instead of the version. |
 
 The install keeps every key of an existing config that its flags do not set. When it changes the file, it drops the comments of the file, and it writes this header:
@@ -360,7 +362,7 @@ On success, `install` prints the version of the release to standard output. It p
 | --- | --- |
 | `version` | The version of the release that runs now. |
 | `previous` | The version that ran before this install, or `""` on a first install. On a second run, it is the same as `version`. |
-| `changes` | What the install changed, as a list of words. The words of files are `release files`, `config`, `keys`, and `bootstrap admin key`. The other words are `users`, `postgres`, `ports`, `release`, and `units`. An install that changed nothing gives `[]`. |
+| `changes` | What the install changed, as a list of words. The words of files are `release files`, `config`, `keys`, and `bootstrap admin key`. The other words are `users`, `postgres`, `ports`, `release`, `units`, and `peer address`. An install that changed nothing gives `[]`. |
 | `restarted` | Whether the install restarted `hopboxd`. |
 | `server_id` | The ID of the server, after an enrollment, or `""` before one. |
 
@@ -398,6 +400,11 @@ The log records go to standard error between these lines, as JSON ([Logs](#logs)
 | `--dns-listen needs the role dns` | `--dns-listen` on a server without the role `dns`. |
 | `--edge-public-ipv4 needs the role edge` | `--edge-public-ipv4` on a server without the role `edge`. |
 | `--domain needs the control role, which holds the settings of the install` | `--domain` on a server without the control role. |
+| `--peer-address: invalid peer address: ...` | `--peer-address` is not one public unicast IPv4 address. The rest of the message names the reason. |
+| `--peer-address needs the control role. A server without it gets its peer address from its enrollment token: hopboxd admin enrollment-token create --peer-address` | `--peer-address` on a server without the control role. |
+| `--peer-address needs a role that enrolls: node, dns, edge, or more than one` | `--peer-address` on a server with only the control role. |
+| `--peer-address sets the peer address of the enrolled server, but this server is not enrolled. Give an enrollment token with --enroll-token` | `--peer-address` on a server whose roles did not enroll. The rest of the install is done. |
+| `read the peer address of the server <id> through <socket>: ...` or `set the peer address of the server <id>: ...` | The admin call of step 21 failed. Run the install again. |
 | `--bootstrap-admin-key-hash is not a SHA-256 in 64 lowercase hex digits` | A bad hash. |
 | `--enroll-token does not have the form hbxe_<id>_<secret>_<cahash>. ...` | The token is not an enrollment token. |
 | `the release in <dir>: ...` | The dir of the binary is not a release, or it differs from its manifest ([Release bundle](/reference/release-bundle/index.html.md#errors)). |
@@ -995,17 +1002,20 @@ Removes one sign-in method of an account. It calls `RemoveAccountSignInMethod` (
 ### admin enrollment-token create
 
 ```sh
-hopboxd admin enrollment-token create [--pool=NAME] [--roles=ROLE,...] [--server=ID] [--json]
+hopboxd admin enrollment-token create [--pool=NAME] [--roles=ROLE,...] [--server=ID] [--peer-address=ADDRESS]
+  [--ttl=DURATION] [--json]
 ```
 
-Makes an enrollment token with which one new server joins a pool, with some of the roles of the token. The token works once and expires after 1 hour. It calls `CreateEnrollmentToken` ([the admin API](/reference/admin-api/index.html.md#createenrollmenttoken)) with a new idempotency key. It prints the token alone on one line, so a script can keep it in a variable. The token is a secret. The install keeps only a hash of its secret, so this output is its only copy. The first token of an install makes the install CA, so the install needs a key-encryption key first. [install](#install) makes it, and [admin kek rotate](#admin-kek-rotate) makes it on a server that `hopboxd install` did not set up.
+Makes an enrollment token with which one new server joins a pool, with some of the roles of the token. The token works once and expires after 1 hour, or after `--ttl`. It calls `CreateEnrollmentToken` ([the admin API](/reference/admin-api/index.html.md#createenrollmenttoken)) with a new idempotency key. It prints the token alone on one line, so a script can keep it in a variable. The token is a secret. The install keeps only a hash of its secret, so this output is its only copy. The first token of an install makes the install CA, so the install needs a key-encryption key first. [install](#install) makes it, and [admin kek rotate](#admin-kek-rotate) makes it on a server that `hopboxd install` did not set up.
 
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
 | `--pool` | string | `default` | The pool that the new server joins. Every install has the pool `default`. |
 | `--roles` | list of strings, joined by commas | `node` | The roles that the new server can enroll with: `node`, `dns`, `edge`, or more than one. |
 | `--server` | string | none | The ID of an enrolled server. The token then adds the roles to that server alone, in its pool, and enrolls no new server ([Enrollment and the install PKI](/reference/enrollment/index.html.md#add-roles-to-an-enrolled-server)). It ignores `--pool`. |
-| `--json` | bool | `false` | Prints one JSON object with the keys `token`, `token_id`, `pool`, `roles`, `expire_time` (UTC), and `ca_hash`. A token with `--server` also has `server_id`. |
+| `--peer-address` | string | none | The peer address of the server that enrolls, such as `203.0.113.12`: one public unicast IPv4 address on its uplink. The enrollment must come from it, and the new server keeps it ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)). |
+| `--ttl` | duration | `1h` | How long the token works, such as `2h`. More than 0 and at most `24h`. |
+| `--json` | bool | `false` | Prints one JSON object with the keys `token`, `token_id`, `pool`, `roles`, `expire_time` (UTC), and `ca_hash`. A token with `--server` also has `server_id`, and a token with `--peer-address` has `peer_address`. |
 
 Example:
 
@@ -1021,7 +1031,7 @@ $ sudo hopboxd admin enrollment-token create --json
 hopboxd admin server list [--json]
 ```
 
-Lists the enrolled servers, oldest enrollment first. It calls `ListServers` ([the admin API](/reference/admin-api/index.html.md#listservers)). The text output is a table. Its columns are `ID`, `POOL`, `STATE`, `STATUS`, `ROLES`, `HOSTNAME`, `VERSION`, and `LAST HEARTBEAT`. `VERSION` is the version of `hopboxd` on the server. `LAST HEARTBEAT` is an RFC 3339 time. An empty value prints as `-`. With no server, the table has only its header.
+Lists the enrolled servers, oldest enrollment first. It calls `ListServers` ([the admin API](/reference/admin-api/index.html.md#listservers)). The text output is a table. Its columns are `ID`, `POOL`, `STATE`, `STATUS`, `ROLES`, `HOSTNAME`, `VERSION`, `LAST HEARTBEAT`, and `PEER ADDRESS`. `VERSION` is the version of `hopboxd` on the server. `LAST HEARTBEAT` is an RFC 3339 time. `PEER ADDRESS` is the peer address of the server ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)). An empty value prints as `-`. With no server, the table has only its header.
 
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -1031,8 +1041,8 @@ Example:
 
 ```text
 $ sudo hopboxd admin server list
-ID                                    POOL     STATE  STATUS  ROLES  HOSTNAME  VERSION  LAST HEARTBEAT
-01a14404-ce7b-72d9-b18e-5006c3e462db  default  ready  ok      node   server1   v0.1.0   2026-10-16T09:00:05Z
+ID                                    POOL     STATE  STATUS  ROLES  HOSTNAME  VERSION  LAST HEARTBEAT        PEER ADDRESS
+01a14404-ce7b-72d9-b18e-5006c3e462db  default  ready  ok      node   server1   v0.1.0   2026-10-16T09:00:05Z  -
 ```
 
 ### admin server get
@@ -1049,6 +1059,7 @@ Prints the server with the ID `<id>`. It calls `GetServer` ([the admin API](/ref
 - `hopboxd_version`, `kernel_release`, `cpu` (the arch, the vendor, and the model name), `cpu_template`, and `compatibility_class`
 - `cpu_threads`, `memory_bytes`, `disk_bytes`, `disk_free_bytes`, `machine_count`, and `allocations` and `actions` (their counts)
 - `last_heartbeat_time` (empty before the first heartbeat), `enroll_time`, `certificate_expire_time`, `version`, and `update_time`
+- `peer_address`: the public IPv4 address at which the other servers reach the server, empty for a server without one ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses))
 - `mesh_address`, `mesh_vrack_address`, and `mesh_public_key`: the part of the server in the mesh, empty for a server outside the mesh ([the mesh](/reference/mesh/index.html.md))
 - `dns_zone_serial`: the serial of the zones that the DNS role of the server served at its last heartbeat, empty on a server without the DNS role or without zones ([the DNS role](/reference/dns/index.html.md#the-serial-of-each-dns-server))
 - Only while the server drains: `drain_start_time`, `drain_moving`, `drain_empty_checks`, `drain_last_check_time` (empty before the first check), `drain_error`, and `drain_stuck` (`true` or `false`). Then one line `drain_stranded` for each stranded machine, with the value `<name> <machine id>: <reason>`.
@@ -1071,6 +1082,7 @@ The JSON object has these keys:
 - `last_heartbeat_time` (`null` before the first heartbeat), `enroll_time`, `certificate_expire_time`, `version`, and `update_time`
 - `mesh`: an object with `address`, `vrack_address`, and `public_key`, or `null` for a server outside the mesh
 - `dns_zone_serial`: a number, or `null` on a server without the DNS role or without zones
+- `peer_address`: a string, empty for a server without one
 - `drain`: `null` for a server that does not drain, or an object with `start_time`, `moving`, `stranded` (a list of objects with `machine_id`, `name`, `reason`, and `on_server`), `empty_checks`, `last_check_time` (`null` before the first check), `error`, and `stuck`
 
 Lists and the `labels` object are empty, never `null`. [The admin API](/reference/admin-api/index.html.md#server) describes each field.
@@ -1327,6 +1339,25 @@ Example:
 
 ```sh
 sudo hopboxd admin server set-labels 01a14404-ce7b-72d9-b18e-5006c3e462db --label zone=gra --label disk=nvme
+```
+
+### admin server set-peer-address
+
+```sh
+hopboxd admin server set-peer-address <id> <address> [--json]
+```
+
+Sets the peer address of the server with the ID `<id>`: one public unicast IPv4 address on its uplink, at which the other servers reach it, such as `203.0.113.12` ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)). It is for a server that enrolled without one, such as a server from before peer addresses. It calls `SetServerPeerAddress` ([the admin API](/reference/admin-api/index.html.md#setserverpeeraddress)) and prints the server as [admin server get](#admin-server-get) does. The call writes the audit entry `server.set_peer_address`. A heartbeat never changes the address.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--json` | bool | `false` | Prints the server as one JSON object. |
+
+Example:
+
+```text
+$ sudo hopboxd admin server set-peer-address 01a14404-ce7b-72d9-b18e-5006c3e462db 203.0.113.12 | grep peer_address
+peer_address	203.0.113.12
 ```
 
 ### admin server drain

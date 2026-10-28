@@ -1856,7 +1856,7 @@ paths:
       summary: CreateEnrollmentToken
       description: |-
         CreateEnrollmentToken makes a token with which one new server enrolls into a pool.
-         The token works once and expires after 1 hour. The response holds the only copy of the token:
+         The token works once and expires after its ttl, 1 hour by default. The response holds the only copy of the token:
          the install keeps only a hash of its secret. A retry with the same idempotency key makes no
          second token. It fails with ALREADY_EXISTS, because the install has no copy of the secret.
       operationId: hopbox.admin.v1.ServerService.CreateEnrollmentToken
@@ -2138,6 +2138,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.SetServerLabelsResponse'
+  /hopbox.admin.v1.ServerService/SetServerPeerAddress:
+    post:
+      tags:
+        - hopbox.admin.v1.ServerService
+      summary: SetServerPeerAddress
+      description: |-
+        SetServerPeerAddress sets the peer address of a server: the public IPv4 address at which the
+         other servers reach it. It is for a server that enrolled without one, such as the first
+         server. A heartbeat never changes a peer address.
+      operationId: hopbox.admin.v1.ServerService.SetServerPeerAddress
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.SetServerPeerAddressRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.SetServerPeerAddressResponse'
   /hopbox.admin.v1.ServerService/UncordonServer:
     post:
       tags:
@@ -2972,6 +3014,18 @@ components:
             server_id names an enrolled server, a UUID. The token then adds the
              roles to that server alone, in its pool, and enrolls no new server.
              Leave it empty for a token of a new server.
+        peerAddress:
+          type: string
+          title: peer_address
+          description: |-
+            peer_address is the peer address of the server that enrolls with the token: one public
+             IPv4 address on its uplink, such as 203.0.113.5. The enrollment must come from it, and the
+             new server keeps it. Leave it empty for a token without one.
+        ttl:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: ttl
+          description: ttl is how long the token works, at most 24 hours. Leave it absent for 1 hour.
       title: CreateEnrollmentTokenRequest
       additionalProperties: false
       description: CreateEnrollmentTokenRequest names the pool of the token.
@@ -3011,6 +3065,10 @@ components:
           type: string
           title: server_id
           description: server_id is the enrolled server that the token adds roles to, or empty.
+        peerAddress:
+          type: string
+          title: peer_address
+          description: peer_address is the address from which the enrollment must come, or empty.
       title: CreateEnrollmentTokenResponse
       additionalProperties: false
       description: CreateEnrollmentTokenResponse holds the new token.
@@ -4830,6 +4888,12 @@ components:
           description: |-
             drain is the drain of the server. It is absent on a server that does not drain, and after
              the decommission.
+        peerAddress:
+          type: string
+          title: peer_address
+          description: |-
+            peer_address is the public IPv4 address at which the other servers reach the server, such as
+             203.0.113.12. It is empty on a server without one.
       title: Server
       additionalProperties: false
       description: Server is one enrolled server, with the facts of its last heartbeat.
@@ -5175,6 +5239,32 @@ components:
       title: SetServerLabelsResponse
       additionalProperties: false
       description: SetServerLabelsResponse holds the server after the change.
+    hopbox.admin.v1.SetServerPeerAddressRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the ID of the server.
+        peerAddress:
+          type: string
+          title: peer_address
+          description: |-
+            peer_address is one public unicast IPv4 address on the uplink of the server, such as
+             203.0.113.12.
+      title: SetServerPeerAddressRequest
+      additionalProperties: false
+      description: SetServerPeerAddressRequest names a server and its peer address.
+    hopbox.admin.v1.SetServerPeerAddressResponse:
+      type: object
+      properties:
+        server:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.Server'
+          title: server
+      title: SetServerPeerAddressResponse
+      additionalProperties: false
+      description: SetServerPeerAddressResponse holds the server after the change.
     hopbox.admin.v1.SignInProvider:
       type: string
       title: SignInProvider

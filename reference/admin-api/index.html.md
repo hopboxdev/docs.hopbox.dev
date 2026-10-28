@@ -942,6 +942,7 @@ The message `Server` is one enrolled server, with the facts of its last heartbea
 | `mesh` | `ServerMesh` | The part of the server in the mesh. Absent until the server reports the key of its WireGuard device, and for a server outside the mesh ([the mesh](/reference/mesh/index.html.md)). |
 | `dns_zone_serial` | optional uint32 | The serial of the zones that the DNS role of the server served at its last heartbeat. Absent on a server without the DNS role, and before its first zones. Compare it with the serial of the zones of the install to find a DNS server that lags ([the DNS role](/reference/dns/index.html.md#the-serial-of-each-dns-server)). |
 | `drain` | `ServerDrain` | The drain of the server (field 26). Absent when the server does not drain, and after the decommission. |
+| `peer_address` | string | The peer address of the server (field 27): the public IPv4 address at which the other servers reach it, such as `203.0.113.12` ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)). Empty for a server without one. The enrollment token or `SetServerPeerAddress` sets it. A heartbeat never changes it. |
 
 The message `ServerMesh` has these fields:
 
@@ -1019,16 +1020,16 @@ The message `Allocation` has the fields `machine_id` (string, a UUID), `vcpus` (
 
 ### CreateEnrollmentToken
 
-Makes a token with which one new server enrolls into a pool ([Enrollment and the install PKI](/reference/enrollment/index.html.md)). The token works once and expires after 1 hour. The install keeps only the SHA-256 of its secret, so the response holds the only copy of the token. The first call of an install makes the install CA and seals its key with the current key-encryption key.
+Makes a token with which one new server enrolls into a pool ([Enrollment and the install PKI](/reference/enrollment/index.html.md)). The token works once and expires after its `ttl`, 1 hour by default. The install keeps only the SHA-256 of its secret, so the response holds the only copy of the token. The first call of an install makes the install CA and seals its key with the current key-encryption key.
 
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.ServerService/CreateEnrollmentToken` |
 | Policy action | `enrollment_token.create`: `local_root` and `admin_key` |
 | Idempotent option | yes, without a stored response. See below. |
-| Audit entry | action `enrollment_token.create`, target kind `enrollment_token`, target ID the token ID, details `pool`, `roles` (joined by commas), and `server`. Only a token of an enrolled server has `server`. |
+| Audit entry | action `enrollment_token.create`, target kind `enrollment_token`, target ID the token ID, details `pool`, `roles` (joined by commas), `expire_time` (RFC 3339, in UTC), `server`, and `peer_address`. Only a token of an enrolled server has `server`, and only a token with a peer address has `peer_address`. |
 
-The call needs an `Idempotency-Key` header ([the API server](/reference/api/index.html.md#idempotency-keys)). Its response holds the secret of the token, so the control store keeps the response without the field `token`. A retry with the same key makes no second token, and fails with `already_exists` and the message `this idempotency key made the enrollment token <token ID> already, and the install keeps no copy of its secret. Make a new token with a new idempotency key`. Thus the secret never sits in the control store, and a retry never makes a second token. A caller that lost the response makes a new token with a new key. The unused token expires after 1 hour.
+The call needs an `Idempotency-Key` header ([the API server](/reference/api/index.html.md#idempotency-keys)). Its response holds the secret of the token, so the control store keeps the response without the field `token`. A retry with the same key makes no second token, and fails with `already_exists` and the message `this idempotency key made the enrollment token <token ID> already, and the install keeps no copy of its secret. Make a new token with a new idempotency key`. Thus the secret never sits in the control store, and a retry never makes a second token. A caller that lost the response makes a new token with a new key. The unused token expires at the end of its `ttl`.
 
 The request `CreateEnrollmentTokenRequest` has these fields:
 
@@ -1037,6 +1038,8 @@ The request `CreateEnrollmentTokenRequest` has these fields:
 | `pool` | string | The name of the live pool that the new server joins ([PoolService](#poolservice)). Empty means the pool `default`. |
 | `roles` | repeated string | The roles that the new server can enroll with: `node`, `dns`, `edge`, or more than one. Empty means the role `node` alone. |
 | `server_id` | string | The ID of an enrolled server, or empty. The token then adds the roles to that server alone, in its pool. It enrolls no new server ([Enrollment and the install PKI](/reference/enrollment/index.html.md#add-roles-to-an-enrolled-server)). A `pool` other than the pool of the server fails with `invalid_argument`. An unknown server fails with `not_found`, and a decommissioned one with `failed_precondition`. |
+| `peer_address` | string | The peer address of the server that enrolls with the token, such as `203.0.113.12`, or empty. It is one public unicast IPv4 address that no other server holds ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)). The enrollment must come from it, and the new server keeps it. |
+| `ttl` | `google.protobuf.Duration` | How long the token works, more than 0 and at most 24 hours. Absent or zero means 1 hour. While the token is live, its `peer_address` is in the set `registered` ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)). |
 
 The response `CreateEnrollmentTokenResponse` has these fields:
 
@@ -1045,10 +1048,11 @@ The response `CreateEnrollmentTokenResponse` has these fields:
 | `token` | string | The enrollment token, `hbxe_<id>_<secret>_<cahash>`. It is a secret. Pass it to `hopboxd enroll --token` on the new server ([hopboxd](/reference/hopboxd/index.html.md#enroll)). |
 | `token_id` | string | The ID of the token, a UUID, as the audit log names it. |
 | `pool` | string | The name of the pool of the token. |
-| `expire_time` | `google.protobuf.Timestamp` | The end of the token, 1 hour after the call. |
+| `expire_time` | `google.protobuf.Timestamp` | The end of the token, `ttl` after the call. |
 | `ca_hash` | string | The SHA-256, in hex, of the certificate of the install CA. The token holds it too. |
 | `roles` | repeated string | The roles that the new server can enroll with. |
 | `server_id` | string | The enrolled server that the token adds roles to, or empty. |
+| `peer_address` | string | The address from which the enrollment must come, or empty. |
 
 | Error | Cause |
 | --- | --- |
@@ -1059,6 +1063,12 @@ The response `CreateEnrollmentTokenResponse` has these fields:
 | `invalid_argument` with `idempotency: invalid key: this method needs an Idempotency-Key header` | The call has no idempotency key. |
 | `already_exists` with `this idempotency key made the enrollment token <token ID> already, and the install keeps no copy of its secret. Make a new token with a new idempotency key` | A retry with a key that made a token already. |
 | `not_found` with `not found: no pool is named "<pool>"` | No pool has the name. |
+| `invalid_argument` with `invalid argument: invalid peer address: ...` | `peer_address` is not an IPv4 address, or not a public unicast one. The rest of the message names the address and the reason, such as `10.0.0.1 is a private address. A peer address is one public IPv4 address on the uplink of the server, with no NAT`. |
+| `already_exists` with `already exists: the server <id> has the peer address <address>. A peer address belongs to one server until its decommission` | Another server that is not decommissioned holds `peer_address`. A token with `server_id` can name the peer address of that server. |
+| `invalid_argument` with `invalid argument: the server <id> has the peer address <address>, so its token names that address or none` | A `server_id` with a `peer_address` other than the peer address of that server. This is a build default that follows from Q91 and Q92. |
+| `failed_precondition` with `failed precondition: the control process <process> knows the migrations up to <n>, and only a hopboxd that knows migration 54 checks the peer address of an enrollment token. Upgrade it first` | A `peer_address` while a live control process runs a release of the schema version below 54. Such a release enrolls the server from any address. A token without `peer_address` works. |
+| `invalid_argument` with `invalid argument: the ttl of the token is <ttl>, but it must be more than 0 and at most 24h` | A negative `ttl`, or one above 24 hours. |
+| `invalid_argument` with `invalid argument: the ttl of the token is not a valid duration: ...` | The `ttl` is not a valid `google.protobuf.Duration`, such as one with seconds and nanos of opposite signs. |
 
 ### ListServers
 
@@ -1159,6 +1169,19 @@ Replaces the labels of a server. Placement filters use labels. The hopbox Terraf
 
 The request `SetServerLabelsRequest` has the fields `id`, the ID of the server, and `labels`, a map of string to string. The labels replace every label of the server. An empty map removes them all. The labels follow the rules of `channel.labels`. A server has at most 64 labels. A key has 1 to 63 characters of `a-z`, `0-9`, `.`, `_`, and `-`, and starts with a lowercase letter. A value is valid UTF-8 of at most 255 bytes, without control characters. The response `SetServerLabelsResponse` has the field `server`, the `Server` after the change.
 
+### SetServerPeerAddress
+
+Sets the peer address of a server: the public IPv4 address at which the other servers reach it ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)). It is for a server that enrolled without a peer address in its token, such as the first server of an install, or a server from before peer addresses. `hopboxd install --peer-address` calls it on the first server ([hopboxd](/reference/hopboxd/index.html.md#install)). The call replaces the address of a server that has one. It refuses an address that another server holds, until that server is decommissioned. It refuses every call while a live control process runs a release before migration `0054`. The enrollment token and this call are the only ways to set a peer address. A heartbeat never changes it.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.ServerService/SetServerPeerAddress` |
+| Policy action | `server.set_peer_address`: `local_root` and `admin_key`. The Admin area shows the peer address, but does not set it. |
+| Idempotent option | no. A second call with the same address changes only the row version. |
+| Audit entry | action `server.set_peer_address`, target kind `server`, target ID the server ID, details `old_peer_address` (empty for a server without one) and `peer_address` |
+
+The request `SetServerPeerAddressRequest` has the fields `id`, the ID of the server, and `peer_address`, one public unicast IPv4 address, such as `203.0.113.12`. The response `SetServerPeerAddressResponse` has the field `server`, the `Server` after the change.
+
 ### DecommissionServer
 
 Takes a server out of the install for good. The state turns `decommissioned`, and no call changes it again. The install refuses the certificates, the heartbeats, and the renewals of the server from then on. If the control channel of the server runs in the same control process, that process ends it after the commit. A channel in another control process ends at its next heartbeat ([the control channel](/reference/control-channel/index.html.md)).
@@ -1197,13 +1220,16 @@ The request `DrainServerRequest` has the field `id`, the ID of the server. The r
 
 ### Errors of ServerService
 
-`GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DecommissionServer`, and `DrainServer` check the policy first, and then the ID.
+`GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `SetServerPeerAddress`, `DecommissionServer`, and `DrainServer` check the policy first, and then the ID.
 
 | Error | Cause |
 | --- | --- |
 | `invalid_argument` with `invalid argument: the server ID "<id>" is not a UUID` | The ID is not a UUID. |
 | `not_found` with `not found: no server has the ID <id>` | No server has the ID. |
-| `failed_precondition` with `failed precondition: the server <id> is decommissioned` | `CordonServer`, `UncordonServer`, `SetServerLabels`, or `DrainServer` of a decommissioned server. |
+| `failed_precondition` with `failed precondition: the server <id> is decommissioned` | `CordonServer`, `UncordonServer`, `SetServerLabels`, `SetServerPeerAddress`, or `DrainServer` of a decommissioned server. |
+| `already_exists` with `already exists: the server <id> has the peer address <address>. A peer address belongs to one server until its decommission` | `SetServerPeerAddress` with the address of another server that is not decommissioned. |
+| `failed_precondition` with `failed precondition: the control process <process> knows the migrations up to <n>, and only a hopboxd that knows migration 54 checks the source address of an enrollment. Upgrade it first` | `SetServerPeerAddress` while a live control process runs a release of the schema version below 54. Such a release enrolls a token without a peer address from any address ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)). |
+| `invalid_argument` with `invalid argument: invalid peer address: ...` | `SetServerPeerAddress` with an address that is not one public unicast IPv4 address. The rest of the message names the address and the reason, such as `10.239.0.3 is in the mesh range 10.239.0.0/16`. |
 | `invalid_argument` with `invalid argument: invalid label: ...` | `SetServerLabels` with a label that breaks a rule. The rest of the message names the label and the rule. |
 | `failed_precondition` with `failed precondition: the server <id> holds <n> machines, such as <names>. Drain it first, so that its machines move to other nodes, or delete them` | `DecommissionServer` of a server with machines. `<names>` holds up to 5 names. Without names, the message reads `holds <n> machines. Drain it first, ...`. |
 | `failed_precondition` with `failed precondition: the move <move id> of the machine <machine id> runs from or to the server <id>. Wait for its end, or cancel it` | `DecommissionServer` of a server that a move runs from or to. |

@@ -126,8 +126,8 @@ Within 2 seconds, the waiting `channel` unit finds the identity and opens its ch
 
 ```text
 $ sudo hopboxd admin server list
-ID                                    POOL     STATE  STATUS  ROLES  HOSTNAME  VERSION  LAST HEARTBEAT
-01a14403-6bd1-7522-9ab0-b3ab4517e0e4  default  ready  ok      node   server1   v0.1.0   2026-10-16T09:02:16Z
+ID                                    POOL     STATE  STATUS  ROLES  HOSTNAME  VERSION  LAST HEARTBEAT        PEER ADDRESS
+01a14403-6bd1-7522-9ab0-b3ab4517e0e4  default  ready  ok      node   server1   v0.1.0   2026-10-16T09:02:16Z  -
 ```
 
 `get` prints every fact of the last heartbeat, one line for each field:
@@ -162,6 +162,17 @@ update_time	2026-10-16T09:02:21Z
 ```
 
 The heartbeat arrives every 5 seconds, so `last_heartbeat_time` and `version` grow. A server with a failed check shows `status degraded`, and `problems` lists the checks.
+
+## Set the peer address
+
+The peer address of a server is the public IPv4 address at which the other servers of the install reach it ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)). It is one public address on the uplink of the server, with no NAT. The server of this guide enrolled with a token without a peer address, so it has none yet. Set it before you add a second server. Replace `203.0.113.12` with the public IPv4 address of the server:
+
+```text
+$ sudo hopboxd admin server set-peer-address 01a14403-6bd1-7522-9ab0-b3ab4517e0e4 203.0.113.12 | grep peer_address
+peer_address	203.0.113.12
+```
+
+From then on, a token without a peer address enrolls only from loopback. Make the token of each other server with its own peer address, such as `sudo hopboxd admin enrollment-token create --peer-address 203.0.113.13`. That server must then enroll from `203.0.113.13`.
 
 ## Cordon and uncordon
 

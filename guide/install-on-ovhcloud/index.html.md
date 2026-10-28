@@ -175,8 +175,8 @@ ssh -i ~/.ssh/id_ed25519 debian@"$(terraform output -raw ipv4)" sudo hopboxd adm
 The output shows one server, `ready`, with the version of the bundle:
 
 ```text
-ID                                    POOL     STATE  STATUS  ROLES          HOSTNAME   VERSION  LAST HEARTBEAT
-01a14404-ce7b-72d9-b18e-5006c3e462db  default  ready  ok      node,dns,edge  ns1234567  v0.1.0   2026-10-16T09:00:05Z
+ID                                    POOL     STATE  STATUS  ROLES          HOSTNAME   VERSION  LAST HEARTBEAT        PEER ADDRESS
+01a14404-ce7b-72d9-b18e-5006c3e462db  default  ready  ok      node,dns,edge  ns1234567  v0.1.0   2026-10-16T09:00:05Z  -
 ```
 
 The ROLES column lists the roles that enrolled. The control role of the first server runs in the same `hopboxd` from its bootstrap config, without a server record.

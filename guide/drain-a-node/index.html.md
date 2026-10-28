@@ -27,9 +27,9 @@ If Terraform manages the server, run `terraform destroy` instead of the commands
 
    ```text
    $ sudo hopboxd admin server list
-   ID                                    POOL     STATE  STATUS  ROLES  HOSTNAME  VERSION  LAST HEARTBEAT
-   01a14404-ce7b-72d9-b18e-5006c3e462db  default  ready  ok      node   node1     v0.1.0   2026-10-16T09:00:05Z
-   01a14405-0c11-7a3e-90d2-2b1f6d6a77aa  default  ready  ok      node   node2     v0.1.0   2026-10-16T09:00:06Z
+   ID                                    POOL     STATE  STATUS  ROLES  HOSTNAME  VERSION  LAST HEARTBEAT        PEER ADDRESS
+   01a14404-ce7b-72d9-b18e-5006c3e462db  default  ready  ok      node   node1     v0.1.0   2026-10-16T09:00:05Z  -
+   01a14405-0c11-7a3e-90d2-2b1f6d6a77aa  default  ready  ok      node   node2     v0.1.0   2026-10-16T09:00:06Z  -
    ```
 
 2. Start the drain. The command returns at once:
