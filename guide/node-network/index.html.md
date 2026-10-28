@@ -217,6 +217,13 @@ curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_mesh_'
 
 A restart or an upgrade of `hopboxd` keeps the device, so the mesh traffic goes on. Do not manage `hbm0` with another tool, such as `wg-quick`. `hopboxd` sets the device back within 2 s.
 
+On the public interface, the host firewall takes UDP port 51820 and the ports of the egress tunnels only from the peer addresses of the servers of the install ([the host firewall](/reference/host-firewall/index.html.md#sets)). A server without a peer address is not in that set. List the set, and the last copy that the server keeps on its disk:
+
+```sh
+sudo nft list set inet hopbox_host peers
+sudo cat /var/lib/hopbox/hostfw/peers
+```
+
 ## Docker on the server
 
 A server with Docker drops each forwarded packet that Docker does not know, so the egress of the machines times out. Accept the tap devices in the chain `DOCKER-USER`:

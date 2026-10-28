@@ -228,7 +228,7 @@ These messages feed the edge role ([the edge role](/reference/edge/index.html.md
 
 ### MeshMember, MeshPeers, and MeshPeer
 
-These messages carry the mesh ([the mesh](/reference/mesh/index.html.md)). Each `MeshPeers` replaces the one before it.
+These messages carry the mesh ([the mesh](/reference/mesh/index.html.md)), and `HostFirewallSets` the sets of the host firewall that come with it. Each `MeshPeers` replaces the one before it.
 
 | Message | Field | Type | Description |
 | --- | --- | --- | --- |
@@ -237,6 +237,9 @@ These messages carry the mesh ([the mesh](/reference/mesh/index.html.md)). Each 
 | `MeshPeers` | `address` | string | The mesh address of the server, in `10.239.0.0/16`, such as `10.239.0.3`. |
 | `MeshPeers` | `peers` | repeated `MeshPeer` | The other servers of the mesh that are not decommissioned, in the order of their mesh addresses. At most 4096. |
 | `MeshPeers` | `egress_marked` | bool | True from a control role that sets `MeshPeer.egress`, from N17 on. A control role of an older release never sets it. A node then keeps the egress tunnels that it has, and does not read the missing `egress` as no egress edge ([the egress of the machines](/reference/egress/index.html.md#a-control-role-of-an-older-release)). |
+| `MeshPeers` | `firewall` | `HostFirewallSets` | The sets of the host firewall of the server, from N27 on ([Mesh pushes](#mesh-pushes)). A control role of an older release sends none. The server then keeps the sets that it has. |
+| `HostFirewallSets` | `peers` | repeated string | The peer addresses of the servers of the install that are not decommissioned, sorted, such as `203.0.113.12`. At most 4096. |
+| `HostFirewallSets` | `jump_hosts` | repeated string | The peer addresses of the edge servers among them, sorted. At most 4096. |
 | `MeshPeer` | `server_id` | string | The ID of the server, a UUID. |
 | `MeshPeer` | `public_key` | bytes | The public key of its WireGuard device: 32 bytes. |
 | `MeshPeer` | `endpoint` | string | Its vRack address and the UDP port `51820`, such as `172.31.0.12:51820`. |
@@ -449,11 +452,11 @@ The agent hands each message to the edge role of its server (`node.Agent.Edge`).
 
 ## Mesh pushes
 
-A server joins the mesh with the field `mesh` of its heartbeats ([the mesh](/reference/mesh/index.html.md#how-a-server-joins)). The control role records that field in the transaction of the heartbeat. After each heartbeat with `mesh` that it records, the control role reads the mesh as that server sees it, under the policy action `server.read_mesh_peers`. The read gives the mesh address of the server, and every other server of the mesh that is not decommissioned. The control role keeps the SHA-256 of the last mesh that it sent on the channel. If the mesh differs, it sends `mesh_peers`. Otherwise, it sends nothing. So the first heartbeat of each channel sends the mesh, and a later heartbeat sends it only after a change.
+A server joins the mesh with the field `mesh` of its heartbeats ([the mesh](/reference/mesh/index.html.md#how-a-server-joins)). The control role records that field in the transaction of the heartbeat. After each heartbeat with `mesh` that it records, the control role reads the mesh as that server sees it, under the policy action `server.read_mesh_peers`. The read gives the mesh address of the server, and every other server of the mesh that is not decommissioned. It also gives the sets of the host firewall of the server in `firewall`: the peer addresses of the servers that are not decommissioned, and those of the edge servers among them ([Control store tables](/reference/control-store/index.html.md#servers)). A change of a peer address or of the edge servers changes the mesh too, so it reaches each server within 5 s. The control role keeps the SHA-256 of the last mesh that it sent on the channel. If the mesh differs, it sends `mesh_peers`. Otherwise, it sends nothing. So the first heartbeat of each channel sends the mesh, and a later heartbeat sends it only after a change.
 
 So a change of one server reaches each other server at the next recorded heartbeat of that server, within 5 s. Each control process reads the store, so this holds with several control processes too. One read runs at a time for each channel. A heartbeat that finds a read running skips its own read, and the next heartbeat reads again. A failed read logs `reading the mesh for a server failed. The next heartbeat tries again` at level warn. The channel stays open.
 
-The agent hands each mesh to the mesh device of its server (`node.Agent.Mesh`). If the device refuses a mesh, the agent logs `the mesh device refused the mesh of the control plane, and keeps the peers that it has` at level error, with the fields `address`, `peers`, and `err` ([the mesh](/reference/mesh/index.html.md#refused-mesh)). The channel stays open. A server without the device that gets a mesh logs `the control plane sent the mesh to a server outside the mesh` at level warn, and drops it.
+The agent first hands the sets of `firewall` to the host firewall of its server (`node.Agent.FirewallSets`), so a device that refuses the mesh never holds the sets back. If the firewall refuses the sets, the agent logs `the host firewall refused the sets of the control plane, and keeps the sets that it has` at level error, with the fields `peers`, `jump_hosts`, and `err`. A mesh without `firewall` changes no set. Then the agent hands the mesh to the mesh device of its server (`node.Agent.Mesh`). If the device refuses a mesh, the agent logs `the mesh device refused the mesh of the control plane, and keeps the peers that it has` at level error, with the fields `address`, `peers`, and `err` ([the mesh](/reference/mesh/index.html.md#refused-mesh)). The channel stays open. A server without the device that gets a mesh logs `the control plane sent the mesh to a server outside the mesh` at level warn, and drops it.
 
 A heartbeat whose `mesh` holds the key of another server of the mesh is recorded without its part of the mesh. A full mesh range has the same effect on the heartbeat of a new server. The control role then logs `the server stays out of the mesh, or keeps its old key and vRack address there` at level error, with `component=service` and the fields `server` and `err`.
 

@@ -801,7 +801,7 @@ Migrations `0015_servers.sql`, `0030_server_labels.sql`, `0045_control_processes
 | `created_at` | `timestamptz` | the time of the insert | When the row was made. |
 | `updated_at` | `timestamptz` | the time of the insert | The last change. |
 
-A check refuses the state `cordoned` without the flag `cordoned`. The check `servers_peer_address_public` keeps `peer_address` null or one public unicast IPv4 address, with a prefix length of 32. It refuses an address in `0.0.0.0/8`, `10.0.0.0/8` (which holds the mesh range and the machine range), `100.64.0.0/10`, `127.0.0.0/8`, `169.254.0.0/16`, `172.16.0.0/12`, `192.168.0.0/16`, and `224.0.0.0/3` (multicast, the reserved range, and the broadcast address). The unique partial index `servers_peer_address` keeps each peer address on one server that is not decommissioned. The query `ServerOfPeerAddress` reads that server. `SetServerPeerAddress` and the enrollment take the lock of the server registry before they check it. The partial index `servers_heartbeat` on `last_heartbeat_at` covers the `ready`, `cordoned`, `draining`, and `shutting_down` servers, for the leader job.
+A check refuses the state `cordoned` without the flag `cordoned`. The check `servers_peer_address_public` keeps `peer_address` null or one public unicast IPv4 address, with a prefix length of 32. It refuses an address in `0.0.0.0/8`, `10.0.0.0/8` (which holds the mesh range and the machine range), `100.64.0.0/10`, `127.0.0.0/8`, `169.254.0.0/16`, `172.16.0.0/12`, `192.168.0.0/16`, and `224.0.0.0/3` (multicast, the reserved range, and the broadcast address). The unique partial index `servers_peer_address` keeps each peer address on one server that is not decommissioned. The query `ServerOfPeerAddress` reads that server. The query `FirewallPeers` reads the peer address and the roles of each server that is not decommissioned, for the sets `peers` and `jump_hosts` of the host firewall. `SetServerPeerAddress` and the enrollment take the lock of the server registry before they check it. The partial index `servers_heartbeat` on `last_heartbeat_at` covers the `ready`, `cordoned`, `draining`, and `shutting_down` servers, for the leader job.
 
 The state changes in these steps:
 
@@ -905,7 +905,7 @@ Migration `0016_enrollment_tokens.sql`. One row per enrollment token ([Enrollmen
 
 A check makes `used_at` and `server_id` both null or both set. An enrollment locks the row of its token, so two enrollments with one token run one after the other, and the second one finds the token used. The leader sweep deletes the tokens that expired more than 1 day ago, used or not.
 
-The query `RegisteredPeerAddresses` reads the set `registered`: the distinct peer addresses of the tokens that are not used and not expired, in order. The host firewall of a control server is to open the internal listener to them ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)). A token leaves the set when a server uses it, and when it expires.
+The query `RegisteredPeerAddresses` reads the set `registered`: the distinct peer addresses of the tokens that are not used and not expired, in order. The control role reads it every second for the host firewall of its server, which opens the internal listener to these addresses ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)). A token leaves the set when a server uses it, and when it expires.
 
 ## device_authorizations
 

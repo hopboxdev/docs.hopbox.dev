@@ -26,6 +26,7 @@ A floating address is an Additional IP of OVHcloud: a public IPv4 address that t
 - One floating IPv4 address for each edge server, routed to it and held on its public interface. The Terraform provider routes it with the attribute `floating_addresses`. This guide uses `203.0.113.101` for `edge1` and `203.0.113.102` for `edge2`.
 - The IPv6 block of the install, routed into the vRack. This guide uses the block `2001:db8:0:100::/56` with the gateway `2001:db8:0:100::1`. `edge1` takes `2001:db8:0:100::11`, and `edge2` takes `2001:db8:0:100::12`.
 - The internal URL of the control server, such as `https://172.31.0.11:7443`.
+- The peer address of each server: its public IPv4 address on its uplink, at which the other servers reach it ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)). This guide uses `203.0.113.21` for `edge1`, `203.0.113.22` for `edge2`, and `203.0.113.31` for the node `node1`.
 - `dig`, `curl`, and `ssh` on your laptop.
 
 ## Add the edge servers
@@ -66,6 +67,33 @@ sudo hopboxd enroll --token <token>
 ```
 
 Do the same on `edge2` with its own token.
+
+### Give each server its peer address
+
+The host firewall of each server takes the mesh port, the ports of the egress tunnels, and SSH on its public interface only from the peer addresses of the install ([the host firewall](/reference/host-firewall/index.html.md#sets)). Port 22 of a server without the edge role takes only the peer addresses of the edge servers. A server with a vRack address keeps its public port 22 closed, also before you set the peer addresses. Until then, SSH reaches it only through an edge server at its vRack address.
+
+The servers of this guide enroll on the vRack, so their tokens name no peer address. On the control server, set the peer address of each enrolled server instead:
+
+```sh
+sudo hopboxd admin server set-peer-address <id of edge1> 203.0.113.21
+sudo hopboxd admin server set-peer-address <id of edge2> 203.0.113.22
+sudo hopboxd admin server set-peer-address <id of node1> 203.0.113.31
+```
+
+Within 5 s, each server holds the peer addresses of the edge servers in the set `jump_hosts` of its table:
+
+```sh
+sudo nft list set inet hopbox_host jump_hosts
+```
+
+From your laptop, port 22 of `node1` times out. Log in to `node1` through `edge1` as the jump host, at the peer address of `node1`:
+
+```sh
+nc -vz -w 3 203.0.113.31 22
+ssh -J debian@203.0.113.101 debian@203.0.113.31
+```
+
+`node1` keeps these jump hosts, also when the edge servers leave the install. The way back after a lockout is the rescue mode or the console of the provider ([the host firewall](/reference/host-firewall/index.html.md#never-a-lockout)).
 
 ### Check the mesh and the IPv6 address
 
@@ -170,7 +198,7 @@ A DNS server keeps the last zones of the control plane on its disk ([the DNS rol
 The new server takes the same addresses as the old one:
 
 1. The Terraform provider moves the floating IPv4 address to the new server.
-2. Write the bootstrap config of the new server with the same `edge.public_ipv6` and `edge.public_ipv4`, then install and enroll it as above.
+2. Write the bootstrap config of the new server with the same `edge.public_ipv6` and `edge.public_ipv4`, then install and enroll it as above, and set its peer address. The servers of the install then take SSH from the new server as a jump host.
 3. While the old server still holds the IPv6 address, duplicate address detection fails on the new server. The new server logs `another host on the vRack holds the public IPv6 address of this edge server, so it takes no traffic`, and tries the address again at each check, every 2 seconds. Once the old server is gone, the new server takes the address.
 
 The public addresses of the install stay the same, so the zone and the glue records need no change.

@@ -108,7 +108,9 @@ peer: <public key of a node>
 
 ## The host firewall
 
-The [host firewall](/reference/host-firewall/index.html.md) of each server takes the port `51820` only from the vRack range, on the vRack interface. It takes port 22 of the vRack interface only from the vRack addresses of the edge servers. The device hands these addresses to the host firewall with each new mesh: the endpoints of the peers with the role `edge` ([the host firewall](/reference/host-firewall/index.html.md#the-jump-hosts)).
+The [host firewall](/reference/host-firewall/index.html.md) of each server takes the port `51820` from the vRack range on the vRack interface. On the public interface, it takes the port only from the peer addresses of the servers, the set `peers` ([the host firewall](/reference/host-firewall/index.html.md#sets)). N28 moves the endpoints of the mesh to the peer addresses. It takes port 22 of the vRack interface only from the vRack addresses of the edge servers. The device hands these addresses to the host firewall with each new mesh: the endpoints of the peers with the role `edge` ([the host firewall](/reference/host-firewall/index.html.md#the-jump-hosts)).
+
+Each mesh also holds the sets `peers` and `jump_hosts` of the host firewall, in its field `firewall` ([the control channel](/reference/control-channel/index.html.md#mesh-pushes)). On a server without the control role, the agent hands them to the host firewall before the device takes the mesh. A server with the control role takes them from its store instead.
 
 ## The egress tunnels
 
@@ -213,4 +215,7 @@ The other parts of the mesh log with their own components:
 | `TestMeshPeers` of `internal/service` | `make test` | The mesh addresses, the allowed IPs, a new key, a key of another server, and a decommissioned server. |
 | `TestEgressEdges` of `internal/service` | `make test` | The field `egress` of a peer ([the egress of the machines](/reference/egress/index.html.md#egress-edges)). |
 | `TestMeshReachesEachServer` of `internal/control` | `make test` | The pushes on the control channel. |
+| `TestMeshCarriesTheFirewallSets` of `internal/control` | `make test` | The sets of the host firewall in each mesh: the peer addresses of the servers, and those of the edges as the jump hosts. The agent hands them on also when the device refuses the mesh. |
+| `TestMeshWithoutFirewallKeepsTheSets` of `internal/node` | `make test` | A mesh of a control role of an older release, without `firewall`, leaves the sets of the host firewall as they are. |
+| `TestFirewallSets` of `internal/service` | `make test` | The sets of the host firewall in the store: a server without a peer address, a decommissioned edge, and a used or expired token stay out ([the host firewall](/reference/host-firewall/index.html.md)). |
 | `TestFleet` of `test/fleet` | `make test-fleet` | Three servers on the bridge `vrack0`. A node and an edge reach each other only over the mesh, and the traffic between them on `vrack0` is WireGuard only. A restart of `hopboxd` keeps the device and its traffic. A new key reaches the edge within a heartbeat. |
