@@ -819,3 +819,13 @@ The sign-in calls write these entries in the transaction of the sign-in. Their a
 | `auth.sign_in` | Every sign-in with GitHub or Google ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#audit-entries)). | the session | `method` (`github` or `google`), `email`, `new_account`, `oauth_flow`, `subject`, and for GitHub `login` |
 | `auth.sign_in` | A poll of a device flow took the CLI tokens. The actor is the new CLI sign-in, with actor kind `cli_token`. | the CLI sign-in, target kind `cli_sign_in` | `method` (`device`), `client_name`, `device_sign_in` |
 | `instance_admin.grant` | A login link made the account an instance admin. This entry has no org. | the account | `login_link` |
+
+### Entries of the removal of a role
+
+The removal of a role from a running server writes these entries ([the admin API](/reference/admin-api/index.html.md#removeserverroles)). Each one has the target kind `server` and the server ID as the target ID. The actor is the caller: `local_root` or an admin API key.
+
+| Action | When | Details |
+| --- | --- | --- |
+| `server.remove_roles_start` | `RemoveServerRoles` started a removal. A second call with the same roles writes none. | `roles`, the roles that go joined by commas, and `cordoned_before` (`true` or `false`) |
+| `server.remove_roles` | An enrollment with the roles that stay ended the removal ([Enrollment and the install PKI](/reference/enrollment/index.html.md#remove-roles-from-an-enrolled-server)). The actor is the server. | `old_roles`, `roles`, `token_id`, and `serial`, and `peer_address` when the token gave the server its peer address |
+| `server.remove_roles_cancel` | `CancelRoleRemoval` ended a pending removal. | `roles`, and `moved`. `moved` counts the machines that a removal of `node` moved before the cancel. It is 0 for a removal of `edge` or `dns`. |

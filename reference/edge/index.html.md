@@ -99,6 +99,8 @@ The edge role serves one certificate: the wildcard certificate of the install, f
 | Before the first certificate | Every handshake fails. |
 | Certificate of another domain | When the domain of the install changes, the edge role refuses every handshake until the certificate of the new domain arrives. It never serves the certificate of the old domain. |
 
+When the role `edge` leaves a running server, the end of the removal restarts `hopboxd` without the role ([the admin API](/reference/admin-api/index.html.md#removeserverroles)). The new process has no copy of the certificate of the install, of its key, or of the SSH host key of the install. The edge role keeps them only in memory, and writes none of them to the disk ([hopboxd](/reference/hopboxd/index.html.md#remove-roles)). The control store keeps them for the other edge servers. `hopboxd install` drops the table `edge` from the config with the role, `edge.public_ipv4`, `edge.floating_addresses`, and `edge.public_ipv6` among its keys. So the check of the uplink, which runs only with the edge role, puts no floating address back. The host firewall closes ports 80, 443, and the SSH ports of the machines, and port 22 takes only `jump_hosts` from then on ([the host firewall](/reference/host-firewall/index.html.md#ports)). The Terraform provider then takes the floating addresses off the uplink ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#roles-of-a-running-server)).
+
 The edge role checks each certificate that the control role pushes before it serves it. It refuses a certificate in each of these cases, and keeps the certificate that it has:
 
 - The domain of the message is not a domain in lowercase without a final dot.

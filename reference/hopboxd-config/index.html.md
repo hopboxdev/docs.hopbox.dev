@@ -59,6 +59,8 @@ The file names the Postgres binaries that `hopboxd` runs and the external Postgr
 | `vmm.kernel` | absolute path | `/opt/hopbox/current/kernel/vmlinux` | The guest kernel of the release. At each start, `hopboxd run` adds it to the kernel cache ([the Firecracker driver](/reference/firecracker-driver/index.html.md#the-kernel-cache)). A missing file gives a warning, and the start goes on. |
 | `network.nameservers` | array of IPv4 addresses | empty | The resolvers of the machines of the node role, at most 3, each once ([the node network](/reference/node-network/index.html.md#the-resolvers-of-the-machines)). The guest agent writes them to `/etc/resolv.conf` of each machine, and the machines reach them on port 53. Empty takes the IPv4 resolvers of the host, from `/run/systemd/resolve/resolv.conf` or `/etc/resolv.conf`. A loopback, unspecified, link-local, or multicast address, or an address of the install range `10.240.0.0/12`, is refused. A resolver on the node itself does not work, because a machine reaches no service of its node. |
 
+When a removal takes the role `dns` or `edge` from a running server, `hopboxd install --roles` without the role drops the whole table of the role from the file: `[dns]` with `dns.listen`, and `[edge]` with `edge.public_ipv4`, `edge.floating_addresses`, and `edge.public_ipv6` ([hopboxd](/reference/hopboxd/index.html.md#remove-roles)). A table whose role the old file did not list stays as it is.
+
 The API listener has no TLS. So `hopboxd` refuses a `control.api_listen` that is not a loopback address, and the API never leaves the server in clear text. A host name, even `localhost`, is refused, because a name can resolve to an address that is not loopback. The internal listener has TLS, and every call on it except `Enroll` needs a server certificate, so `control.internal_listen` can be any IP address. On an install with one server, it stays on `127.0.0.1`. With more servers, it listens on the peer address of the server. `hopboxd` refuses a host name there too.
 
 `hopboxd` checks the keys of `[postgres]` on every server, but only the control role uses them. `hopboxd run` reads `postgres.ca_file` and `postgres.password_file` at its start, so a change of either file takes effect at the next start. `hopboxd` checks the keys of `[control]` only on a server with the control role. It checks the keys of `[channel]` only on a server that enrolls: one with a role other than `control`. It checks the keys of `[dns]` only on a server with the DNS role. It checks the keys of `[edge]` only on a server with the edge role. It checks the keys of `[acme]` only on a server with the control role. It checks the keys of `[vmm]` and `[network]` only on a server with the node role.
@@ -86,7 +88,7 @@ public_ipv6_gateway = "2001:db8:0:100::1"
 This release still reads such a file, so a server that upgrades still starts. With `edge.public_ipv6_gateway`, `hopboxd` ignores that key. It also ignores `edge.public_ipv6` when the value has a prefix length. It then logs this warning, in the same way as for `[node]`:
 
 ```text
-edge.public_ipv6_gateway names the IPv6 block of the vRack, which this release removed, so hopboxd ignores it, and edge.public_ipv6 of the block with it. Remove both keys. The IPv6 egress of the machines now leaves from the uplink address of the edge server
+edge.public_ipv6_gateway names the IPv6 block of an older release, which this release removed, so hopboxd ignores it, and edge.public_ipv6 of the block with it. Remove both keys. The IPv6 egress of the machines now leaves from the uplink address of the edge server
 ```
 
 Remove both keys from the file. To give the edge server a floating IPv6 address, set `edge.public_ipv6` to that address alone, without a prefix length. Then restart `hopboxd`. At its start, `hopboxd` removes the address of the block, its routes, and its rules from the server ([the egress of the machines](/reference/egress/index.html.md#what-the-ipv6-block-left)).
@@ -272,7 +274,7 @@ listen = "127.0.0.1:9464"
 | `edge.public_ipv6: <address> is not a public IPv6 address` | The address is not a global unicast address, or is a unique local address of `fc00::/7`. A link-local address is not a global unicast address. |
 | `edge.public_ipv6: only a server with the role edge holds a floating address` | A server without the role `edge` sets the key. |
 | `edge.public_ipv4: "<value>" is not an IPv4 address` | The value does not parse as an IPv4 address, such as `203.0.113.101/32` or an IPv6 address. |
-| `edge.public_ipv4: <address> is not a public IPv4 address` | The address is not a global unicast address, or is in a private range, the vRack range, or the machine range. |
+| `edge.public_ipv4: <address> is not a public IPv4 address` | The address is not a global unicast address, or is in a private range or the machine range. |
 | `edge.public_ipv4: only a server with the role edge holds a floating address` | A server without the role `edge` sets the key. |
 | `edge.floating_addresses: "<value>" is not an IPv4 address` | An entry does not parse as an IPv4 address, such as `203.0.113.102/32` or an IPv6 address. |
 | `edge.floating_addresses: <address> is not a public IPv4 address` | An entry is not a global unicast address, or is in a private range, the vRack range, or the machine range. |

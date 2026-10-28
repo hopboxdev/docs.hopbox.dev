@@ -222,6 +222,33 @@ The leader logs `taking the drains on failed` at level warn with `err`, with `co
 
 The leader sweep frees the subnet of a decommissioned node, with the other sweeps ([Control store tables](/reference/control-store/index.html.md#node_subnets)). A subnet is free once no machine address of it is held. An address is held when `held_until` is null or in the future. A moved machine keeps the address of its first node, so the subnet stays taken while such a machine lives. The next node that gets its first machine takes the first free subnet, which can be the freed one ([the node network](/reference/node-network/index.html.md)). The sweep log `freed reserved machine names and ports` has the field `subnets` for the count.
 
+## Removal of the node role
+
+The removal of the role `node` from a running server moves its machines off as a drain does. But the server stays in the install with its other roles. An example is an edge server that keeps `edge`. `RemoveServerRoles` of the admin API ([the admin API](/reference/admin-api/index.html.md#removeserverroles)) or `hopboxd admin server remove-role <server> node` ([hopboxd](/reference/hopboxd/index.html.md#admin-server-remove-role)) starts it. The call cordons the server, and the state turns `cordoned`, not `draining`.
+
+The code is in `internal/service/removals.go`. The leader job calls `service.AdvanceRemovals` every 5 s, after `service.AdvanceDrains`. Each run does what a drain does with the machines of the node ([The machines of the node](#the-machines-of-the-node)): at most 2 moves at once, the same waits, and the same reasons of a stranded machine. The rows of `removal_strands` name the stranded machines, and `removal_error` says why the removal waits ([Control store tables](/reference/control-store/index.html.md#removal_strands)). The audit entry of each move is `machine.move` with the actor `system` and the detail `removal`, the ID of the server. Each run also sets the cordon again, when a control process of an older release lifted it.
+
+These things differ from a drain:
+
+- No empty check and no decommission come at the end. The removal is ready once the server holds no machine, no allocation, and no move from or to it. It must also hold no old copy of a moved machine, and no copy of a disk that a failed move left. An enrollment of the server with the roles that stay then ends the removal ([Enrollment and the install PKI](/reference/enrollment/index.html.md#remove-roles-from-an-enrolled-server)).
+- A stranded machine stays stranded until the cancel of the removal. A second `RemoveServerRoles` with the same roles returns the pending removal, and changes nothing.
+- `CancelRoleRemoval` ends a removal that cannot finish. Each move from the server that started with the removal and still runs ends as `CancelMove` ends it, with the error `an instance admin canceled the removal of the node role`. A machine that moved stays on its new node ([the admin API](/reference/admin-api/index.html.md#cancelroleremoval)).
+- The server keeps its row in `node_subnets`, because each moved machine keeps the address of its first node ([the node network](/reference/node-network/index.html.md)).
+
+### Logs of the removal
+
+The control role logs with `component=service`:
+
+| Message | Level | Fields |
+| --- | --- | --- |
+| `the removal of roles from a server starts` | info | `server`, `roles`, `cordoned_before` |
+| `the removal of the node role moves a machine` | info | `server`, `machine`, `move`, `target` |
+| `the removal of the node role cannot move a machine, so the machine stays with its disk` | warn | `server`, `machine`, `reason` |
+| `a step of the removal of the node role failed. The next run tries again` | warn | `server`, `err` |
+| `an instance admin canceled the removal of roles from a server` | info | `server`, `roles`, `moved`, `canceled_moves` |
+
+The leader logs `taking the removals of the node role on failed` at level warn with `err`, with `component=leader`.
+
 ## What the machine keeps
 
 | Item | After the move |
@@ -312,6 +339,8 @@ A release of the schema version 44 to 49 runs beside migration 0050 ([Control st
 An executor of an older release on the target can boot a new disk from the image, and report `stopped` or `running`. That report has no `pulled_move_id`, so the move fails and the source keeps the disk ([End of a move](#end-of-a-move)).
 
 The drain needs migration 0051 (`service.DrainsSchema`, [Control store tables](/reference/control-store/index.html.md#server_drains)). A release of the schema version 44 to 50 runs beside it. It never reads the new tables, runs no drain job, and shows `draining` and `shutting_down` as unknown. It places nothing on such a node. It keeps the state in its heartbeats and never marks such a node unresponsive. Its uncordon can clear the cordon flag, which the next step of the drain sets again. Its hand-off of a move from a draining source waits and fails after 10 min. So while such a control process is live, `DrainServer` refuses, and the drain job starts no move, runs no check, and decommissions nothing ([Start](#start)).
+
+The removal of a role needs migration 0056 (`service.RemovalsSchema`, [Control store tables](/reference/control-store/index.html.md#removal_strands)). A release of the schema version 44 to 55 runs beside it. It never reads the removal, and its enrollment refuses a list that drops a role. Its uncordon can clear the cordon of a removal of `node`, which the next step of the removal sets again. So while such a control process is live, `RemoveServerRoles` refuses, and the removal job starts no move.
 
 ## Metrics
 
@@ -405,3 +434,5 @@ The disk listener and the pulls log with `component=transfer` and `machine`. The
 | `TestDrainEndToEnd` of `internal/control` | `make test` | Two nodes over mutual TLS on loopback. A running and a stopped machine move with their data and their address, and the drain decommissions the node. |
 | `TestDrain` of `test/fleet` | `make test-fleet` | With no room, the drain strands all three machines. Then a drain with a failed pull of box3 strands box3, while box1 and box2 move, at most 2 at once. A retry moves box3, and 3 empty checks a minute apart decommission node1. |
 | `TestDrainKVM` of `test/fleet` | `make test-fleet` with `FLEET_KVM_BUNDLE`, on a host with `/dev/kvm` | KVM nodes with the real Firecracker. It skips without `/dev/kvm` and `FLEET_KVM_BUNDLE`. |
+| `TestRemoveEdgeAndDNS`, `TestTwoRemovalsSeeEachOther`, `TestRemoveServerRolesRefusals`, `TestRemoveNode`, `TestRemoveNodeWithoutRoom`, `TestCancelEndsTheMovesOfTheRemoval`, `TestRemovalStartsNoMoveBesideAnOldControlProcess`, `TestEnrollEndsTheRemovalOfEdgeAndDNS`, `TestEnrollEndsTheRemovalOfNode`, `TestTokenAddsOnlyARoleThatTheServerLost`, `TestEnrollRefusesAnAddAndADropAtOnce`, `TestAnAddBesideTheEndOfARemovalAddsNothing`, `TestRemovalOfNodeWaitsForTheOldCopy`, `TestRemovalOfNodeWaitsForAKeptCopy`, `TestAddWaitsForAPendingRemoval`, `TestEndNeedsATokenForTheRolesThatStay`, `TestDecommissionEndsTheRemoval`, `TestRemoveServerRolesRefusesADrainingServer`, `TestLeaderCordonsTheRemovalAgain`, `TestCancelKeepsTheMovesOfAnAdmin` of `internal/service` | `make test` | The removal of a role in the control store. The tests cover each refusal of the start, the moves of node at most 2 at once, and the stranded machines. They cover the cancel with its cordon and the moves of an admin, and the end through `Enroll` with its refusals and an unused token. They also cover the leftovers of a node, the old certificate, `removed_roles`, the gate of an add, and the mesh peer without the subnet. |
+| `TestRemoveNodeFromAnEdge` of `test/fleet` | `make test-fleet` | The removal of node from an edge with three machines. The test covers the moves, a stranded machine, a cancel, and the end. It covers the add of node back with the same subnet, and a token for a role that the server never lost. |

@@ -107,6 +107,9 @@ The heartbeat holds these values.
 | `disk_transfer` | bool | Tells that the server serves and pulls the disks of the cold moves ([Cold move](/reference/cold-move/index.html.md#two-releases)). The control role records the `hopboxd_version` of the heartbeat with it. | |
 | `removed_machines` | repeated string | The IDs of the machines of the last `remove` of `DiskTransfers` whose old files the server removed ([Disk transfers](#disk-transfers)). | at most 4096, each a UUID |
 | `egress_exit` | bool | Tells that the server takes the egress of the machines of the other nodes. It is true on an edge server whose egress tunnel `hbe0` is ready ([the egress of the machines](/reference/egress/index.html.md#egress-edges)). The control role records the `hopboxd_version` of the heartbeat with it, in `servers.egress_exit_version`. A server of a release before the egress tunnels never sends it. | |
+| `features` | repeated string | The features of the `hopboxd` of the server, as `hopboxd version --json` lists them, such as `remove-role` ([the version command](/reference/version/index.html.md)). The control role records them in `servers.features`, with the `hopboxd_version` of the heartbeat in `servers.reports_version`. A server of a release before the field sends none. | at most 64, each from 1 to 64 bytes of UTF-8 |
+| `addresses` | repeated string | The public addresses on the interfaces of the server: each global unicast address that is not private, such as its peer address and the floating addresses on its uplink. The control role records them in `servers.addresses`. The removal of a role from the server checks that the public addresses of the install name none of them. | at most 64, each an IP address |
+| `floating_addresses` | repeated string | The floating addresses of the bootstrap config of an edge server: `edge.public_ipv4`, `edge.floating_addresses`, and `edge.public_ipv6` ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)). A server without the edge role sends none. The control role records them in `servers.floating_addresses`. | at most 64, each an IP address |
 
 `CPUFingerprint`:
 
@@ -303,6 +306,9 @@ On a server, the `Collector` of `internal/node` gathers the facts. It reads some
 | `disk_transfer`, `removed_machines` | the disk listener and the executors of the node ([Cold move](/reference/cold-move/index.html.md)). A node whose driver keeps no disk in files, and a server without the node role, send false and an empty list. | each heartbeat |
 | `dns_zone_serial` | the serial of the zones that the DNS role serves, the value of `hopbox_dns_zone_serial` ([the DNS role](/reference/dns/index.html.md#metrics)). A server without the DNS role, or without zones, leaves it out. | each heartbeat |
 | `egress_exit` | the last check of the egress tunnel `hbe0` of an edge server ([the egress of the machines](/reference/egress/index.html.md#egress-edges)). A server without the edge role sends false. | each heartbeat |
+| `features` | the features of `hopboxd`, as `hopboxd version --json` lists them | each heartbeat |
+| `addresses` | the addresses of the network interfaces of the host. A failed read sends none. | each heartbeat |
+| `floating_addresses` | `edge.public_ipv4`, `edge.floating_addresses`, and `edge.public_ipv6` of the bootstrap config. A server without the edge role sends none. | each heartbeat |
 
 A server without the node role runs no machine. So it skips the preflight checks and the snapshot version. Its `status` is always `SERVER_STATUS_OK`, its `problems` come only from the host, the CPU, and the capacity, and its `compatibility_class` is empty.
 

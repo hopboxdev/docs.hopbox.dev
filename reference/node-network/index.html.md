@@ -43,6 +43,14 @@ The subnet of the first node keeps the address while the machine lives. So a cre
 
 A drain moves every machine off a node, and then decommissions the node ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node)). The leader sweep, which runs every 10 min with the other sweeps, frees the subnet of a decommissioned node once no machine address of that subnet is held. An address is held when `held_until` is null or in the future. A moved machine keeps the address of its first node, so the subnet stays taken while such a machine lives. After a delete, the hold of 5 min ends, and the next sweep frees the subnet. The next node that gets its first machine takes the first free subnet, which can be the freed one.
 
+### Subnet of a server without the node role
+
+The removal of the role `node` from a running server moves its machines to other nodes, and the server stays in the install with its other roles ([Cold move](/reference/cold-move/index.html.md#removal-of-the-node-role)). The server keeps its row in `node_subnets`, because each moved machine keeps the address of its first node. The node that holds a moved machine routes its `/32` and its `/128`, and its mesh peer allows them, as after any move. The mesh peer of the server keeps only its mesh address, as for a server without the node role ([the mesh](/reference/mesh/index.html.md#allowed-ips)).
+
+After the restart without the node role, `hopboxd` removes the table `inet hopbox_node` and the tap devices `hbt*` that are left. It does this once neither the config nor the identity of the server names the role ([hopboxd](/reference/hopboxd/index.html.md#remove-roles)). The host firewall closes port 7444 of the disk listener ([the host firewall](/reference/host-firewall/index.html.md#ports)). The egress tunnels of a node go with the role, and the server keeps the egress tunnel of its edge role.
+
+When the role `node` comes back to the server, the node takes its old subnet again ([Enrollment and the install PKI](/reference/enrollment/index.html.md#add-roles-to-an-enrolled-server)). So a new machine there gets an address of the same subnet.
+
 ### Where the address shows
 
 | Place | What it holds |
@@ -274,7 +282,7 @@ sudo systemctl restart hopboxd
 | The node, at any of its addresses | Dropped by the chain `input`. Only the replies to the connections that the node opened pass, and the neighbor discovery of IPv6. So a machine reaches no service of the node, such as the API, the metrics, or the control role. |
 | Any destination, from a source address that is not an address of the machine | Dropped. |
 
-The edge server drops the same private ranges, the mesh range, and the vRack range again, in its host firewall, with the peer addresses of the install ([the host firewall](/reference/host-firewall/index.html.md#the-egress-of-the-machines)).
+The edge server drops the same private ranges and the mesh range again, in its host firewall, with the peer addresses of the install ([the host firewall](/reference/host-firewall/index.html.md#the-egress-of-the-machines)).
 
 No egress allowlist exists in phase 1, so a machine reaches every public host. Allowlists and the egress proxy come in phase 4.
 

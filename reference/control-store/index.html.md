@@ -766,7 +766,17 @@ Migration `0034_acme.sql`. The state of the attempts of the ACME job ([the certi
 
 ## servers
 
-Migrations `0015_servers.sql`, `0030_server_labels.sql`, `0045_control_processes.sql` (the column `channel_process`), `0050_machine_moves.sql` (the column `disk_transfer_version`), `0051_server_drains.sql` (the states `draining` and `shutting_down`), `0052_dns_zone_serial.sql` (the column `dns_zone_serial`), `0053_egress_exit.sql` (the column `egress_exit_version`), and `0054_peer_addresses.sql` (the column `peer_address`). The server registry: one row per enrolled server. Enrollment inserts the row, and each heartbeat on the control channel writes the facts of the server ([the control channel](/reference/control-channel/index.html.md)).
+Migrations `0015_servers.sql` and `0030_server_labels.sql`, and these later migrations:
+
+- `0045_control_processes.sql` adds the column `channel_process`.
+- `0050_machine_moves.sql` adds the column `disk_transfer_version`.
+- `0051_server_drains.sql` adds the states `draining` and `shutting_down`.
+- `0052_dns_zone_serial.sql` adds the column `dns_zone_serial`.
+- `0053_egress_exit.sql` adds the column `egress_exit_version`.
+- `0054_peer_addresses.sql` adds the column `peer_address`.
+- `0056_role_removal.sql` adds the reports of the heartbeats, the removal of a role, and `removed_roles`.
+
+The server registry: one row per enrolled server. Enrollment inserts the row, and each heartbeat on the control channel writes the facts of the server ([the control channel](/reference/control-channel/index.html.md)).
 
 | Column | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -796,6 +806,15 @@ Migrations `0015_servers.sql`, `0030_server_labels.sql`, `0045_control_processes
 | `dns_zone_serial` | `bigint` | null | The serial of the zones that the DNS role of the server served at its last heartbeat, from 0 to 4294967295 ([the DNS role](/reference/dns/index.html.md#the-serial-of-each-dns-server)). Each heartbeat sets it, and a heartbeat without it sets null. Migration `0052_dns_zone_serial.sql` adds it, with `oldest_schema_version` 44. A control process of schema version 44 to 51 never reads it, and its heartbeats leave it as it is. So while such a process holds the channel of a server, the column keeps the serial of an older heartbeat. |
 | `egress_exit_version` | `text` | empty | The `hopboxd_version` of the last heartbeat that said `egress_exit` ([the control channel](/reference/control-channel/index.html.md#heartbeat)). Each other heartbeat of a release that knows the field sets it empty. An egress edge has this value equal to its `hopboxd_version`, and the state `ready`, `cordoned`, or `draining` ([the egress of the machines](/reference/egress/index.html.md#egress-edges)). The read of the mesh gives this to each peer as `egress` ([mesh_members](#mesh_members)). Migration `0053_egress_exit.sql` adds it, with `oldest_schema_version` 44, as `0050_machine_moves.sql` does for `disk_transfer_version`. A `hopboxd` of schema version 44 to 52 never reads it, and its heartbeats leave it as it is. |
 | `peer_address` | `inet` | null | The peer address of the server: the public IPv4 address at which the other servers reach it. The enrollment sets it from the token, and `SetServerPeerAddress` sets it. A heartbeat never changes it ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)). It is the endpoint of the server in the mesh ([the mesh](/reference/mesh/index.html.md#the-peers)). Null for a server without one, which stays out of the mesh. Migration `0054_peer_addresses.sql` adds it, with `oldest_schema_version` 44. A `hopboxd` of schema version 44 to 53 never reads it. |
+| `features` | `text[]` | empty | The features of the `hopboxd` of the last heartbeat that reported them, such as `remove-role` ([the control channel](/reference/control-channel/index.html.md#heartbeat)). |
+| `addresses` | `inet[]` | empty | The public addresses on the interfaces of the server, from the same heartbeat. |
+| `floating_addresses` | `inet[]` | empty | The floating addresses of the bootstrap config of an edge server, from the same heartbeat. |
+| `reports_version` | `text` | empty | The `hopboxd_version` of the heartbeat that wrote `features`, `addresses`, and `floating_addresses`. A heartbeat of a release that knows the fields writes all four. A check of these fields takes them only while this value equals `hopboxd_version`. So after a rollback, the reports of a newer release never stand for an older one. |
+| `removal_roles` | `text[]`, can be null | null | The roles of the pending removal of the server, such as `{edge,dns}`. Null without a removal. |
+| `removal_cordoned_before` | `boolean`, can be null | null | True when the server was cordoned before its pending removal started. The end and the cancel of the removal lift only a cordon that the removal set. Null without a removal. |
+| `removal_started_at` | `timestamptz`, can be null | null | The start of the pending removal. A move that failed before it strands no machine. Null without a removal. |
+| `removal_error` | `text` | empty | Why the pending removal waits now, such as a machine that has not booted yet. Empty otherwise. |
+| `removed_roles` | `text[]` | empty | The roles that a removal took from the server. A token adds a role to the enrolled server only when this list holds the role, and the add takes the role out of it. The trigger `servers_role_add` holds this check for each release ([removal_strands](#removal_strands)). |
 | `enrolled_at` | `timestamptz` | the time of the insert | When the server enrolled. |
 | `version` | `bigint` | `1` | The row version. Each heartbeat adds 1. |
 | `created_at` | `timestamptz` | the time of the insert | When the row was made. |
@@ -1198,14 +1217,13 @@ The create of a machine claims the first address of the subnet of its node that 
 
 ## mesh_members
 
-Migrations `0049_mesh_members.sql` and `0055_mesh_on_peer_addresses.sql`. One row for each server in the mesh ([the mesh](/reference/mesh/index.html.md)).
+Migrations `0049_mesh_members.sql`, `0055_mesh_on_peer_addresses.sql`, and `0057_drop_vrack_address.sql`. One row for each server in the mesh ([the mesh](/reference/mesh/index.html.md)).
 
 | Column | Type | Description |
 | --- | --- | --- |
 | `server_id` | `uuid`, primary key | The server, a row of `servers`. |
 | `address` | `inet`, unique | The mesh address of the server, a `/32` of `10.239.0.0/16`. It stays with the server for its whole life. |
 | `public_key` | `bytea`, unique | The public key of the WireGuard device of the server, 32 bytes. |
-| `vrack_address` | `inet`, null | Null in each new row. A row from before migration `0055` can hold the old vRack address of the server, and an update of its key clears it. Nothing reads it, and N31 drops the column. |
 | `version` | `bigint` | The row version. |
 | `created_at` | `timestamptz` | The first heartbeat of the server with its part of the mesh. |
 | `updated_at` | `timestamptz` | The last change. |
@@ -1214,7 +1232,7 @@ The heartbeat of a server writes its row, in the transaction of the heartbeat ([
 
 The endpoint of each member is its `servers.peer_address`. The read of the mesh leaves out a member without a peer address.
 
-Both migrations have the line `-- oldest_schema_version: 44`, because a `hopboxd` of an older release never reads the table ([the bundled Postgres](/reference/postgres/index.html.md#two-releases-on-one-store)). The servers of such a release stay out of the mesh until they upgrade. No release has a schema version from 49 to 54, so no release reads the old column `vrack_address`.
+Migrations `0049` and `0055` have the line `-- oldest_schema_version: 44`, because a `hopboxd` of an older release never reads the table ([the bundled Postgres](/reference/postgres/index.html.md#two-releases-on-one-store)). The servers of such a release stay out of the mesh until they upgrade. Migration `0057` drops the old column `vrack_address`, which held the vRack address of a server before migration `0055`. It has the line `-- oldest_schema_version: 57`. The builds of schema version 49 to 56 write that column, and no release has a schema version from 44 to 56. So such a build refuses the store at its start, and does not fail later at a write of the mesh.
 
 A key that the row of another server holds changes nothing: the heartbeat goes on without its part of the mesh. A decommissioned server keeps its row, so no other server takes its address. The read of the mesh leaves out the decommissioned servers. It also reads `servers.egress_exit_version`, `hopboxd_version`, and `state`, which give each edge server its field `egress` ([the egress of the machines](/reference/egress/index.html.md#egress-edges)).
 
@@ -1272,6 +1290,25 @@ Migration `0051_server_drains.sql`. One row per machine that the drain of a serv
 The primary key is `(server_id, machine_id)`. The index `drain_strands_machine` lists the rows of a machine.
 
 The migration has the line `-- oldest_schema_version: 44`, so a release of the schema version 44 to 50 runs beside it. Such a release never reads the two tables. It shows `draining` and `shutting_down` as unknown (`SERVER_STATE_UNSPECIFIED`), and places nothing on such a node, because placement takes only `ready` nodes. It keeps the state in its heartbeats, and its leader job never marks such a node unresponsive. Its uncordon can clear the flag `cordoned`, which the next step of the drain sets again. Its leader runs no drain job, and its hand-off of a move from a draining source waits and fails after 10 min. While a live row of `control_processes` has a `schema_version` below 51, `DrainServer` refuses, and the drain job starts no move and decommissions nothing ([Cold move](/reference/cold-move/index.html.md#two-releases)).
+
+## removal_strands
+
+Migration `0056_role_removal.sql`. One row per machine that the removal of the node role from a server cannot move, with the reason, as [drain_strands](#drain_strands) for a drain. The end and the cancel of the removal drop the rows.
+
+| Column | Type | Description |
+| --- | --- | --- |
+| `server_id` | `uuid` | The server of the removal, a row of `servers`. |
+| `machine_id` | `uuid` | The machine, a row of `machines`. A delete of the machine row deletes the row. |
+| `reason` | `text` | Why the machine cannot move. It is never empty. |
+| `version` | `bigint` | The row version. |
+| `created_at` | `timestamptz` | The time of the row. |
+| `updated_at` | `timestamptz` | The last change. |
+
+The primary key is `(server_id, machine_id)`. The index `removal_strands_machine` lists the rows of a machine.
+
+The migration also adds the reports of the heartbeats, the removal, and `removed_roles` to [servers](#servers). The check constraint `servers_removal_whole` keeps `removal_roles`, `removal_cordoned_before`, and `removal_started_at` all null or all set, with at least one role. The partial index `servers_removal` lists the servers with a removal. The migration has the line `-- oldest_schema_version: 44`, so a release of the schema version 44 to 55 runs beside it. Such a release never reads the new columns and the new table, and its heartbeats leave the reports as they are. Its enrollment refuses a list that drops a role, so no removal ends through it.
+
+Such a release adds a role to an enrolled server without the check of `removed_roles`. So the trigger `servers_role_add` holds that check in the store, for each release. It runs the function `servers_role_add_gate` before each `UPDATE` of `servers.roles`. It refuses new roles that are not in the old `roles` or the old `removed_roles`, with the code `check_violation` (`23514`). A drop of a role passes. The enrollment of this release checks `removed_roles` first. It sets the roles before it takes the role out of `removed_roles`, so the trigger never refuses it.
 
 ## placements
 

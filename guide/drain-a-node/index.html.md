@@ -185,6 +185,10 @@ The drain of this release has these limits:
 - The empty checks need a server that sends heartbeats. If an empty server stops, the drain waits with `the server sends no heartbeat, so the drain waits for it`. To take out such a server, run `hopboxd admin server decommission`, which takes an unresponsive server that holds nothing.
 - A server that keeps a copy of a disk after a failed move stays in the install until the machine of that copy is deleted ([A kept copy of a disk](#a-kept-copy-of-a-disk)). No call gives such a machine back to this server yet.
 
+## Take only the node role
+
+A drain takes the whole server out. To take only the machines off a server and keep its other roles, remove its role `node` instead. An example is an edge server. Run `sudo hopboxd admin server remove-role <id> node`. The removal moves the machines cold as a drain does, at most 2 at once. It names each machine that cannot move. No decommission comes at the end. Unlike a drain, a removal can stop: `sudo hopboxd admin server cancel-remove-role <id>` ends it, and the machines that moved stay on their new nodes ([Cold move](/reference/cold-move/index.html.md#removal-of-the-node-role)). A drain and a removal exclude each other on one server.
+
 ## Drain with Terraform
 
 When Terraform destroys a `hopbox_server`, the hopbox Terraform provider drains the server first, and waits until the drain decommissions it ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#drain-of-a-server)). If a machine cannot move, `terraform destroy` fails and names the machine with its reason. The server then stays in the install and in the Terraform state. Fix the reason, then run `terraform destroy` again. The drain goes on meanwhile, and can decommission the server by itself. The resource then stays in the Terraform state, and the next `terraform destroy` stops `hopboxd` on the server and removes the secrets of the install from it. The OVHcloud server stays rented after the destroy.

@@ -6,7 +6,7 @@ The egress of a machine is its traffic to the internet. It leaves the install th
 
 The tunnels are in `internal/egress`. The node table `inet hopbox_node` picks the tunnel of each packet ([the node network](/reference/node-network/index.html.md#the-table-inet-hopbox_node)). The host firewall of an edge server forwards and translates the egress ([the host firewall](/reference/host-firewall/index.html.md#the-egress-of-the-machines)).
 
-In the examples, the vRack interface is `enp3s0f1`, and the uplink is `eno1`. `edge1` has the peer address `203.0.113.21`, the floating address `203.0.113.101`, and the uplink address `2001:db8:1::21`. `edge2` has `203.0.113.22`, `203.0.113.102`, and `2001:db8:2::22`.
+In the examples, the uplink is `eno1`. `edge1` has the peer address `203.0.113.21`, the floating address `203.0.113.101`, and the uplink address `2001:db8:1::21`. `edge2` has `203.0.113.22`, `203.0.113.102`, and `2001:db8:2::22`.
 
 ## The way out of each server
 
@@ -34,7 +34,7 @@ A server needs the mesh device for a tunnel, because the tunnels use its private
 | Return mark on an edge server | `0x68620100`, with the table `26819` and the rule priority `26800`. |
 | Conntrack mark on an edge server | The bit `0x20000000`, on each connection that comes out of a tunnel. It is for hopbox alone, as the mark of the node is ([the node network](/reference/node-network/index.html.md#the-mark-of-the-node-is-reserved)). |
 
-The [host firewall](/reference/host-firewall/index.html.md#ports) opens UDP `51821` from the set `peers` on an edge server. It opens UDP `51821` to `51836` from the set `peers` on a node without the edge role. The vRack zone opens none of these ports.
+The [host firewall](/reference/host-firewall/index.html.md#ports) opens UDP `51821` from the set `peers` on an edge server. It opens UDP `51821` to `51836` from the set `peers` on a node without the edge role.
 
 ## Egress edges
 
@@ -269,8 +269,8 @@ The tunnels and the check of the uplink of an edge server log with `component=eg
 | `the egress tunnels lost a part outside hopboxd, so hopboxd set it again` | warn | `mode`, `parts` | A check set again what changed outside `hopboxd`. |
 | `the reverse path filter is on, so the kernel drops the packets of the egress tunnels, and this server takes no egress. Set the sysctl net.ipv4.conf.all.rp_filter to 0` | error | `rp_filter` | See [The reverse path filter](#the-reverse-path-filter). |
 | `the machines of this node send their egress through the egress tunnels` | info | `tunnels` | The count of tunnels of a node changed, and the tunnels hand it to the node network. |
-| `removed what the IPv6 block of the vRack left on this server, because this release sends the IPv6 egress of the machines out of the uplink` | info | `removed` | A check removed parts of the IPv6 block of a release before N29 ([What the IPv6 block left](#what-the-ipv6-block-left)). `removed` lists the addresses, the count of routes, and the rules. |
-| `cannot remove what the IPv6 block of the vRack left on this server. The next check tries again` | error | `err`, `retry_in` | A read or a removal failed. It logs once until the error changes. |
+| `removed what the IPv6 block of an older release left on this server, because this release sends the IPv6 egress of the machines out of the uplink` | info | `removed` | A check removed parts of the IPv6 block of a release before N29 ([What the IPv6 block left](#what-the-ipv6-block-left)). `removed` lists the addresses, the count of routes, and the rules. |
+| `cannot remove what the IPv6 block of an older release left on this server. The next check tries again` | error | `err`, `retry_in` | A read or a removal failed. It logs once until the error changes. |
 | `the default route of the uplink lost the peer address as its source, so hopboxd set it again` | warn | `device`, `source`, `peer_address` | The check of the uplink of an edge server with floating addresses set the source of the default route ([the edge role](/reference/edge/index.html.md#the-check-of-the-uplink)). `source` is the source before, or `none`. |
 | `the uplink lost a floating address of this edge server, so hopboxd put it back` | warn | `device`, `address` | The check put an address of `edge.public_ipv4`, `edge.floating_addresses`, or `edge.public_ipv6` back on the uplink. |
 | `cannot set the peer address as the source of the default route of the uplink. The next check tries again` | error | `device`, `source`, `peer_address`, `err`, `retry_in` | The change of the route failed. It logs once until the error changes. |
@@ -311,7 +311,7 @@ These errors come in the field `err` of `cannot set up the egress tunnels. The n
 | `TestFindUplink` of `internal/egress` | `make test-linux` | An uplink with a static address, an address of a router advertisement, the floating address, and a unique local address. The pick takes the static address, or the preferred source of the default route, and never the floating address. |
 | `TestEdgeSourceStaysOnThePeerAddress` of `internal/egress` | `make test-linux` | The source of the own connections of an edge server, and the check of its uplink ([the edge role](/reference/edge/index.html.md#the-check-of-the-uplink)). |
 | `TestLeftoversRemoveTheIPv6Block` of `internal/egress` | `make test-linux` | What a release before N29 left on an edge server: the address of the block, the table `hopbox_egress6` with its two default routes, and its two rules. A check removes them, and keeps the other addresses, routes, and rules. |
-| `TestTheTunnelsCarryTheEgressBothWays` of `internal/egress` | `make test-linux`, as root in a privileged container | A node and an edge server on one vRack link, each with its mesh device and the real kernel WireGuard. A packet of a machine with the mark of its tunnel reaches the edge server with the address of the machine. The reply with the return mark comes back through the tunnel. It checks IPv4 and IPv6. |
+| `TestTheTunnelsCarryTheEgressBothWays` of `internal/egress` | `make test-linux`, as root in a privileged container | A node and an edge server on one link, each with its mesh device and the real kernel WireGuard. A packet of a machine with the mark of its tunnel reaches the edge server with the address of the machine. The reply with the return mark comes back through the tunnel. It checks IPv4 and IPv6. |
 | `TestIPv6ForwardingKeepsTheDefaultRouteOfTheUplink` of `internal/egress` | `make test-linux` | A host whose uplink takes its IPv6 default route from a real router advertisement. After IPv6 forwarding turns on, the route stays, and a new advertisement renews it. |
 | `TestEdgeEgress` and `TestLocalExitIPv6` of `internal/hostfw` | `make test-linux` | The host firewall of an edge server, and the NAT66 of a local exit ([the host firewall](/reference/host-firewall/index.html.md#tests)). |
 | `TestNodeNetwork` and `TestLocalExit` of `internal/node/netcfg` | `make test-linux` | The node table with a stand-in tunnel, and a local exit ([the node network](/reference/node-network/index.html.md#tests)). |

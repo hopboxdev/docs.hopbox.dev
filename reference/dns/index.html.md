@@ -168,6 +168,8 @@ A crash during a write can leave a temp file `.zones.<random>.tmp` in the dir. T
 
 `hopbox_dns_zone_serial` and the heartbeat show the serial of the zones of the file while the DNS role serves them ([The serial of each DNS server](#the-serial-of-each-dns-server)).
 
+When the role `dns` leaves a running server, the end of the removal restarts `hopboxd` without the role. At that start, `hopboxd` removes the dir `<data_dir>/dns` with the file `zones`, once neither the config nor the identity of the server names the role ([hopboxd](/reference/hopboxd/index.html.md#remove-roles)). `hopboxd install` drops `dns.listen` from the config with the role, and the host firewall closes port 53 ([the host firewall](/reference/host-firewall/index.html.md#ports)). The control store keeps the zones, because the other DNS servers serve them ([the admin API](/reference/admin-api/index.html.md#removeserverroles)).
+
 ## The serial of each DNS server
 
 Each heartbeat of a server with the DNS role carries the serial of the zones that it serves, in `dns_zone_serial` ([the control channel](/reference/control-channel/index.html.md#heartbeat)). The control role keeps it in the registry, so the admin API and `hopboxd admin server get` show it ([the admin API](/reference/admin-api/index.html.md#server)):

@@ -199,3 +199,45 @@ The new server takes the same addresses as the old one:
 3. Route the floating IPv4 address and the floating IPv6 address to the new server at the provider. The Terraform provider never moves an address.
 
 The public addresses of the install stay the same, so the zone and the glue records need no change. The IPv6 egress of the machines leaves from the uplink address of the new server, so its IPv6 source changes ([the egress of the machines](/reference/egress/index.html.md#the-source-addresses)).
+
+## Take the edge role from a server
+
+A server can give its roles edge and DNS to the edge servers and keep its other roles ([the admin API](/reference/admin-api/index.html.md#removeserverroles)). An example is a first server that keeps the roles control and node. This section takes them from the server `server1`, while the edge servers keep them.
+
+1. Make sure that another edge server is ready with the roles edge and DNS, and holds a floating address. The removal checks it.
+2. Set the public addresses of the install without the addresses of `server1`. Then the zone names only the edge servers that stay. Run on a control server:
+
+   ```sh
+   sudo hopboxd admin config set --public-address 203.0.113.101
+   ```
+
+3. Wait until each name server serves the new zone, as in [Check each name server](#check-each-name-server). The parent zone keeps its glue records only for the name servers that stay.
+4. Start the removal. Run on a control server:
+
+   ```sh
+   sudo hopboxd admin server remove-role <id of server1> edge dns
+   ```
+
+5. If `server1` is a control server whose internal listener listens on loopback, move the listener to the peer address of `server1`. The control role refuses a token with a peer address on a call from loopback, and in step 6 `server1` calls its own listener. Run on `server1`, with every role that it has now ([the internal listener](/reference/internal-listener/index.html.md#move-the-first-server-to-its-peer-address)):
+
+   ```sh
+   sudo hopboxd install --roles control,node,dns,edge --internal-listen <peer address of server1>:7443
+   ```
+
+6. End the removal on `server1`. Make a token for the server and the roles that stay, and run the install with every role that stays:
+
+   ```sh
+   sudo hopboxd admin enrollment-token create --server <id of server1> --roles node --peer-address <peer address of server1>
+   sudo HOPBOX_ENROLLMENT_TOKEN=<token> hopboxd install --roles control,node
+   ```
+
+7. After the restart of `hopboxd`, remove the floating addresses of `server1` from its uplink. The uplink is the interface of the IPv4 default route, which `ip route show default` names after `dev`. This example uses `eth0`, the floating IPv4 address `203.0.113.100`, and the floating IPv6 address `2001:db8::10`. Run on `server1`:
+
+   ```sh
+   sudo ip address del 203.0.113.100/32 dev eth0
+   sudo ip address del 2001:db8::10/128 dev eth0
+   ```
+
+   Then remove the addresses from the network configuration of the host too, so that a reboot does not put them back.
+
+`hopboxd` restarts without the roles edge and DNS, and the services of `server1` stop for some seconds. Its host firewall closes ports 80, 443, 53, and the SSH ports of the machines. From then on, port 22 takes only the jump hosts. So reach `server1` through an edge server that stays ([Reach the servers through the edge servers](#reach-the-servers-through-the-edge-servers)). For a server that Terraform manages, drop the roles `edge` and `dns` from its configuration, and apply instead. Drop its floating addresses there too. The provider runs steps 4 to 7 ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#roles-of-a-running-server)).

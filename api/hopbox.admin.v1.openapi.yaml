@@ -1810,6 +1810,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.ListPoolsResponse'
+  /hopbox.admin.v1.ServerService/CancelRoleRemoval:
+    post:
+      tags:
+        - hopbox.admin.v1.ServerService
+      summary: CancelRoleRemoval
+      description: |-
+        CancelRoleRemoval ends the pending removal of the roles of a server that
+         cannot finish. No new move starts, and each move from the server that a
+         removal of node started ends as CancelMove ends it. The server keeps
+         every role, and the cordon of the removal goes.
+      operationId: hopbox.admin.v1.ServerService.CancelRoleRemoval
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.CancelRoleRemovalRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.CancelRoleRemovalResponse'
   /hopbox.admin.v1.ServerService/CordonServer:
     post:
       tags:
@@ -2097,6 +2140,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.ListServersResponse'
+  /hopbox.admin.v1.ServerService/RemoveServerRoles:
+    post:
+      tags:
+        - hopbox.admin.v1.ServerService
+      summary: RemoveServerRoles
+      description: |-
+        RemoveServerRoles starts the removal of the roles edge, dns, node, or
+         more than one from a running server. It returns at once. For node, it
+         cordons the server, and the control role moves each machine of the
+         server cold to another node, at most 2 at once. An enrollment of the
+         server with the roles that stay ends the removal. A call for a server
+         with a pending removal of the same roles returns that removal.
+      operationId: hopbox.admin.v1.ServerService.RemoveServerRoles
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.RemoveServerRolesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.RemoveServerRolesResponse'
   /hopbox.admin.v1.ServerService/SetServerLabels:
     post:
       tags:
@@ -2696,6 +2784,26 @@ components:
       title: CancelMoveResponse
       additionalProperties: false
       description: CancelMoveResponse holds the move that ended.
+    hopbox.admin.v1.CancelRoleRemovalRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the ID of the server.
+      title: CancelRoleRemovalRequest
+      additionalProperties: false
+      description: CancelRoleRemovalRequest names a server.
+    hopbox.admin.v1.CancelRoleRemovalResponse:
+      type: object
+      properties:
+        server:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.Server'
+          title: server
+      title: CancelRoleRemovalResponse
+      additionalProperties: false
+      description: CancelRoleRemovalResponse holds the server after the cancel.
     hopbox.admin.v1.Capacity:
       type: object
       properties:
@@ -4605,6 +4713,32 @@ components:
       title: RemoveAccountSignInMethodResponse
       additionalProperties: false
       description: RemoveAccountSignInMethodResponse has no fields.
+    hopbox.admin.v1.RemoveServerRolesRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the ID of the server.
+        roles:
+          type: array
+          items:
+            type: string
+          title: roles
+          description: 'roles are the roles that go: edge, dns, node, or more than one.'
+      title: RemoveServerRolesRequest
+      additionalProperties: false
+      description: RemoveServerRolesRequest names a server and the roles that go.
+    hopbox.admin.v1.RemoveServerRolesResponse:
+      type: object
+      properties:
+        server:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.Server'
+          title: server
+      title: RemoveServerRolesResponse
+      additionalProperties: false
+      description: RemoveServerRolesResponse holds the server with its removal.
     hopbox.admin.v1.RetireSizeRequest:
       type: object
       properties:
@@ -4896,6 +5030,21 @@ components:
           description: |-
             peer_address is the public IPv4 address at which the other servers reach the server, such as
              203.0.113.12. It is empty on a server without one.
+        removal:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.ServerRoleRemoval'
+          title: removal
+          description: |-
+            removal is the pending removal of roles from the server. It is absent
+             without one.
+        removedRoles:
+          type: array
+          items:
+            type: string
+          title: removed_roles
+          description: |-
+            removed_roles are the roles that a removal took from the server. A
+             token adds a role to the server only when this list holds the role.
       title: Server
       additionalProperties: false
       description: Server is one enrolled server, with the facts of its last heartbeat.
@@ -4970,6 +5119,62 @@ components:
       description: |-
         ServerMesh is the part of a server in the mesh: the WireGuard network of the servers of the
          install over the vRack.
+    hopbox.admin.v1.ServerRoleRemoval:
+      type: object
+      properties:
+        roles:
+          type: array
+          items:
+            type: string
+          title: roles
+          description: roles are the roles that go, such as edge and dns.
+        startTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: start_time
+          description: start_time is the start of the removal.
+        cordonedBefore:
+          type: boolean
+          title: cordoned_before
+          description: |-
+            cordoned_before is true when the server was cordoned before the
+             removal. The end and the cancel of the removal lift only a cordon that
+             the removal set.
+        moving:
+          type: integer
+          title: moving
+          format: int32
+          description: moving counts the cold moves from the server that run now.
+        stranded:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.StrandedMachine'
+          title: stranded
+          description: |-
+            stranded are the machines that the removal of the node role cannot
+             move. Each one keeps its disk on the server.
+        error:
+          type: string
+          title: error
+          description: |-
+            error says why the removal waits now, such as a machine that has not
+             booted yet. It is empty when the removal goes on.
+        stuck:
+          type: boolean
+          title: stuck
+          description: |-
+            stuck is true when the removal of the node role cannot go on by itself:
+             no move runs, and each machine left on the server is stranded.
+        ready:
+          type: boolean
+          title: ready
+          description: |-
+            ready is true when the removal can end: the server holds no machine,
+             no disk of a move, and no allocation, or the removal keeps the node
+             role. An enrollment with the roles that stay then ends it.
+      title: ServerRoleRemoval
+      additionalProperties: false
+      description: ServerRoleRemoval is the pending removal of roles from a server.
     hopbox.admin.v1.ServerState:
       type: string
       title: ServerState
@@ -5431,7 +5636,9 @@ components:
              server (reference/cold-move.md "A step that an older control process accepted").
       title: StrandedMachine
       additionalProperties: false
-      description: StrandedMachine is a machine that the drain of a server cannot move.
+      description: |-
+        StrandedMachine is a machine that the drain of a server, or the removal
+         of its node role, cannot move.
     hopbox.admin.v1.SuspendOrgRequest:
       type: object
       properties:

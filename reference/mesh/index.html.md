@@ -1,8 +1,8 @@
 # The mesh
 
-> The WireGuard mesh of the servers over the vRack: the device hbm0, which servers join, the mesh addresses, the peers and their allowed IPs, the routes, a restart, metrics, logs, and errors.
+> The WireGuard mesh of the servers over their public addresses: the device hbm0, which servers join, the mesh addresses, the peers and their allowed IPs, the routes, a restart, metrics, logs, and errors.
 
-The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack, read Q90.
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page describes the code after milestone N31, which removes the last code of the vRack.
 
 The mesh connects the servers of an install over the public internet with kernel WireGuard. Each server is a peer at its peer address: the public IPv4 address at which the other servers reach it ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)). WireGuard encrypts the mesh traffic between servers. An edge server reaches the machines of each node over the mesh, and a cold move copies the disk of a machine over it ([Cold move](/reference/cold-move/index.html.md)). The control channel stays outside the mesh, on the peer addresses too.
 
@@ -71,7 +71,7 @@ An unresponsive server stays a peer. So when it comes back, the mesh works again
 | Server | Allowed IPs |
 | --- | --- |
 | A server with the node role | Its mesh address as a `/32`. Its node subnet, such as `10.240.16.0/20`, and the IPv6 `/64` of that subnet, such as `fd65:1c74:e769:1::/64`, once it has one: the control role gives a node its subnet at its first machine ([the node network](/reference/node-network/index.html.md#addresses)). The `/32` and the `/128` of each machine on it whose address is outside its subnet, such as a machine that moved to it ([the node network](/reference/node-network/index.html.md#moved-machines)). |
-| Another server | Its mesh address as a `/32`. |
+| Another server | Its mesh address as a `/32`. A server whose node role a removal took keeps its row in `node_subnets`, but its subnet leaves its allowed IPs. The nodes that hold its moved machines route their `/32` and `/128` ([the node network](/reference/node-network/index.html.md#subnet-of-a-server-without-the-node-role)). |
 
 The device refuses a mesh with an allowed IP outside these ranges: the mesh range, the machine range `10.240.0.0/12`, and the IPv6 range of the machines `fd65:1c74:e769::/48`. So no push can route a peer address, and so the control channel, over the device.
 
@@ -206,7 +206,7 @@ The other parts of the mesh log with their own components:
 
 | Test | Where it runs | What it checks |
 | --- | --- | --- |
-| The tests of `internal/mesh` without root | `make test`, also on a Mac | The device of a fake kernel: a device without a vRack, the peers at their peer addresses, a repair and its log, a restart, a refused mesh, and a route that another route holds and then frees. A refused mesh includes an endpoint on the vRack, on a Docker bridge, on loopback, in the mesh range, or of IPv6. |
+| The tests of `internal/mesh` without root | `make test`, also on a Mac | The device of a fake kernel: a device on each enrolled server, the peers at their peer addresses, a repair and its log, a restart, a refused mesh, and a route that another route holds and then frees. A refused mesh includes an endpoint in a private range, on a Docker bridge, on loopback, in the mesh range, or of IPv6. |
 | `TestMeshDevice` of `internal/mesh` | `make test-linux`, as root in a privileged container | Two servers in network namespaces with the real kernel WireGuard, each at its peer address on a veth. It checks the device, and a connection between the mesh addresses and to the subnet of a node. It also checks a new `hopboxd`, a deleted device, and a route that another route holds. |
 | `TestEdgeOverTheMesh` of `internal/node/netcfg` | `make test-linux` | An edge server reaches a machine over the mesh, and a server that is not an edge does not. |
 | `TestMeshPeers` of `internal/service` | `make test` | The mesh addresses, the endpoints at the peer addresses, the allowed IPs, a new key and peer address, a key of another server, a server without a peer address that joins once it gets one, and a decommissioned server. |
@@ -215,7 +215,7 @@ The other parts of the mesh log with their own components:
 | `TestMeshCarriesTheFirewallSets` of `internal/control` | `make test` | The sets of the host firewall in each mesh: the peer addresses of the servers, and those of the edges as the jump hosts. The agent hands them on also when the device refuses the mesh. |
 | `TestMeshWithoutFirewallKeepsTheSets` of `internal/node` | `make test` | A mesh of a control role of an older release, without `firewall`, leaves the sets of the host firewall as they are. |
 | `TestFirewallSets` of `internal/service` | `make test` | The sets of the host firewall in the store: a server without a peer address, a decommissioned edge, and a used or expired token stay out ([the host firewall](/reference/host-firewall/index.html.md)). |
-| `TestControlServersJoinThePeers` of `internal/service` | `make test` | The internal listener of each live control process on a peer address joins the set `peers`. A listener on loopback or on the vRack, and a stopped process, stay out of it. A stopped or silent process stays a known peer until the sweep of its row. |
-| `TestFleet` of `test/fleet` | `make test-fleet` | Three servers on the bridge `inet0`. A node and an edge reach each other only over the mesh, and the traffic between them on `inet0` is WireGuard only, apart from the control channel. The mesh and the control channel never use `vrack0`. A restart of `hopboxd` keeps the device and its traffic. A new key reaches the edge within a heartbeat. |
-| `TestMeshOnPeerAddresses` of `test/fleet` | `make test-fleet` | Servers without a link to `vrack0` form the mesh over `inet0` at their peer addresses. A Docker bridge and an address of the old vRack range give a server no endpoint. Between the peer addresses, `inet0` carries only WireGuard, TLS on 7443, and SSH from the jump host. A machine behind an edge without `edge.public_ipv4` reaches no internal listener. |
+| `TestControlServersJoinThePeers` of `internal/service` | `make test` | The internal listener of each live control process on a peer address joins the set `peers`. A listener on loopback or on a private address, and a stopped process, stay out of it. A stopped or silent process stays a known peer until the sweep of its row. |
+| `TestFleet` of `test/fleet` | `make test-fleet` | Three servers on the bridge `inet0`. A node and an edge reach each other only over the mesh, and the traffic between them on `inet0` is WireGuard only, apart from the control channel. A restart of `hopboxd` keeps the device and its traffic. A new key reaches the edge within a heartbeat. |
+| `TestMeshOnPeerAddresses` of `test/fleet` | `make test-fleet` | Servers form the mesh over `inet0` at their peer addresses. A Docker bridge and a bridge with a private address give a server no endpoint. Between the peer addresses, `inet0` carries only WireGuard, TLS on 7443, and SSH from the jump host. A machine behind an edge without `edge.public_ipv4` reaches no internal listener. |
 | `TestFirstServerMovesToItsPeerAddress` of `test/fleet` | `make test-fleet` | The move of the internal listener of a first server to its peer address, and a second server that joins the mesh after it. |

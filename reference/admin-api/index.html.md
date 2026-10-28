@@ -943,6 +943,8 @@ The message `Server` is one enrolled server, with the facts of its last heartbea
 | `dns_zone_serial` | optional uint32 | The serial of the zones that the DNS role of the server served at its last heartbeat. Absent on a server without the DNS role, and before its first zones. Compare it with the serial of the zones of the install to find a DNS server that lags ([the DNS role](/reference/dns/index.html.md#the-serial-of-each-dns-server)). |
 | `drain` | `ServerDrain` | The drain of the server (field 26). Absent when the server does not drain, and after the decommission. |
 | `peer_address` | string | The peer address of the server (field 27): the public IPv4 address at which the other servers reach it, such as `203.0.113.12` ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)). Empty for a server without one. The enrollment token or `SetServerPeerAddress` sets it. A heartbeat never changes it. |
+| `removal` | `ServerRoleRemoval` | The pending removal of roles from the server (field 28) ([RemoveServerRoles](#removeserverroles)). Absent without one. |
+| `removed_roles` | repeated string | The roles that a removal took from the server (field 29). A token adds a role to the enrolled server only when this list holds the role ([Enrollment and the install PKI](/reference/enrollment/index.html.md#add-roles-to-an-enrolled-server)). |
 
 The message `ServerMesh` has these fields:
 
@@ -964,6 +966,19 @@ The message `ServerDrain` has these fields:
 | `error` | string | Why the drain waits now, such as a refused decommission. Empty while the drain goes on. |
 | `stuck` | bool | True when no move runs, every machine left on the server is stranded, and a machine is stranded or the decommission was refused. A second `DrainServer` tries again. |
 
+The message `ServerRoleRemoval` has these fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `roles` | repeated string | The roles that go, such as `dns` and `edge`, in the order `node`, `dns`, `edge`. |
+| `start_time` | `google.protobuf.Timestamp` | The start of the removal. A move that failed before it strands no machine. |
+| `cordoned_before` | bool | True when the server was cordoned before the removal. The end and the cancel of the removal lift only a cordon that the removal set. |
+| `moving` | int32 | The moves from the server that run now. Only a removal of `node` has moves. |
+| `stranded` | repeated `StrandedMachine` | The machines that the removal of `node` cannot move. Each one keeps its disk on the server. |
+| `error` | string | Why the removal waits now, such as a machine that has not booted yet. Empty while the removal goes on. |
+| `stuck` | bool | True when no move runs, a machine is stranded, and every machine left on the server is stranded. A cancel ends such a removal ([CancelRoleRemoval](#cancelroleremoval)). |
+| `ready` | bool | True when an enrollment of the server with the roles that stay can end the removal. A removal without `node` is ready at once. A removal of `node` is ready once the server holds no machine, no allocation, and no move from or to it. It must also hold no old copy of a moved machine, and no copy of a disk that a failed move left. |
+
 The message `StrandedMachine` has these fields:
 
 | Field | Type | Description |
@@ -972,6 +987,8 @@ The message `StrandedMachine` has these fields:
 | `name` | string | The name of the machine. |
 | `reason` | string | Why the machine cannot move. |
 | `on_server` | bool | False for a machine on another node whose disk copy a failed move left on this server ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node)). |
+
+A drain and the removal of the role `node` name the machines that they cannot move with this message.
 
 The enum `ServerState` has these values:
 
@@ -1145,7 +1162,7 @@ The request `CordonServerRequest` has the field `id`, the ID of the server. The 
 
 ### UncordonServer
 
-Lets new machines land on a cordoned server again. The call clears the flag `cordoned`. A `cordoned` server turns `ready`. An `unresponsive` server stays `unresponsive`, and turns `ready` with its next heartbeat. An uncordon of a server that is not cordoned changes nothing. A server that drains stays cordoned until its decommission, so the call refuses it ([DrainServer](#drainserver)).
+Lets new machines land on a cordoned server again. The call clears the flag `cordoned`. A `cordoned` server turns `ready`. An `unresponsive` server stays `unresponsive`, and turns `ready` with its next heartbeat. An uncordon of a server that is not cordoned changes nothing. A server that drains stays cordoned until its decommission, so the call refuses it ([DrainServer](#drainserver)). The removal of the role `node` keeps its server cordoned too, so the call refuses such a server until the end or the cancel of the removal ([RemoveServerRoles](#removeserverroles)).
 
 | Item | Value |
 | --- | --- |
@@ -1190,7 +1207,7 @@ The call works from every state but `decommissioned`. A `draining` or `shutting_
 
 The call refuses a server that still holds machines. The control store counts each machine on the server that its executor has not deleted yet, stopped machines included. The last heartbeat of the server counts its allocations. The call refuses a server that a move runs from or to. It also refuses a server that keeps the copy of a disk which a failed move left, while the machine lives on another node.
 
-The decommission drops the old copies that the server still had to remove. It clears `cleanup_server_id` of those moves, so that a new move of those machines does not wait. The row of the drain goes too.
+The decommission drops the old copies that the server still had to remove. It clears `cleanup_server_id` of those moves, so that a new move of those machines does not wait. The row of the drain goes too, and so does a pending removal of roles, with its stranded machines. `removed_roles` stays.
 
 The call also refuses a server that shares its host with the last live control process, while another server is not decommissioned. The other servers need that control role. The check reads the live rows of `control_processes` ([Control store tables](/reference/control-store/index.html.md#control_processes)). A live process hosts the server when its row names the server ID, or when it is the process that takes the call and its own host has that identity in `<data_dir>/server` ([Enrollment and the install PKI](/reference/enrollment/index.html.md)). The call refuses only while no live control process runs on another host, and other servers still belong to the install. A process on another host counts only when its row names no server, or names a server that is not decommissioned. A process on a decommissioned server goes with its server, so it keeps no control plane for the others. A control process of a release before migration `0045` records no row, so the check does not see it: upgrade every control server before a decommission relies on it. So an install with a second control server decommissions the first server in any order, and the server of the last control process goes last. The check takes a transaction lock before it reads, and so does each enrollment. So two decommissions at the same time, such as in one parallel `terraform apply`, see each other, and a server that enrolls during the check counts. If the control role cannot read that identity, the call fails with `failed_precondition`. The message names the file: `cannot read the server on the host of this control role: read <data_dir>/server/identity.pem: ...`. A decommission of a decommissioned server changes nothing, and its row version stays. When Terraform destroys a server, the hopbox Terraform provider drains it, and the drain calls it ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#delete)). The provider never removes the first server from its state after a decommission outside Terraform.
 
@@ -1216,11 +1233,59 @@ A second call starts the drain again, as a retry. It clears the stranded list, r
 | Idempotent option | no. A second call starts the drain again. |
 | Audit entry | action `server.drain`, target kind `server`, target ID the server ID, details `old_state`, `state`, and `retry` (`true` or `false`) |
 
+The call refuses a server with a pending removal of roles ([RemoveServerRoles](#removeserverroles)). A removal and a drain exclude each other on one server.
+
 The request `DrainServerRequest` has the field `id`, the ID of the server. The response `DrainServerResponse` has the field `server`, the `Server` after the change, with its `drain`.
+
+### RemoveServerRoles
+
+Starts the removal of the roles `edge`, `dns`, `node`, or more than one from a running server, the first server too (plan questions Q97 and Q100). The server keeps its ID and the data of its other roles. The call returns at once. `hopboxd admin server remove-role` calls it ([hopboxd](/reference/hopboxd/index.html.md#admin-server-remove-role)), and the Terraform provider calls it when a plan drops a role ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#roles-of-a-running-server)).
+
+The call refuses the role `control` with `unimplemented`. The control role never enrolls, and it goes from a server only through a second control server on the external Postgres. It refuses a removal that leaves the server no role that enrolls (`node`, `dns`, or `edge`), because its certificate needs one. A drain takes a whole server out ([DrainServer](#drainserver)). The role `dns` runs only on edge servers, so the removal of `edge` from a server with `dns` must name `dns` too.
+
+These checks run in the transaction of the call. Each refusal gives `failed_precondition` with the reason:
+
+1. The server runs a release whose heartbeats name the feature `remove-role` ([the control channel](/reference/control-channel/index.html.md#heartbeat)). The control role takes the features only from the heartbeats of the release that the server runs now.
+2. Another server keeps each role that goes. That server is `ready`, or `cordoned` for `edge` and `dns`, and has no pending removal of the role. For `edge`, that server holds at least one floating address: its heartbeats report `edge.public_ipv4`, `edge.floating_addresses`, or `edge.public_ipv6`.
+3. For `node`, another `ready` node exists. A machine without room elsewhere does not fail the call. It stays on the server, as in a drain.
+4. For `edge` and `dns`, the public addresses of the install, which the zone names, hold no address of the server: its peer address, the floating addresses of its heartbeats, and the public addresses on its interfaces ([the API server](/reference/api/index.html.md)). Set the public addresses first with `hopboxd admin config set --public-address`.
+5. No live control process runs a release of the schema version below 56.
+
+The call takes the advisory lock of the server registry, so two removals run one after the other, and each sees the other. It records the removal on the server row (`removal_roles`, `removal_cordoned_before`, `removal_started_at`), and writes the audit entry `server.remove_roles_start`. The registry keeps every role until the end of the removal, so the certificate of the server stays valid and its control channel goes on ([Enrollment and the install PKI](/reference/enrollment/index.html.md#client-certificates-on-each-call)).
+
+For `node`, the call cordons the server first. A leader job then moves each machine of the server cold to another node, as the drain does, at most 2 at once ([Cold move](/reference/cold-move/index.html.md#removal-of-the-node-role)). No decommission comes at the end. A machine that cannot move stays on the server with its disk, the removal waits, and `removal.stranded` names the machine. The removal records whether the server was cordoned before it. Its end and its cancel lift only a cordon that it set, so a cordon of the operator stays.
+
+A removal without `node` is ready at once. A removal of `node` is ready once the server holds nothing for a move (`removal.ready`). An enrollment of the server with the roles that stay then ends the removal ([Enrollment and the install PKI](/reference/enrollment/index.html.md#remove-roles-from-an-enrolled-server)). The end adds the roles that went to `removed_roles`.
+
+One removal runs at a time on a server. A second call for a server with a pending removal returns that removal when it names the same roles, in any order. So a retry of the Terraform provider goes on with it. A call with other roles fails. `DrainServer` refuses a server with a pending removal, and this call refuses a server that drains.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.ServerService/RemoveServerRoles` |
+| Policy action | `server.remove_roles_start`: `local_root` and `admin_key` |
+| Idempotent option | no. A second call with the same roles returns the pending removal, and writes no second audit entry. |
+| Audit entry | action `server.remove_roles_start`, target kind `server`, target ID the server ID, details `roles` and `cordoned_before` (`true` or `false`) |
+
+The request `RemoveServerRolesRequest` has the fields `id`, the ID of the server, and `roles`, the roles that go. The response `RemoveServerRolesResponse` has the field `server`, the `Server` with its `removal`.
+
+### CancelRoleRemoval
+
+Ends the pending removal of roles from a server that cannot finish. An example is a removal of `node` with a machine that has no room elsewhere. No new move starts. Each move from the server that started with a removal of `node` and still runs ends as `CancelMove` ends it ([the machine API](/reference/machine-api/index.html.md)). A removal of `edge` or `dns` has no moves, so its cancel ends no move, also a move that an admin started. A machine that moved stays on its new node. The registry keeps every role of the server, `removed_roles` does not change, and the stranded machines go. The cordon of the removal goes. A cordon that the server had before the removal stays.
+
+`hopboxd admin server cancel-remove-role` calls it ([hopboxd](/reference/hopboxd/index.html.md#admin-server-cancel-remove-role)). After a cancel, put the role back in the Terraform configuration, so the next plan shows no change ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#roles-of-a-running-server)).
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.ServerService/CancelRoleRemoval` |
+| Policy action | `server.remove_roles_cancel`: `local_root` and `admin_key` |
+| Idempotent option | no. A second call fails, because the removal is gone. |
+| Audit entry | action `server.remove_roles_cancel`, target kind `server`, target ID the server ID, details `roles` and `moved`, the count of machines that moved before the cancel. Each move that the cancel ends writes the entry `machine.cancel_move` with the detail `removal`. |
+
+The request `CancelRoleRemovalRequest` has the field `id`, the ID of the server. The response `CancelRoleRemovalResponse` has the field `server`, the `Server` after the cancel.
 
 ### Errors of ServerService
 
-`GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `SetServerPeerAddress`, `DecommissionServer`, and `DrainServer` check the policy first, and then the ID.
+`GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `SetServerPeerAddress`, `DecommissionServer`, `DrainServer`, `RemoveServerRoles`, and `CancelRoleRemoval` check the policy first, and then the ID.
 
 | Error | Cause |
 | --- | --- |
@@ -1239,6 +1304,18 @@ The request `DrainServerRequest` has the field `id`, the ID of the server. The r
 | `failed_precondition` with `failed precondition: the server <id> has no role node, so it holds no machine to move. Decommission it instead` | `DrainServer` of a server without the role `node`. |
 | `permission_denied` with `permission denied: the server <id> hosts a control process, so only root on a control server or an admin API key drains it` | `DrainServer` by an admin session of a server that hosts a control process. A new sign-in does not change it. |
 | `failed_precondition` with `failed precondition: the server <id> shares its host with the last live control process of the install, and <n> other servers still belong to the install. Decommission them first, or start the control role on another server` | `DecommissionServer` of the server on the host of the last live control process, before the other servers. |
+| `failed_precondition` with `failed precondition: the server <id> has a pending removal of the roles <roles>. Wait for its end, or cancel it with hopboxd admin server cancel-remove-role <id>` | `DrainServer` of a server with a pending removal, and `RemoveServerRoles` with other roles than the pending removal. |
+| `failed_precondition` with `failed precondition: the removal of the node role keeps the server <id> cordoned, so that its machines move off. Cancel the removal first with hopboxd admin server cancel-remove-role <id>` | `UncordonServer` of a server with a pending removal of `node`. |
+| `unimplemented` with `unimplemented: the role control cannot leave a running server in this release. The way that exists: move the control store to an external Postgres with hopboxd admin db export, add a second control server on it, and decommission this server` | `RemoveServerRoles` that names `control`. |
+| `invalid_argument` with `invalid argument: name at least one role to remove: edge, dns, or node`, `invalid argument: unknown role "<role>". A removal takes edge, dns, or node`, or `invalid argument: the role <role> appears twice` | `RemoveServerRoles` without a role, with an unknown role, or with a role twice. |
+| `failed_precondition` with `failed precondition: the server <id> drains, and the drain takes the whole server out` | `RemoveServerRoles` of a server that drains. |
+| `failed_precondition` with `failed precondition: the server <id> has no role <role>. It has the roles <roles>` | `RemoveServerRoles` of a role that the server does not have. |
+| `failed_precondition` with `failed precondition: the removal of <roles> leaves the server <id> no role that enrolls, and its certificate needs one. To take the whole server out, drain it: hopboxd admin server drain <id>` | `RemoveServerRoles` of every role of the server that enrolls. |
+| `failed_precondition` with `failed precondition: the role dns runs only on edge servers, so the removal of edge from the server <id> takes dns too: name edge and dns` | `RemoveServerRoles` of `edge` alone on a server with `dns`. |
+| `failed_precondition` with `failed precondition: the control process <process> knows the migrations up to <n>, and only a hopboxd that knows migration 56 removes roles from servers. Upgrade it first` | `RemoveServerRoles` while a live control process runs a release of the schema version below 56. |
+| `failed_precondition` with `failed precondition: the roles <roles> cannot leave the server <id>: <reason>` | `RemoveServerRoles` that breaks a check. The reason is one of these: `the server runs hopboxd <version>, whose heartbeats name no feature remove-role. Upgrade the server first`, `no other ready server keeps the role <role>, and the install needs one`, `no other ready edge server holds a floating address, and the public addresses of the install must be floating addresses. Give an edge server a floating address first`, `no other ready node exists, so the machines of the server have nowhere to go`, or `the public addresses of the install name the address <address> of the server, so the zone still sends traffic to it. Set the public addresses without it first: hopboxd admin config set --public-address`. |
+| `failed_precondition` with `failed precondition: the server <id> has no pending removal of a role` | `CancelRoleRemoval` of a server without a removal. |
+| `aborted` with `conflict: moves from the server <id> kept starting during the cancel. Retry` | `CancelRoleRemoval` while moves of the removal kept starting, or the removal changed, in 3 tries. |
 
 Example:
 
