@@ -177,7 +177,7 @@ The IPv6 egress needs IPv6 forwarding. In Linux, it is one switch for the whole 
 
 With forwarding on, the kernel takes no router advertisement on an interface whose `accept_ra` is `1`. It then removes the default routes that such advertisements gave. So before it turns forwarding on, `hopboxd` sets `accept_ra` to `2` on each such interface, and on `default` for new interfaces. The main table keeps the IPv6 default route of the uplink, and the own traffic of the server keeps using it. Loopback and `all` stay as they are.
 
-The node network logs `turned on IPv6 forwarding for the machines, and keeps the router advertisements of the interfaces`, and the host firewall of an edge server logs `turned on IPv6 forwarding for the egress of the machines, and keeps the router advertisements of the interfaces`. The field `accept_ra_2` lists the interfaces that changed. A host without IPv6 turns nothing on.
+The node network logs `turned on IPv6 forwarding for the machines, and keeps the router advertisements of the interfaces`, and the host firewall of an edge server logs `turned on IPv6 forwarding for the egress of the machines, and keeps the router advertisements of the interfaces`. The field `accept_ra_2` lists the interfaces that changed. A host without IPv6 turns nothing on. When the host firewall of an edge server finds IPv6 forwarding off, it writes the file `<data_dir>/hostfw/forward-guard-ipv6`, then turns forwarding on. A move of the edge server to a release from before the egress turns IPv6 forwarding off only when that file exists ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#releases-with-and-without-the-key)).
 
 ## The reverse path filter
 
@@ -202,7 +202,7 @@ The unit `channel` of `hopboxd run` checks the tunnels at its start, and then ev
 
 | Event | What happens to the tunnels |
 | --- | --- |
-| A restart or an upgrade of `hopboxd` | The tunnels stay, with their routes and their rules, and the kernel goes on forwarding. Before the first mesh of the new process, a check keeps the tunnels that it finds. The node network takes the count of the tunnels `hbe0`, `hbe1`, and so on that are up, until the first gap. So the egress goes on also while no control server runs. |
+| A restart or an upgrade of `hopboxd` | The tunnels stay, with their routes and their rules, and the kernel goes on forwarding. Before the first mesh of the new process, a check keeps the tunnels that it finds. The node network takes the count of the tunnels `hbe0`, `hbe1`, and so on that are up, until the first gap. While the reverse path filter is on, of `all` or of one of these tunnels, the count is 0, because the kernel drops the replies. So the egress goes on also while no control server runs. |
 | A stop of `hopboxd` | The tunnels stay, and the egress goes on. |
 | A reboot | The tunnels are gone. The mesh device gets a new key, so the tunnels wait for the first mesh. Until then, the egress of a node fails closed, and an edge server says no `egress_exit`. |
 | `ip link del hbe0` | The next check, within 2 s, makes the device again, with its routes. |
@@ -273,7 +273,7 @@ These errors come in the field `err` of `cannot set up the egress tunnels. The n
 
 | Test | Where it runs | What it checks |
 | --- | --- | --- |
-| The tests of `internal/egress` without root | `make test`, also on a Mac | One tunnel for each egress edge, at most 16, and the order of a new tunnel and of its use. A restart keeps the tunnels until the first mesh. No mesh key, no tunnel. One tunnel with each node on an edge server. A change of mode removes the old tunnels. A repair and its log, a failure, the reverse path filter, and `egress_exit`. The router advertisements of IPv6 forwarding. |
+| The tests of `internal/egress` without root | `make test`, also on a Mac | One tunnel for each egress edge, at most 16, and the order of a new tunnel and of its use. A restart keeps the tunnels until the first mesh, and counts none while the filter of a tunnel is on. No mesh key, no tunnel. One tunnel with each node on an edge server. A change of mode removes the old tunnels. A repair and its log, a failure, the reverse path filter, and `egress_exit`. The router advertisements of IPv6 forwarding. |
 | `TestTheTunnelsCarryTheEgressBothWays` of `internal/egress` | `make test-linux`, as root in a privileged container | A node and an edge server on one vRack link, each with its mesh device and the real kernel WireGuard. A packet of a machine with the mark of its tunnel reaches the edge server with the address of the machine. The reply with the return mark comes back through the tunnel. It checks IPv4 and IPv6. |
 | `TestIPv6ForwardingKeepsTheDefaultRouteOfTheUplink` of `internal/egress` | `make test-linux` | A host whose uplink takes its IPv6 default route from a real router advertisement. After IPv6 forwarding turns on, the route stays, and a new advertisement renews it. |
 | `TestEdgeEgress` of `internal/hostfw` | `make test-linux` | The host firewall of an edge server ([the host firewall](/reference/host-firewall/index.html.md#tests)). |

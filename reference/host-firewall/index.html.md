@@ -365,7 +365,7 @@ The firewall logs with `component=hostfw`. A check logs a state only after a cha
 | --- | --- |
 | `hostfw: install the nftables table inet hopbox_host: ... hopboxd needs CAP_NET_ADMIN and the kernel needs nf_tables` | The start cannot make the table. `hopboxd` stops, and systemd starts it again. |
 | `hostfw: read the vRack interface of the server: ...` | The start cannot read `<data_dir>/hostfw/vrack-interface`. `hopboxd` stops. |
-| `hostfw: read the IPv4 forwarding of the host: ...` or `hostfw: record the forward guard: ...` | The start of an edge server cannot read `net.ipv4.ip_forward`, or cannot write `<data_dir>/hostfw/forward-guard`. `hopboxd` stops. |
+| `hostfw: read the IPv4 forwarding of the host: ...`, `hostfw: read the IPv6 forwarding of the host: ...`, `hostfw: record the forward guard: ...`, or `hostfw: record the IPv6 forwarding: ...` | The start of an edge server cannot read `net.ipv4.ip_forward` or `net.ipv6.conf.all.forwarding`, or cannot write `<data_dir>/hostfw/forward-guard` or `<data_dir>/hostfw/forward-guard-ipv6`. `hopboxd` stops. |
 | `hostfw: turn on IPv4 forwarding: ...` or `hostfw: turn on IPv6 forwarding: ...` | The start of an edge server cannot write the sysctl. The table is in place. `hopboxd` stops. |
 
 ## Tests

@@ -465,7 +465,18 @@ After a rollback to a release without `stop-guest`, some units run the older `ho
 
 A build from before the rename of `[node]` to `[channel]` refuses a bootstrap config with `[channel]`. Its error `unknown keys` names the keys of `[channel]`. So before a rollback to such a build, rename `[channel]` back to `[node]` in `/etc/hopbox/hopboxd.toml` ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#the-old-name-node)).
 
-A release from before the egress tunnels refuses the key `edge.public_ipv4`. A rollback by hand on an edge server with the key fails at the install of that release, with `unknown keys` and the name of the key. So before such a rollback, delete the line `public_ipv4` from the section `[edge]` of `/etc/hopbox/hopboxd.toml`. The older release keeps no rule that guards the forwarding of the egress. So after the rollback, run `sudo sysctl -w net.ipv6.conf.all.forwarding=0`. On a server without the role `node`, also run `sudo sysctl -w net.ipv4.ip_forward=0`. The Terraform provider does these steps on its own ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#releases-with-and-without-the-key)).
+A release from before the egress tunnels refuses the key `edge.public_ipv4`. A rollback by hand on an edge server with the key fails at the install of that release, with `unknown keys` and the name of the key. So before such a rollback, delete the line `public_ipv4` from the section `[edge]` of `/etc/hopbox/hopboxd.toml`. The older release keeps no rule that guards the forwarding of the egress. So after the rollback, turn off the forwarding that `hopboxd` turned on, and only that, as the Terraform provider does on its own ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#releases-with-and-without-the-key)). The files are in `<data_dir>/hostfw`, `/var/lib/hopbox/hostfw` by default:
+
+- If `forward-guard-ipv6` exists, run `sudo sysctl -w net.ipv6.conf.all.forwarding=0`, then remove the file.
+- On a server without the role `node`, if `forward-guard` exists, run `sudo sysctl -w net.ipv4.ip_forward=0`, then remove the file.
+
+```sh
+d=/var/lib/hopbox/hostfw
+if [ -e "$d/forward-guard-ipv6" ]; then sudo sysctl -w net.ipv6.conf.all.forwarding=0 && sudo rm "$d/forward-guard-ipv6"; fi
+if [ -e "$d/forward-guard" ]; then sudo sysctl -w net.ipv4.ip_forward=0 && sudo rm "$d/forward-guard"; fi
+```
+
+Run the second line only on a server without the role `node`. An edge server that ran a build of `main` with the egress from before `forward-guard-ipv6` has no such file. After the rollback of such a server, run `sudo sysctl -w net.ipv6.conf.all.forwarding=0` by hand, unless another tool on the server needs IPv6 forwarding.
 
 | Error | Cause |
 | --- | --- |

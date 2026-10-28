@@ -561,8 +561,8 @@
 <td>The start cannot read <code dir="auto">&lt;data_dir&gt;/hostfw/vrack-interface</code>. <code dir="auto">hopboxd</code> stops.</td>
 </tr>
 <tr>
-<td><code dir="auto">hostfw: read the IPv4 forwarding of the host: ...</code> or <code dir="auto">hostfw: record the forward guard: ...</code></td>
-<td>The start of an edge server cannot read <code dir="auto">net.ipv4.ip_forward</code>, or cannot write <code dir="auto">&lt;data_dir&gt;/hostfw/forward-guard</code>. <code dir="auto">hopboxd</code> stops.</td>
+<td><code dir="auto">hostfw: read the IPv4 forwarding of the host: ...</code>, <code dir="auto">hostfw: read the IPv6 forwarding of the host: ...</code>, <code dir="auto">hostfw: record the forward guard: ...</code>, or <code dir="auto">hostfw: record the IPv6 forwarding: ...</code></td>
+<td>The start of an edge server cannot read <code dir="auto">net.ipv4.ip_forward</code> or <code dir="auto">net.ipv6.conf.all.forwarding</code>, or cannot write <code dir="auto">&lt;data_dir&gt;/hostfw/forward-guard</code> or <code dir="auto">&lt;data_dir&gt;/hostfw/forward-guard-ipv6</code>. <code dir="auto">hopboxd</code> stops.</td>
 </tr>
 <tr>
 <td><code dir="auto">hostfw: turn on IPv4 forwarding: ...</code> or <code dir="auto">hostfw: turn on IPv6 forwarding: ...</code></td>

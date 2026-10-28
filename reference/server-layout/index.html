@@ -258,7 +258,7 @@
 <td>root</td>
 <td>0700</td>
 <td>every role</td>
-<td>The state of the host firewall. The file <code dir="auto">vrack-interface</code>, mode 0600, names the vRack interface once the server had a vRack address. So a server that loses the address keeps its public interface closed (<a href="/reference/host-firewall/#never-a-lockout">the host firewall</a>). On an edge server, the file <code dir="auto">forward-guard</code>, mode 0600, keeps the forward guard of the table. It exists once <code dir="auto">hopboxd</code> turned IPv4 forwarding on (<a href="/reference/host-firewall/#the-forward-guard">the host firewall</a>).</td>
+<td>The state of the host firewall. The file <code dir="auto">vrack-interface</code>, mode 0600, names the vRack interface once the server had a vRack address. So a server that loses the address keeps its public interface closed (<a href="/reference/host-firewall/#never-a-lockout">the host firewall</a>). On an edge server, the file <code dir="auto">forward-guard</code>, mode 0600, keeps the forward guard of the table. It exists once <code dir="auto">hopboxd</code> turned IPv4 forwarding on (<a href="/reference/host-firewall/#the-forward-guard">the host firewall</a>). The file <code dir="auto">forward-guard-ipv6</code>, mode 0600, exists once <code dir="auto">hopboxd</code> turned IPv6 forwarding on (<a href="/reference/egress/#ipv6-forwarding">the egress of the machines</a>).</td>
 </tr>
 <tr>
 <td><code dir="auto">&lt;data_dir&gt;/logs</code></td>
