@@ -1,12 +1,12 @@
 # The egress of the machines
 
-> The egress of the machines through the edge servers. It covers the egress tunnels hbe*, the egress edges, the routing, and the local exit. It also covers the IPv6 addresses of the machines, IPv6 forwarding, logs, and tests.
+> The egress of the machines through the edge servers. It covers the egress tunnels hbe*, the egress edges, the routing, and the local exit. It also covers the IPv6 addresses of the machines, IPv6 forwarding, and what the IPv6 block of an older release left. Then logs and tests.
 
-The egress of a machine is its traffic to the internet. It leaves the install through the edge servers. So the internet sees the floating IPv4 address of an edge server, and its address of the IPv6 block of the install. A node without the edge role sends the egress of its machines through egress tunnels. These are WireGuard devices on the peer addresses of the servers, beside the mesh device `hbm0` ([the mesh](/reference/mesh/index.html.md)). The owner decided the rules of this page on 2026-10-27, in the plan questions Q81 to Q87.
+The egress of a machine is its traffic to the internet. It leaves the install through the edge servers. So the internet sees the floating IPv4 address of an edge server, and the IPv6 address of its uplink. A node without the edge role sends the egress of its machines through egress tunnels. These are WireGuard devices on the peer addresses of the servers, beside the mesh device `hbm0` ([the mesh](/reference/mesh/index.html.md)). The owner decided the rules of this page on 2026-10-27, in the plan questions Q81 to Q87.
 
 The tunnels are in `internal/egress`. The node table `inet hopbox_node` picks the tunnel of each packet ([the node network](/reference/node-network/index.html.md#the-table-inet-hopbox_node)). The host firewall of an edge server forwards and translates the egress ([the host firewall](/reference/host-firewall/index.html.md#the-egress-of-the-machines)).
 
-In the examples, the vRack interface is `enp3s0f1`. `edge1` has the peer address `203.0.113.21`, the floating address `203.0.113.101`, and `edge.public_ipv6 = "2001:db8:0:100::11/56"`. `edge2` has `203.0.113.22`, `203.0.113.102`, and `2001:db8:0:100::12`.
+In the examples, the vRack interface is `enp3s0f1`, and the uplink is `eno1`. `edge1` has the peer address `203.0.113.21`, the floating address `203.0.113.101`, and the uplink address `2001:db8:1::21`. `edge2` has `203.0.113.22`, `203.0.113.102`, and `2001:db8:2::22`.
 
 ## The way out of each server
 
@@ -31,10 +31,10 @@ A server needs the mesh device for a tunnel, because the tunnels use its private
 | Most tunnels of a node | 16 |
 | Routes and rules | The protocol `107`, so `ip route show table all proto 107` lists the routes of the tunnels. |
 | Mark of tunnel n on a node | `0x68620000` + n, with the table `26820` + n and the rule priority `26820` + n. |
-| Return mark on an edge server | `0x68620100`, with the table `26819` and the rule priority `26800`. The rule comes before the rule of the `/56` at `26806`, because a reply to a machine can have a source in the `/56`. |
+| Return mark on an edge server | `0x68620100`, with the table `26819` and the rule priority `26800`. |
 | Conntrack mark on an edge server | The bit `0x20000000`, on each connection that comes out of a tunnel. It is for hopbox alone, as the mark of the node is ([the node network](/reference/node-network/index.html.md#the-mark-of-the-node-is-reserved)). |
 
-The [host firewall](/reference/host-firewall/index.html.md#ports) opens UDP `51821` from the set `peers` on an edge server. It opens UDP `51821` to `51836` from the set `peers` on a node without the edge role. The vRack zone opens the same ports from the vRack range until N31 removes it.
+The [host firewall](/reference/host-firewall/index.html.md#ports) opens UDP `51821` from the set `peers` on an edge server. It opens UDP `51821` to `51836` from the set `peers` on a node without the edge role. The vRack zone opens none of these ports.
 
 ## Egress edges
 
@@ -109,7 +109,7 @@ The edge server routes the replies back into the tunnel, and not over the mesh, 
 | Part | Value |
 | --- | --- |
 | Routing table | `26819`, with `10.240.0.0/12` and `fd65:1c74:e769::/48` on `hbe0`, both with the protocol 107. |
-| Rule | `fwmark 0x68620100 lookup 26819`, with the priority `26800`, for IPv4 and for IPv6. It comes before the rule `from <block> lookup 26806` of the `/56`. A reply of the edge server from its address of the `/56`, or a reply from another address of the `/56`, then goes back into the tunnel, and not to the gateway of the block. |
+| Rule | `fwmark 0x68620100 lookup 26819`, with the priority `26800`, for IPv4 and for IPv6. It comes before the main table at `32766`. |
 | Marks | The host firewall puts the conntrack mark bit `0x20000000` on each new connection from a tunnel. It puts the packet mark `0x68620100` on each reply of such a connection ([the host firewall](/reference/host-firewall/index.html.md#the-egress-of-the-machines)). |
 
 The main table of the edge server routes the machines over `hbm0`. Without the mark, a reply to a machine takes the mesh. The node takes only the mesh address of an edge server as a source on `hbm0`, so it drops that reply.
@@ -128,20 +128,20 @@ fd65:1c74:e769::/48 dev hbe0 proto 107 metric 1024 pref medium
 | Family | Source of the egress | Without the key |
 | --- | --- | --- |
 | IPv4 | `edge.public_ipv4`, the floating address of the edge server ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)). The Terraform provider writes it only for a release whose version names the feature `egress` ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#releases-with-and-without-the-key)). | The address of the output interface (masquerade). `hopboxd` logs `this edge server has no edge.public_ipv4, so the egress of the machines leaves from the address of its output interface` at its start. |
-| IPv6 | The address of `edge.public_ipv6` in the `/56`, by NAT66 ([the edge role](/reference/edge/index.html.md#the-public-ipv6-address)). | The edge server refuses the IPv6 egress ([IPv6 without an address of the /56](#ipv6-without-an-address-of-the-56)). |
+| IPv6 | A global IPv6 address of the uplink, by NAT66 ([the host firewall](/reference/host-firewall/index.html.md#the-uplink-and-the-nat66)). Never the floating address of `edge.public_ipv6`. | The edge server refuses the IPv6 egress. This holds without an IPv6 default route, and without a global IPv6 address on the uplink ([IPv6 without an uplink address](#ipv6-without-an-uplink-address)). |
 
-The IPv4 egress leaves through the uplink. The IPv6 egress leaves through the vRack interface, to the gateway of the `/56`. The rule `from fd65:1c74:e769::/48 lookup 26806` of the table `hopbox_egress6` sends it there ([the edge role](/reference/edge/index.html.md#the-public-ipv6-address)).
+The IPv4 egress leaves through the uplink. The IPv6 egress leaves only through the uplink, the device of the IPv6 default route of the main table. When the edge server is replaced, the IPv6 source of its egress changes.
 
 A machine also reaches the public addresses of its own install through its edge server, such as the URL of another machine (plan question Q52). A reply of the edge server itself takes the return mark too, so it goes back into the tunnel.
 
 ## The local exit
 
-A server with the node role and the edge role makes no egress tunnel for its own machines (plan question Q81). Its node table translates their source, and they leave through its own uplink or its vRack interface:
+A server with the node role and the edge role makes no egress tunnel for its own machines (plan question Q81). They leave through its own uplink:
 
 | Family | Source |
 | --- | --- |
-| IPv4 | `edge.public_ipv4`, or the address of the output interface without the key. |
-| IPv6 | The address of `edge.public_ipv6`, by NAT66. Without the key, the node table refuses the IPv6 egress. |
+| IPv4 | `edge.public_ipv4`, or the address of the output interface without the key. The node table translates it. |
+| IPv6 | A global IPv6 address of the uplink, by NAT66, as for the machines behind the tunnel. The host firewall translates it ([the host firewall](/reference/host-firewall/index.html.md#the-uplink-and-the-nat66)). Without an uplink address, the host firewall refuses the IPv6 egress. It also refuses an IPv6 packet to `2000::/3` that leaves through another device than the uplink. |
 
 The edge role of the server still takes the egress tunnels of the other nodes. So an install of one server keeps its egress, and a bigger install can run the node role on its edge servers.
 
@@ -149,9 +149,9 @@ The edge role of the server still takes the egress tunnels of the other nodes. S
 
 A node without the edge role sends the egress of its machines only through a tunnel (plan question Q87). Without a tunnel, a packet of a machine takes the main table, and its output interface is not a tunnel. The node table then answers it at once: a TCP packet with a reset, and another packet with ICMP administratively prohibited. So a connect of the machine fails at once, and does not wait for a timeout. A node without an egress edge fails closed in this way. So does a node after a reboot, before its first mesh, and a node whose reverse path filter is on ([The reverse path filter](#the-reverse-path-filter)).
 
-## IPv6 without an address of the /56
+## IPv6 without an uplink address
 
-An exit without `edge.public_ipv6` refuses the IPv6 egress of the machines, with ICMPv6 administratively prohibited (plan question Q85). A TCP connect gets a reset, so it fails at once. An edge server refuses it in its host firewall, and a local exit in its node table. The machines still get their IPv6 address.
+An exit without an IPv6 default route, or without a global IPv6 address on its uplink, refuses the IPv6 egress of the machines. It answers with ICMPv6 administratively prohibited (plan question Q85). A TCP connect gets a reset, so it fails at once. The host firewall refuses it, for the tunnel and for the local exit. The machines still get their IPv6 address. `hopboxd` logs a warning at the start and at each change ([the host firewall](/reference/host-firewall/index.html.md#logs)).
 
 ## The resolvers of the machines
 
@@ -167,7 +167,7 @@ Every install gives its machines addresses of one unique local prefix, `fd65:1c7
 | Machine | The `/128` of the `/64` of its subnet, with its IPv4 address in the low 32 bits. | `10.240.0.5` has `fd65:1c74:e769::af0:5`. |
 | Gateway | `fe80::1`, on-link. The node holds it on each tap device. | |
 
-A moved machine keeps its IPv6 address, as it keeps its IPv4 address. The mesh allows the `/64` of each node and the `/128` of each moved machine ([the mesh](/reference/mesh/index.html.md#allowed-ips)). The edge servers translate the address to an address of the `/56`, so it never leaves the install.
+A moved machine keeps its IPv6 address, as it keeps its IPv4 address. The mesh allows the `/64` of each node and the `/128` of each moved machine ([the mesh](/reference/mesh/index.html.md#allowed-ips)). The edge servers translate the address to the IPv6 address of their uplink, so it never leaves the install.
 
 The node gives the guest its IPv6 address and its gateway in the fields `address6` and `gateway6` of the network of the guest link ([Guest link](/reference/guest-link/index.html.md)). A node whose kernel has no IPv6 gives none.
 
@@ -236,6 +236,25 @@ A rolling upgrade moves the edge servers before the nodes ([hopbox Terraform pro
 - A node that moves to the release with the egress tunnels has no tunnel at its first start. Its node table fails closed until its first mesh, about one heartbeat later, when it makes its tunnels. So for a few seconds, each new connection of its machines gets a refusal. The connections that run before the upgrade stop too, because their source changes from the address of the node to the address of an edge server.
 - A node of the new release behind a control role of the old release keeps its tunnels ([A control role of an older release](#a-control-role-of-an-older-release)).
 
+### What the IPv6 block left
+
+A release before N29 gave the IPv6 egress an address of an IPv6 block in the vRack. On an edge server with the block, it kept these parts: an address of the block on the vRack interface, and the routing table `hopbox_egress6`, number `26806`. That table had two rules, `from <block>` at the priority `26806` and `from fd65:1c74:e769::/48` at `26807`. The current release sends the IPv6 egress out of the uplink, so these parts must go.
+
+At its start, each server that enrolls removes them, in this order:
+
+1. The addresses on any device that are in a block that a rule of table `26806` names, with the prefix length of that block. The old release set its address in that form. A floating address of the same block, such as a `/128` for the `AAAA` records, stays.
+2. Each route of table `26806`, also its `unreachable` default route.
+3. Each rule of table `26806`. The rules go last, because they name the blocks, so a failed step keeps them for the next check.
+
+The host firewall replaces the table `inet hopbox_host` as a whole at its first install. So its old chain `postrouting` goes too ([the host firewall](/reference/host-firewall/index.html.md#the-table)). After a failure, the server tries again every 2 s, until a check finds nothing left. A failure never stops `hopboxd`.
+
+To check that nothing is left on a server, run these commands. Each one prints nothing:
+
+```sh
+ip -6 rule show table 26806
+ip -6 route show table 26806
+```
+
 ## Logs
 
 The tunnels log with `component=egress`. A check logs a state only after a change of the state, so a check every 2 s does not repeat a line.
@@ -250,6 +269,8 @@ The tunnels log with `component=egress`. A check logs a state only after a chang
 | `the egress tunnels lost a part outside hopboxd, so hopboxd set it again` | warn | `mode`, `parts` | A check set again what changed outside `hopboxd`. |
 | `the reverse path filter is on, so the kernel drops the packets of the egress tunnels, and this server takes no egress. Set the sysctl net.ipv4.conf.all.rp_filter to 0` | error | `rp_filter` | See [The reverse path filter](#the-reverse-path-filter). |
 | `the machines of this node send their egress through the egress tunnels` | info | `tunnels` | The count of tunnels of a node changed, and the tunnels hand it to the node network. |
+| `removed what the IPv6 block of the vRack left on this server, because this release sends the IPv6 egress of the machines out of the uplink` | info | `removed` | A check removed parts of the IPv6 block of a release before N29 ([What the IPv6 block left](#what-the-ipv6-block-left)). `removed` lists the addresses, the count of routes, and the rules. |
+| `cannot remove what the IPv6 block of the vRack left on this server. The next check tries again` | error | `err`, `retry_in` | A read or a removal failed. It logs once until the error changes. |
 
 The other parts log with their own components:
 
@@ -258,6 +279,9 @@ The other parts log with their own components:
 | `the machines send their egress through the egress tunnels` | info | `netcfg` | The node table took a new count of tunnels, in the field `tunnels`. |
 | `the node network cannot take the egress tunnels. The next change of the tunnels tries again` | error | `netcfg` | The change of the chain `egress` failed, with `err`. |
 | `this edge server has no edge.public_ipv4, so the egress of the machines leaves from the address of its output interface` | warn | `hostfw` | The start of an edge server without `edge.public_ipv4`. |
+| `the IPv6 egress of the machines leaves from the uplink address of this edge server` | info | `hostfw` | The start of an edge server, or a new uplink or uplink address, with `device` and `address`. |
+| `this edge server has no IPv6 default route, so the IPv6 egress of the machines gets ICMPv6 administratively prohibited, and TCP a reset` | warn | `hostfw` | The start of an edge server without an IPv6 default route, or the loss of that route. |
+| `the uplink of this edge server has no global IPv6 address, so the IPv6 egress of the machines gets ICMPv6 administratively prohibited, and TCP a reset` | warn | `hostfw` | The start of an edge server whose uplink has no global IPv6 address, or the loss of that address, with `device`. |
 
 ## Errors
 
@@ -273,10 +297,13 @@ These errors come in the field `err` of `cannot set up the egress tunnels. The n
 
 | Test | Where it runs | What it checks |
 | --- | --- | --- |
-| The tests of `internal/egress` without root | `make test`, also on a Mac | One tunnel for each egress edge, at most 16, and the order of a new tunnel and of its use. A restart keeps the tunnels until the first mesh, and counts none while the filter of a tunnel is on. No mesh key, no tunnel. One tunnel with each node on an edge server. A change of mode removes the old tunnels. A repair and its log, a failure, the reverse path filter, and `egress_exit`. The router advertisements of IPv6 forwarding. |
+| The tests of `internal/egress` without root | `make test`, also on a Mac | One tunnel for each egress edge, at most 16, and the order of a new tunnel and of its use. A restart keeps the tunnels until the first mesh, and counts none while the filter of a tunnel is on. No mesh key, no tunnel. One tunnel with each node on an edge server. A change of mode removes the old tunnels. A repair and its log, a failure, the reverse path filter, and `egress_exit`. The router advertisements of IPv6 forwarding. The pick of the uplink address of the NAT66. The removal of what the IPv6 block left, with the rules last, and nothing to do on a new server. |
+| `TestFindUplink` of `internal/egress` | `make test-linux` | An uplink with a static address, an address of a router advertisement, the floating address, and a unique local address. The pick takes the static address, or the preferred source of the default route, and never the floating address. |
+| `TestLeftoversRemoveTheIPv6Block` of `internal/egress` | `make test-linux` | What a release before N29 left on an edge server: the address of the block, the table `hopbox_egress6` with its two default routes, and its two rules. A check removes them, and keeps the other addresses, routes, and rules. |
 | `TestTheTunnelsCarryTheEgressBothWays` of `internal/egress` | `make test-linux`, as root in a privileged container | A node and an edge server on one vRack link, each with its mesh device and the real kernel WireGuard. A packet of a machine with the mark of its tunnel reaches the edge server with the address of the machine. The reply with the return mark comes back through the tunnel. It checks IPv4 and IPv6. |
 | `TestIPv6ForwardingKeepsTheDefaultRouteOfTheUplink` of `internal/egress` | `make test-linux` | A host whose uplink takes its IPv6 default route from a real router advertisement. After IPv6 forwarding turns on, the route stays, and a new advertisement renews it. |
-| `TestEdgeEgress` of `internal/hostfw` | `make test-linux` | The host firewall of an edge server ([the host firewall](/reference/host-firewall/index.html.md#tests)). |
+| `TestEdgeEgress` and `TestLocalExitIPv6` of `internal/hostfw` | `make test-linux` | The host firewall of an edge server, and the NAT66 of a local exit ([the host firewall](/reference/host-firewall/index.html.md#tests)). |
 | `TestNodeNetwork` and `TestLocalExit` of `internal/node/netcfg` | `make test-linux` | The node table with a stand-in tunnel, and a local exit ([the node network](/reference/node-network/index.html.md#tests)). |
 | `TestEgressEdges` of `internal/service` | `make test` | The field `egress` of a peer: the heartbeat, the edge role, an unresponsive edge server, and another release. |
 | `TestEgress` of `test/fleet` | `make test-fleet` | Two edge servers and a node. |
+| `TestEgressWithoutAFloatingAddress` of `test/fleet` | `make test-fleet` | An edge server with the node role and no `edge.public_ipv4`, and a node. |

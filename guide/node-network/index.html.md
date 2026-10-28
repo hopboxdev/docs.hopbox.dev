@@ -2,7 +2,7 @@
 
 > How to check the network of a machine: its address, its egress, what it cannot reach, and its traffic counters.
 
-The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack, read Q90.
 
 This guide follows the network of one machine on a server with the node role. It finds the address of the machine, checks its egress and the destinations that it cannot reach, and reads its traffic counters. On an install with several servers, it also checks the mesh between the servers. [The node network](/reference/node-network/index.html.md) and [the mesh](/reference/mesh/index.html.md) describe each part.
 
@@ -86,17 +86,24 @@ hopbox exec box1 curl -sS https://ifconfig.me
 
 The command prints the public address of the server, not the address of the machine. With `edge.public_ipv4` in the bootstrap config, it prints that address.
 
-Over IPv6, the egress needs `edge.public_ipv6`, an address of the IPv6 block of the install on the vRack ([the edge role](/reference/edge/index.html.md#the-public-ipv6-address)). Without it, the connect fails at once:
+Over IPv6, the egress leaves from a global IPv6 address of the uplink of the server, the device of its IPv6 default route ([the host firewall](/reference/host-firewall/index.html.md#the-uplink-and-the-nat66)). Run the same command over IPv6:
 
 ```sh
 hopbox exec box1 curl -6 -m 3 -sS https://ifconfig.me
 ```
 
-With `edge.public_ipv6`, the command prints that address.
+The command prints the IPv6 address of the uplink, never the floating address of `edge.public_ipv6`. If the server has no IPv6 default route, or its uplink has no global IPv6 address, the connect fails at once.
+
+To see the uplink and the address of the NAT66, run these commands on the server:
+
+```sh
+ip -6 route show default
+sudo nft list chain inet hopbox_host egress_nat
+```
 
 ### With edge servers apart
 
-Edge servers can run apart from the nodes. A node then sends the egress of its machines through an egress tunnel to one edge server ([the egress of the machines](/reference/egress/index.html.md)). The hash of the machine address picks the edge server. So `curl https://ifconfig.me` in a machine prints the floating address of that edge server, and `curl -6` its address of the IPv6 block.
+Edge servers can run apart from the nodes. A node then sends the egress of its machines through an egress tunnel to one edge server ([the egress of the machines](/reference/egress/index.html.md)). The hash of the machine address picks the edge server. So `curl https://ifconfig.me` in a machine prints the floating address of that edge server, and `curl -6` the IPv6 address of its uplink.
 
 On the node, list the tunnels, one for each edge server, and their rules:
 
@@ -106,8 +113,8 @@ ip rule show | grep 'proto 107'
 ```
 
 ```text
-hbe0	<public key of edge1>	172.31.0.21:51821
-hbe1	<public key of edge2>	172.31.0.22:51821
+hbe0	<public key of edge1>	203.0.113.21:51821
+hbe1	<public key of edge2>	203.0.113.22:51821
 26820:	from all fwmark 0x68620000 lookup 26820 proto 107
 26821:	from all fwmark 0x68620001 lookup 26821 proto 107
 ```

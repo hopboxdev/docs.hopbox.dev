@@ -42,8 +42,8 @@ The file names the Postgres binaries that `hopboxd` runs and the external Postgr
 | `edge.http_listen` | `host:port` | `:80` | The address of the plain HTTP listener of the edge role. It answers each request for a host of the install with a redirect to HTTPS ([the edge role](/reference/edge/index.html.md#routing)). The rules of `edge.https_listen` apply. The two addresses must differ. Only port `0` can appear in both. |
 | `edge.ssh_listen` | `host:port` | `:2222` | The address of the listener of the SSH front door ([the SSH front door](/reference/ssh-front-door/index.html.md#listener)). The rules of `edge.https_listen` apply. Its port must be outside the SSH ports 10000 to 30000, and it must differ from the two HTTP listeners. Only port `0` can appear twice. With `edge.ssh_redirect`, the host must be empty or `::`. The redirect sends each connection to the address of the network interface that took it. So a listener on one address, such as a floating IP, gets no client, and `0.0.0.0` gets no IPv6 client. |
 | `edge.ssh_redirect` | bool | `true` | Makes `hopboxd` replace the nftables table `inet hopbox_edge` at the start of the edge role. The table sends every TCP connection to a port from 10000 to 30000 of the server to `edge.ssh_listen` ([the SSH front door](/reference/ssh-front-door/index.html.md#redirect-of-the-ssh-ports)). A stop deletes it. On a system without nftables, such as macOS, the edge role logs a warning and serves only `edge.ssh_listen`, which reaches no machine. If the operator makes the redirect, set it to `false`. |
-| `edge.public_ipv6` | IPv6 prefix | none | The public IPv6 address of this edge server in the IPv6 block of the install, with the prefix length of the block, such as `2001:db8:0:100::11/56`. The block lives in the vRack, so `hopboxd` keeps the address on the vRack interface, with the routing table `hopbox_egress6` ([the edge role](/reference/edge/index.html.md#the-public-ipv6-address)). The address is a global unicast address, not a unique local one, and not the first address of its block. The block is from `/48` to `/64`. Only a server with the role `edge` takes the key, and only with `edge.public_ipv6_gateway`. A `hopboxd` before this key refuses the file, so add it only after the upgrade of the server. |
-| `edge.public_ipv6_gateway` | IPv6 address | none | The gateway of the IPv6 block on the vRack, such as `2001:db8:0:100::1`. It is the default route of the table `hopbox_egress6`. It is a link-local address, such as `fe80::1`, or an address of the block of `edge.public_ipv6`, other than its first address and other than the address of the server. |
+| `edge.public_ipv6` | IPv6 address | none | The floating IPv6 address of this edge server on its uplink, without a prefix length, such as `2001:db8::11` ([the edge role](/reference/edge/index.html.md#the-public-ipv6-address)). The zone names it in its `AAAA` records. Without it, the zone has no `AAAA` record. `hopboxd` does not put it on the uplink: the operator assigns it at the provider and on the host. The NAT66 of the machines never takes it ([the host firewall](/reference/host-firewall/index.html.md#the-uplink-and-the-nat66)). The address is a public IPv6 address: not a unique local address, and not a link-local address. Only a server with the role `edge` takes the key. A `hopboxd` from before N29 refuses an address without a prefix length, so add the key only after the upgrade of the server. |
+| `edge.public_ipv6_gateway` | IPv6 address | none | The old key of the gateway of the IPv6 block of the vRack, which this release removed. `hopboxd` ignores it, and logs a warning ([The IPv6 block of an older release](#the-ipv6-block-of-an-older-release)). |
 | `edge.public_ipv4` | IPv4 address | none | The floating IPv4 address of this edge server, such as `203.0.113.101`. The IPv4 egress of the machines leaves from it ([the egress of the machines](/reference/egress/index.html.md#the-source-addresses)). The Terraform provider writes the first address of `floating_addresses` in sorted order ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#edge-servers-and-floating-addresses)). Without it, the egress leaves from the address of the output interface, and `hopboxd` logs a warning at its start. The address is a public IPv4 address, outside the private ranges, the vRack range, and the machine range. Only a server with the role `edge` takes the key. `hopboxd install --edge-public-ipv4` sets it ([hopboxd](/reference/hopboxd/index.html.md#install)). A `hopboxd` before this key refuses the file, so add it only after the upgrade of the server. |
 | `acme.name_servers` | array of `host:port` | empty | The addresses at which the ACME job of the control role checks that each name server serves a change of the zone ([the certificate of the install](/reference/acme/index.html.md#the-name-server-check)). Empty means port 53 at the addresses of `ns1` and `ns2` of the zone. At most 16. Each host is an IP address. A host name is refused. When the DNS role listens on another port, set it, such as `["127.0.0.1:15353"]` on a laptop. |
 | `acme.ca_file` | absolute path | empty | A PEM file of more root certificates for the HTTPS of the ACME directory. The ACME job trusts them, for example the root of the test CA Pebble ([the certificate of the install](/reference/acme/index.html.md#test-with-pebble)). Empty means the roots of the system only. A file that does not load, or holds no certificate, fails the start of `hopboxd run`. |
@@ -71,6 +71,24 @@ Before the DNS role, `[channel]` had the name `[node]`. This release still reads
 ```
 
 `hopboxd enroll` prints the same warning on stderr, after `hopboxd: warning: `. When `hopboxd install` writes the file, it renames `[node]` to `[channel]`. An error about a key of `[node]` names the key under `channel`, such as `channel.labels`. A file with both sections is refused.
+
+### The IPv6 block of an older release
+
+A release before N29 gave each edge server an address of an IPv6 block of the vRack, in `edge.public_ipv6` with a prefix length, and the gateway of the block in `edge.public_ipv6_gateway`:
+
+```toml
+[edge]
+public_ipv6 = "2001:db8:0:100::11/56"
+public_ipv6_gateway = "2001:db8:0:100::1"
+```
+
+This release still reads such a file, so a server that upgrades still starts. With `edge.public_ipv6_gateway`, `hopboxd` ignores that key. It also ignores `edge.public_ipv6` when the value has a prefix length. It then logs this warning, in the same way as for `[node]`:
+
+```text
+edge.public_ipv6_gateway names the IPv6 block of the vRack, which this release removed, so hopboxd ignores it, and edge.public_ipv6 of the block with it. Remove both keys. The IPv6 egress of the machines now leaves from the uplink address of the edge server
+```
+
+Remove both keys from the file. To give the edge server a floating IPv6 address, set `edge.public_ipv6` to that address alone, without a prefix length. Then restart `hopboxd`. At its start, `hopboxd` removes the address of the block, its routes, and its rules from the server ([the egress of the machines](/reference/egress/index.html.md#what-the-ipv6-block-left)).
 
 The paths of the sockets have a limit: a unix socket path has at most 103 bytes on macOS. So keep `run_dir` short. The admin socket needs 11 bytes more for its temp name ([the admin API](/reference/admin-api/index.html.md#the-admin-socket)).
 
@@ -158,8 +176,7 @@ https_listen = ":443"
 http_listen = ":80"
 ssh_listen = ":2222"
 ssh_redirect = true
-public_ipv6 = "2001:db8:0:100::11/56"
-public_ipv6_gateway = "2001:db8:0:100::1"
+public_ipv6 = "2001:db8::11"
 public_ipv4 = "203.0.113.101"
 
 [acme]
@@ -249,16 +266,9 @@ listen = "127.0.0.1:9464"
 | `edge.ssh_listen: "<value>" listens on one address, but the redirect of the SSH ports sends each connection to the address of the interface that took it. Give a port alone, such as :2222, or set edge.ssh_redirect = false` | `edge.ssh_redirect` is true, and the host of `edge.ssh_listen` is one address. |
 | `edge.ssh_listen: "0.0.0.0:<port>" takes only IPv4, so the IPv6 clients that the redirect of the SSH ports sends to it get no answer. Give a port alone, such as :2222, or set edge.ssh_redirect = false` | `edge.ssh_redirect` is true, and the host of `edge.ssh_listen` is `0.0.0.0`. |
 | `edge.ssh_listen: "<value>" is also an HTTP listener. Give each listener its own address` | The SSH listener has the address of `edge.https_listen` or `edge.http_listen`, with a port other than `0`. |
-| `edge.public_ipv6 and edge.public_ipv6_gateway: set both, or neither` | The file sets one of the two keys. |
-| `edge.public_ipv6: "<value>" is not an IPv6 address with the prefix length of its block, such as 2001:db8:0:100::11/56` | The value does not parse as an address with a prefix length. |
-| `edge.public_ipv6: "<value>" is not an IPv6 address without a zone` | The value is an IPv4 address, an IPv4 address in IPv6 form, or has a zone. |
-| `edge.public_ipv6: <address> is not a public IPv6 address` | The address is not a global unicast address, or is a unique local address of `fc00::/7`. |
-| `edge.public_ipv6: the block /<bits> is not from /48 to /64` | The prefix length is outside 48 to 64. |
-| `edge.public_ipv6: <address> is the first address of its block, which the block reserves` | The address has no bit set after the prefix length. |
-| `edge.public_ipv6_gateway: "<value>" is not an IPv6 address without a zone` | The gateway does not parse as an IPv6 address. |
-| `edge.public_ipv6_gateway: <address> is not a link-local address or an address of the block <block>` | The gateway is outside the block and not link-local, or is the first address of the block. |
-| `edge.public_ipv6_gateway: <address> is also edge.public_ipv6` | The gateway is the address of the server. |
-| `edge.public_ipv6: only a server with the role edge holds a public IPv6 address of the block` | A server without the role `edge` sets one of the two keys. |
+| `edge.public_ipv6: "<value>" is not an IPv6 address without a prefix length or a zone, such as 2001:db8::11` | The value does not parse as an IPv6 address. It is an IPv4 address, an IPv4 address in IPv6 form, or has a prefix length or a zone. A value with a prefix length and `edge.public_ipv6_gateway` gives a warning instead ([The IPv6 block of an older release](#the-ipv6-block-of-an-older-release)). |
+| `edge.public_ipv6: <address> is not a public IPv6 address` | The address is not a global unicast address, or is a unique local address of `fc00::/7`. A link-local address is not a global unicast address. |
+| `edge.public_ipv6: only a server with the role edge holds a floating address` | A server without the role `edge` sets the key. |
 | `edge.public_ipv4: "<value>" is not an IPv4 address` | The value does not parse as an IPv4 address, such as `203.0.113.101/32` or an IPv6 address. |
 | `edge.public_ipv4: <address> is not a public IPv4 address` | The address is not a global unicast address, or is in a private range, the vRack range, or the machine range. |
 | `edge.public_ipv4: only a server with the role edge holds a floating address` | A server without the role `edge` sets the key. |

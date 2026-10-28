@@ -15,7 +15,7 @@ The DNS role listens on UDP and on TCP at each address of `dns.listen` in the bo
 | Default address | `:53`: port 53 on every IPv4 and IPv6 address of the server |
 | Addresses | 1 to 16. Each one is `host:port`. The host is an IP address, or empty for every address. |
 | Port `0` | A free port. UDP and TCP of one address get the same port. |
-| An address that the server does not hold | On Linux, the DNS role opens the socket all the same, with the option `IP_FREEBIND` or `IPV6_FREEBIND`, and takes queries once the address exists. An edge server gets its public IPv6 address from a check after the start of the unit `dns` ([the edge role](/reference/edge/index.html.md#the-public-ipv6-address)), so its `dns.listen` can name that address. A typo in an address then gives no error at the start: the socket gets no query. On macOS, each address must exist at the start. |
+| An address that the server does not hold | On Linux, the DNS role opens the socket all the same, with the option `IP_FREEBIND` or `IPV6_FREEBIND`, and takes queries once the address exists. The operator can assign the floating IPv6 address of an edge server after the start ([the edge role](/reference/edge/index.html.md#the-public-ipv6-address)), so its `dns.listen` can name that address. A typo in an address then gives no error at the start: the socket gets no query. On macOS, each address must exist at the start. |
 | TCP limits | 2 s to read a query, 2 s to write an answer, and 8 s without a query before the server closes the connection |
 | TCP connections | At most 512 open connections at each address. A connection past the bound waits in the backlog of the kernel until another connection closes. So a client that holds many connections cannot take every file descriptor of `hopboxd`. |
 | TCP connections of one source | At most 16 open connections from each source at each address. A source is an IPv4 address, or the /64 of an IPv6 address. The server closes a connection past this bound at once. So one client cannot take all 512 connections. |
@@ -27,7 +27,7 @@ The unit `dns` of `hopboxd run` opens every socket at its start ([hopboxd](/refe
 
 Port 53 needs root, or the capability `CAP_NET_BIND_SERVICE`. The unit `hopboxd.service` runs `hopboxd` as root ([Server layout](/reference/server-layout/index.html.md#hopboxdservice)). On a laptop, use a high port, such as `127.0.0.1:15353`.
 
-A stub resolver on the server can hold port 53 on a loopback address. An example is `systemd-resolved` on `127.0.0.53:53`. Then set `dns.listen` to the public addresses of the server, such as `["203.0.113.10:53", "[2001:db8::10]:53"]`. On an edge server with `edge.public_ipv6`, list that address too, such as `["203.0.113.101:53", "[2001:db8:0:100::11]:53"]`.
+A stub resolver on the server can hold port 53 on a loopback address. An example is `systemd-resolved` on `127.0.0.53:53`. Then set `dns.listen` to the public addresses of the server, such as `["203.0.113.10:53", "[2001:db8::10]:53"]`. On an edge server with `edge.public_ipv6`, list that address too, such as `["203.0.113.101:53", "[2001:db8::11]:53"]`.
 
 ## The zone of the install
 

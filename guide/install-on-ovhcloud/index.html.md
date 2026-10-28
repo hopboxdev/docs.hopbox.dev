@@ -2,7 +2,7 @@
 
 > How to install hopbox on an OVHcloud server with Terraform, and how to upgrade, import, and destroy it.
 
-The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack, read Q90.
 
 This guide makes a new install of hopbox on one OVHcloud dedicated server with the hopbox Terraform provider. The server gets every role. The provider adopts a server that your account rents, or orders a new one ([Order a new server](#order-a-new-server)) and pays for it. Then the guide upgrades the server, changes its labels, imports it into a new state, and destroys it.
 
@@ -259,13 +259,13 @@ Keep the key out of the files: export it as `HOPBOX_ADMIN_API_KEY` before the ap
 
 A fleet runs the roles on several servers: edge servers that take the public traffic, control servers that share one external Postgres, and nodes that run machines. The servers talk over the vRack, the private network of OVHcloud. This section builds a fleet of five servers in two pools:
 
-| Resource | Roles | Pool | vRack address | Floating address | IPv6 address |
-| --- | --- | --- | --- | --- | --- |
-| `first` | `control`, `node`, `dns`, `edge` | `default` | `172.31.0.11` | `203.0.113.5` | none |
-| `edge2` | `edge`, `dns` | `default` | `172.31.0.12` | `203.0.113.6` | `2001:db8:0:100::12` |
-| `cp2` | `control`, `node` | `default` | `172.31.0.13` | none | none |
-| `node1` | `node` | `default` | `172.31.0.21` | none | none |
-| `node2` | `node` | `big` | `172.31.0.22` | none | none |
+| Resource | Roles | Pool | vRack address | Floating address |
+| --- | --- | --- | --- | --- |
+| `first` | `control`, `node`, `dns`, `edge` | `default` | `172.31.0.11` | `203.0.113.5` |
+| `edge2` | `edge`, `dns` | `default` | `172.31.0.12` | `203.0.113.6` |
+| `cp2` | `control`, `node` | `default` | `172.31.0.13` | none |
+| `node1` | `node` | `default` | `172.31.0.21` | none |
+| `node2` | `node` | `big` | `172.31.0.22` | none |
 
 The first server joins the vRack at its create, so a fleet starts with a new install. The provider never moves a server that runs onto the vRack. A plan that gives such a server a `vrack_address` fails with `The vRack address of a server cannot change`.
 
@@ -274,7 +274,7 @@ The first server joins the vRack at its create, so a fleet starts with a new ins
 - The rights of the fleet in [step 1](#1-make-the-ovhcloud-api-keys).
 - A vRack in the OVHcloud account, such as `pn-12345`, and servers of a range that offers the vRack. The OVHcloud manager shows both.
 - One Additional IPv4 address for each edge server, routed to a server of the account and not to the vRack. This example uses `203.0.113.5` and `203.0.113.6`.
-- For IPv6, an Additional IPv6 block of the account, routed into the vRack in the OVHcloud manager, and the gateway of the block. This example uses the block `2001:db8:0:100::/56` with the gateway `2001:db8:0:100::1`. Each edge server takes one address of the block ([Run edge servers apart from the nodes](/guide/edge-servers/index.html.md)).
+- No IPv6 address. This example gives the zone IPv4 addresses alone, so it has no `AAAA` record. An edge server takes a floating IPv6 address for the `AAAA` records in `public_ipv6` ([the edge role](/reference/edge/index.html.md#the-public-ipv6-address)).
 - For the second control server, an external Postgres, such as managed PostgreSQL of OVHcloud on the vRack ([Run the control store on an external Postgres](/guide/external-postgres/index.html.md)).
 
 ### 1. Make the first server on the vRack
@@ -366,15 +366,13 @@ resource "hopbox_pool" "big" {
 }
 
 resource "hopbox_server" "edge2" {
-  ovh_service_name    = "ns2345678.ip-198-51-100.eu"
-  roles               = ["edge", "dns"]
-  vrack_address       = "172.31.0.12"
-  floating_addresses  = ["203.0.113.6"]
-  public_ipv6         = "2001:db8:0:100::12/56"
-  public_ipv6_gateway = "2001:db8:0:100::1"
-  bundle              = local.bundle
-  host_kernel         = local.host_kernel
-  depends_on          = [hopbox_server.first]
+  ovh_service_name   = "ns2345678.ip-198-51-100.eu"
+  roles              = ["edge", "dns"]
+  vrack_address      = "172.31.0.12"
+  floating_addresses = ["203.0.113.6"]
+  bundle             = local.bundle
+  host_kernel        = local.host_kernel
+  depends_on         = [hopbox_server.first]
 
   lifecycle {
     create_before_destroy = true
@@ -399,7 +397,7 @@ resource "hopbox_server" "node2" {
 }
 ```
 
-Give each server its own vRack address. `public_ipv6` gives `edge2` its address of the IPv6 block, with the prefix length of the block. The provider writes it to the bootstrap config of the server, and `hopboxd` holds it on the vRack interface ([the edge role](/reference/edge/index.html.md#the-public-ipv6-address)). The provider also writes the first floating address to `edge.public_ipv4`, the source of the egress of the machines ([the egress of the machines](/reference/egress/index.html.md#the-source-addresses)). `depends_on` makes Terraform update the first server before the others in a [rolling upgrade](/reference/terraform-provider/index.html.md#rolling-upgrade). Apply:
+Give each server its own vRack address. The provider also writes the first floating address to `edge.public_ipv4`, the source of the egress of the machines ([the egress of the machines](/reference/egress/index.html.md#the-source-addresses)). `depends_on` makes Terraform update the first server before the others in a [rolling upgrade](/reference/terraform-provider/index.html.md#rolling-upgrade). Apply:
 
 ```sh
 terraform apply
@@ -464,15 +462,13 @@ To replace `edge2` with the server `ns6789012.ip-198-51-100.eu`, change its serv
 
 ```hcl
 resource "hopbox_server" "edge2" {
-  ovh_service_name    = "ns6789012.ip-198-51-100.eu"
-  roles               = ["edge", "dns"]
-  vrack_address       = "172.31.0.14"
-  floating_addresses  = ["203.0.113.6"]
-  public_ipv6         = "2001:db8:0:100::12/56"
-  public_ipv6_gateway = "2001:db8:0:100::1"
-  bundle              = local.bundle
-  host_kernel         = local.host_kernel
-  depends_on          = [hopbox_server.first]
+  ovh_service_name   = "ns6789012.ip-198-51-100.eu"
+  roles              = ["edge", "dns"]
+  vrack_address      = "172.31.0.14"
+  floating_addresses = ["203.0.113.6"]
+  bundle             = local.bundle
+  host_kernel        = local.host_kernel
+  depends_on         = [hopbox_server.first]
 
   lifecycle {
     create_before_destroy = true
@@ -482,14 +478,12 @@ resource "hopbox_server" "edge2" {
 
 Apply. With `create_before_destroy`, Terraform creates the new server first. The new server takes `203.0.113.6` once it is ready, so the address keeps answering. Then Terraform destroys the old server: the provider decommissions it, and takes it out of the vRack. The old server and the new one run side by side for a while, so they need two vRack addresses.
 
-Keep `public_ipv6` the same, so the new server takes the same IPv6 address. While the old server holds it, the new server logs that another host on the vRack holds the address. Once the old server leaves, the new server takes the address within a few seconds. So the public addresses of the install, and the records of the zone, stay the same.
-
 ### 6. Point the zone at the edge servers
 
-The zone of the DNS role names the public addresses of the install. Until now, they are the addresses of the first server. Set them to the floating addresses and the IPv6 addresses of the edge servers. `ns1` takes the first address of each family, and `ns2` the second ([the DNS role](/reference/dns/index.html.md#the-zone-of-the-install)):
+The zone of the DNS role names the public addresses of the install. Until now, they are the addresses of the first server. Set them to the floating addresses of the edge servers. `ns1` takes the first address, and `ns2` the second ([the DNS role](/reference/dns/index.html.md#the-zone-of-the-install)):
 
 ```sh
-ssh -i ~/.ssh/id_ed25519 debian@"$(terraform output -raw ipv4)" sudo hopboxd admin config set --public-address 203.0.113.5,203.0.113.6,2001:db8:0:100::12
+ssh -i ~/.ssh/id_ed25519 debian@"$(terraform output -raw ipv4)" sudo hopboxd admin config set --public-address 203.0.113.5,203.0.113.6
 ```
 
 Ask each edge server for the zone. Each answer names both floating addresses:
@@ -497,10 +491,9 @@ Ask each edge server for the zone. Each answer names both floating addresses:
 ```sh
 dig @203.0.113.5 example.com A +norec
 dig @203.0.113.6 example.com A +norec
-dig @2001:db8:0:100::12 example.com AAAA +norec
 ```
 
-Then change the glue records of the domain at your registrar ([Serve the domain of an install with the DNS role](/guide/dns-role/index.html.md#make-the-records-in-the-parent-zone)): `ns1.example.com` at `203.0.113.5`, `ns2.example.com` at `203.0.113.6`, and both at `2001:db8:0:100::12` for IPv6. A resolver keeps the old records for up to 60 seconds after the parent zone publishes the change.
+Then change the glue records of the domain at your registrar ([Serve the domain of an install with the DNS role](/guide/dns-role/index.html.md#make-the-records-in-the-parent-zone)): `ns1.example.com` at `203.0.113.5`, `ns2.example.com` at `203.0.113.6`. A resolver keeps the old records for up to 60 seconds after the parent zone publishes the change.
 
 ### 7. Let the first server leave the install
 
@@ -519,35 +512,26 @@ Once the zone names the edge servers, the first server can leave the install. Th
 Then take these steps:
 
 1. Make `edge2` the jump host. Read its address and host key with `terraform state show hopbox_server.edge2`, and put its `ipv4` and `ssh_host_key` in `ssh_jump_host` of the provider block. Apply.
-2. Give the floating address of the first server to a new edge server. In the resource `first`, set `floating_addresses = []`. Add the new server, with its own vRack address and its own address of the IPv6 block:
+2. Give the floating address of the first server to a new edge server. In the resource `first`, set `floating_addresses = []`. Add the new server, with its own vRack address:
 
    ```hcl
    resource "hopbox_server" "edge3" {
-     ovh_service_name    = "ns7890123.ip-198-51-100.eu"
-     roles               = ["edge", "dns"]
-     vrack_address       = "172.31.0.15"
-     floating_addresses  = ["203.0.113.5"]
-     public_ipv6         = "2001:db8:0:100::13/56"
-     public_ipv6_gateway = "2001:db8:0:100::1"
-     bundle              = local.bundle
-     host_kernel         = local.host_kernel
-     depends_on          = [hopbox_server.cp2]
+     ovh_service_name   = "ns7890123.ip-198-51-100.eu"
+     roles              = ["edge", "dns"]
+     vrack_address      = "172.31.0.15"
+     floating_addresses = ["203.0.113.5"]
+     bundle             = local.bundle
+     host_kernel        = local.host_kernel
+     depends_on         = [hopbox_server.cp2]
    }
    ```
 
-   Apply. The new server takes `203.0.113.5` at the end of its create. Terraform can update the first server before that. The first server then keeps `203.0.113.5` while OVHcloud routes it there, so `ns1` and the URLs of the install keep answering. In step 5, the first server leaves the install. OVHcloud routes the address to `edge3` already.
-3. Add the IPv6 address of `edge3` to the public addresses. List it first of its family, so `ns1` names it:
-
-   ```sh
-   ssh -i ~/.ssh/id_ed25519 debian@"$(terraform output -raw ipv4)" sudo hopboxd admin config set --public-address 203.0.113.5,203.0.113.6,2001:db8:0:100::13,2001:db8:0:100::12
-   ```
-
-   Then change the AAAA glue record of `ns1.example.com` at your registrar to `2001:db8:0:100::13`.
-4. Edit `main.tf`:
+   Apply. The new server takes `203.0.113.5` at the end of its create. Terraform can update the first server before that. The first server then keeps `203.0.113.5` while OVHcloud routes it there, so `ns1` and the URLs of the install keep answering. In step 4, the first server leaves the install. OVHcloud routes the address to `edge3` already.
+3. Edit `main.tf`:
    - Remove the resource `first`, and the outputs `ipv4`, `admin_api_key`, and `first_host_key`, which name it. The provider keeps the admin API key of `HOPBOX_ADMIN_API_KEY` from step 2, so keep that key in a safe place first.
    - In `cp2`, remove `depends_on`. In each other resource, change `depends_on = [hopbox_server.first]` to `depends_on = [hopbox_server.cp2]`, so a rolling upgrade updates the control server first.
    - In `copy_control_from` of `cp2`, replace the references to `hopbox_server.first` with their values from `terraform state show hopbox_server.first`. Only the create of `cp2` reads them.
-5. Apply. Terraform destroys the first server. The provider drains it through the admin API at `install_url`, because another control server is live. The first server holds no machine, so the drain decommissions it after its empty checks, in about 2 minutes ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#delete)). It stops `hopboxd`, and removes the key files and the Postgres files of the server once `cp2` proves that it holds the same keys. Then it takes the server out of the vRack.
+4. Apply. Terraform destroys the first server. The provider drains it through the admin API at `install_url`, because another control server is live. The first server holds no machine, so the drain decommissions it after its empty checks, in about 2 minutes ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#delete)). It stops `hopboxd`, and removes the key files and the Postgres files of the server once `cp2` proves that it holds the same keys. Then it takes the server out of the vRack.
 
 Check the servers through the jump host:
 

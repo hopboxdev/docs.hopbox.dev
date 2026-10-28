@@ -2,11 +2,11 @@
 
 > The network of the machines of a node: the addresses and their hold, the tap devices, the nftables table inet hopbox_node, the resolvers, and the traffic counters.
 
-The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack, read Q90.
 
 The node network connects each machine to its node, and through the edge servers to the internet. It gives each machine an IPv4 address and an IPv6 address, and routes them to the tap device of the machine. It sends the egress of each machine into an egress tunnel to an edge server ([the egress of the machines](/reference/egress/index.html.md)). It keeps the machines apart from each other and from the node, and it counts their traffic. A tap device is a virtual network device: Firecracker writes the packets of the guest to it, and reads the packets for the guest from it.
 
-The control role gives out the addresses (`internal/service/network.go`). The node role sets up the network (`internal/node/netcfg`). A node reaches the other servers of the install over the mesh, a WireGuard device on the vRack ([the mesh](/reference/mesh/index.html.md)). The edge servers reach the machines of the node over the mesh.
+The control role gives out the addresses (`internal/service/network.go`). The node role sets up the network (`internal/node/netcfg`). A node reaches the other servers of the install over the mesh, a WireGuard device on the peer addresses of the servers ([the mesh](/reference/mesh/index.html.md)). The edge servers reach the machines of the node over the mesh.
 
 ## Addresses
 
@@ -68,7 +68,7 @@ A machine reaches its resolvers on UDP and TCP port 53, as the owner decided on 
 
 | Resolver | Way |
 | --- | --- |
-| In a private range, one of the blocked ranges of the table | Straight from the node, with the address of the node (masquerade). Only port 53 passes. An edge server drops each private destination, so this resolver works only from the node. |
+| In a private range, one of the blocked ranges of the table | Straight from the node, with the address of the node (masquerade). Only port 53 passes. The masquerade never runs for a packet that conntrack marks invalid, such as a TCP segment with SYN and FIN. So the node drops such a packet, and it never leaves with the address of the machine. An edge server drops each private destination, so this resolver works only from the node. |
 | Public, such as `9.9.9.9` | Through the egress tunnel, with the rest of the egress ([the egress of the machines](/reference/egress/index.html.md#the-resolvers-of-the-machines)). |
 
 On a node with the edge role, every resolver takes the way of the rest of the egress, on port 53 ([the egress of the machines](/reference/egress/index.html.md#the-local-exit)).
@@ -212,7 +212,7 @@ The chains do these things:
 | --- | --- |
 | `egress` | Marks each packet of a machine with the mark of the egress tunnel that the hash of its address picks ([the egress of the machines](/reference/egress/index.html.md#the-hash-of-a-machine)). It leaves out two kinds of packets: the replies to the edge servers in the mesh range, and the packets to a resolver in a private range. Without a tunnel, it holds only these two kinds of rules. A change of the count of tunnels replaces the rules of this chain alone, so the counters of the sets stay. |
 | `forward` | Clamps the MSS, marks the connections of the edge servers, and sends the traffic of the tap devices to the next two chains. It drops each forwarded IPv6 packet that touches no tap device. |
-| `from_machine` | Takes what a machine sends ([What a machine can reach](#what-a-machine-can-reach)). A machine sends only from its own two addresses. Without an egress tunnel as its output interface, a packet gets a reset or a refusal: the egress fails closed ([the egress of the machines](/reference/egress/index.html.md#fail-closed)). |
+| `from_machine` | Takes what a machine sends ([What a machine can reach](#what-a-machine-can-reach)). A machine sends only from its own two addresses. A packet to a resolver that conntrack marks invalid is dropped before the accept of port 53. Without an egress tunnel as its output interface, a packet gets a reset or a refusal: the egress fails closed ([the egress of the machines](/reference/egress/index.html.md#fail-closed)). |
 | `to_machine` | Takes what reaches a machine through the forward hook ([What can reach a machine](#what-can-reach-a-machine)). IPv6 comes only from an egress tunnel. |
 | `output`, `input`, `postrouting` | The connections that the node opens to a machine, and the inbound counter. The chain `input` also takes the neighbor discovery of IPv6 from a tap device, so a machine finds its gateway `fe80::1`. |
 | `nat` | The masquerade of the queries to a resolver in a private range. With the public resolver of this example, the chain is empty. |
@@ -220,18 +220,17 @@ The chains do these things:
 On a node with the edge role, the local exit, these parts differ ([the egress of the machines](/reference/egress/index.html.md#the-local-exit)):
 
 - The chain `egress` has no rule of a tunnel.
-- The chain `from_machine` takes each resolver on port 53, and has no rule of the tunnels. Without `edge.public_ipv6` in the config, it refuses IPv6 with a reset or ICMPv6 administratively prohibited.
+- The chain `from_machine` takes each resolver on port 53, and has no rule of the tunnels. It refuses nothing. The host firewall of the edge role refuses the IPv6 egress that its NAT66 cannot take ([the host firewall](/reference/host-firewall/index.html.md#the-uplink-and-the-nat66)).
 - The chain `to_machine` has no rule of IPv6 of its own.
 - The rule of IPv6 in the chain `forward` also lets the egress tunnels pass, whose traffic the host firewall filters.
-- The chain `nat` translates the egress of every machine. The masquerade of each resolver in a private range comes first, so such a resolver sees the address of the node, also with a floating address (plan question Q86). The first rule of the chain that matches a connection gives its source. With the resolver `172.31.0.53`, `edge.public_ipv4 = "203.0.113.101"`, and `edge.public_ipv6 = "2001:db8:0:100::11/56"`, it holds these rules:
+- The chain `nat` translates the IPv4 egress of every machine. The masquerade of each resolver in a private range comes first, so such a resolver sees the address of the node, also with a floating address (plan question Q86). The first rule of the chain that matches a connection gives its source. With the resolver `172.31.0.53` and `edge.public_ipv4 = "203.0.113.101"`, it holds these rules:
 
 ```text
 		meta nfproto ipv4 ip saddr 10.240.0.0/12 ip daddr 172.31.0.53 oifname != "hbt*" masquerade
 		meta nfproto ipv4 ip saddr 10.240.0.0/12 oifname != "hbt*" snat ip to 203.0.113.101
-		meta nfproto ipv6 ip6 saddr fd65:1c74:e769::/48 oifname != "hbt*" snat ip6 to 2001:db8:0:100::11
 ```
 
-Without `edge.public_ipv4`, the rule of IPv4 ends with `masquerade`. Without `edge.public_ipv6`, the rule of IPv6 is not there.
+Without `edge.public_ipv4`, the rule of IPv4 ends with `masquerade`. The chain has no rule of IPv6. The host firewall of the edge role gives the IPv6 egress the address of the uplink (NAT66). It does the same for the machines behind the egress tunnel ([the host firewall](/reference/host-firewall/index.html.md#the-uplink-and-the-nat66)).
 
 Each base chain has the policy `accept`. Most rules of the chains above match only the traffic of tap devices, or of the mesh device `hbm0` to a tap device. So these rules change no other traffic of the host, such as the traffic of containers. Two exceptions exist: the rule of IPv6 in the chain `forward`, and the chain `forward_guard` below.
 
@@ -264,7 +263,7 @@ sudo systemctl restart hopboxd
 | Destination | Result |
 | --- | --- |
 | A public IPv4 address | Passes, through the egress tunnel that the hash of the machine picks. The edge server gives the packets its floating address ([the egress of the machines](/reference/egress/index.html.md#the-source-addresses)). On a node with the edge role, the node itself gives them `edge.public_ipv4`, or the address of its output interface. |
-| A public IPv6 address, in `2000::/3` | Passes, through the same tunnel. The edge server gives the packets its address of the `/56`. An exit without an address of the `/56` refuses them ([the egress of the machines](/reference/egress/index.html.md#ipv6-without-an-address-of-the-56)). |
+| A public IPv6 address, in `2000::/3` | Passes, through the same tunnel. The edge server gives the packets the IPv6 address of its uplink. An exit without an IPv6 address on its uplink refuses them ([the egress of the machines](/reference/egress/index.html.md#ipv6-without-an-uplink-address)). |
 | Any destination, on a node without the edge role and without an egress tunnel | Refused at once: a TCP connect gets a reset, and other packets get ICMP administratively prohibited ([the egress of the machines](/reference/egress/index.html.md#fail-closed)). The resolvers in a private range still pass. |
 | A resolver of the machines, on UDP or TCP port 53 | Passes. See [The resolvers of the machines](#the-resolvers-of-the-machines). |
 | A private, shared, loopback, link-local, or reserved IPv4 range, multicast, or broadcast | Dropped. The list is `BlockedRanges` of `internal/node/netcfg`, as in the table above. |
@@ -427,9 +426,9 @@ The node network logs with `component=netcfg`.
 | Test | Where it runs | What it checks |
 | --- | --- | --- |
 | `TestRulesetGolden` of `internal/node/netcfg` | `make test`, also on a Mac | The rules, against `testdata/ruleset.nft`. Run `go test ./internal/node/netcfg -run TestRulesetGolden -update` to write the file after a change. |
-| `TestNodeNetwork` of `internal/node/netcfg` | `make test-linux`, as root in a privileged container | A node, two machines, another interface, and the internet in network namespaces, with veth pairs in place of tap devices and of an egress tunnel. A machine leaves through the tunnel with its own address, over IPv4 and IPv6. Without the tunnel, a connect fails at once, and it works again once the tunnel is back. It checks each blocked destination, also over IPv6, the private resolver, a spoofed source, the MSS, and the inbound counter. It checks the IPv6 sysctls and the one IPv6 address of a tap device. It checks that a second connect of a device starts its counters again from zero. It checks the forward guard, the repair after a flush of the ruleset, and a new `hopboxd` that takes over the devices. |
+| `TestNodeNetwork` of `internal/node/netcfg` | `make test-linux`, as root in a privileged container | A node, two machines, another interface, and the internet in network namespaces, with veth pairs in place of tap devices and of an egress tunnel. A machine leaves through the tunnel with its own address, over IPv4 and IPv6. Without the tunnel, a connect fails at once, and it works again once the tunnel is back. It checks each blocked destination, also over IPv6, the private resolver, a TCP segment with SYN and FIN or without flags to that resolver, which never leaves with the address of the machine, a spoofed source, the MSS, and the inbound counter. It checks the IPv6 sysctls and the one IPv6 address of a tap device. It checks that a second connect of a device starts its counters again from zero. It checks the forward guard, the repair after a flush of the ruleset, and a new `hopboxd` that takes over the devices. |
 | `TestEdgeOverTheMesh` of `internal/node/netcfg` | `make test-linux`, as root in a privileged container | A node, a machine, and an edge server in network namespaces, with a veth pair named `hbm0` in place of the mesh device. An edge in the set `edges` reaches the machine, and its connection counts as inbound. Another mesh address and the machine itself open nothing. A repair and a new `hopboxd` keep the set. |
-| `TestLocalExit` of `internal/node/netcfg` | `make test-linux` | A node with the edge role, a machine, and the internet in network namespaces. The machine leaves with the address of the node over IPv4. Over IPv6, a connect fails at once without an address of the `/56`, and leaves with that address once the node has one. |
+| `TestLocalExit` of `internal/node/netcfg` | `make test-linux` | A node with the edge role, a machine, and the internet in network namespaces. The machine leaves with the address of the node over IPv4, or with the floating address of `edge.public_ipv4`. `TestLocalExitIPv6` of `internal/hostfw` checks the IPv6 egress ([the host firewall](/reference/host-firewall/index.html.md#tests)). |
 | `TestKVMEndToEnd` of `internal/control` | `make test-kvm`, in the network namespace `KVM_NETNS` | Two Firecracker machines on one install, whose one server is a local exit. It checks their addresses, the egress with masquerade, and the blocked destinations. It opens a machine URL through the edge role, and a shell through the SSH front door. A probe in a guest sends UDP from forged sources, ARP requests and claims, and IPv6 from forged sources. Only the real packet must leave the node, and no forged IPv6 packet gets an answer. The guest has its IPv6 address `/128` alone. The test deletes the table, and the next heartbeat must bring the isolation back. It checks inbound traffic as a use, the metrics, the network after a restart of `hopboxd`, and the release at a delete. |
 
 `TestKVMEndToEnd` refuses to run in the network namespace of the host, because it changes nftables tables, routes, and sysctls. `make test-kvm` adds the namespace `KVM_NETNS`, `hopbox-kvm` by default, runs the KVM tests in it, and deletes it.
