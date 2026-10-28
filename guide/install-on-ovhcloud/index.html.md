@@ -2,6 +2,8 @@
 
 > How to install hopbox on an OVHcloud server with Terraform, and how to upgrade, import, and destroy it.
 
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
+
 This guide makes a new install of hopbox on one OVHcloud dedicated server with the hopbox Terraform provider. The server gets every role. The provider adopts a server that your account rents, or orders a new one ([Order a new server](#order-a-new-server)) and pays for it. Then the guide upgrades the server, changes its labels, imports it into a new state, and destroys it.
 
 hopbox supports only the servers that this provider sets up. [hopbox Terraform provider](/reference/terraform-provider/index.html.md) lists every attribute and each step that the provider takes. [Install hopbox on a Debian 13 server by hand](/guide/install-debian/index.html.md) shows the same install by hand.

@@ -2,6 +2,8 @@
 
 > The network of the machines of a node: the addresses and their hold, the tap devices, the nftables table inet hopbox_node, the resolvers, and the traffic counters.
 
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
+
 The node network connects each machine to its node, and through its node to the internet. It gives each machine an address, and routes the address to the tap device of the machine. It keeps the machines apart from each other and from the node, and it counts their traffic. A tap device is a virtual network device: Firecracker writes the packets of the guest to it, and reads the packets for the guest from it.
 
 The control role gives out the addresses (`internal/service/network.go`). The node role sets up the network (`internal/node/netcfg`). A node reaches the other servers of the install over the mesh, a WireGuard device on the vRack ([the mesh](/reference/mesh/index.html.md)). The edge servers reach the machines of the node over the mesh.

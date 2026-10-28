@@ -2,6 +2,8 @@
 
 > The WireGuard mesh of the servers over the vRack: the device hbm0, which servers join, the mesh addresses, the peers and their allowed IPs, the routes, a restart, metrics, logs, and errors.
 
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
+
 The mesh connects the servers of an install over the vRack with kernel WireGuard. WireGuard encrypts the mesh traffic between servers. An edge server reaches the machines of each node over the mesh, and a cold move copies the disk of a machine over it ([Cold move](/reference/cold-move/index.html.md)). The control channel stays outside the mesh, on the vRack.
 
 The server side is in `internal/mesh`. The control role keeps the members of the mesh in `internal/service/mesh.go`, and pushes the mesh on the control channel from `internal/control/channel/mesh.go`.

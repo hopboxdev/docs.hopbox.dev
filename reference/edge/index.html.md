@@ -2,6 +2,8 @@
 
 > The edge role: its listeners, TLS, routing, and forwarded requests. Also the machine URLs, their sign-in, EdgeService, metrics, and logs.
 
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
+
 The edge role is the HTTPS front of an install. It takes the HTTPS traffic of every client, and it routes each request by its host name. The domain of the install goes to the control role, which serves the API and the console. A machine URL, such as `box1.example.com`, goes to its machine. A private machine URL needs a sign-in first. This page covers the listeners, TLS, the routing, and the forwarded requests. It also covers the machine URLs, the sign-in of a private machine URL, the public IPv6 address of an edge server, `EdgeService`, the metrics, and the logs. The edge role also runs the SSH front door of the machines, which [the SSH front door](/reference/ssh-front-door/index.html.md) covers.
 
 The edge role is in `internal/edge`. The pushes of the control role are in `internal/control/channel/edge.go`. The routes and the sign-in are in `internal/service/edge.go`. `EdgeService`, `/auth/machine`, and the forwarded requests are in `internal/api/edge.go`.

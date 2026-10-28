@@ -2,6 +2,8 @@
 
 > The host firewall of every server, the nftables table inet hopbox_host: its zones and ports, the jump hosts, the ways in that it keeps, the address of the /56, its repair, metrics, logs, and tests.
 
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
+
 The host firewall is the nftables table `inet hopbox_host` of every server of an install. It makes the edge servers the bastion of the install (rules 2 and 5). Only an edge server takes traffic from the internet. A control server or a node takes no new connection on its public address. On the vRack and on the mesh, each server takes only the ports of its roles. Operators reach a server that is not an edge server by SSH only through an edge server as a jump host.
 
 The firewall is in `internal/hostfw`. `hopboxd run` starts it on every server, right after the metrics listener and before the units of the roles ([hopboxd](/reference/hopboxd/index.html.md#run)). The provider block of the Terraform provider names the jump host in `ssh_jump_host` ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#jump-host)).

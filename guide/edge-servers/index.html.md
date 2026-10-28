@@ -2,6 +2,8 @@
 
 > How to add two edge servers apart from the nodes, with floating IPv4 addresses and IPv6 addresses of the vRack block, point the zone at both, and reach a machine through each one.
 
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
+
 An edge server takes the public traffic of an install: the URL of each machine, SSH, the API, and the console. A small install runs every role on one server. A bigger install runs the edge role and the DNS role on two servers of their own, `edge1` and `edge2`. The install then has two name servers. When one edge server stops, the other one takes the traffic. This guide adds two edge servers to an install on the vRack, and checks a machine through each one.
 
 An edge server without the node role reaches each machine over the mesh, the WireGuard device `hbm0` between the servers ([the mesh](/reference/mesh/index.html.md)). [The edge role](/reference/edge/index.html.md#the-way-to-the-machines) covers the way to the machines in full.

@@ -2,6 +2,8 @@
 
 > How to check the network of a machine: its address, its egress, what it cannot reach, and its traffic counters.
 
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
+
 This guide follows the network of one machine on a server with the node role. It finds the address of the machine, checks its egress and the destinations that it cannot reach, and reads its traffic counters. On an install with several servers on the vRack, it also checks the mesh between the servers. [The node network](/reference/node-network/index.html.md) and [the mesh](/reference/mesh/index.html.md) describe each part.
 
 ## What you need

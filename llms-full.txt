@@ -1775,6 +1775,8 @@ There is no way to stop a drain. A server that drains stays cordoned until its d
 
 > How to add two edge servers apart from the nodes, with floating IPv4 addresses and IPv6 addresses of the vRack block, point the zone at both, and reach a machine through each one.
 
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
+
 An edge server takes the public traffic of an install: the URL of each machine, SSH, the API, and the console. A small install runs every role on one server. A bigger install runs the edge role and the DNS role on two servers of their own, `edge1` and `edge2`. The install then has two name servers. When one edge server stops, the other one takes the traffic. This guide adds two edge servers to an install on the vRack, and checks a machine through each one.
 
 An edge server without the node role reaches each machine over the mesh, the WireGuard device `hbm0` between the servers ([the mesh](/reference/mesh/)). [The edge role](/reference/edge/#the-way-to-the-machines) covers the way to the machines in full.
@@ -3595,6 +3597,8 @@ The install makes every check before it changes the config, the current release,
 
 > How to install hopbox on an OVHcloud server with Terraform, and how to upgrade, import, and destroy it.
 
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
+
 This guide makes a new install of hopbox on one OVHcloud dedicated server with the hopbox Terraform provider. The server gets every role. The provider adopts a server that your account rents, or orders a new one ([Order a new server](#order-a-new-server)) and pays for it. Then the guide upgrades the server, changes its labels, imports it into a new state, and destroys it.
 
 hopbox supports only the servers that this provider sets up. [hopbox Terraform provider](/reference/terraform-provider/) lists every attribute and each step that the provider takes. [Install hopbox on a Debian 13 server by hand](/guide/install-debian/) shows the same install by hand.
@@ -4899,6 +4903,8 @@ A laptop install of [Run the control role on a laptop](/guide/run-hopboxd/) serv
 # Check the network of a machine
 
 > How to check the network of a machine: its address, its egress, what it cannot reach, and its traffic counters.
+
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
 
 This guide follows the network of one machine on a server with the node role. It finds the address of the machine, checks its egress and the destinations that it cannot reach, and reads its traffic counters. On an install with several servers on the vRack, it also checks the mesh between the servers. [The node network](/reference/node-network/) and [the mesh](/reference/mesh/) describe each part.
 
@@ -15742,6 +15748,8 @@ Each error starts with one of these texts. Go code matches them with `errors.Is`
 
 > The edge role: its listeners, TLS, routing, and forwarded requests. Also the machine URLs, their sign-in, EdgeService, metrics, and logs.
 
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
+
 The edge role is the HTTPS front of an install. It takes the HTTPS traffic of every client, and it routes each request by its host name. The domain of the install goes to the control role, which serves the API and the console. A machine URL, such as `box1.example.com`, goes to its machine. A private machine URL needs a sign-in first. This page covers the listeners, TLS, the routing, and the forwarded requests. It also covers the machine URLs, the sign-in of a private machine URL, the public IPv6 address of an edge server, `EdgeService`, the metrics, and the logs. The edge role also runs the SSH front door of the machines, which [the SSH front door](/reference/ssh-front-door/) covers.
 
 The edge role is in `internal/edge`. The pushes of the control role are in `internal/control/channel/edge.go`. The routes and the sign-in are in `internal/service/edge.go`. `EdgeService`, `/auth/machine`, and the forwarded requests are in `internal/api/edge.go`.
@@ -20603,6 +20611,8 @@ listen = "127.0.0.1:9464"
 
 > The host firewall of every server, the nftables table inet hopbox_host: its zones and ports, the jump hosts, the ways in that it keeps, the address of the /56, its repair, metrics, logs, and tests.
 
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
+
 The host firewall is the nftables table `inet hopbox_host` of every server of an install. It makes the edge servers the bastion of the install (rules 2 and 5). Only an edge server takes traffic from the internet. A control server or a node takes no new connection on its public address. On the vRack and on the mesh, each server takes only the ports of its roles. Operators reach a server that is not an edge server by SSH only through an edge server as a jump host.
 
 The firewall is in `internal/hostfw`. `hopboxd run` starts it on every server, right after the metrics listener and before the units of the roles ([hopboxd](/reference/hopboxd/#run)). The provider block of the Terraform provider names the jump host in `ssh_jump_host` ([hopbox Terraform provider](/reference/terraform-provider/#jump-host)).
@@ -22705,6 +22715,8 @@ The server adds no metric of its own. Each request to `/mcp` counts in `hopbox_h
 
 > The WireGuard mesh of the servers over the vRack: the device hbm0, which servers join, the mesh addresses, the peers and their allowed IPs, the routes, a restart, metrics, logs, and errors.
 
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
+
 The mesh connects the servers of an install over the vRack with kernel WireGuard. WireGuard encrypts the mesh traffic between servers. An edge server reaches the machines of each node over the mesh, and a cold move copies the disk of a machine over it ([Cold move](/reference/cold-move/)). The control channel stays outside the mesh, on the vRack.
 
 The server side is in `internal/mesh`. The control role keeps the members of the mesh in `internal/service/mesh.go`, and pushes the mesh on the control channel from `internal/control/channel/mesh.go`.
@@ -23130,6 +23142,8 @@ A node whose driver keeps its disks in files counts the bytes of the disks that 
 # The node network
 
 > The network of the machines of a node: the addresses and their hold, the tap devices, the nftables table inet hopbox_node, the resolvers, and the traffic counters.
+
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
 
 The node network connects each machine to its node, and through its node to the internet. It gives each machine an address, and routes the address to the tap device of the machine. It keeps the machines apart from each other and from the node, and it counts their traffic. A tap device is a virtual network device: Firecracker writes the packets of the guest to it, and reads the packets for the guest from it.
 
@@ -26418,6 +26432,8 @@ The control role logs each refusal of `AuthorizeSSH` as `refused an SSH connecti
 # hopbox Terraform provider
 
 > The hopbox Terraform provider, its provider block, the OVHcloud API rights, the resource hopbox_server, its steps and errors, and the binary.
+
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
 
 `terraform-provider-hopbox` is the hopbox Terraform provider. Terraform runs it as a plugin. It adopts OVHcloud dedicated servers into an install, or orders new ones. It puts each server on the vRack of the install, and reinstalls it with the tested OS. Over SSH, it installs the tested host kernel and `hopboxd`, and enrolls the server. Then it manages the server through the admin API. An install can grow into a fleet: edge servers with floating addresses, more control servers, and nodes in pools. The provider reaches a server that is not an edge server through a jump host. The code is in `internal/tfprovider`. [Install hopbox on an OVHcloud server with Terraform](/guide/install-on-ovhcloud/) walks through a first install.
 

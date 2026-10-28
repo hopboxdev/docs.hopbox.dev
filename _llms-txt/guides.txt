@@ -1746,6 +1746,8 @@ There is no way to stop a drain. A server that drains stays cordoned until its d
 
 > How to add two edge servers apart from the nodes, with floating IPv4 addresses and IPv6 addresses of the vRack block, point the zone at both, and reach a machine through each one.
 
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
+
 An edge server takes the public traffic of an install: the URL of each machine, SSH, the API, and the console. A small install runs every role on one server. A bigger install runs the edge role and the DNS role on two servers of their own, `edge1` and `edge2`. The install then has two name servers. When one edge server stops, the other one takes the traffic. This guide adds two edge servers to an install on the vRack, and checks a machine through each one.
 
 An edge server without the node role reaches each machine over the mesh, the WireGuard device `hbm0` between the servers ([the mesh](/reference/mesh/)). [The edge role](/reference/edge/#the-way-to-the-machines) covers the way to the machines in full.
@@ -3566,6 +3568,8 @@ The install makes every check before it changes the config, the current release,
 
 > How to install hopbox on an OVHcloud server with Terraform, and how to upgrade, import, and destroy it.
 
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
+
 This guide makes a new install of hopbox on one OVHcloud dedicated server with the hopbox Terraform provider. The server gets every role. The provider adopts a server that your account rents, or orders a new one ([Order a new server](#order-a-new-server)) and pays for it. Then the guide upgrades the server, changes its labels, imports it into a new state, and destroys it.
 
 hopbox supports only the servers that this provider sets up. [hopbox Terraform provider](/reference/terraform-provider/) lists every attribute and each step that the provider takes. [Install hopbox on a Debian 13 server by hand](/guide/install-debian/) shows the same install by hand.
@@ -4870,6 +4874,8 @@ A laptop install of [Run the control role on a laptop](/guide/run-hopboxd/) serv
 # Check the network of a machine
 
 > How to check the network of a machine: its address, its egress, what it cannot reach, and its traffic counters.
+
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
 
 This guide follows the network of one machine on a server with the node role. It finds the address of the machine, checks its egress and the destinations that it cannot reach, and reads its traffic counters. On an install with several servers on the vRack, it also checks the mesh between the servers. [The node network](/reference/node-network/) and [the mesh](/reference/mesh/) describe each part.
 

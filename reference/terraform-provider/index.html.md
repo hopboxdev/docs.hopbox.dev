@@ -2,6 +2,8 @@
 
 > The hopbox Terraform provider, its provider block, the OVHcloud API rights, the resource hopbox_server, its steps and errors, and the binary.
 
+The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
+
 `terraform-provider-hopbox` is the hopbox Terraform provider. Terraform runs it as a plugin. It adopts OVHcloud dedicated servers into an install, or orders new ones. It puts each server on the vRack of the install, and reinstalls it with the tested OS. Over SSH, it installs the tested host kernel and `hopboxd`, and enrolls the server. Then it manages the server through the admin API. An install can grow into a fleet: edge servers with floating addresses, more control servers, and nodes in pools. The provider reaches a server that is not an edge server through a jump host. The code is in `internal/tfprovider`. [Install hopbox on an OVHcloud server with Terraform](/guide/install-on-ovhcloud/index.html.md) walks through a first install.
 
 The provider has three resources, [`hopbox_server`](#resource-hopbox_server), [`hopbox_pool`](#resource-hopbox_pool), and [`hopbox_size`](#resource-hopbox_size), and no data sources.
