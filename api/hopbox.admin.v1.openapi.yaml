@@ -4954,8 +4954,9 @@ components:
           type: string
           title: vrack_address
           description: |-
-            vrack_address is the address of the server on the vRack, in 172.31.0.0/16, such as
-             172.31.0.12.
+            vrack_address is deprecated, and always empty. The mesh runs on the peer address of
+             each server, the field peer_address of Server.
+          deprecated: true
         publicKey:
           type: string
           title: public_key

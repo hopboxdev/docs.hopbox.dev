@@ -2,11 +2,11 @@
 
 > The egress of the machines through the edge servers. It covers the egress tunnels hbe*, the egress edges, the routing, and the local exit. It also covers the IPv6 addresses of the machines, IPv6 forwarding, logs, and tests.
 
-The egress of a machine is its traffic to the internet. It leaves the install through the edge servers. So the internet sees the floating IPv4 address of an edge server, and its address of the IPv6 block of the install. A node without the edge role sends the egress of its machines through egress tunnels. These are WireGuard devices on the vRack, beside the mesh device `hbm0` ([the mesh](/reference/mesh/index.html.md)). The owner decided the rules of this page on 2026-10-27, in the plan questions Q81 to Q87.
+The egress of a machine is its traffic to the internet. It leaves the install through the edge servers. So the internet sees the floating IPv4 address of an edge server, and its address of the IPv6 block of the install. A node without the edge role sends the egress of its machines through egress tunnels. These are WireGuard devices on the peer addresses of the servers, beside the mesh device `hbm0` ([the mesh](/reference/mesh/index.html.md)). The owner decided the rules of this page on 2026-10-27, in the plan questions Q81 to Q87.
 
 The tunnels are in `internal/egress`. The node table `inet hopbox_node` picks the tunnel of each packet ([the node network](/reference/node-network/index.html.md#the-table-inet-hopbox_node)). The host firewall of an edge server forwards and translates the egress ([the host firewall](/reference/host-firewall/index.html.md#the-egress-of-the-machines)).
 
-In the examples, the vRack interface is `enp3s0f1`. `edge1` has the vRack address `172.31.0.21`, the floating address `203.0.113.101`, and `edge.public_ipv6 = "2001:db8:0:100::11/56"`. `edge2` has `172.31.0.22`, `203.0.113.102`, and `2001:db8:0:100::12`.
+In the examples, the vRack interface is `enp3s0f1`. `edge1` has the peer address `203.0.113.21`, the floating address `203.0.113.101`, and `edge.public_ipv6 = "2001:db8:0:100::11/56"`. `edge2` has `203.0.113.22`, `203.0.113.102`, and `2001:db8:0:100::12`.
 
 ## The way out of each server
 
@@ -17,7 +17,7 @@ In the examples, the vRack interface is `enp3s0f1`. `edge1` has the vRack addres
 | A server with the node role and the edge role | One device `hbe0`, as an edge server. | The server is the local exit of its machines. They leave through its own uplink, without a tunnel ([The local exit](#the-local-exit)). |
 | A server that enrolls with neither role, such as a server with the DNS role alone | None. A check removes the tunnels of an older config. | It has no machines. |
 
-A server needs the mesh device for a tunnel, because the tunnels use its private key. A server outside the mesh, such as ks, has no tunnel. Its log has `the mesh device has no key yet, so this server has no egress tunnel yet`. A server with the node role and the edge role still keeps the egress of its machines as the local exit.
+A server needs the mesh device for a tunnel, because the tunnels use its private key. While the device has no key, the log has `the mesh device has no key yet, so this server has no egress tunnel yet`. Each enrolled server makes the device, also a server without a peer address ([the mesh](/reference/mesh/index.html.md#which-servers-join)). Such a server gets no mesh, so a node without the edge role then knows no egress edge, and its egress fails closed. A server with the node role and the edge role, such as the first server of an install, keeps the egress of its machines as the local exit.
 
 ## Values
 
@@ -34,7 +34,7 @@ A server needs the mesh device for a tunnel, because the tunnels use its private
 | Return mark on an edge server | `0x68620100`, with the table `26819` and the rule priority `26800`. The rule comes before the rule of the `/56` at `26806`, because a reply to a machine can have a source in the `/56`. |
 | Conntrack mark on an edge server | The bit `0x20000000`, on each connection that comes out of a tunnel. It is for hopbox alone, as the mark of the node is ([the node network](/reference/node-network/index.html.md#the-mark-of-the-node-is-reserved)). |
 
-The [host firewall](/reference/host-firewall/index.html.md#ports) opens UDP `51821` from the vRack range on an edge server. It opens UDP `51821` to `51836` from the vRack range on a node without the edge role.
+The [host firewall](/reference/host-firewall/index.html.md#ports) opens UDP `51821` from the set `peers` on an edge server. It opens UDP `51821` to `51836` from the set `peers` on a node without the edge role. The vRack zone opens the same ports from the vRack range until N31 removes it.
 
 ## Egress edges
 
@@ -60,7 +60,7 @@ A node without the edge role has one tunnel for each egress edge, in the order o
 | Part | Value |
 | --- | --- |
 | Port | UDP `51821` + n. |
-| Peer | The egress edge n, with the endpoint `<vRack address of the edge>:51821`, and the allowed IPs `0.0.0.0/0` and `::/0`. |
+| Peer | The egress edge n, with the endpoint `<peer address of the edge>:51821`, and the allowed IPs `0.0.0.0/0` and `::/0`. The endpoint comes from the mesh ([the mesh](/reference/mesh/index.html.md#the-peers)). |
 | Routing table | `26820` + n, with the default routes `0.0.0.0/0` and `::/0` on the device, both with the protocol 107. |
 | Rule | `fwmark 0x68620000+n lookup 26820+n`, with the priority `26820` + n, for IPv4 and for IPv6. |
 | Reverse path filter | `net.ipv4.conf.hbe<n>.rp_filter` is `0` ([The reverse path filter](#the-reverse-path-filter)). |
@@ -78,7 +78,7 @@ interface: hbe0
   listening port: 51821
 
 peer: <public key of edge1>
-  endpoint: 172.31.0.21:51821
+  endpoint: 203.0.113.21:51821
   allowed ips: 0.0.0.0/0, ::/0
 ```
 

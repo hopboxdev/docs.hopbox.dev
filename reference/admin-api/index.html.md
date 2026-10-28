@@ -949,7 +949,7 @@ The message `ServerMesh` has these fields:
 | Field | Type | Description |
 | --- | --- | --- |
 | `address` | string | The mesh address of the server, in `10.239.0.0/16`, for example `10.239.0.3`. |
-| `vrack_address` | string | The address of the server on the vRack, in `172.31.0.0/16`, for example `172.31.0.12`. |
+| `vrack_address` | string | Deprecated, and always empty. The mesh runs on the peer address of each server, the field `peer_address` of `Server`. |
 | `public_key` | string | The public key of the WireGuard device `hbm0` of the server, in base64, as `wg show` prints it. |
 
 The message `ServerDrain` has these fields:
@@ -1103,7 +1103,7 @@ The request `ListControlProcessesRequest` has no fields. The response `ListContr
 | `id` | string | The ID of the process, a UUID. Each start of the control role has a new one. |
 | `server_id` | string | The ID of the enrolled server of the same `hopboxd`. Empty when no role of that `hopboxd` enrolled. |
 | `hostname` | string | The host name of the server of the process. |
-| `internal_url` | string | The URL of the internal listener of the process, such as `https://172.31.0.11:7443`. Empty when the listener listens on every address or on a loopback address. |
+| `internal_url` | string | The URL of the internal listener of the process, such as `https://203.0.113.11:7443`. Empty when the listener listens on every address or on a loopback address. |
 | `release` | string | The version of `hopboxd` of the process, such as `v0.2.0`. |
 | `schema_version` | int32 | The number of the newest migration that the `hopboxd` of the process knows. |
 | `kek_ids` | list of string | The key-encryption keys that the process can open, staged keys too. |

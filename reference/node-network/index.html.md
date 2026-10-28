@@ -271,10 +271,11 @@ sudo systemctl restart hopboxd
 | An IPv6 address outside `2000::/3` | Dropped. This holds the unique local addresses, such as those of the other machines, and the link-local, multicast, and reserved addresses. |
 | Another machine | Dropped, over IPv4 and over IPv6, because every machine address is in `10.0.0.0/8` and in `fd65:1c74:e769::/48`. Org networks and tag networks come in phase 4. |
 | A server of the mesh, at its mesh address | Dropped, because the mesh range `10.239.0.0/16` is in `10.0.0.0/8`. Only the replies to the connections of an edge server pass. |
+| A server of the install, at its peer address | Dropped by the host firewall of the exit: the edge server of the tunnel, or the node itself with the edge role ([the host firewall](/reference/host-firewall/index.html.md#the-egress-of-the-machines)). So a machine never reaches a port that the servers open to their peers, such as the internal listener, also when its source becomes the peer address of an edge server. |
 | The node, at any of its addresses | Dropped by the chain `input`. Only the replies to the connections that the node opened pass, and the neighbor discovery of IPv6. So a machine reaches no service of the node, such as the API, the metrics, or the control role. |
 | Any destination, from a source address that is not an address of the machine | Dropped. |
 
-The edge server drops the same private ranges, the mesh range, and the vRack range again, in its host firewall ([the host firewall](/reference/host-firewall/index.html.md#the-egress-of-the-machines)).
+The edge server drops the same private ranges, the mesh range, and the vRack range again, in its host firewall, with the peer addresses of the install ([the host firewall](/reference/host-firewall/index.html.md#the-egress-of-the-machines)).
 
 No egress allowlist exists in phase 1, so a machine reaches every public host. Allowlists and the egress proxy come in phase 4.
 

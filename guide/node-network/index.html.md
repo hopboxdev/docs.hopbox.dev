@@ -4,7 +4,7 @@
 
 The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack or with an IPv6 /56, read Q90.
 
-This guide follows the network of one machine on a server with the node role. It finds the address of the machine, checks its egress and the destinations that it cannot reach, and reads its traffic counters. On an install with several servers on the vRack, it also checks the mesh between the servers. [The node network](/reference/node-network/index.html.md) and [the mesh](/reference/mesh/index.html.md) describe each part.
+This guide follows the network of one machine on a server with the node role. It finds the address of the machine, checks its egress and the destinations that it cannot reach, and reads its traffic counters. On an install with several servers, it also checks the mesh between the servers. [The node network](/reference/node-network/index.html.md) and [the mesh](/reference/mesh/index.html.md) describe each part.
 
 ## What you need
 
@@ -180,21 +180,21 @@ The inbound counter grows only with the connections that the node opened, such a
 
 ## Check the mesh
 
-This part needs an install with several servers on the vRack: each server has one address in `172.31.0.0/16`. A server without such an address, such as a server alone on ks, stays out of the mesh. Its log then has `this server has no address on the vRack, so it stays out of the mesh`.
+This part needs an install with several servers, each with a peer address: the public IPv4 address at which the other servers reach it ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)). A server without a peer address, such as a server alone on ks, stays out of the mesh. `hopboxd admin server list` shows the peer address of each server.
 
-Each enrolled server on the vRack has the WireGuard device `hbm0`, with a mesh address in `10.239.0.0/16`. The admin API shows the mesh part of each server. Run this command on a control server, with the ID of a server from `sudo hopboxd admin server list`:
+Each enrolled server has the WireGuard device `hbm0`. A server with a peer address also gets a mesh address in `10.239.0.0/16`. The admin API shows the mesh part of each server. Run this command on a control server, with the ID of a server from `sudo hopboxd admin server list`:
 
 ```sh
-sudo hopboxd admin server get <id> | grep '^mesh_'
+sudo hopboxd admin server get <id> | grep -E '^(peer_address|mesh_)'
 ```
 
 ```text
+peer_address	203.0.113.12
 mesh_address	10.239.0.2
-mesh_vrack_address	172.31.0.12
 mesh_public_key	gN65BkIKy1eCE9pP1wdc8ROUtkHLF2PfAqYdO0JbmjI=
 ```
 
-On a server of the mesh, `wg show` lists one peer for each other server, at its vRack address. Install the tool first with `sudo apt install wireguard-tools`. `hopboxd` does not need it.
+On a server of the mesh, `wg show` lists one peer for each other server, at its peer address. Install the tool first with `sudo apt install wireguard-tools`. `hopboxd` does not need it.
 
 ```sh
 sudo wg show hbm0
@@ -209,7 +209,7 @@ curl -m 3 http://10.240.0.1:8000/
 
 The machine sees the mesh address of the edge server as the source. A server without the edge role cannot open a connection to a machine, and the command times out there.
 
-On the vRack itself, only WireGuard packets go between the servers of the mesh, apart from the control channel. The mesh uses UDP port 51820, and the egress tunnels the ports from 51821. The metrics of the mesh show the handshake and the bytes of each peer:
+Between the peer addresses, only WireGuard packets of the mesh go between the servers, apart from the control channel and the SSH through the jump hosts. The mesh uses UDP port 51820, and the egress tunnels the ports from 51821. The metrics of the mesh show the handshake and the bytes of each peer:
 
 ```sh
 curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_mesh_'
@@ -251,8 +251,7 @@ sudo systemctl restart hopboxd
 | The egress of a machine times out, but the edge reaches the machine | A host with Docker drops forwarded packets in the chain `FORWARD` of iptables. Accept the tap devices in the chain `DOCKER-USER`, as in [Docker on the server](#docker-on-the-server), or run the node without Docker. |
 | The log of `hopboxd` has `the nftables table inet hopbox_node lost a part outside hopboxd` | Something flushed the ruleset, such as a restart of `nftables.service`. `hopboxd` installed the table again. Find what flushed it, and stop it. |
 | `no capacity: the subnet ... has no free machine address` | The node holds 4094 machines and held addresses. Delete a machine, and wait 5 minutes for the hold of its address. |
-| The log of `hopboxd` has `this server has more than one address on the vRack, so it stays out of the mesh` | Two addresses of the server are in `172.31.0.0/16`. Remove the address that the provider did not set. |
 | The log of `hopboxd` has `cannot set up the mesh device. The next check tries again` | The kernel has no module `wireguard`, or another device has the name `hbm0`. Load the module with `sudo modprobe wireguard`, or remove the other device. |
 | On a node without the edge role, each connect of a machine to the internet fails at once | The node has no egress edge, so its egress fails closed. Check that `sudo wg show all endpoints` lists a tunnel `hbe0`, and that an edge server is `ready` in `hopboxd admin server list` ([the egress of the machines](/reference/egress/index.html.md#fail-closed)). |
 | The log of `hopboxd` has `the reverse path filter is on` | The kernel drops the packets of the egress tunnels, and an edge server takes no egress. Set the sysctl `net.ipv4.conf.all.rp_filter` to 0 ([the egress of the machines](/reference/egress/index.html.md#the-reverse-path-filter)). |
-| `wg show hbm0` lists no peer | The control role sends the mesh only to a server whose heartbeat carries its part of the mesh. Check that `hopboxd admin server get` shows `mesh_address` for the server. |
+| `wg show hbm0` lists no peer | The control role sends the mesh only to a server with a peer address whose heartbeat carries its part of the mesh. Check that `hopboxd admin server get` shows `peer_address` and `mesh_address` for the server. Set a missing peer address with `hopboxd admin server set-peer-address` ([hopboxd](/reference/hopboxd/index.html.md#admin-server-set-peer-address)). |

@@ -21,9 +21,30 @@ The internal listener is the TLS listener of the control role for the servers of
 | Stop timeout | 5 s. A stop ends every open stream at once, so every control channel ends ([the API server](/reference/api/index.html.md#when-a-listener-stops)). |
 | Metrics | the label `listener="internal"` for the cluster API, and `listener="edge"` for the forwarded requests ([Metrics](/reference/metrics/index.html.md#metrics-of-the-api)) |
 
-On an install with one server, the listener stays on `127.0.0.1`, and the `channel` unit of the same server dials it on loopback. With more servers, it listens on the vRack IP of the control server, such as `172.31.0.11:7443`, so the other servers can reach it. The host firewall takes its port on the vRack from the vRack range. On the public interface, it takes the port only from the peer addresses of the servers and the registered addresses of the enrollment tokens that work ([the host firewall](/reference/host-firewall/index.html.md#sets)). N28 moves the listener to the peer address of the control server. Each other server then lists the listener of one or more control servers in `channel.control_urls` ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)). The control role sends each server the listeners on the vRack of the live control processes, and the server dials them first ([the control channel](/reference/control-channel/index.html.md#control-urls)). A listener on loopback is not in that list.
+On an install with one server, the listener stays on `127.0.0.1`, and the `channel` unit of the same server dials it on loopback. With more servers, it listens on the peer address of the control server, such as `203.0.113.11:7443`, so the other servers can reach it. The host firewall takes its port on the public interface only from the peer addresses of the servers, the internal listeners of the live control processes, and the registered addresses of the enrollment tokens that work ([the host firewall](/reference/host-firewall/index.html.md#sets)). Each other server then lists the listener of one or more control servers in `channel.control_urls` ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)). The control role sends each server the listeners on the peer addresses of the live control processes, and the server dials them first ([the control channel](/reference/control-channel/index.html.md#control-urls)). A listener on loopback or on a private address is not in that list.
 
-Each control process records the URL of its listener in its row of `control_processes` (`internal_url`, [Control store tables](/reference/control-store/index.html.md#control_processes)), as `https://` and the address of the listener. The other control processes forward data streams to that URL ([the control channel](/reference/control-channel/index.html.md#streams-through-another-control-process)). A listener on every address, such as `0.0.0.0:7443`, names no address, so its row has no URL, and no data stream reaches its channels from another control process. With several control servers, set `control.internal_listen` to the vRack IP of the server.
+Each control process records the URL of its listener in its row of `control_processes` (`internal_url`, [Control store tables](/reference/control-store/index.html.md#control_processes)), as `https://` and the address of the listener. The other control processes forward data streams to that URL ([the control channel](/reference/control-channel/index.html.md#streams-through-another-control-process)). A listener on every address, such as `0.0.0.0:7443`, names no address, so its row has no URL, and no data stream reaches its channels from another control process. With several control servers, set `control.internal_listen` to the peer address of the server and port 7443. `hopboxd install --internal-listen` sets it ([hopboxd](/reference/hopboxd/index.html.md#install)).
+
+## Move the first server to its peer address
+
+The first server of an install has every role, and its listener stays on loopback while it is the only server. Before a second server enrolls, the listener moves to the peer address of the first server. The Terraform provider runs this step from N30 on. To run it by hand, take these steps on the first server.
+
+1. Make sure that the server has its peer address. The line `peer_address` of `sudo hopboxd admin server get <id>` names it. If it is empty, set it with `sudo hopboxd admin server set-peer-address <id> <address>` ([hopboxd](/reference/hopboxd/index.html.md#admin-server-set-peer-address)). The install refuses a listener on another address than the stored peer address.
+2. Run the install with the peer address and port 7443:
+
+   ```sh
+   sudo hopboxd install --roles control,node,dns,edge --internal-listen 203.0.113.11:7443
+   ```
+
+The install writes `control.internal_listen = "203.0.113.11:7443"`. It writes `https://203.0.113.11:7443` in the place of each loopback URL of `channel.control_urls`, or of the default `https://127.0.0.1:7443`. Then it restarts `hopboxd`, and the roles of the server dial the listener at the new URL. No loopback URL stays: the listener has one address. The machines keep running through the restart.
+
+After the restart, these things hold:
+
+- The control role publishes `https://203.0.113.11:7443`, so each server keeps that URL in `<data_dir>/server/control-urls` ([the control channel](/reference/control-channel/index.html.md#control-urls)).
+- The roles of the first server dial the listener from the peer address, not from loopback. The enrollment takes a call from the address of the control server itself as a call from loopback, so a token without a peer address still adds a role to the first server ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)).
+- The host firewall takes port 7443 of the public interface from the set `peers` and the set `registered` alone. A connection of the server to its own address goes over loopback, so the firewall takes it.
+
+Then make the token of the second server with its peer address, and enroll the server at `https://203.0.113.11:7443` ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)).
 
 The HTTP server has the timeouts and limits of the API listener ([the API server](/reference/api/index.html.md#listener)): the header read timeout, the body read timeout of a unary call, the idle timeout, and the largest request message of 4 MiB.
 

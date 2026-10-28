@@ -172,7 +172,16 @@ $ sudo hopboxd admin server set-peer-address 01a14403-6bd1-7522-9ab0-b3ab4517e0e
 peer_address	203.0.113.12
 ```
 
-From then on, a token without a peer address enrolls only from loopback. Make the token of each other server with its own peer address, such as `sudo hopboxd admin enrollment-token create --peer-address 203.0.113.13`. That server must then enroll from `203.0.113.13`.
+From then on, a token without a peer address enrolls only from the control server itself: from loopback, or from the address of its internal listener. Make the token of each other server with its own peer address, such as `sudo hopboxd admin enrollment-token create --peer-address 203.0.113.13`. That server must then enroll from `203.0.113.13`.
+
+The internal listener still listens on loopback, so no other server reaches it. Before you add a second server, move the listener to the peer address. In `/etc/hopbox/hopboxd.toml`, add these keys, and restart `hopboxd`:
+
+```toml
+[control]
+internal_listen = "203.0.113.12:7443"
+```
+
+Under `[channel]`, add `control_urls = ["https://203.0.113.12:7443"]` too, so the node role dials the listener at its new address. A server that `hopboxd install` set up takes both changes and the restart from one command: `sudo hopboxd install --roles control,node --internal-listen 203.0.113.12:7443` ([the internal listener](/reference/internal-listener/index.html.md#move-the-first-server-to-its-peer-address)).
 
 ## Cordon and uncordon
 
