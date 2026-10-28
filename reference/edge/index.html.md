@@ -287,11 +287,54 @@ public_ipv6 = "2001:db8::11"
 
 The zone names this address in its `AAAA` records, through the public addresses of the install ([the DNS role](/reference/dns/index.html.md#the-zone-of-the-install), [hopbox Terraform provider](/reference/terraform-provider/index.html.md#edge-servers-and-floating-addresses)). Without a floating IPv6 address, the zone has no `AAAA` record, and the install takes IPv4 only.
 
-`hopboxd` does not put the address on the uplink. The operator routes it to the server at its provider. The network setup of the Terraform provider puts it on the uplink as a `/128` ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#the-network-setup-of-an-edge-server)). Without the Terraform provider, put it there by hand. The host firewall has no rule of its own for it. The uplink is in the public zone, so the address takes the public ports of the edge server from every source ([the host firewall](/reference/host-firewall/index.html.md#zones)). The NAT66 of the machines never takes it ([the host firewall](/reference/host-firewall/index.html.md#the-uplink-and-the-nat66)).
+The operator routes the address to the server at its provider. The network setup of the Terraform provider puts it on the uplink as a `/128` ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#the-network-setup-of-an-edge-server)). Without the Terraform provider, put it there by hand. `hopboxd` puts it on the uplink whenever no interface of the server holds it, also at its first start when the address was never there ([The check of the uplink](#the-check-of-the-uplink)). The host firewall has no rule of its own for it. The uplink is in the public zone, so the address takes the public ports of the edge server from every source ([the host firewall](/reference/host-firewall/index.html.md#zones)). The NAT66 of the machines never takes it ([the host firewall](/reference/host-firewall/index.html.md#the-uplink-and-the-nat66)).
 
 ## The egress of the machines
 
 Each edge server that enrolls takes the egress of the machines of the nodes through its egress tunnel `hbe0` ([the egress of the machines](/reference/egress/index.html.md)). Its host firewall forwards the IPv4 egress to the public zone, and the IPv6 egress to the uplink alone ([the host firewall](/reference/host-firewall/index.html.md#the-egress-of-the-machines)). The IPv4 egress gets the source `edge.public_ipv4`, the floating address of the edge server ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)). The IPv6 egress gets a global IPv6 address of the uplink (NAT66), never the floating address of `edge.public_ipv6`. Without such an uplink address, the edge server refuses the IPv6 egress ([the egress of the machines](/reference/egress/index.html.md#ipv6-without-an-uplink-address)). An edge server with the node role is the local exit of its own machines ([the egress of the machines](/reference/egress/index.html.md#the-local-exit)).
+
+## The source of the own connections
+
+The other servers of an install take the traffic of the install only from the peer addresses ([the host firewall](/reference/host-firewall/index.html.md#sets)). An edge server also holds floating addresses on its uplink. A connection of the edge server from a floating address reaches no port of another server. So `hopboxd` binds these connections of each server to its peer address:
+
+- the control channel and its data streams, to the internal listener of a control server ([the control channel](/reference/control-channel/index.html.md)),
+- the enrollment of `hopboxd enroll` and `hopboxd install --enroll-token` ([Enrollment and the install PKI](/reference/enrollment/index.html.md)),
+- the requests that the edge role forwards to the internal listeners ([Forwarded requests](#forwarded-requests)),
+- the data streams that a control process forwards to another control process ([the control channel](/reference/control-channel/index.html.md#streams-through-another-control-process)).
+
+The peer address is the one address of the set `peers` of the host firewall that an interface of the server holds. `hopboxd run` takes the set of its host firewall. `hopboxd enroll` and `hopboxd install` take the last sets in `<data_dir>/hostfw/peers` ([the host firewall](/reference/host-firewall/index.html.md#sets)). In these cases, a connection leaves from the source that the kernel picks:
+
+- The server has no sets yet, such as at its first enrollment. The network setup of the Terraform provider runs before that enrollment, and sets the source of the default route, so the enrollment still leaves from the peer address.
+- No interface of the server holds an address of `peers`, or more than one interface address is in `peers`.
+- The destination is not a peer address, such as loopback, a vRack address, or a host name.
+
+The other connections of the server leave from the source that the kernel picks. These include the SSH of an operator from the edge server to a node ([the host firewall](/reference/host-firewall/index.html.md#the-jump-hosts)), the mesh, and the egress tunnels. The kernel takes the preferred source (`src`) of the default route. Without it, on an uplink with `/32` addresses and an onlink gateway, the kernel takes the first address of the uplink, and that can be a floating address. So the network setup of an edge server with floating addresses sets `src <peer address>` on the default route of the uplink.
+
+This is a build default of the fix of docket item 137, not an owner decision.
+
+### The check of the uplink
+
+A DHCP renew, `networkctl reconfigure`, or `ifdown` and `ifup` of the uplink can drop the source of the default route and the floating addresses. On an edge server with `edge.public_ipv4`, `edge.floating_addresses`, or `edge.public_ipv6` ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)), the unit `channel` of `hopboxd run` checks the uplink at its start, after each change of an address or a route of the server, and every 2 s. The uplink is the device of the IPv4 default route of the main table with the lowest metric. A check repairs these gaps:
+
+1. If the default route has another preferred source or none, the check sets the peer address as its source. It keeps the gateway, the metric, the protocol, the flags, and the MTU of the route. This also works while the uplink has no carrier.
+2. If no interface of the server holds an address of `edge.public_ipv4`, `edge.floating_addresses`, or `edge.public_ipv6`, the check puts that address on the uplink, as a `/32` or a `/128`. The first check after a start also puts on an address that the uplink never held.
+
+The check logs each repair at level warn ([the egress of the machines](/reference/egress/index.html.md#logs)). It never removes an address or a route. It does not know a floating address that the bootstrap config does not name, so it does not put such an address back. Before the first sets of the control plane, the check does not know the peer address, so it does not change the route. An edge server without the three keys gets no check.
+
+The Terraform provider puts the floating addresses on the uplink at each boot and at each apply. It writes `edge.floating_addresses` only to a release whose version names the feature `floating-addresses` ([the version command](/reference/version/index.html.md#json-output)). When an update drops a floating address, the provider first writes the new keys and waits for the restart of `hopboxd`, and only then removes the address from the uplink. Otherwise the check puts the address back at once ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#edge-servers-and-floating-addresses)).
+
+To see the state of the uplink, run these commands on the edge server. The default route must show `src` and the peer address, and the uplink must hold each floating address:
+
+```sh
+ip -4 route show default
+ip addr show dev <uplink>
+```
+
+| Test | Where it runs | What it checks |
+| --- | --- | --- |
+| The tests of `internal/peersrc` and `internal/egress` without root | `make test`, also on a Mac | The pick of the peer address, the dials that bind to it, and a check of the uplink with a fake kernel: the repairs, a floating address on another device, an unknown peer address, and a failure that logs once. |
+| `TestEdgeSourceStaysOnThePeerAddress` of `internal/egress` | `make test-linux`, as root in a privileged container | An edge server whose uplink holds its floating address before its peer address, each as a `/32`, with an onlink gateway and no source on the default route. A plain dial leaves from the floating address. A dial of `hopboxd` to a peer leaves from the peer address. A check sets the source of the route and puts back the lost floating addresses, two IPv4 and one IPv6, and keeps an address that it did not set. The route keeps its gateway, protocol, metric, onlink flag, and MTU, and a default route of another device with the same metric stays. After the check, a plain dial leaves from the peer address. The check also sets the source while the uplink has no carrier. |
+| `TestEdgeServers` of `test/fleet` | `make test-fleet` | A real `hopboxd` on an edge server sets the source of its default route, and puts back the source and its floating IPv6 address after a loss. |
 
 ## EdgeService
 
@@ -337,7 +380,7 @@ The edge role logs with `component=edge`.
 | `ended the open requests of a machine URL sign-in that lost its access` | info | A check refused a token with open requests. The fields are `machine`, `open_requests`, and `code`. |
 | `ended the open requests of machine URLs that changed` | info | New routes ended open requests, with `open_requests` ([Machine URLs](#machine-urls)). |
 
-The host firewall logs the uplink of the IPv6 egress with `component=hostfw` ([the host firewall](/reference/host-firewall/index.html.md#logs)).
+The host firewall logs the uplink of the IPv6 egress with `component=hostfw` ([the host firewall](/reference/host-firewall/index.html.md#logs)). The check of the uplink logs with `component=egress` ([the egress of the machines](/reference/egress/index.html.md#logs)).
 
 The edge role can refuse a certificate or routes that the control role pushed. The agent of the control channel then logs `the edge role refused a push of the control plane, and keeps what it has` at error level, with `push` and `err`.
 

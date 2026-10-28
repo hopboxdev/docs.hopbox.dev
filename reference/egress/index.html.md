@@ -257,7 +257,7 @@ ip -6 route show table 26806
 
 ## Logs
 
-The tunnels log with `component=egress`. A check logs a state only after a change of the state, so a check every 2 s does not repeat a line.
+The tunnels and the check of the uplink of an edge server log with `component=egress`. A check logs a state only after a change of the state, so a check every 2 s does not repeat a line.
 
 | Message | Level | Fields | When |
 | --- | --- | --- | --- |
@@ -271,6 +271,16 @@ The tunnels log with `component=egress`. A check logs a state only after a chang
 | `the machines of this node send their egress through the egress tunnels` | info | `tunnels` | The count of tunnels of a node changed, and the tunnels hand it to the node network. |
 | `removed what the IPv6 block of the vRack left on this server, because this release sends the IPv6 egress of the machines out of the uplink` | info | `removed` | A check removed parts of the IPv6 block of a release before N29 ([What the IPv6 block left](#what-the-ipv6-block-left)). `removed` lists the addresses, the count of routes, and the rules. |
 | `cannot remove what the IPv6 block of the vRack left on this server. The next check tries again` | error | `err`, `retry_in` | A read or a removal failed. It logs once until the error changes. |
+| `the default route of the uplink lost the peer address as its source, so hopboxd set it again` | warn | `device`, `source`, `peer_address` | The check of the uplink of an edge server with floating addresses set the source of the default route ([the edge role](/reference/edge/index.html.md#the-check-of-the-uplink)). `source` is the source before, or `none`. |
+| `the uplink lost a floating address of this edge server, so hopboxd put it back` | warn | `device`, `address` | The check put an address of `edge.public_ipv4`, `edge.floating_addresses`, or `edge.public_ipv6` back on the uplink. |
+| `cannot set the peer address as the source of the default route of the uplink. The next check tries again` | error | `device`, `source`, `peer_address`, `err`, `retry_in` | The change of the route failed. It logs once until the error changes. |
+| `cannot put a floating address back on the uplink. The next check tries again` | error | `device`, `address`, `err`, `retry_in` | The add of the address failed. It logs once until the error changes. |
+| `this edge server does not know its peer address yet, so the source of its own connections waits for the first sets of the control plane` | info | `device` | The host firewall has no set `peers` yet. |
+| `the uplink of this edge server holds no peer address of the install, so its own connections leave from the address that the kernel picks` | warn | `device` | No address of the uplink is in the set `peers`, or more than one is. |
+| `this edge server has no IPv4 default route, so it keeps neither its floating addresses nor the source of its own connections` | warn | | The check found no IPv4 default route in the main table. |
+| `cannot read the uplink of this edge server. The next check tries again` | error | `err`, `retry_in` | A read of the routes or the addresses failed. |
+| `cannot watch the addresses and the routes of the host, so the uplink of this edge server gets a check only every <interval>` | warn | `err` | The watch of netlink did not start. The interval is 2 s. |
+| `the watch of the addresses and the routes of the host ended, so the uplink of this edge server gets a check only every <interval>` | warn | | The watch of netlink stopped. The interval is 2 s. |
 
 The other parts log with their own components:
 
@@ -299,6 +309,7 @@ These errors come in the field `err` of `cannot set up the egress tunnels. The n
 | --- | --- | --- |
 | The tests of `internal/egress` without root | `make test`, also on a Mac | One tunnel for each egress edge, at most 16, and the order of a new tunnel and of its use. A restart keeps the tunnels until the first mesh, and counts none while the filter of a tunnel is on. No mesh key, no tunnel. One tunnel with each node on an edge server. A change of mode removes the old tunnels. A repair and its log, a failure, the reverse path filter, and `egress_exit`. The router advertisements of IPv6 forwarding. The pick of the uplink address of the NAT66. The removal of what the IPv6 block left, with the rules last, and nothing to do on a new server. |
 | `TestFindUplink` of `internal/egress` | `make test-linux` | An uplink with a static address, an address of a router advertisement, the floating address, and a unique local address. The pick takes the static address, or the preferred source of the default route, and never the floating address. |
+| `TestEdgeSourceStaysOnThePeerAddress` of `internal/egress` | `make test-linux` | The source of the own connections of an edge server, and the check of its uplink ([the edge role](/reference/edge/index.html.md#the-check-of-the-uplink)). |
 | `TestLeftoversRemoveTheIPv6Block` of `internal/egress` | `make test-linux` | What a release before N29 left on an edge server: the address of the block, the table `hopbox_egress6` with its two default routes, and its two rules. A check removes them, and keeps the other addresses, routes, and rules. |
 | `TestTheTunnelsCarryTheEgressBothWays` of `internal/egress` | `make test-linux`, as root in a privileged container | A node and an edge server on one vRack link, each with its mesh device and the real kernel WireGuard. A packet of a machine with the mark of its tunnel reaches the edge server with the address of the machine. The reply with the return mark comes back through the tunnel. It checks IPv4 and IPv6. |
 | `TestIPv6ForwardingKeepsTheDefaultRouteOfTheUplink` of `internal/egress` | `make test-linux` | A host whose uplink takes its IPv6 default route from a real router advertisement. After IPv6 forwarding turns on, the route stays, and a new advertisement renews it. |
