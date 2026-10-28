@@ -1252,10 +1252,7 @@ sudo curl -s --unix-socket /run/hopbox/admin.sock \
 
 `hopbox.admin.v1.PoolService` manages the pools. A pool is a named group of servers. Each enrollment token enrolls a server into one pool, and all servers of a pool have identical hardware. An operator size can keep its machines in one pool ([SizeService](#sizeservice)). The pools live in the table `pools` ([Control store tables](/reference/control-store/index.html.md#pools)). Every install has the pool `default`, and an enrollment token without a pool enrolls into it.
 
-A pool records two facts about its servers:
-
-- The OVHcloud plan code, such as `24adv01`. The instance admin sets it at the create. It is empty for the pool `default` and for a pool of adopted servers.
-- The hardware. The first server that enrolls into the pool records it. The enrollment of a server with other hardware fails (plan question Q61).
+A pool records the hardware of its servers. The first server that enrolls into the pool records it. The enrollment of a server with other hardware fails (plan question Q61). A pool records no plan of a provider, because the operator orders each server at its provider.
 
 The message `Pool` holds one pool:
 
@@ -1263,7 +1260,7 @@ The message `Pool` holds one pool:
 | --- | --- | --- |
 | `id` | string | The ID of the pool, a UUID. |
 | `name` | string | The name of the pool, a lowercase DNS label, such as `default`. |
-| `ovh_plan` | string | The OVHcloud plan code of the servers of the pool, or empty. |
+| `ovh_plan` | string | Deprecated, and always empty. A pool records no plan of a provider. |
 | `hardware` | `PoolHardware` | The hardware of the first server that enrolled into the pool. It is absent before that enrollment. A pool whose servers are all decommissioned takes the hardware of its next server ([Enrollment and the install PKI](/reference/enrollment/index.html.md#hardware-of-a-pool)). |
 | `server_count` | int32 | The count of servers of the pool that are not decommissioned. |
 | `size_count` | int32 | The count of sizes that name the pool and are not retired. |
@@ -1289,14 +1286,14 @@ Adds a pool.
 | Procedure | `/hopbox.admin.v1.PoolService/CreatePool` |
 | Policy action | `pool.create`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | yes. A retry with the same key returns the first result. |
-| Audit entry | action `pool.create`, target kind `pool`, target ID the pool ID, details `name` and `ovh_plan` |
+| Audit entry | action `pool.create`, target kind `pool`, target ID the pool ID, details `name` |
 
 The request `CreatePoolRequest` has these fields:
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `name` | string | The name of the pool: a lowercase DNS label of 1 to 63 characters that starts with a letter. No other live pool can have it. The name of a deleted pool is free. |
-| `ovh_plan` | string | The OVHcloud plan code of the servers of the pool: 1 to 64 of `a-z`, `0-9`, `.`, and `-`, which start with a letter or a digit. Leave it empty for a pool of adopted servers. |
+| `ovh_plan` | string | Deprecated. The call ignores it. |
 
 The response `CreatePoolResponse` has the field `pool`, the new `Pool`.
 
@@ -1352,7 +1349,6 @@ The request `DeletePoolRequest` has the field `name`, the name of the pool. The 
 | Error | Cause |
 | --- | --- |
 | `invalid_argument` with `invalid argument: invalid name: the pool name ...` | `CreatePool` with a name that is not a lowercase DNS label. |
-| `invalid_argument` with `invalid argument: invalid OVHcloud plan: "<plan>" must be 1 to 64 of a-z, 0-9, ".", and "-", and start with a letter or a digit` | `CreatePool` with a bad plan code. |
 | `invalid_argument` with `idempotency: invalid key: this method needs an Idempotency-Key header` | `CreatePool` without an idempotency key. |
 | `already_exists` with `already exists: a pool is named "<name>" already` | `CreatePool` with the name of a live pool. |
 | `not_found` with `not found: no pool is named "<name>"` | `GetPool` or `DeletePool` of a name that no live pool has. |
@@ -1365,7 +1361,7 @@ Example:
 ```sh
 sudo curl -s --unix-socket /run/hopbox/admin.sock \
   -H 'Content-Type: application/json' -H "Idempotency-Key: $(uuidgen)" \
-  -d '{"name":"big","ovhPlan":"24adv01"}' \
+  -d '{"name":"big"}' \
   http://hopboxd/hopbox.admin.v1.PoolService/CreatePool
 ```
 

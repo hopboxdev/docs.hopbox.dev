@@ -1438,20 +1438,19 @@ ID                                    LIVE  HOSTNAME  INTERNAL URL            RE
 ### admin pool create
 
 ```sh
-hopboxd admin pool create <name> [--ovh-plan=PLAN] [--json]
+hopboxd admin pool create <name> [--json]
 ```
 
-Adds the pool `<name>` ([the admin API](/reference/admin-api/index.html.md#createpool)). It sends a new idempotency key with the call. It prints the pool, one field on each line: the name of the field, a tab, and the value. The fields are `id`, `name`, `ovh_plan`, `hardware`, `server_count`, `size_count`, `version`, `create_time`, and `update_time`. `hardware` is `-` until the first server enrolls into the pool.
+Adds the pool `<name>` ([the admin API](/reference/admin-api/index.html.md#createpool)). It sends a new idempotency key with the call. It prints the pool, one field on each line: the name of the field, a tab, and the value. The fields are `id`, `name`, `hardware`, `server_count`, `size_count`, `version`, `create_time`, and `update_time`. `hardware` is `-` until the first server enrolls into the pool.
 
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
-| `--ovh-plan` | string | none | The OVHcloud plan code of the servers of the pool, such as `24adv01`. Leave it out for a pool of adopted servers. |
-| `--json` | bool | `false` | Prints one JSON object with the fields of the message `Pool` as keys. `hardware` is `null` before the first enrollment, else an object with `cpu_model`, `cpu_threads`, `memory_bytes`, and `disk_bytes`. The times are in RFC 3339 form. |
+| `--json` | bool | `false` | Prints one JSON object with the fields of the message `Pool` as keys, apart from the deprecated `ovh_plan`. `hardware` is `null` before the first enrollment, else an object with `cpu_model`, `cpu_threads`, `memory_bytes`, and `disk_bytes`. The times are in RFC 3339 form. |
 
 Example:
 
 ```sh
-sudo hopboxd admin pool create big --ovh-plan 24adv01
+sudo hopboxd admin pool create big
 ```
 
 ### admin pool get
@@ -1472,7 +1471,7 @@ Prints the pool `<name>`, as `admin pool create` does ([the admin API](/referenc
 hopboxd admin pool list [--json]
 ```
 
-Lists the pools, by name, in a table ([the admin API](/reference/admin-api/index.html.md#listpools)). The columns are `NAME`, `OVH PLAN`, `SERVERS`, `SIZES`, and `HARDWARE`. `SERVERS` counts the servers that are not decommissioned, and `SIZES` the sizes that name the pool and are not retired. `-` stands for an empty plan, and for a pool without hardware.
+Lists the pools, by name, in a table ([the admin API](/reference/admin-api/index.html.md#listpools)). The columns are `NAME`, `SERVERS`, `SIZES`, and `HARDWARE`. `SERVERS` counts the servers that are not decommissioned, and `SIZES` the sizes that name the pool and are not retired. `-` stands for a pool without hardware.
 
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -1480,9 +1479,9 @@ Lists the pools, by name, in a table ([the admin API](/reference/admin-api/index
 
 ```text
 $ sudo hopboxd admin pool list
-NAME     OVH PLAN  SERVERS  SIZES  HARDWARE
-big      24adv01   2        1      AMD EPYC 4244P 6-Core Processor, 12 CPU threads, 62.5 GiB of RAM, disks 960 GB, 960 GB
-default  -         1        0      -
+NAME     SERVERS  SIZES  HARDWARE
+big      2        1      AMD EPYC 4244P 6-Core Processor, 12 CPU threads, 62.5 GiB of RAM, disks 960 GB, 960 GB
+default  1        0      -
 ```
 
 ### admin pool delete

@@ -47,7 +47,7 @@ Root writes and runs what these dirs hold. So the install refuses a dir that ano
 
 ### The file system of the data dir
 
-On a server with the node role, `<data_dir>` must be on XFS with reflinks: the node makes the disk of a machine as a reflink copy of its image. When the Terraform provider installs a server, it makes this file system. By hand, make it with `mkfs.xfs -m reflink=1` and mount it on `/var/lib/hopbox` ([Install hopbox on a Debian 13 server by hand](/guide/install-debian/index.html.md)).
+On a server with the node role, `<data_dir>` must be on XFS with reflinks: the node makes the disk of a machine as a reflink copy of its image. The operator makes this file system before the install, with `mkfs.xfs -m reflink=1`, and mounts it on `/var/lib/hopbox` ([Install hopbox on a Debian 13 server by hand](/guide/install-debian/index.html.md#2-make-the-xfs-file-system)). The Terraform provider makes sure that it is there before its install. If the file system is an XFS without reflinks that holds no file, the provider makes it again ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#create)).
 
 The install checks the file system before it changes anything. If `<data_dir>` does not exist yet, it checks the nearest dir above it. The install refuses another file system, and XFS without reflinks. The preflight check `reflink` tests reflinks again in `<data_dir>` ([the preflight check](/reference/preflight/index.html.md)). A server with only the control role has no such rule.
 

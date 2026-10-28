@@ -856,7 +856,7 @@ The job asks for no certificate until an instance admin agrees to the terms of t
 
 ## What you need
 
-* For the steps on a server: a server installed from the release bundle, as in [Install hopbox on a Debian 13 server by hand](/guide/install-debian/) or [Install hopbox on an OVHcloud server with Terraform](/guide/install-on-ovhcloud/).
+* For the steps on a server: a server installed from the release bundle, as in [Install hopbox on a Debian 13 server by hand](/guide/install-debian/) or [Install hopbox on your servers with Terraform](/guide/install-with-terraform/).
 * For the steps on a Mac: a checkout of the source of hopbox, built with `make build`. The source is not public yet, so these steps are for the people who work on hopbox.
 * For the steps on a Mac: the bundled Postgres. `make pg` builds it on the first run and prints its dir.
 * Go, to install Pebble, and `dig`.
@@ -1093,7 +1093,7 @@ A cordoned server takes no new machine. Its machines keep running. Cordon a serv
 
 To set the labels of a server, click its name. Type the labels as `key=value` pairs, such as `disk=nvme, zone=a`, and click “Set labels”. A size can ask for labels, and placement then puts its machines only on servers with them ([Add pools and sizes](/guide/pools-and-sizes/)).
 
-The Admin area does not add or remove a server. The hopbox Terraform provider does that ([Install hopbox on an OVHcloud server with Terraform](/guide/install-on-ovhcloud/)). To take a server out of the install with its machines, drain it first ([Drain a node](/guide/drain-a-node/)). The server page has a button “Drain” for it.
+The Admin area does not add or remove a server. The hopbox Terraform provider does that ([Install hopbox on your servers with Terraform](/guide/install-with-terraform/)). To take a server out of the install with its machines, drain it first ([Drain a node](/guide/drain-a-node/)). The server page has a button “Drain” for it.
 
 ## Drain a server
 
@@ -1283,7 +1283,7 @@ Each change of the domain or the addresses raises the serial of the zone. Within
 
 ## What you need
 
-* For the steps on a server: a server installed from the release bundle, as in [Install hopbox on a Debian 13 server by hand](/guide/install-debian/) or [Install hopbox on an OVHcloud server with Terraform](/guide/install-on-ovhcloud/).
+* For the steps on a server: a server installed from the release bundle, as in [Install hopbox on a Debian 13 server by hand](/guide/install-debian/) or [Install hopbox on your servers with Terraform](/guide/install-with-terraform/).
 * For the steps on a Mac: a checkout of the source of hopbox, built with `make build`. The source is not public yet, so these steps are for the people who work on hopbox.
 * For the steps on a Mac: the bundled Postgres. `make pg` builds it on the first run and prints its dir.
 * `dig`. macOS has it.
@@ -1748,7 +1748,7 @@ There is no way to stop a drain. A server that drains stays cordoned until its d
 
 The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack, read Q90.
 
-An edge server takes the public traffic of an install: the URL of each machine, SSH, the API, and the console. It also takes the egress of the machines to the internet ([the egress of the machines](/reference/egress/)). A small install runs every role on one server. A bigger install runs the edge role and the DNS role on two servers of their own, `edge1` and `edge2`. The install then has two name servers. When one edge server stops, the other one takes the traffic. This guide adds two edge servers to an install on the vRack, and checks a machine through each one.
+An edge server takes the public traffic of an install: the URL of each machine, SSH, the API, and the console. It also takes the egress of the machines to the internet ([the egress of the machines](/reference/egress/)). A small install runs every role on one server. A bigger install runs the edge role and the DNS role on two servers of their own, `edge1` and `edge2`. The install then has two name servers. When one edge server stops, the other one takes the traffic. This guide adds two edge servers to an install whose servers talk over their peer addresses. Then it reaches a machine through each edge server.
 
 An edge server without the node role reaches each machine over the mesh, the WireGuard device `hbm0` between the servers ([the mesh](/reference/mesh/)). [The edge role](/reference/edge/#the-way-to-the-machines) covers the way to the machines in full.
 
@@ -1761,16 +1761,16 @@ The release files of hopbox are not public yet. The hopbox team gives them on re
 3. The edge server finds the node of the machine in its routes. It connects to the address of the machine over `hbm0`, from its mesh address.
 4. The node lets the connection reach the machine, because the mesh address belongs to an edge server.
 
-A floating address is an Additional IP of OVHcloud: a public IPv4 address that the account routes to one server. A replacement of the edge server takes the same address, so the zone never changes. The floating IPv6 address of an edge server is an address that the operator assigns to its uplink, at the provider and on the host. `hopboxd` does not put it there ([the edge role](/reference/edge/#the-public-ipv6-address)). The IPv6 egress of the machines leaves from another address: the IPv6 address of the uplink.
+A floating address is a public IPv4 address that the provider of the servers can route to one server and then to another. Examples are an Additional IP of OVHcloud, and a floating IP of another provider. The operator routes it to the edge server at the provider. A replacement of the edge server takes the same address, so the zone never changes. The floating IPv6 address of an edge server is an IPv6 address that the operator routes to the edge server at the provider. The edge server holds it on its uplink as a `/128`. `hopboxd` does not put it there ([the edge role](/reference/edge/#the-public-ipv6-address)). The IPv6 egress of the machines leaves from another address: the IPv6 address of the uplink.
 
 ## What you need
 
-* An install with a control server on the vRack, and nodes in the mesh ([the mesh](/reference/mesh/#which-servers-join)).
-* Two servers for `edge1` and `edge2`, each with an address on the vRack in `172.31.0.0/16`. The Terraform provider sets it ([hopbox Terraform provider](/reference/terraform-provider/)).
-* One floating IPv4 address for each edge server, routed to it and held on its public interface. The Terraform provider routes it with the attribute `floating_addresses`. This guide uses `203.0.113.101` for `edge1` and `203.0.113.102` for `edge2`.
-* One floating IPv6 address for each edge server, held on its uplink. This guide uses `2001:db8::11` for `edge1` and `2001:db8::12` for `edge2`.
+* An install with a control server that listens on its peer address, and nodes in the mesh ([the mesh](/reference/mesh/#which-servers-join)).
+* Two servers for `edge1` and `edge2`.
+* One floating IPv4 address for each edge server. This guide uses `203.0.113.101` for `edge1` and `203.0.113.102` for `edge2`. The operator routes each address to its edge server at the provider. The edge server holds it on its uplink as a `/32`, and the peer address stays the source of its default route. So the connections of the edge server to the other servers leave from its peer address. The Terraform provider sets this up with the attribute `floating_addresses` ([hopbox Terraform provider](/reference/terraform-provider/#the-network-setup-of-an-edge-server)). Without the provider, set it up by hand.
+* One floating IPv6 address for each edge server, held on its uplink as a `/128`. This guide uses `2001:db8::11` for `edge1` and `2001:db8::12` for `edge2`. The Terraform provider sets this up with the attribute `public_ipv6`.
 * An IPv6 default route and a global IPv6 address on the uplink of each edge server, for the IPv6 egress of the machines. This guide uses `2001:db8:1::21` for `edge1` and `2001:db8:2::22` for `edge2`.
-* The internal URL of the control server, such as `https://172.31.0.11:7443`.
+* The internal URL of the control server on its peer address, such as `https://203.0.113.11:7443` ([the internal listener](/reference/internal-listener/)).
 * The peer address of each server: its public IPv4 address on its uplink, at which the other servers reach it ([Enrollment and the install PKI](/reference/enrollment/#peer-addresses)). This guide uses `203.0.113.21` for `edge1`, `203.0.113.22` for `edge2`, and `203.0.113.31` for the node `node1`.
 * `dig`, `curl`, and `ssh` on your laptop.
 
@@ -1799,30 +1799,28 @@ The tested OS runs `systemd-resolved` on port 53 of a loopback address. So `dns.
 
 ### Install and enroll each edge server
 
-On the control server, make a token for each edge server:
+On the control server, make a token for each edge server. The token names the peer address of the edge server, so the enrollment must come from that address, and the server keeps it:
 
 ```sh
-sudo hopboxd admin enrollment-token create --roles edge,dns
+sudo hopboxd admin enrollment-token create --roles edge,dns --peer-address 203.0.113.21
 ```
 
 On `edge1`, install with the URL of the control server, and enroll with the token:
 
 ```sh
-sudo hopboxd install --roles edge,dns --control-url https://172.31.0.11:7443
+sudo hopboxd install --roles edge,dns --control-url https://203.0.113.11:7443
 sudo hopboxd enroll --token <token>
 ```
 
-Do the same on `edge2` with its own token.
+Do the same on `edge2` with its own token, for the peer address `203.0.113.22`.
 
-### Give each server its peer address
+### Reach the servers through the edge servers
 
-The host firewall of each server takes the mesh port, the ports of the egress tunnels, and SSH on its public interface only from the peer addresses of the install ([the host firewall](/reference/host-firewall/#sets)). Port 22 of a server without the edge role takes only the peer addresses of the edge servers. A server with a vRack address keeps its public port 22 closed, also before you set the peer addresses. Until then, SSH reaches it only through an edge server at its vRack address.
+On its public interface, the host firewall of each server takes the mesh port and the ports of the egress tunnels only from the peer addresses of the install ([the host firewall](/reference/host-firewall/#sets)). Port 22 of a server without the edge role takes only the peer addresses of the edge servers, the set `jump_hosts`.
 
-The servers of this guide enroll on the vRack, so their tokens name no peer address. On the control server, set the peer address of each enrolled server instead:
+Each edge server got its peer address from its token. A server that enrolled without a peer address, such as a server from before peer addresses, has no part in these sets. On the control server, set its peer address. For example, for `node1`:
 
 ```sh
-sudo hopboxd admin server set-peer-address <id of edge1> 203.0.113.21
-sudo hopboxd admin server set-peer-address <id of edge2> 203.0.113.22
 sudo hopboxd admin server set-peer-address <id of node1> 203.0.113.31
 ```
 
@@ -1832,7 +1830,7 @@ Within 5 s, each server holds the peer addresses of the edge servers in the set 
 sudo nft list set inet hopbox_host jump_hosts
 ```
 
-From your laptop, port 22 of `node1` times out. Log in to `node1` through `edge1` as the jump host, at the peer address of `node1`:
+From your laptop, port 22 of `node1` times out. Log in to `node1` through `edge1` as the jump host, at the peer address of `node1`. `edge1` dials `node1` from its peer address, the source of its default route:
 
 ```sh
 nc -vz -w 3 203.0.113.31 22
@@ -1942,10 +1940,9 @@ A DNS server keeps the last zones of the control plane on its disk ([the DNS rol
 
 The new server takes the same addresses as the old one:
 
-1. The Terraform provider moves the floating IPv4 address to the new server.
-2. Move the floating IPv6 address to the uplink of the new server, at the provider and on the host.
-3. Write the bootstrap config of the new server with the same `edge.public_ipv6` and `edge.public_ipv4`.
-4. Install and enroll the new server as above, and set its peer address. The servers of the install then take SSH from the new server as a jump host.
+1. Write the bootstrap configuration of the new server with the same `edge.public_ipv6` and `edge.public_ipv4`. Put the floating IPv4 address on its uplink as a `/32`, and the floating IPv6 address as a `/128`. The Terraform provider does this step with `floating_addresses` and `public_ipv6`.
+2. Install and enroll the new server as above, with a token for its own peer address. The servers of the install then take SSH from the new server as a jump host.
+3. Route the floating IPv4 address and the floating IPv6 address to the new server at the provider. The Terraform provider never moves an address.
 
 The public addresses of the install stay the same, so the zone and the glue records need no change. The IPv6 egress of the machines leaves from the uplink address of the new server, so its IPv6 source changes ([the egress of the machines](/reference/egress/#the-source-addresses)).
 
@@ -3448,7 +3445,7 @@ admin config oauth clear google
 
 This guide installs hopbox on one Debian 13 server with the control role and the node role, then upgrades it and rolls it back. [Serve the domain of an install with the DNS role](/guide/dns-role/) adds the DNS role.
 
-The hopbox Terraform provider does these steps for each server of an install ([Install hopbox on an OVHcloud server with Terraform](/guide/install-on-ovhcloud/)). Use this guide to try a release bundle on a test server, or to see what the provider does. An install of the hosted service gets its servers only from the provider.
+The hopbox Terraform provider does these steps for each server of an install, apart from step 2 ([Install hopbox on your servers with Terraform](/guide/install-with-terraform/)). The operator makes the XFS file system of step 2 on each host before the provider runs. Use this guide to try a release bundle on a test server, or to see what the provider does. An install of the hosted service gets its servers only from the provider.
 
 The release files of hopbox are not public yet. The hopbox team gives them on request.
 
@@ -3634,89 +3631,114 @@ The install makes every check before it changes the config, the current release,
 
 [Server layout](/reference/server-layout/) lists every path, user, and unit of the install.
 
-# Install hopbox on an OVHcloud server with Terraform
+# Install hopbox on your servers with Terraform
 
-> How to install hopbox on an OVHcloud server with Terraform, and how to upgrade, import, and destroy it.
+> How to set up Debian 13 hosts from any provider and install hopbox on them with Terraform. Also how to upgrade, grow a fleet with floating addresses, import, and destroy.
 
-The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack, read Q90.
+This guide makes a new install of hopbox on one server with the hopbox Terraform provider. The server gets every role. Then the guide upgrades the server and changes its labels. It grows the install into a fleet, imports a server into a new state, and destroys a server.
 
-This guide makes a new install of hopbox on one OVHcloud dedicated server with the hopbox Terraform provider. The server gets every role. The provider adopts a server that your account rents, or orders a new one ([Order a new server](#order-a-new-server)) and pays for it. Then the guide upgrades the server, changes its labels, imports it into a new state, and destroys it.
+The provider installs hopbox over SSH on hosts that run Debian 13. A host can come from any provider of servers, or be a computer that you own. You order each host and install Debian 13 on it. The provider takes it from there. It calls no API of a provider of servers (Q90).
 
 hopbox supports only the servers that this provider sets up. [hopbox Terraform provider](/reference/terraform-provider/) lists every attribute and each step that the provider takes. [Install hopbox on a Debian 13 server by hand](/guide/install-debian/) shows the same install by hand.
 
 The release files of hopbox are not public yet. The hopbox team gives them on request.
 
-The apply erases the server. Back up anything on it first.
+Use a host that holds nothing else of value. The apply installs another kernel on the host, and reboots it.
 
 ## What you need
 
-* An OVHcloud dedicated server with KVM, rented in your account. The [tested server](/reference/preflight/#the-tested-server) has an Intel Xeon E5-1650 v4 CPU. You need its service name, such as `ns1234567.ip-198-51-100.eu`. The OVHcloud manager shows it. To order a new server instead, you need a payment method in the account and the budget for a monthly rental. See [Order a new server](#order-a-new-server).
-* An OVHcloud API application and a consumer key with the rights of [step 1](#1-make-the-ovhcloud-api-keys).
+* One host for the first server, with these items. [1. Set up the hosts](#1-set-up-the-hosts) shows each one.
+
+  * A CPU for `amd64` with KVM. The [tested server](/reference/preflight/#the-tested-server) has an Intel Xeon E5-1650 v4 CPU.
+  * Debian 13.
+  * A public IPv4 address on its own uplink, with no NAT in front of it. This is the peer address of the server ([Enrollment and the install PKI](/reference/enrollment/#peer-addresses)). This guide uses `203.0.113.10`.
+  * A free partition or disk for `/var/lib/hopbox`.
+  * A console at its provider, such as a KVM or serial console.
+
 * A Mac with Apple Silicon or a Linux host on x86_64, with Terraform 1.5 or later. This example uses the Mac.
-* The release files of v0.1.0, from the hopbox team ([2. Check the release files](#2-check-the-release-files)).
+
+* The release files of v0.2.0, the first release with this provider, from the hopbox team ([2. Get the release files](#2-get-the-release-files)). Until the hopbox team tags v0.2.0, build the files from a checkout.
+
 * A domain for the install, such as `example.com`.
+
 * An SSH key pair for the operators, without a passphrase. This example uses `~/.ssh/id_ed25519`.
 
-## 1. Make the OVHcloud API keys
+## 1. Set up the hosts
 
-Make an application and a consumer key on the page `https://eu.api.ovh.com/createToken/`. Give the consumer key these rights, and no other:
+Do these steps on each host before the apply that creates its server ([hopbox Terraform provider](/reference/terraform-provider/#the-host)). The SSH port of a new host faces the internet before `hopboxd` and its host firewall run. So the host must take SSH keys alone from the start.
 
-| Method | Path                            |
-| ------ | ------------------------------- |
-| `GET`  | `/dedicated/server/*`           |
-| `POST` | `/dedicated/server/*/reinstall` |
+1. Order the host at its provider with Debian 13 for `amd64`. Pick a server model with KVM. Keep a partition or a disk free for `/var/lib/hopbox`.
 
-To order new servers, also give it these rights ([hopbox Terraform provider](/reference/terraform-provider/#ovhcloud-api-rights)):
+2. Put the public key of the operators in the `authorized_keys` of `root`. Most providers take an SSH key at the install of the OS. Instead of `root`, you can use a user with `sudo` without a password, such as `debian`. Then set `ssh_user = "debian"` in the resource of the server.
 
-| Method   | Path            |
-| -------- | --------------- |
-| `GET`    | `/me`           |
-| `GET`    | `/order/cart`   |
-| `POST`   | `/order/cart`   |
-| `GET`    | `/order/cart/*` |
-| `POST`   | `/order/cart/*` |
-| `DELETE` | `/order/cart/*` |
-| `GET`    | `/me/order/*`   |
+3. Open the console of the host at its provider. Log in there, and print the SSH host key of the host and its fingerprint:
 
-A key with `POST /order/cart/*` can pay for orders with the payment method of the account. Give it only to the people who are allowed to spend that money.
+   ```sh
+   cat /etc/ssh/ssh_host_ed25519_key.pub
+   ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+   ```
 
-To grow the install into a fleet on the vRack ([Grow the install into a fleet](#grow-the-install-into-a-fleet)), also give it these rights:
+   Copy the first line, such as `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... root@host1`, for `ssh_host_key`. A comment after the key changes nothing.
 
-| Method   | Path                                  |
-| -------- | ------------------------------------- |
-| `POST`   | `/vrack/*/dedicatedServerInterface`   |
-| `DELETE` | `/vrack/*/dedicatedServerInterface/*` |
-| `GET`    | `/vrack/*/task/*`                     |
-| `GET`    | `/ip/*`                               |
-| `POST`   | `/ip/*/move`                          |
-| `POST`   | `/ip/*/park`                          |
-| `GET`    | `/ip/*/task/*`                        |
+4. Log in to the host over SSH as `root`, or log in as the `sudo` user and run `sudo -i`. At the first login, `ssh` shows the fingerprint of the host key. Type `yes` only if it is the fingerprint that step 3 printed.
 
-Keep the values in your shell, not in a file:
+5. Make sure that the host holds its peer address on its uplink:
 
-```sh
-export OVH_ENDPOINT=ovh-eu
-export OVH_APPLICATION_KEY=...
-export OVH_APPLICATION_SECRET=...
-export OVH_CONSUMER_KEY=...
-```
+   ```sh
+   ip -br -4 addr show
+   ```
 
-## 2. Check the release files
+   The line of the uplink names the public address, such as `203.0.113.10/24`. If the host holds only a private address, such as `10.0.0.5`, a NAT sits in front of it. Such a host cannot join an install. For a node, also make sure that the host names a resolver that machines reach:
+
+   ```sh
+   grep nameserver /run/systemd/resolve/resolv.conf /etc/resolv.conf
+   ```
+
+   One line names an address outside `127.0.0.0/8`, such as `192.0.2.53`. A resolver on loopback alone, such as a local `unbound`, reaches no machine.
+
+6. Make sure that the host has KVM. `ls -l /dev/kvm` shows the device.
+
+7. Turn off the password logins of `sshd`:
+
+   ```sh
+   printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\n' > /etc/ssh/sshd_config.d/10-hopbox.conf
+   systemctl reload ssh
+   sshd -T -C user=root,host=192.0.2.1,addr=192.0.2.1 | grep -e passwordauthentication -e kbdinteractiveauthentication
+   ```
+
+   The last command prints `passwordauthentication no` and `kbdinteractiveauthentication no`. If you log in as another user, such as `debian`, run it again with that user in `user=`. The provider makes the same check before the create, so a `Match` block that turns passwords on for one of these logins fails it. `sshd` takes the first value of a key, and reads the files of `/etc/ssh/sshd_config.d` in the order of their names. So `10-hopbox.conf` comes before a file of the provider, such as `50-cloud-init.conf`. If the command prints `yes`, look for another file that sets the key first.
+
+8. Make `/var/lib/hopbox` an XFS file system with reflinks, on its free partition or disk, as [Install hopbox on a Debian 13 server by hand](/guide/install-debian/#2-make-the-xfs-file-system) shows. `mkfs.xfs` erases the partition, so make sure that you name the free one.
+
+9. Make sure that the file system is ready:
+
+   ```sh
+   findmnt -no FSTYPE /var/lib/hopbox
+   xfs_info /var/lib/hopbox | grep -o 'reflink=[01]'
+   ```
+
+   The commands print `xfs` and `reflink=1`.
+
+Take the host key from the console alone. Do not take it from `ssh-keyscan`, or from the first SSH login over the internet without the check of step 4. A machine between you and the host can show its own key there. The provider pins the key of `ssh_host_key` before its first login, and refuses any other key ([hopbox Terraform provider](/reference/terraform-provider/#host-key-trust)).
+
+An edge server of a fleet also needs its floating addresses. Route each one to the host at its provider before the apply ([Grow the install into a fleet](#grow-the-install-into-a-fleet)). The first server of this guide has none until the fleet.
+
+## 2. Get the release files
 
 Put these release files in one folder, such as `~/hopbox-release`:
 
 | File                                                                     | What it holds                                                                                                 |
 | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| `terraform-provider-hopbox_0.1.0_darwin_arm64.zip`                       | The provider for a Mac with Apple Silicon. Linux hosts use `terraform-provider-hopbox_0.1.0_linux_amd64.zip`. |
-| `hopbox-v0.1.0-linux-amd64.tar.gz` and its `.sha256` file                | The release bundle of the servers ([Release bundle](/reference/release-bundle/)).                             |
+| `terraform-provider-hopbox_0.2.0_darwin_arm64.zip`                       | The provider for a Mac with Apple Silicon. Linux hosts use `terraform-provider-hopbox_0.2.0_linux_amd64.zip`. |
+| `hopbox-v0.2.0-linux-amd64.tar.gz` and its `.sha256` file                | The release bundle of the servers ([Release bundle](/reference/release-bundle/)).                             |
 | `linux-image-6.18.57-hopbox1_6.18.57-1_amd64.deb` and its `.sha256` file | The tested host kernel, a Debian package ([Host kernel](/reference/host-kernel/)).                            |
 | `SHA256SUMS`                                                             | The sha256 of each other file.                                                                                |
 
-Check each file against its line in `SHA256SUMS`. On Linux, use `sha256sum -c` in place of `shasum -a 256 -c`:
+Compare each file with its line in `SHA256SUMS`. On Linux, use `sha256sum -c` in place of `shasum -a 256 -c`:
 
 ```sh
 cd ~/hopbox-release
-grep -e terraform-provider-hopbox_0.1.0_darwin_arm64.zip -e hopbox-v0.1.0-linux-amd64.tar.gz -e linux-image-6.18.57 SHA256SUMS |
+grep -e terraform-provider-hopbox_0.2.0_darwin_arm64.zip -e hopbox-v0.2.0-linux-amd64.tar.gz -e linux-image-6.18.57 SHA256SUMS |
   shasum -a 256 -c
 ```
 
@@ -3731,10 +3753,10 @@ The provider is in no registry. Put its zip in the local mirror of Terraform, in
 ```sh
 dir=~/.terraform.d/plugins/registry.terraform.io/hopboxdev/hopbox
 mkdir -p "$dir"
-cp ~/hopbox-release/terraform-provider-hopbox_0.1.0_darwin_arm64.zip "$dir/"
+cp ~/hopbox-release/terraform-provider-hopbox_0.2.0_darwin_arm64.zip "$dir/"
 ```
 
-Terraform reads the dir `~/.terraform.d/plugins` as a local mirror only without a `provider_installation` block in its CLI config. If your CLI config has such a block, add a `filesystem_mirror` block for that dir to it.
+Terraform reads the dir `~/.terraform.d/plugins` as a local mirror only without a `provider_installation` block in its CLI configuration. If your CLI configuration has such a block, add a `filesystem_mirror` block for that dir to it.
 
 Make a folder for the install:
 
@@ -3742,12 +3764,12 @@ Make a folder for the install:
 mkdir -p ~/hopbox-install && cd ~/hopbox-install
 ```
 
-Write `main.tf`. Put the paths of step 2 in it, and the sha256 values of the two `.sha256` files:
+Write `main.tf`. Put the peer address and the host key of step 1 in it. Also put the paths of step 2 in it, with the sha256 values of the two `.sha256` files:
 
 ```hcl
 terraform {
   required_providers {
-    hopbox = { source = "hopboxdev/hopbox", version = "0.1.0" }
+    hopbox = { source = "hopboxdev/hopbox", version = "0.2.0" }
   }
 }
 
@@ -3757,15 +3779,9 @@ provider "hopbox" {
 }
 
 
-resource "hopbox_server" "first" {
-  ovh_service_name = "ns1234567.ip-198-51-100.eu"
-  bootstrap        = true
-  domain           = "example.com"
-  labels           = { zone = "gra" }
-
-
+locals {
   bundle = {
-    source = pathexpand("~/hopbox-release/hopbox-v0.1.0-linux-amd64.tar.gz")
+    source = pathexpand("~/hopbox-release/hopbox-v0.2.0-linux-amd64.tar.gz")
     sha256 = "<the sha256 of the bundle>"
   }
   host_kernel = {
@@ -3775,8 +3791,26 @@ resource "hopbox_server" "first" {
 }
 
 
-output "ipv4" {
-  value = hopbox_server.first.ipv4
+resource "hopbox_server" "first" {
+  address      = "203.0.113.10"
+  ssh_host_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI..."
+  bootstrap    = true
+  domain       = "example.com"
+  labels       = { zone = "zone1" }
+
+
+  bundle      = local.bundle
+  host_kernel = local.host_kernel
+
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+
+output "first_host_key" {
+  value = hopbox_server.first.ssh_host_key
 }
 
 
@@ -3786,7 +3820,9 @@ output "admin_api_key" {
 }
 ```
 
-The state holds the first admin API key of the install, and the pinned host key of the server. Keep the state in a place that only the instance admins can read. A `terraform.tfstate` file on a laptop is fine to try the provider. For a real install, use a backend with encryption and access control.
+`bootstrap = true` makes this server the first server of a new install. The destroy of the first server ends the install. So `prevent_destroy` makes Terraform refuse each plan that destroys it. Without `ssh_user`, the provider logs in as `root`.
+
+The state holds the first admin API key of the install, and the pinned host key of the server. Keep the state in a place that only the instance admins can read. A `terraform.tfstate` file on a laptop is good enough to try the provider. For a real install, use a backend with encryption and access control.
 
 ## 4. Apply
 
@@ -3795,44 +3831,38 @@ terraform init
 terraform apply
 ```
 
-The apply takes 30 to 90 minutes. Most of it is the reinstall at OVHcloud, and the reboot into the host kernel. To follow the steps, set `TF_LOG_PROVIDER=INFO`. The log shows lines such as `reinstalling the server`, `pinned the host key of the server`, `installing the host kernel`, and `installing hopboxd`.
+Most of the apply is the upload of the bundle, and the reboot into the host kernel. To follow the steps, set `TF_LOG_PROVIDER=INFO`. The log shows lines such as `logged in to the server with its pinned host key`, `installing the host kernel`, and `installing hopboxd`.
 
-At the end, Terraform prints the output `ipv4`. A warning such as `The preflight check of the server warns: ...` means that the server runs, with a risk that the warning names.
+Before it changes the host, the provider makes sure that the host is ready. It refuses another host key, `sshd` with password logins, and a host that holds an install. It also refuses another OS, a host without its peer address, and `/var/lib/hopbox` without XFS. Each error names the fix ([If the apply stops](#if-the-apply-stops)). A warning such as `The preflight check of the server warns: ...` means that the server runs, with a risk that the warning names.
 
-## 5. Check the server
+## 5. Make sure that the server runs
 
-The first login of the provider trusted the host key that the server showed, and pinned it in the state. Compare it with the key on the console of the server in the OVHcloud manager ([hopbox Terraform provider](/reference/terraform-provider/#host-key-trust)):
-
-```sh
-terraform state show hopbox_server.first | grep ssh_host_key
-```
-
-Log in with the key of the operators. The OVHcloud template of Debian 13 has the user `debian`, with `sudo`:
+The examples log in as `root`. If you set `ssh_user = "debian"`, log in as `debian`, and put `sudo` before each command on the server. List the servers of the install:
 
 ```sh
-ssh -i ~/.ssh/id_ed25519 debian@"$(terraform output -raw ipv4)" sudo hopboxd admin server list
+ssh -i ~/.ssh/id_ed25519 root@203.0.113.10 hopboxd admin server list
 ```
 
-The output shows one server, `ready`, with the version of the bundle:
+The output shows one server, `ready`, with the version of the bundle and its peer address:
 
 ```text
-ID                                    POOL     STATE  STATUS  ROLES          HOSTNAME   VERSION  LAST HEARTBEAT        PEER ADDRESS
-01a14404-ce7b-72d9-b18e-5006c3e462db  default  ready  ok      node,dns,edge  ns1234567  v0.1.0   2026-10-16T09:00:05Z  -
+ID                                    POOL     STATE  STATUS  ROLES          HOSTNAME  VERSION  LAST HEARTBEAT        PEER ADDRESS
+01a14404-ce7b-72d9-b18e-5006c3e462db  default  ready  ok      node,dns,edge  host1     v0.2.0   2026-10-16T09:00:05Z  203.0.113.10
 ```
 
-The ROLES column lists the roles that enrolled. The control role of the first server runs in the same `hopboxd` from its bootstrap config, without a server record.
+The ROLES column lists the roles that enrolled. The control role of the first server runs in the same `hopboxd` from its bootstrap configuration, without a server record.
 
 `uname -r` on the server prints `6.18.57-hopbox1`.
 
-The server also has the DNS role, which answers DNS for the domain of the install. The provider set the public addresses of the install to the addresses of the server, so the domain points at the server. The DNS role listens on port 53 of these addresses, because `systemd-resolved` of the OS holds port 53 on `127.0.0.53` ([hopbox Terraform provider](/reference/terraform-provider/#create)). Read them:
+The server also has the DNS role, which answers DNS for the domain of the install. The provider set the public addresses of the install to the peer address of the server, so the domain points at the server. The DNS role listens on port 53 of that address, because `systemd-resolved` of the OS holds port 53 on `127.0.0.53` ([hopbox Terraform provider](/reference/terraform-provider/#create)). Read the public addresses:
 
 ```sh
-ssh -i ~/.ssh/id_ed25519 debian@"$(terraform output -raw ipv4)" sudo hopboxd admin config get
+ssh -i ~/.ssh/id_ed25519 root@203.0.113.10 hopboxd admin config get
 ```
 
-The line `public_addresses` holds the IPv4 address of the server. If OVHcloud reports a `/128` block that a network interface of the server holds, the line holds that IPv6 address too. Then delegate the domain from its parent zone, as [Serve the domain of an install with the DNS role](/guide/dns-role/#delegate-the-domain-of-the-install) shows. Use the same addresses for the glue records.
+The line `public_addresses` holds `203.0.113.10`. Delegate the domain from its parent zone, as [Serve the domain of an install with the DNS role](/guide/dns-role/#delegate-the-domain-of-the-install) shows. Use the same address for the glue records.
 
-The server also has the edge role. It serves the API, the console, and the machine URLs on ports 443 and 80 ([the edge role](/reference/edge/)). It starts HTTPS once the ACME job got the certificate of the domain ([Get the wildcard certificate of an install](/guide/acme-certificate/)). Open TCP ports 80 and 443 in each firewall in front of the server.
+The server also has the edge role. It serves the API, the console, and the machine URLs on ports 443 and 80 ([the edge role](/reference/edge/)). It starts HTTPS once the ACME job got the certificate of the domain ([Get the wildcard certificate of an install](/guide/acme-certificate/)). Open TCP ports 80 and 443, and port 53 for TCP and UDP, in each firewall of the provider in front of the server.
 
 ## 6. Keep the admin API key
 
@@ -3840,10 +3870,10 @@ The server also has the edge role. It serves the API, the console, and the machi
 terraform output -raw admin_api_key
 ```
 
-The key starts with `hbxadm_`. It is the first admin API key of the install, with the name `bootstrap`. It expires after 90 days. Before it expires, make a new key on the server and use it in the provider block of your other configurations:
+The key starts with `hbxadm_`. It is the first admin API key of the install, with the name `bootstrap`. It expires after 90 days. Before it expires, make a new key on the server, and use it in the provider block of your other configurations:
 
 ```sh
-ssh -i ~/.ssh/id_ed25519 debian@"$(terraform output -raw ipv4)" sudo hopboxd admin admin-key create --name terraform --lifetime 365d
+ssh -i ~/.ssh/id_ed25519 root@203.0.113.10 hopboxd admin admin-key create --name terraform --lifetime 365d
 ```
 
 ## 7. Sign in
@@ -3851,12 +3881,12 @@ ssh -i ~/.ssh/id_ed25519 debian@"$(terraform output -raw ipv4)" sudo hopboxd adm
 Make a login link for the first instance admin, and open it ([First sign-in on a new install](/guide/first-sign-in/)):
 
 ```sh
-ssh -i ~/.ssh/id_ed25519 debian@"$(terraform output -raw ipv4)" sudo hopboxd admin login-link --email you@example.org
+ssh -i ~/.ssh/id_ed25519 root@203.0.113.10 hopboxd admin login-link --email you@example.org
 ```
 
 ## Upgrade
 
-Get the bundle of the new release and its `.sha256` file. Change `bundle` in `main.tf` to its path and sha256, and apply:
+Get the bundle of the new release and its `.sha256` file. Change `local.bundle` in `main.tf` to its path and sha256, and apply:
 
 ```sh
 terraform apply
@@ -3864,26 +3894,27 @@ terraform apply
 
 The plan shows an update in place of `bundle` and `version`. The provider uploads the bundle and runs `hopboxd upgrade` on the server. The running machines stay up ([hopboxd](/reference/hopboxd/#upgrade)). If the new release cannot run on the data, the upgrade stops before the switch, and the old release keeps running.
 
-The provider then waits until the server is `ready` on the new version. An install with more servers upgrades them one at a time, the first server before the nodes ([hopbox Terraform provider](/reference/terraform-provider/#rolling-upgrade)).
+The provider then waits until the server is `ready` on the new version. An install with more servers upgrades them one at a time, the control servers before the nodes ([hopbox Terraform provider](/reference/terraform-provider/#rolling-upgrade)).
+
+An install from an earlier release of the provider, which ordered and reinstalled its servers at OVHcloud, keeps its servers. Before the first plan with this release, remove the `ovh_` attributes of each server. Give it `address`, `ssh_host_key`, and `ssh_user`, with the values of its state. The first refresh moves the state, with no change on the server ([hopbox Terraform provider](/reference/terraform-provider/#a-state-of-an-earlier-release)). The guide for ks shows these steps for ks.
 
 ## Change the labels
 
-Change `labels` in `main.tf`, for example to `{ zone = "gra", disk = "nvme" }`, and apply. The provider calls `SetServerLabels`. `sudo hopboxd admin server get <id>` on the server then shows `labels disk=nvme,zone=gra` and `labels_set_by_admin true`.
+Change `labels` in `main.tf`, for example to `{ zone = "zone1", disk = "nvme" }`, and apply. The provider calls `SetServerLabels`. `hopboxd admin server get <id>` on the server then shows `labels disk=nvme,zone=zone1` and `labels_set_by_admin true`.
 
 ## Add pools and sizes
 
-After the first server runs, you can add pools and sizes in the same Terraform files. A pool groups the servers of one model, and a size can keep its machines in one pool. Both need the admin API, so set `install_url` and `admin_api_key` in the provider block first, with the key of step 6:
+After the first server runs, you can add pools and sizes in the same Terraform files. A pool groups the servers of one model, and a size can keep its machines in one pool. Both need the admin API. So set `install_url` in the provider block first, and export the key of step 6 as `HOPBOX_ADMIN_API_KEY`:
 
 ```hcl
 provider "hopbox" {
-  ssh_private_key = file("~/.ssh/id_ed25519")
+  ssh_private_key = file(pathexpand("~/.ssh/id_ed25519"))
   install_url     = "https://example.com"
 }
 
 
 resource "hopbox_pool" "big" {
-  name     = "big"
-  ovh_plan = "24adv01"
+  name = "big"
 }
 
 
@@ -3896,66 +3927,51 @@ resource "hopbox_size" "large" {
 }
 ```
 
-Keep the key out of the files: export it as `HOPBOX_ADMIN_API_KEY` before the apply. The first server stays in the pool `default`. A server that joins `big` sets `pool = hopbox_pool.big.name`. [Add pools and sizes](/guide/pools-and-sizes/) explains the rules, and [hopbox Terraform provider](/reference/terraform-provider/#resource-hopbox_pool) lists every attribute.
+Keep the key out of the files. The first server stays in the pool `default`. A server that joins `big` sets `pool = hopbox_pool.big.name`. [Add pools and sizes](/guide/pools-and-sizes/) explains the rules, and [hopbox Terraform provider](/reference/terraform-provider/#resource-hopbox_pool) lists every attribute.
 
 ## Grow the install into a fleet
 
-A fleet runs the roles on several servers: edge servers that take the public traffic, control servers that share one external Postgres, and nodes that run machines. The servers talk over the vRack, the private network of OVHcloud. This section builds a fleet of five servers in two pools:
+A fleet runs the roles on several servers: edge servers that take the public traffic, control servers that share one external Postgres, and nodes that run machines. The servers talk over their peer addresses on the public internet. The host firewall of each server takes the traffic of the install only from the peer addresses of the other servers ([the host firewall](/reference/host-firewall/)). This section builds a fleet of five servers in two pools:
 
-| Resource | Roles                            | Pool      | vRack address | Floating address |
-| -------- | -------------------------------- | --------- | ------------- | ---------------- |
-| `first`  | `control`, `node`, `dns`, `edge` | `default` | `172.31.0.11` | `203.0.113.5`    |
-| `edge2`  | `edge`, `dns`                    | `default` | `172.31.0.12` | `203.0.113.6`    |
-| `cp2`    | `control`, `node`                | `default` | `172.31.0.13` | none             |
-| `node1`  | `node`                           | `default` | `172.31.0.21` | none             |
-| `node2`  | `node`                           | `big`     | `172.31.0.22` | none             |
-
-The first server joins the vRack at its create, so a fleet starts with a new install. The provider never moves a server that runs onto the vRack. A plan that gives such a server a `vrack_address` fails with `The vRack address of a server cannot change`.
+| Resource | Roles                            | Pool      | Peer address   | Floating address |
+| -------- | -------------------------------- | --------- | -------------- | ---------------- |
+| `first`  | `control`, `node`, `dns`, `edge` | `default` | `203.0.113.10` | `198.51.100.5`   |
+| `edge2`  | `edge`, `dns`                    | `default` | `203.0.113.11` | `198.51.100.6`   |
+| `cp2`    | `control`, `node`                | `default` | `203.0.113.13` | none             |
+| `node1`  | `node`                           | `default` | `203.0.113.21` | none             |
+| `node2`  | `node`                           | `big`     | `203.0.113.22` | none             |
 
 ### What a fleet needs
 
-* The rights of the fleet in [step 1](#1-make-the-ovhcloud-api-keys).
-* A vRack in the OVHcloud account, such as `pn-12345`, and servers of a range that offers the vRack. The OVHcloud manager shows both.
-* One Additional IPv4 address for each edge server, routed to a server of the account and not to the vRack. This example uses `203.0.113.5` and `203.0.113.6`.
-* No IPv6 address. This example gives the zone IPv4 addresses alone, so it has no `AAAA` record. An edge server takes a floating IPv6 address for the `AAAA` records in `public_ipv6` ([the edge role](/reference/edge/#the-public-ipv6-address)).
-* For the second control server, an external Postgres, such as managed PostgreSQL of OVHcloud on the vRack ([Run the control store on an external Postgres](/guide/external-postgres/)).
+* A host for each new server, set up as in [1. Set up the hosts](#1-set-up-the-hosts). The hosts can come from other providers. All the servers of a pool have the same hardware ([Enrollment and the install PKI](/reference/enrollment/#hardware-of-a-pool)).
+* One floating IPv4 address for each edge server. A floating address is a public IPv4 address that the provider of the servers can route to one server and then to another. Examples are an Additional IP of OVHcloud, and a floating IP of another provider. This example uses `198.51.100.5` and `198.51.100.6`.
+* For the second control server, an external Postgres that the control servers reach ([Run the control store on an external Postgres](/guide/external-postgres/)).
 
-### 1. Make the first server on the vRack
+You route each floating address at the provider of the servers. The Terraform provider never moves an address. It puts each address of `floating_addresses` on the uplink of the server as a `/32`. It also makes the peer address the source of the default route ([hopbox Terraform provider](/reference/terraform-provider/#the-network-setup-of-an-edge-server)). So the connections of an edge server to the other servers leave from its peer address, which their host firewalls take.
 
-Start from `main.tf` of step 3. Name the vRack in the provider block, and give the first server its vRack address and its floating address:
+This guide uses IPv4 alone, so the zone has no AAAA record. An edge server can also take one floating IPv6 address for the AAAA records, with `public_ipv6` ([hopbox Terraform provider](/reference/terraform-provider/#edge-servers-and-floating-addresses)).
+
+### 1. Give the first server its floating address
+
+At the provider of the first server, route `198.51.100.5` to it. Then add the address to the resource `first` in `main.tf`:
 
 ```hcl
-provider "hopbox" {
-  ssh_private_key = file(pathexpand("~/.ssh/id_ed25519"))
-  ovh_vrack       = "pn-12345"
-}
-
-
-locals {
-  bundle = {
-    source = pathexpand("~/hopbox-release/hopbox-v0.1.0-linux-amd64.tar.gz")
-    sha256 = "<the sha256 of the bundle>"
-  }
-  host_kernel = {
-    source = pathexpand("~/hopbox-release/linux-image-6.18.57-hopbox1_6.18.57-1_amd64.deb")
-    sha256 = "<the sha256 of the package>"
-  }
-}
-
-
 resource "hopbox_server" "first" {
-  ovh_service_name   = "ns1234567.ip-198-51-100.eu"
+  address            = "203.0.113.10"
+  ssh_host_key       = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI..."
   bootstrap          = true
   domain             = "example.com"
-  vrack_address      = "172.31.0.11"
-  floating_addresses = ["203.0.113.5"]
-  bundle             = local.bundle
-  host_kernel        = local.host_kernel
-}
+  labels             = { zone = "zone1" }
+  floating_addresses = ["198.51.100.5"]
 
 
-output "first_host_key" {
-  value = hopbox_server.first.ssh_host_key
+  bundle      = local.bundle
+  host_kernel = local.host_kernel
+
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 ```
 
@@ -3965,15 +3981,18 @@ Apply, as in step 4:
 terraform apply
 ```
 
-The provider attaches the server to the vRack before the reinstall. After the reinstall, it gives the server its vRack address with the unit `hopbox-network.service`, which sets the address again at each boot. The internal listener of the control role listens on `172.31.0.11:7443`, so the other servers can enroll there. At the end, the floating address routes to the server. The zone of the DNS role names the public addresses of the server for now. [Step 6](#6-point-the-zone-at-the-edge-servers) points it at the edge servers.
+The plan shows an update in place. The provider adds port 53 of the address to the DNS role. It sets up the network with the unit `hopbox-network.service`, which runs again at each boot. It also makes the address the source of the egress of the machines ([the egress of the machines](/reference/egress/#the-source-addresses)). The zone of the DNS role names the peer address of the server for now. [Step 5](#5-point-the-zone-at-the-edge-servers) points it at the edge servers.
 
-Check the network of the server:
+Look at the network of the server:
 
 ```sh
-ssh -i ~/.ssh/id_ed25519 debian@"$(terraform output -raw ipv4)" ip -br addr
+ssh -i ~/.ssh/id_ed25519 root@203.0.113.10 ip -br -4 addr show
+ssh -i ~/.ssh/id_ed25519 root@203.0.113.10 ip -4 route show default
 ```
 
-The output shows `172.31.0.11/16` on the vRack interface, and `203.0.113.5/32` on the public interface.
+The uplink holds `203.0.113.10` and `198.51.100.5/32`. The default route ends with `src 203.0.113.10`.
+
+The internal listener of the control role listens on port 7443 of the peer address, `https://203.0.113.10:7443`. The other servers enroll there. `terraform state show hopbox_server.first` shows it in `internal_url`. A first server from an earlier release listens on loopback. Its next update moves the listener to its peer address ([hopbox Terraform provider](/reference/terraform-provider/#the-internal-listener)).
 
 ### 2. Set the jump host and the admin API
 
@@ -3984,40 +4003,38 @@ export HOPBOX_ADMIN_API_KEY="$(terraform output -raw admin_api_key)"
 terraform output -raw first_host_key
 ```
 
-The first server is an edge server on the vRack, so it is the jump host of the provider. The jump host must be on the vRack, because the provider dials the vRack address of each other server through it. Put its address and the host key of the output in the provider block:
+The first server is an edge server, so it is the jump host of the provider. Put its peer address and the host key of the output in the provider block:
 
 ```hcl
 provider "hopbox" {
   ssh_private_key = file(pathexpand("~/.ssh/id_ed25519"))
   install_url     = "https://example.com"
-  ovh_vrack       = "pn-12345"
 
 
   ssh_jump_host = {
-    address  = "<the ipv4 output>"
-    host_key = "<the first_host_key output>"
+    address  = "203.0.113.10"
+    host_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI..."
   }
 }
 ```
 
-From then on, every SSH step of a server without the role `edge` goes through the first server. It dials the vRack address of the server ([hopbox Terraform provider](/reference/terraform-provider/#jump-host)). The host firewall of each node and each control server closes its public address once `hopboxd` runs on it ([the host firewall](/reference/host-firewall/)). Port 22 of its vRack address then takes only the vRack addresses of the edge servers. So an edge server as the jump host is then the only way in.
+From then on, every SSH step of a server without the role `edge` goes through the first server. The jump host dials the peer address of the server ([hopbox Terraform provider](/reference/terraform-provider/#jump-host)). Once `hopboxd` runs on a node or a control server, its host firewall takes SSH only from the peer addresses of the edge servers ([the host firewall](/reference/host-firewall/#the-jump-hosts)). So an edge server as the jump host is then the only way in.
 
 ### 3. Add an edge server and the nodes
 
-Add a pool for the bigger nodes, as in [Add pools and sizes](#add-pools-and-sizes), and the servers:
+Set up the hosts of `edge2`, `node1`, and `node2` as in [1. Set up the hosts](#1-set-up-the-hosts). At the provider of `edge2`, route `198.51.100.6` to it. Add a pool for the bigger nodes, as in [Add pools and sizes](#add-pools-and-sizes), and the servers:
 
 ```hcl
 resource "hopbox_pool" "big" {
-  name     = "big"
-  ovh_plan = "24adv01"
+  name = "big"
 }
 
 
 resource "hopbox_server" "edge2" {
-  ovh_service_name   = "ns2345678.ip-198-51-100.eu"
+  address            = "203.0.113.11"
+  ssh_host_key       = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI..."
   roles              = ["edge", "dns"]
-  vrack_address      = "172.31.0.12"
-  floating_addresses = ["203.0.113.6"]
+  floating_addresses = ["198.51.100.6"]
   bundle             = local.bundle
   host_kernel        = local.host_kernel
   depends_on         = [hopbox_server.first]
@@ -4030,94 +4047,111 @@ resource "hopbox_server" "edge2" {
 
 
 resource "hopbox_server" "node1" {
-  ovh_service_name = "ns3456789.ip-198-51-100.eu"
-  vrack_address    = "172.31.0.21"
-  bundle           = local.bundle
-  host_kernel      = local.host_kernel
-  depends_on       = [hopbox_server.first]
+  address      = "203.0.113.21"
+  ssh_host_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI..."
+  bundle       = local.bundle
+  host_kernel  = local.host_kernel
+  depends_on   = [hopbox_server.first]
 }
 
 
 resource "hopbox_server" "node2" {
-  ovh_service_name = "ns4567890.ip-198-51-100.eu"
-  pool             = hopbox_pool.big.name
-  vrack_address    = "172.31.0.22"
-  bundle           = local.bundle
-  host_kernel      = local.host_kernel
-  depends_on       = [hopbox_server.first]
+  address      = "203.0.113.22"
+  ssh_host_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI..."
+  pool         = hopbox_pool.big.name
+  bundle       = local.bundle
+  host_kernel  = local.host_kernel
+  depends_on   = [hopbox_server.first]
 }
 ```
 
-Give each server its own vRack address. The provider also writes the first floating address to `edge.public_ipv4`, the source of the egress of the machines ([the egress of the machines](/reference/egress/#the-source-addresses)). `depends_on` makes Terraform update the first server before the others in a [rolling upgrade](/reference/terraform-provider/#rolling-upgrade). Apply:
+Give each server the host key from its own console. `depends_on` makes Terraform update the first server before the others in a [rolling upgrade](/reference/terraform-provider/#rolling-upgrade). Apply:
 
 ```sh
 terraform apply
 ```
 
-The servers enroll at the internal listener of the first server, which the install lists. List the servers on the first server:
+For each server, the provider makes an enrollment token that names its peer address. The host firewall of the first server then takes port 7443 from that address while the token works ([the host firewall](/reference/host-firewall/#sets)). The servers enroll at the internal listener of the first server. List the servers on the first server:
 
 ```sh
-ssh -i ~/.ssh/id_ed25519 debian@"$(terraform output -raw ipv4)" sudo hopboxd admin server list
+ssh -i ~/.ssh/id_ed25519 root@203.0.113.10 hopboxd admin server list
 ```
 
-The output shows four servers, each `ready`: the first server, `edge2` with the roles `dns,edge`, and the two nodes, `node2` in the pool `big`.
-
-Check the host firewall of `node1`. From your laptop, a connection to its public address must time out, also on port 22:
-
-```sh
-nc -vz -w 3 "$(terraform state show -no-color hopbox_server.node1 | awk '$1 == "ipv4" {gsub(/"/, "", $3); print $3}')" 22
-```
+The output shows four servers, each `ready`, with their peer addresses: the first server, `edge2` with the roles `dns,edge`, and the two nodes, `node2` in the pool `big`.
 
 Through the jump host, list the jump hosts that `node1` takes on port 22:
 
 ```sh
-ssh -i ~/.ssh/id_ed25519 -J debian@203.0.113.5 debian@172.31.0.21 sudo nft list set inet hopbox_host jump_hosts
+ssh -i ~/.ssh/id_ed25519 -J root@203.0.113.10 root@203.0.113.21 nft list set inet hopbox_host jump_hosts
 ```
 
-The set holds `172.31.0.11` and `172.31.0.12`, the vRack addresses of the two edge servers. If it is empty, wait 10 s and list it again: until the first mesh, port 22 takes the whole vRack range ([the host firewall](/reference/host-firewall/#the-jump-hosts)).
+The set holds `203.0.113.10` and `203.0.113.11`, the peer addresses of the two edge servers. If it is empty, wait 10 s and list it again. Until the server knew an edge server, port 22 takes every source ([the host firewall](/reference/host-firewall/#never-a-lockout)).
+
+Then make sure that the public address of `node1` is closed. From your laptop, a connection to its port 22 must time out:
+
+```sh
+nc -vz -w 3 203.0.113.21 22
+```
 
 ### 4. Add a second control server
 
-A second control server shares the control store with the first one, so the install must run on the external Postgres first. Move the store as [Run the control store on an external Postgres](/guide/external-postgres/#move-a-one-server-install-to-the-external-postgres) shows. Then add the server:
+A second control server shares the control store with the first one, so the install must run on the external Postgres first. Move the store as [Run the control store on an external Postgres](/guide/external-postgres/#move-a-one-server-install-to-the-external-postgres) shows. Set up the host of `cp2` as in [1. Set up the hosts](#1-set-up-the-hosts). Then add the server:
 
 ```hcl
 resource "hopbox_server" "cp2" {
-  ovh_service_name = "ns5678901.ip-198-51-100.eu"
-  roles            = ["control", "node"]
-  vrack_address    = "172.31.0.13"
-  bundle           = local.bundle
-  host_kernel      = local.host_kernel
-  depends_on       = [hopbox_server.first]
+  address      = "203.0.113.13"
+  ssh_host_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI..."
+  roles        = ["control", "node"]
+  bundle       = local.bundle
+  host_kernel  = local.host_kernel
+  depends_on   = [hopbox_server.first]
 
 
   copy_control_from = {
-    address  = hopbox_server.first.vrack_address
+    address  = hopbox_server.first.address
     host_key = hopbox_server.first.ssh_host_key
     user     = hopbox_server.first.ssh_user
   }
 }
 ```
 
-`copy_control_from` names the live control server that `cp2` copies from, with its pinned host key. Apply. Before the reinstall, the provider logs in to the first server through the jump host, and reads its key-encryption keys and the settings of its external Postgres. It checks the fingerprint of each key against the admin API, and writes the files on `cp2` before the install. So both control servers seal with the same keys, and use the same store ([hopbox Terraform provider](/reference/terraform-provider/#control-servers)). If the first server still runs the bundled Postgres, the apply stops before the reinstall with `the control server runs the bundled Postgres`.
+`copy_control_from` names the live control server that `cp2` copies from, with its pinned host key. Apply. Before it changes `cp2`, the provider logs in to the first server, and reads its key-encryption keys and the files of its external Postgres. It compares the fingerprint of each key with the admin API, and writes the files on `cp2` before the install. So both control servers seal with the same keys, and use the same store ([hopbox Terraform provider](/reference/terraform-provider/#control-servers)). If the first server still runs the bundled Postgres, the apply stops before any change of `cp2`, with `the control server runs the bundled Postgres`.
 
-Check that both control processes are live:
+Make sure that both control processes are live:
 
 ```sh
-ssh -i ~/.ssh/id_ed25519 debian@"$(terraform output -raw ipv4)" sudo hopboxd admin control list
+ssh -i ~/.ssh/id_ed25519 root@203.0.113.10 hopboxd admin control list
 ```
 
-The output shows two live processes, with the internal URLs `https://172.31.0.11:7443` and `https://172.31.0.13:7443`.
+The output shows two live processes, with the internal URLs `https://203.0.113.10:7443` and `https://203.0.113.13:7443`.
 
-### 5. Replace an edge server
+### 5. Point the zone at the edge servers
 
-To replace `edge2` with the server `ns6789012.ip-198-51-100.eu`, change its service name and its vRack address in `main.tf`:
+The zone of the DNS role names the public addresses of the install. Until now, it names the peer address of the first server. Set the public addresses to the floating addresses of the edge servers. `ns1` takes the first address, and `ns2` the second ([the DNS role](/reference/dns/#the-zone-of-the-install)):
+
+```sh
+ssh -i ~/.ssh/id_ed25519 root@203.0.113.10 hopboxd admin config set --public-address 198.51.100.5,198.51.100.6
+```
+
+Ask each edge server for the zone. Each answer names both floating addresses:
+
+```sh
+dig @198.51.100.5 example.com A +norec
+dig @198.51.100.6 example.com A +norec
+```
+
+Then change the glue records of the domain at your registrar ([Serve the domain of an install with the DNS role](/guide/dns-role/#make-the-records-in-the-parent-zone)): `ns1.example.com` at `198.51.100.5`, and `ns2.example.com` at `198.51.100.6`. A resolver keeps the old records for up to 60 seconds after the parent zone publishes the change.
+
+### 6. Replace an edge server
+
+To move `edge2` to a new host at `203.0.113.14`, set up that host as in [1. Set up the hosts](#1-set-up-the-hosts). Do not route the floating address to it yet. Change the address and the host key of `edge2` in `main.tf`:
 
 ```hcl
 resource "hopbox_server" "edge2" {
-  ovh_service_name   = "ns6789012.ip-198-51-100.eu"
+  address            = "203.0.113.14"
+  ssh_host_key       = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI..."
   roles              = ["edge", "dns"]
-  vrack_address      = "172.31.0.14"
-  floating_addresses = ["203.0.113.6"]
+  floating_addresses = ["198.51.100.6"]
   bundle             = local.bundle
   host_kernel        = local.host_kernel
   depends_on         = [hopbox_server.first]
@@ -4129,28 +4163,15 @@ resource "hopbox_server" "edge2" {
 }
 ```
 
-Apply. With `create_before_destroy`, Terraform creates the new server first. The new server takes `203.0.113.6` once it is ready, so the address keeps answering. Then Terraform destroys the old server: the provider decommissions it, and takes it out of the vRack. The old server and the new one run side by side for a while, so they need two vRack addresses.
+Apply. A new `address` replaces the server. With `create_before_destroy`, Terraform creates the new server first, and the new server holds `198.51.100.6` on its uplink. Then Terraform destroys the old server: the provider decommissions it, stops `hopboxd`, and removes the address from its uplink.
 
-### 6. Point the zone at the edge servers
+When the apply prints `hopbox_server.edge2: Creation complete`, route `198.51.100.6` to the new host at the provider. The address gives no answer from the destroy of the old server until the provider routes it to the new one. In that time, clients reach the install at `198.51.100.5`, because the zone names both addresses since step 5. The public addresses of the install, and the records of the zone, stay the same.
 
-The zone of the DNS role names the public addresses of the install. Until now, they are the addresses of the first server. Set them to the floating addresses of the edge servers. `ns1` takes the first address, and `ns2` the second ([the DNS role](/reference/dns/#the-zone-of-the-install)):
-
-```sh
-ssh -i ~/.ssh/id_ed25519 debian@"$(terraform output -raw ipv4)" sudo hopboxd admin config set --public-address 203.0.113.5,203.0.113.6
-```
-
-Ask each edge server for the zone. Each answer names both floating addresses:
-
-```sh
-dig @203.0.113.5 example.com A +norec
-dig @203.0.113.6 example.com A +norec
-```
-
-Then change the glue records of the domain at your registrar ([Serve the domain of an install with the DNS role](/guide/dns-role/#make-the-records-in-the-parent-zone)): `ns1.example.com` at `203.0.113.5`, `ns2.example.com` at `203.0.113.6`. A resolver keeps the old records for up to 60 seconds after the parent zone publishes the change.
+The old host stays with its provider. If you do not use it again, end its rental there.
 
 ### 7. Let the first server leave the install
 
-Once the zone names the edge servers, the first server can leave the install. The install keeps running on the other servers. Before you start, check these conditions:
+Once the zone names the edge servers, the first server can leave the install. The install keeps running on the other servers. Before you start, make sure that these conditions are true:
 
 * A second control server is live, on the external Postgres, as in [step 4](#4-add-a-second-control-server).
 
@@ -4159,180 +4180,113 @@ Once the zone names the edge servers, the first server can leave the install. Th
 * Each other server knows `cp2`. The `channel.control_urls` of a server made before `cp2` names only the first server. The control role sends the URLs of the live control servers on the control channel, and each server keeps them in `/var/lib/hopbox/server/control-urls` ([the control channel](/reference/control-channel/#control-urls)). Read that file on each server, through the jump host. For example, on `node1`:
 
   ```sh
-  ssh -i ~/.ssh/id_ed25519 -J debian@203.0.113.6 debian@172.31.0.21 sudo cat /var/lib/hopbox/server/control-urls
+  ssh -i ~/.ssh/id_ed25519 -J root@203.0.113.10 root@203.0.113.21 cat /var/lib/hopbox/server/control-urls
   ```
 
-  The output must list `https://172.31.0.13:7443`. If it does not, wait 5 s and read it again. If the file still does not list it, look for `cannot keep the control URLs` in the log of `hopboxd` on that server, with `journalctl -u hopboxd`. If the cause is a full disk, free space on it. The next heartbeat writes the file within 5 s.
+  The output must list `https://203.0.113.13:7443`. If it does not, wait 5 s and read it again. If the file still does not list it, look for `cannot keep the control URLs` in the log of `hopboxd` on that server, with `journalctl -u hopboxd`. If the cause is a full disk, free space on it. The next heartbeat writes the file within 5 s.
 
 Then take these steps:
 
-1. Make `edge2` the jump host. Read its address and host key with `terraform state show hopbox_server.edge2`, and put its `ipv4` and `ssh_host_key` in `ssh_jump_host` of the provider block. Apply.
+1. Make `edge2` the jump host. Read its address and host key with `terraform state show hopbox_server.edge2`. Put its `address` and `ssh_host_key` in `ssh_jump_host` of the provider block. Apply.
 
-2. Give the floating address of the first server to a new edge server. In the resource `first`, set `floating_addresses = []`. Add the new server, with its own vRack address:
+2. Set up a host for a new edge server, `edge3`, at `203.0.113.15`, as in [1. Set up the hosts](#1-set-up-the-hosts).
+
+3. In the resource `first`, set `floating_addresses = []`. Add `edge3` with the floating address of the first server:
 
    ```hcl
    resource "hopbox_server" "edge3" {
-     ovh_service_name   = "ns7890123.ip-198-51-100.eu"
+     address            = "203.0.113.15"
+     ssh_host_key       = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI..."
      roles              = ["edge", "dns"]
-     vrack_address      = "172.31.0.15"
-     floating_addresses = ["203.0.113.5"]
+     floating_addresses = ["198.51.100.5"]
      bundle             = local.bundle
      host_kernel        = local.host_kernel
      depends_on         = [hopbox_server.cp2]
    }
    ```
 
-   Apply. The new server takes `203.0.113.5` at the end of its create. Terraform can update the first server before that. The first server then keeps `203.0.113.5` while OVHcloud routes it there, so `ns1` and the URLs of the install keep answering. In step 4, the first server leaves the install. OVHcloud routes the address to `edge3` already.
+4. Apply. The update of the first server removes `198.51.100.5` from its uplink. The create of `edge3` puts the address on its own uplink.
 
-3. Edit `main.tf`:
+5. When the apply prints `hopbox_server.edge3: Creation complete`, route `198.51.100.5` to the host of `edge3` at the provider. Until then, `ns1` and the URLs of the install give no answer at `198.51.100.5`. Clients reach the install at `198.51.100.6` in that time.
 
-   * Remove the resource `first`, and the outputs `ipv4`, `admin_api_key`, and `first_host_key`, which name it. The provider keeps the admin API key of `HOPBOX_ADMIN_API_KEY` from step 2, so keep that key in a safe place first.
+6. Edit `main.tf`:
+
+   * Remove the resource `first`, and the outputs `admin_api_key` and `first_host_key`, which name it. The provider keeps the admin API key of `HOPBOX_ADMIN_API_KEY` from step 2. Keep that key in a safe place first.
    * In `cp2`, remove `depends_on`. In each other resource, change `depends_on = [hopbox_server.first]` to `depends_on = [hopbox_server.cp2]`, so a rolling upgrade updates the control server first.
    * In `copy_control_from` of `cp2`, replace the references to `hopbox_server.first` with their values from `terraform state show hopbox_server.first`. Only the create of `cp2` reads them.
 
-4. Apply. Terraform destroys the first server. The provider drains it through the admin API at `install_url`, because another control server is live. The first server holds no machine, so the drain decommissions it after its empty checks, in about 2 minutes ([hopbox Terraform provider](/reference/terraform-provider/#delete)). It stops `hopboxd`, and removes the key files and the Postgres files of the server once `cp2` proves that it holds the same keys. Then it takes the server out of the vRack.
+7. Apply. Terraform destroys the first server. The provider drains it through the admin API at `install_url`, because another control server is live. The first server holds no machine, so the drain decommissions it in about 2 minutes ([hopbox Terraform provider](/reference/terraform-provider/#delete)). The provider stops `hopboxd`. Then `cp2` proves that it holds the same keys. The provider then removes the key files and the Postgres files of the server. Then it removes the table of the host firewall and the network setup.
 
-Check the servers through the jump host:
+List the servers through the jump host:
 
 ```sh
-ssh -i ~/.ssh/id_ed25519 -J debian@203.0.113.6 debian@172.31.0.13 sudo hopboxd admin server list
+ssh -i ~/.ssh/id_ed25519 -J root@203.0.113.14 root@203.0.113.13 hopboxd admin server list
 ```
 
-The output shows the first server as `decommissioned`, and every other server as `ready`.
+The output shows the first server as `decommissioned`, and every other server as `ready`. The host of the first server stays with its provider.
 
 ## Import a server into a new state
 
-A server that the provider set up can move to a new state, for example after the loss of the state file:
+A server that the provider set up can move to a new state, for example after the loss of the state file. Write its resource in `main.tf` first, with its `address` and the `ssh_host_key` from the console of its provider. Then import it by its peer address:
 
 ```sh
-terraform import hopbox_server.first ns1234567.ip-198-51-100.eu
+terraform import hopbox_server.first 203.0.113.10
 ```
 
-The import logs in with the key of the operators. It reads the server ID, the version, and the domain from the server. The new state has no `admin_api_key`. Make a new admin API key as in step 6. The new state also forgets a cordon that a failed kernel reboot left. Check the server with `sudo hopboxd admin server get <id>`. If it shows `cordoned true` and nobody cordoned it on purpose, run `sudo hopboxd admin server uncordon <id>`. The first plan after the import shows an update of `bundle`. If the bundle of `main.tf` is the release that the server runs, the apply changes nothing on the server.
+The import logs in at the address with the key of the operators, as `root`, then as `debian`. A server without the role `edge` gets the login through the jump host of the provider block. The import reads the server ID, the version, and the domain from the server. The install must know a server with that peer address, so an import never takes a server of another install ([hopbox Terraform provider](/reference/terraform-provider/#import)).
 
-The host firewall of a node or a control server closes its public address. So with `ssh_jump_host`, give its vRack address after the service name, with a comma:
+The import has no pinned host key yet, so it keeps the key that the server shows. The next plan compares that key with `ssh_host_key`. If they differ, the plan fails with `The SSH host key of a server cannot change`, before any change of the server. Then compare both keys with the console of the provider.
 
-```sh
-terraform import hopbox_server.node1 ns2345678.ip-198-51-100.eu,172.31.0.21
-```
-
-The import then logs in at the vRack address through the jump host. An edge server keeps SSH open on its public address, so it takes the service name alone.
-
-## Order a new server
-
-The provider can order the server in place of a server that your account rents. The apply pays for it with the preferred payment method of the account. It rents the server by the month, without a commitment.
-
-Find the plan code of a server model, and the options of its families, in the public catalog of OVHcloud. This call needs no key:
-
-```sh
-curl -s 'https://eu.api.ovh.com/1.0/order/catalog/public/baremetalServers?ovhSubsidiary=FR' -o catalog.json
-jq -r '.plans[] | [.planCode, .invoiceName] | @tsv' catalog.json
-jq '.plans[] | select(.planCode == "<plan code>") | {configurations, families: [.addonFamilies[] | {name, mandatory, addons}]}' catalog.json
-```
-
-The `configurations` show the datacenters of the plan, in `dedicated_datacenter`. Pick one option of each family with `"mandatory": true`, such as the memory, the storage, and the bandwidth. For the storage, pick a `softraid-` option: the provider refuses a `hardraid-` option, because hopbox tests only software RAID. All the servers of a pool have the same model, so use the same plan and options for each server of a pool.
-
-In `main.tf` of step 3, replace `ovh_service_name` with the order:
-
-```hcl
-resource "hopbox_server" "first" {
-  ovh_plan       = "<plan code>"
-  ovh_datacenter = "gra"
-  ovh_options    = ["<memory option>", "<storage option>", "<bandwidth option>"]
-  ovh_order_key  = "hop-example-first"
-  ovh_max_price  = 120
-  bootstrap      = true
-  domain         = "example.com"
-  labels         = { zone = "gra" }
-
-
-  bundle = {
-    source = pathexpand("~/hopbox-release/hopbox-v0.1.0-linux-amd64.tar.gz")
-    sha256 = "<the sha256 of the bundle>"
-  }
-  host_kernel = {
-    source = pathexpand("~/hopbox-release/linux-image-6.18.57-hopbox1_6.18.57-1_amd64.deb")
-    sha256 = "<the sha256 of the package>"
-  }
-
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-```
-
-`ovh_max_price` is the highest price with tax that the checkout pays, in the currency of your account. The checkout pays the first invoice: the first month and any setup fee, not only the monthly rent. If the cart costs more, the apply stops before the checkout and orders nothing. The error then shows the price of the cart. `ovh_order_key` names the order in your OVHcloud account. Give each server its own key. The provider marks the cart of the order with it. So a later apply finds an order that an apply lost, and does not pay twice.
-
-Plan first, and read the warning:
-
-```sh
-terraform plan
-```
-
-The plan says `Apply orders and pays for a new OVHcloud server`, with the plan, the datacenter, and the options. Only a create orders. Then apply:
-
-```sh
-terraform apply
-```
-
-The apply output shows the price of the checkout in the warning `The apply ordered the OVHcloud server of the order <id>`. The log of the provider shows `ordering a server` with the price, `ordered a server` with the order ID, and `waiting for the order` with its status. OVHcloud delivers some models in minutes, and others in days. The apply waits up to 2 hours. Then it reinstalls the server and goes on as in step 4. `terraform state show hopbox_server.first` shows the service name of the new server in `ovh_service_name`, and the order in `ovh_order_id`.
-
-If OVHcloud did not deliver the server in 2 hours, the apply stops with `the order <id> is not delivered after 2h0m0s`, and Terraform marks the resource as tainted. Do not remove the resource. Untaint it and apply again later:
-
-```sh
-terraform untaint hopbox_server.first
-terraform apply
-```
-
-The apply waits for the same order, and orders nothing new. Do the same after a failure of a later step, such as the install.
-
-After the create, the plan refuses each change that orders a new server: another `ovh_plan`, `ovh_datacenter`, `ovh_options`, or `ovh_order_key`, and a change of `pool` or `bootstrap`. To change the model of a server, add a new resource and remove the old one.
-
-`terraform taint`, `terraform apply -replace`, and `create_before_destroy` also replace the server, and the replacement orders a new one. The provider cannot see these replacements. The block `lifecycle { prevent_destroy = true }` makes Terraform refuse them. Keep it on each ordered server, and remove it only before a destroy on purpose.
+The new state has no `admin_api_key`. Make a new admin API key as in step 6. The new state also forgets a cordon that a failed kernel reboot left. Run `hopboxd admin server get <id>` on a control server. If it shows `cordoned true` and nobody cordoned the server on purpose, run `hopboxd admin server uncordon <id>`. The first plan after the import shows an update of `bundle`. If the bundle of `main.tf` is the release that the server runs, the apply changes nothing on the server.
 
 ## Destroy
+
+For the first server, remove the block `lifecycle { prevent_destroy = true }` from `main.tf` first. Then run the destroy:
 
 ```sh
 terraform destroy
 ```
 
-The destroy decommissions the server in the install, and stops `hopboxd` on it. Then it removes the table of the host firewall, so the public address of the server takes SSH again. A node or a control server leaves the vRack only after that. If the table stays, the destroy keeps the server in the vRack, and fails with the commands to run. It refuses a server that holds machines. Delete the machines first. The OVHcloud server stays rented, with its disks as they are. With `ovh_service_name`, another apply of `main.tf` erases the server again and makes a new install.
+The destroy drains the server, so its machines move to other nodes. On an install with one server, the drain has no other node, so delete the machines first. Then the destroy decommissions the server in the install, stops `hopboxd`, and removes the secrets of the install from the host. It removes the table of the host firewall, so the public address of the server takes SSH again. It also removes the network setup of an edge server, with its floating addresses ([hopbox Terraform provider](/reference/terraform-provider/#delete)).
 
-The destroy never cancels an order and never ends a rental, also for a server that the provider ordered. For an ordered server, remove `prevent_destroy` from `main.tf` before the destroy. After the destroy, another apply of `main.tf` with the order attributes orders and pays for a new server. To make a new install on the same server, replace the order attributes with `ovh_service_name` of that server first. To stop paying for the server, end its rental in the OVHcloud manager, and remove the resource from `main.tf`.
+If the table stays on a server without the role `edge`, the destroy fails with the commands to run, and keeps the resource. The jump host still reaches the server. Fix the cause, and run `terraform destroy` again.
+
+The host stays with its provider, with its disks as they are. A destroy never ends a rental. End it at the provider. To use the host again, apply `main.tf` again: the destroy removed the identity of the server, so the host takes a new create.
 
 ## If the apply stops
 
-| Message                                                                                                                              | Fix                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `the provider has no OVHcloud credentials`                                                                                           | Export the variables of step 1 in the shell that runs Terraform.                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `ovh: ... HTTP 403 ... This call has not been granted`                                                                               | The consumer key lacks a right of step 1. Make a new consumer key.                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| `ovh: GET /dedicated/server/<name>: HTTP 404`                                                                                        | The service name is wrong, or the server is in another account.                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `the disk group <n> sits behind the hardware RAID controller`                                                                        | Pick a server model without hardware RAID.                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `log in to the reinstalled server ...: context deadline exceeded`                                                                    | The server did not answer SSH for 30 minutes after the reinstall. Check the server in the OVHcloud manager, then run `terraform apply` again. Terraform reinstalls the server.                                                                                                                                                                                                                                                                                                                                 |
-| `remote: the host key of the server is not the pinned one`                                                                           | Someone reinstalled the server outside Terraform, or a machine sits between you and the server. Check the key first. A reinstall of the first server erased its install. To accept it, run `terraform state rm hopbox_server.first` and apply, which makes a new install. For an ordered server, first replace the order attributes in `main.tf` with `ovh_service_name` of the same server. Otherwise the apply orders a new server.                                                                          |
-| `/boot/grub/grub.cfg has no entry for <release>. The provider removed the pin, and the old default stays`                            | GRUB made no menu entry for the kernel, and the server still boots its old kernel. Read `/boot/grub/grub.cfg` on the server. If `<release>` is `6.18.57-1`, the provider is from before the fix of this error: it pinned the package version, not the kernel release. Build the provider again, and adopt the server again.                                                                                                                                                                                    |
-| `the server booted <release> after the install of 6.18.57-hopbox1`                                                                   | GRUB booted another kernel. Read `/etc/default/grub.d/20_hopbox_kernel.cfg` and `/boot/grub/grub.cfg` on the server ([Host kernel](/reference/host-kernel/#fallback)).                                                                                                                                                                                                                                                                                                                                         |
-| `the bundle: upload ...: remote: the connection broke: ...`                                                                          | sshd dropped the SSH connection 6 times during the upload, and the provider gave up ([hopbox Terraform provider](/reference/terraform-provider/#uploads)). Read `journalctl -u ssh` on the server. `message authentication code incorrect` means that data changed on the network path. Terraform tainted the server, so recover as below, from a better network.                                                                                                                                              |
-| `read the IP addresses of the server <name>: ...`                                                                                    | The OVHcloud API did not give the IP blocks. The apply stopped before the reinstall, so the server is as it was. Check the rights of step 1, and apply again.                                                                                                                                                                                                                                                                                                                                                  |
-| `the server <name> holds none of its IP addresses <blocks> on a network interface`                                                   | The reinstall erased the server, but the OS set up none of the addresses that OVHcloud reports. Read `ip addr` on the server and the IP blocks in the OVHcloud manager. Terraform tainted the server, so the next apply reinstalls it.                                                                                                                                                                                                                                                                         |
-| `write the bootstrap config: ...`                                                                                                    | The provider cannot write `/etc/hopbox/hopboxd.toml`. Read the error, which names the cause. Terraform tainted the server, so the next apply reinstalls it.                                                                                                                                                                                                                                                                                                                                                    |
-| Warning `The provider did not set the public addresses of the install: ...`                                                          | The install runs, and Terraform did not taint the server. Run the command of the warning on the server, such as `sudo /usr/local/bin/hopboxd admin config set --public-address '203.0.113.10'`. Then `sudo hopboxd admin config get` shows the addresses.                                                                                                                                                                                                                                                      |
-| `the server <id> did not become ready`                                                                                               | Read `sudo journalctl -u hopboxd` on the server.                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `the first server <id> is decommissioned or unknown to its install`                                                                  | Someone ran `hopboxd admin server decommission` on the first server. Its install cannot take machines again. To make a new install on it, run `terraform state rm hopbox_server.first` and apply. That erases the server. For an ordered server, first replace the order attributes in `main.tf` with `ovh_service_name` of the same server. Otherwise the apply orders a new server. A destroy that lost its answer after the decommission gives the same error. Then run `terraform destroy -refresh=false`. |
-| `... stays cordoned. Run hopboxd admin server uncordon <id>, or apply again`                                                         | A step of a kernel reboot failed. Fix the cause, and apply again. The apply lifts the cordon.                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `the ovh_options of the plan <plan>: ...`                                                                                            | An option is wrong, or a mandatory family has no option. Read the families of the plan in the catalog. No order was made.                                                                                                                                                                                                                                                                                                                                                                                      |
-| `the order <id> is not delivered after ...`                                                                                          | OVHcloud did not deliver the server in time. For an order that is `notPaid`, pay it in the OVHcloud manager. Then run `terraform untaint hopbox_server.first` and `terraform apply`.                                                                                                                                                                                                                                                                                                                           |
-| `the setup of the server of the OVHcloud order <id> did not finish, so the provider keeps the resource`                              | Terraform tried to replace a tainted ordered server. Run `terraform untaint hopbox_server.first` and apply. To give the server up, run `terraform state rm hopbox_server.first`. Remove the resource or its order attributes from `main.tf`, and end the rental in the OVHcloud manager.                                                                                                                                                                                                                       |
-| `an earlier apply checked out the OVHcloud cart <cart ID> for the ovh_order_key "<key>"`                                             | An apply ordered a server and lost the order, for example because Terraform stopped during the checkout. Find the order of that cart in the OVHcloud manager. Set `ovh_order_id = <order ID>` in the resource, and apply. The apply follows that order.                                                                                                                                                                                                                                                        |
-| `the order <id> is cancelled at OVHcloud`                                                                                            | No server comes from the order. Run `terraform state rm hopbox_server.first`, and apply to order again.                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `The order of a server cannot change` or `The change orders a new server`                                                            | The change needs a new server. Add a new resource with its own `ovh_order_key`, and remove the old one.                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `the server <name> has a vrack_address and no role edge, so its host firewall closes its public address once hopboxd runs, ...`      | Set `ssh_jump_host` in the provider block, as in [2. Set the jump host and the admin API](#2-set-the-jump-host-and-the-admin-api), and apply again.                                                                                                                                                                                                                                                                                                                                                            |
-| `the server <id> keeps its host firewall, because ...`                                                                               | The destroy kept the server in the vRack. Fix the cause that the error names, or run its commands on the server through the jump host. Then run `terraform destroy` again.                                                                                                                                                                                                                                                                                                                                     |
-| `log in to the server <name> to import it at its public address through the jump host: ...`                                          | The host firewall of the server closes its public address. Import it with its vRack address, as in [Import a server into a new state](#import-a-server-into-a-new-state).                                                                                                                                                                                                                                                                                                                                      |
-| `the server at the vRack address <address> does not hold the public address <address> of the server <name>, so it is another server` | The import ID names the vRack address of another server. Read the vRack address of the server in your Terraform files, and import again.                                                                                                                                                                                                                                                                                                                                                                       |
+| Message                                                                                                                                        | Fix                                                                                                                                                                                                                                                                                                                                                                 |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `the provider has no SSH key`                                                                                                                  | Set `ssh_private_key` in the provider block, or export `HOPBOX_SSH_PRIVATE_KEY`.                                                                                                                                                                                                                                                                                    |
+| `remote: the host key of the server is not the pinned one`                                                                                     | The host shows another key than `ssh_host_key`. Either `address` names another host, the host was reinstalled, or a machine sits between you and the host. Compare `ssh_host_key` with the key in the console of the provider before you do anything else.                                                                                                          |
+| `log in to the server at <address> as <user>: ...`                                                                                             | The host does not take the key of the operators for `ssh_user`. Put the public key in the `authorized_keys` of that user, as in [step 1](#1-set-up-the-hosts).                                                                                                                                                                                                      |
+| `sshd of the server takes password logins: ...`                                                                                                | Turn off the password logins, as in [step 1](#1-set-up-the-hosts), and apply again. Nothing changed on the host.                                                                                                                                                                                                                                                    |
+| `the host holds an install: hopboxd runs on the host at <address>, ...`                                                                        | `address` names a host with a live install. Make sure that `address` is correct. Nothing changed on the host.                                                                                                                                                                                                                                                       |
+| `the host holds an install: the host at <address> holds the identity of an enrolled server in <data_dir>/server, ...`                          | An earlier install left its identity on the host. Destroy its `hopbox_server`, or remove the dir by hand.                                                                                                                                                                                                                                                           |
+| `the host holds an install: the host at <address> holds the control store of an earlier install in <data_dir>/pg, ...`                         | Move or remove `<data_dir>/pg` and `<data_dir>/kek` on the host, and apply again.                                                                                                                                                                                                                                                                                   |
+| `the server runs <os> <version>, but hopbox tests only Debian 13`                                                                              | Install Debian 13 on the host at its provider.                                                                                                                                                                                                                                                                                                                      |
+| `the server at <address> holds no address <address> on a network interface, ...`                                                               | A NAT sits in front of the host, or `address` names another host. Use the public address that the host holds on its uplink.                                                                                                                                                                                                                                         |
+| `the host at <address> names no resolver that a machine can reach in ...`                                                                      | The host of a node names only a resolver on loopback, such as a local `unbound`. Put a resolver that the host reaches over its uplink in `/etc/resolv.conf`, and apply again. Nothing changed on the host.                                                                                                                                                          |
+| `/var/lib/hopbox is not a file system of its own. ...` or `/var/lib/hopbox is on <fs>, ...`                                                    | Make `/var/lib/hopbox` an XFS file system with reflinks, as in [step 1](#1-set-up-the-hosts).                                                                                                                                                                                                                                                                       |
+| `/var/lib/hopbox is on XFS without reflinks, and it holds files, so the provider does not make it again`                                       | Move the files away, or make the file system again with `mkfs.xfs -m reflink=1`.                                                                                                                                                                                                                                                                                    |
+| `the server <address> has no role edge, so its host firewall takes SSH only from the edge servers once hopboxd runs, ...`                      | Set `ssh_jump_host` in the provider block, as in [2. Set the jump host and the admin API](#2-set-the-jump-host-and-the-admin-api), and apply again.                                                                                                                                                                                                                 |
+| `a server that is not the first one enrolls at the internal listener of a control server on its peer address, and the install lists none. ...` | The first server still listens on loopback. Apply the first server alone first, with `terraform apply -target=hopbox_server.first`, so its update moves its listener.                                                                                                                                                                                               |
+| `set up the network of the server: ...`                                                                                                        | The network setup of an edge server failed. Read `journalctl -u hopbox-network.service` on the server. A server without an IPv4 default route fails this step.                                                                                                                                                                                                      |
+| `/boot/grub/grub.cfg has no entry for <release>. The provider removed the pin, and the old default stays`                                      | GRUB made no menu entry for the kernel, and the server still boots its old kernel. Read `/boot/grub/grub.cfg` on the server. If `<release>` is `6.18.57-1`, the provider is from before the fix of this error: it pinned the package version, not the kernel release. Build the provider again, and apply again.                                                    |
+| `the server booted <release> after the install of 6.18.57-hopbox1`                                                                             | GRUB booted another kernel. Read `/etc/default/grub.d/20_hopbox_kernel.cfg` and `/boot/grub/grub.cfg` on the server ([Host kernel](/reference/host-kernel/#fallback)).                                                                                                                                                                                              |
+| `the bundle: upload ...: remote: the connection broke: ...`                                                                                    | `sshd` dropped the SSH connection 6 times during the upload, and the provider gave up ([hopbox Terraform provider](/reference/terraform-provider/#uploads)). Read `journalctl -u ssh` on the server. `message authentication code incorrect` means that data changed on the network path. Terraform tainted the server, so recover as below, from a better network. |
+| `write the bootstrap config: ...`                                                                                                              | The provider cannot write `/etc/hopbox/hopboxd.toml`. Read the error, which names the cause. Terraform tainted the server, so recover as below.                                                                                                                                                                                                                     |
+| Warning `The provider did not set the public addresses of the install: ...`                                                                    | The install runs, and Terraform did not taint the server. Run the command of the warning on the server, such as `sudo /usr/local/bin/hopboxd admin config set --public-address '203.0.113.10'`. Then `hopboxd admin config get` shows the addresses.                                                                                                                |
+| `the server <id> did not become ready`                                                                                                         | Read `journalctl -u hopboxd` on the server.                                                                                                                                                                                                                                                                                                                         |
+| `the first server <id> is decommissioned or unknown to its install`                                                                            | Someone ran `hopboxd admin server decommission` on the first server. Its install cannot take machines again. To make a new install on the host, run `terraform state rm hopbox_server.first`, remove the install from the host, and apply. A destroy that lost its answer after the decommission gives the same error. Then run `terraform destroy -refresh=false`. |
+| `... stays cordoned. Run hopboxd admin server uncordon <id>, or apply again`                                                                   | A step of a kernel reboot failed. Fix the cause, and apply again. The apply lifts the cordon.                                                                                                                                                                                                                                                                       |
+| `The server keeps its host firewall`                                                                                                           | The destroy of a server without the role `edge` kept the table. Fix the cause that the error names, or run its commands on the server through the jump host. Then run `terraform destroy` again.                                                                                                                                                                    |
+| `the install knows the server <id> with the peer address <peer address>, not <address>. Import it by its peer address`                         | The import ID is not the peer address of the server. Import it again with its peer address.                                                                                                                                                                                                                                                                         |
+| `The state of the server cannot move to this release`                                                                                          | A state of an earlier release has no `ipv4` or no pinned host key. Run `terraform state rm` on the resource, and import the server by its peer address.                                                                                                                                                                                                             |
 
-After a failed create of a server that your account rents, Terraform marks the server as tainted. The next apply starts again with a new reinstall. With `lifecycle { prevent_destroy = true }`, Terraform refuses that apply with `Instance cannot be destroyed`. Then run `terraform state rm hopbox_server.first`, and apply again. `terraform untaint` does not help, because the state then holds a server without `hopboxd`, and the next apply installs nothing. A failed create of an ordered server works another way: see [Order a new server](#order-a-new-server).
+After a failed create, Terraform marks the server as tainted. The next apply destroys it, which undoes the steps that ran, and creates it again on the same host ([hopbox Terraform provider](/reference/terraform-provider/#create)). With `lifecycle { prevent_destroy = true }`, Terraform refuses that apply with `Instance cannot be destroyed`. Then remove the block for that apply, and put it back after. `terraform untaint` does not help, because the state then holds a server without `hopboxd`, and the next apply installs nothing.
+
+The destroy of a first server that never enrolled keeps its control store in `/var/lib/hopbox/pg`, and its keys in `/var/lib/hopbox/kek`, with a warning. The new create then refuses the host. Remove both dirs on the host first.
 
 # Run the edge role and open machine URLs
 
@@ -5424,23 +5378,23 @@ So a bigger server model goes into its own pool, and a bigger size can keep its 
 
 ## What you need
 
-* An install with its first server, as [Install hopbox on an OVHcloud server with Terraform](/guide/install-on-ovhcloud/) sets up.
+* An install with its first server, as [Install hopbox on your servers with Terraform](/guide/install-with-terraform/) sets up.
 * Root on a control server, for the commands. Every command below runs with `sudo`.
-* For Terraform: the provider with `install_url` and an admin API key ([Install hopbox on an OVHcloud server with Terraform](/guide/install-on-ovhcloud/#6-keep-the-admin-api-key)).
+* For Terraform: the provider with `install_url` and an admin API key ([Install hopbox on your servers with Terraform](/guide/install-with-terraform/#6-keep-the-admin-api-key)).
 
 ## 1. Add the pool
 
 ```sh
-sudo hopboxd admin pool create big --ovh-plan 24adv01
+sudo hopboxd admin pool create big
 ```
 
-`--ovh-plan` records the OVHcloud plan code of the servers of the pool. Leave it out for a pool of adopted servers. The pool has no hardware until its first server enrolls:
+The pool has no hardware until its first server enrolls:
 
 ```text
 $ sudo hopboxd admin pool list
-NAME     OVH PLAN  SERVERS  SIZES  HARDWARE
-big      24adv01   0        0      -
-default  -         1        0      -
+NAME     SERVERS  SIZES  HARDWARE
+big      0        0      -
+default  1        0      -
 ```
 
 ## 2. Enroll a server into the pool
@@ -5459,14 +5413,7 @@ hopboxd: error: enroll at https://10.0.0.1:7443: failed_precondition: failed pre
 
 RAM and each disk can differ by 2%, because two servers of one model can show a few MiB more or less. The CPU model, the thread count, and the count of disks must be the same.
 
-To put another model in a pool, decommission every server of the pool first. A pool without a live server takes the hardware of its next server. The pool keeps its `ovh_plan`, which then names the old model, and no call changes the plan of a pool. So for another model, prefer a new pool. To keep the name, delete the empty pool and create it again with the new plan, before the first server of the new model enrolls:
-
-```sh
-sudo hopboxd admin pool delete big
-sudo hopboxd admin pool create big --ovh-plan 24adv02
-```
-
-The delete needs a pool without live sizes, so retire the sizes of the pool first. With Terraform, a change of `ovh_plan` of the `hopbox_pool` does the same delete and create.
+To put another model in a pool, decommission every server of the pool first. A pool without a live server takes the hardware of its next server. A new pool for the new model keeps the pools of the install clear, so prefer one.
 
 ## 3. Add a size for the pool
 
@@ -5514,8 +5461,7 @@ The provider manages pools and sizes with `hopbox_pool` and `hopbox_size`. Both 
 
 ```hcl
 resource "hopbox_pool" "big" {
-  name     = "big"
-  ovh_plan = "24adv01"
+  name = "big"
 }
 
 
@@ -5537,7 +5483,7 @@ A `hopbox_server` joins the pool with `pool = hopbox_pool.big.name`. The first s
 
 This guide runs `hopboxd` with the control role on a Mac, without root. It reads the install info over the API. Then it sets the domain of the install and rotates the key-encryption key through the admin socket, and finds both actions in the audit log. It also makes an admin API key, opens the console on the laptop, and signs the CLI in without a browser. On a server, the same steps run as root with the default paths.
 
-The release files of hopbox are not public yet. The hopbox team gives them on request. They hold no `hopboxd` for macOS, so this guide builds `hopboxd` from a checkout of the source of hopbox. The source is not public yet either, so this guide is for the people who work on hopbox. To run an install on a server, use [Install hopbox on a Debian 13 server by hand](/guide/install-debian/) or [Install hopbox on an OVHcloud server with Terraform](/guide/install-on-ovhcloud/).
+The release files of hopbox are not public yet. The hopbox team gives them on request. They hold no `hopboxd` for macOS, so this guide builds `hopboxd` from a checkout of the source of hopbox. The source is not public yet either, so this guide is for the people who work on hopbox. To run an install on a server, use [Install hopbox on a Debian 13 server by hand](/guide/install-debian/) or [Install hopbox on your servers with Terraform](/guide/install-with-terraform/).
 
 ## What `hopboxd run` does
 

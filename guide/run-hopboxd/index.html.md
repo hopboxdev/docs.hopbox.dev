@@ -4,7 +4,7 @@
 
 This guide runs `hopboxd` with the control role on a Mac, without root. It reads the install info over the API. Then it sets the domain of the install and rotates the key-encryption key through the admin socket, and finds both actions in the audit log. It also makes an admin API key, opens the console on the laptop, and signs the CLI in without a browser. On a server, the same steps run as root with the default paths.
 
-The release files of hopbox are not public yet. The hopbox team gives them on request. They hold no `hopboxd` for macOS, so this guide builds `hopboxd` from a checkout of the source of hopbox. The source is not public yet either, so this guide is for the people who work on hopbox. To run an install on a server, use [Install hopbox on a Debian 13 server by hand](/guide/install-debian/index.html.md) or [Install hopbox on an OVHcloud server with Terraform](/guide/install-on-ovhcloud/index.html.md).
+The release files of hopbox are not public yet. The hopbox team gives them on request. They hold no `hopboxd` for macOS, so this guide builds `hopboxd` from a checkout of the source of hopbox. The source is not public yet either, so this guide is for the people who work on hopbox. To run an install on a server, use [Install hopbox on a Debian 13 server by hand](/guide/install-debian/index.html.md) or [Install hopbox on your servers with Terraform](/guide/install-with-terraform/index.html.md).
 
 ## What `hopboxd run` does
 

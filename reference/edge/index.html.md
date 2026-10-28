@@ -287,7 +287,7 @@ public_ipv6 = "2001:db8::11"
 
 The zone names this address in its `AAAA` records, through the public addresses of the install ([the DNS role](/reference/dns/index.html.md#the-zone-of-the-install), [hopbox Terraform provider](/reference/terraform-provider/index.html.md#edge-servers-and-floating-addresses)). Without a floating IPv6 address, the zone has no `AAAA` record, and the install takes IPv4 only.
 
-`hopboxd` does not put the address on the uplink. The operator assigns it at the provider of the server, and on the host. The host firewall has no rule of its own for it. The uplink is in the public zone, so the address takes the public ports of the edge server from every source ([the host firewall](/reference/host-firewall/index.html.md#zones)). The NAT66 of the machines never takes it ([the host firewall](/reference/host-firewall/index.html.md#the-uplink-and-the-nat66)).
+`hopboxd` does not put the address on the uplink. The operator routes it to the server at its provider. The network setup of the Terraform provider puts it on the uplink as a `/128` ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#the-network-setup-of-an-edge-server)). Without the Terraform provider, put it there by hand. The host firewall has no rule of its own for it. The uplink is in the public zone, so the address takes the public ports of the edge server from every source ([the host firewall](/reference/host-firewall/index.html.md#zones)). The NAT66 of the machines never takes it ([the host firewall](/reference/host-firewall/index.html.md#the-uplink-and-the-nat66)).
 
 ## The egress of the machines
 

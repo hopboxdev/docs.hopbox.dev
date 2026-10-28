@@ -108,7 +108,7 @@ Phase 1 runs every role of hopbox on one server. The dev install, which is the p
 
 ### Terraform provider
 
-- The resource `hopbox_server` adopts an OVHcloud dedicated server, or orders a new one ([Install hopbox on an OVHcloud server with Terraform](/guide/install-on-ovhcloud/index.html.md)).
+- The resource `hopbox_server` adopts an OVHcloud dedicated server, or orders a new one (`docs/guide/install-on-ovhcloud.md` at the tag `v0.1.0`).
 - The provider reinstalls the server with Debian 13 and the host kernel `6.18.57-hopbox1`. Then it installs `hopboxd` and enrolls the server.
 - A new `bundle` in the config upgrades the server ([hopbox Terraform provider](/reference/terraform-provider/index.html.md)).
 

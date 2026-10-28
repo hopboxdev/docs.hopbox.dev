@@ -41,7 +41,7 @@ A cordoned server takes no new machine. Its machines keep running. Cordon a serv
 
 To set the labels of a server, click its name. Type the labels as `key=value` pairs, such as `disk=nvme, zone=a`, and click "Set labels". A size can ask for labels, and placement then puts its machines only on servers with them ([Add pools and sizes](/guide/pools-and-sizes/index.html.md)).
 
-The Admin area does not add or remove a server. The hopbox Terraform provider does that ([Install hopbox on an OVHcloud server with Terraform](/guide/install-on-ovhcloud/index.html.md)). To take a server out of the install with its machines, drain it first ([Drain a node](/guide/drain-a-node/index.html.md)). The server page has a button "Drain" for it.
+The Admin area does not add or remove a server. The hopbox Terraform provider does that ([Install hopbox on your servers with Terraform](/guide/install-with-terraform/index.html.md)). To take a server out of the install with its machines, drain it first ([Drain a node](/guide/drain-a-node/index.html.md)). The server page has a button "Drain" for it.
 
 ## Drain a server
 

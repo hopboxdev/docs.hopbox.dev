@@ -18,7 +18,7 @@ The job asks for no certificate until an instance admin agrees to the terms of t
 
 ## What you need
 
-- For the steps on a server: a server installed from the release bundle, as in [Install hopbox on a Debian 13 server by hand](/guide/install-debian/index.html.md) or [Install hopbox on an OVHcloud server with Terraform](/guide/install-on-ovhcloud/index.html.md).
+- For the steps on a server: a server installed from the release bundle, as in [Install hopbox on a Debian 13 server by hand](/guide/install-debian/index.html.md) or [Install hopbox on your servers with Terraform](/guide/install-with-terraform/index.html.md).
 - For the steps on a Mac: a checkout of the source of hopbox, built with `make build`. The source is not public yet, so these steps are for the people who work on hopbox.
 - For the steps on a Mac: the bundled Postgres. `make pg` builds it on the first run and prints its dir.
 - Go, to install Pebble, and `dig`.

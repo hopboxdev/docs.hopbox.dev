@@ -27,7 +27,7 @@ Each control process records the URL of its listener in its row of `control_proc
 
 ## Move the first server to its peer address
 
-The first server of an install has every role, and its listener stays on loopback while it is the only server. Before a second server enrolls, the listener moves to the peer address of the first server. The Terraform provider runs this step from N30 on. To run it by hand, take these steps on the first server.
+The first server of an install has every role, and its listener stays on loopback while it is the only server. Before a second server enrolls, the listener moves to the peer address of the first server. The Terraform provider runs this step at an update of the first server ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#the-internal-listener)). To run it by hand, take these steps on the first server.
 
 1. Make sure that the server has its peer address. The line `peer_address` of `sudo hopboxd admin server get <id>` names it. If it is empty, set it with `sudo hopboxd admin server set-peer-address <id> <address>` ([hopboxd](/reference/hopboxd/index.html.md#admin-server-set-peer-address)). The install refuses a listener on another address than the stored peer address.
 2. Run the install with the peer address and port 7443:

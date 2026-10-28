@@ -4,7 +4,7 @@
 
 This guide installs hopbox on one Debian 13 server with the control role and the node role, then upgrades it and rolls it back. [Serve the domain of an install with the DNS role](/guide/dns-role/index.html.md) adds the DNS role.
 
-The hopbox Terraform provider does these steps for each server of an install ([Install hopbox on an OVHcloud server with Terraform](/guide/install-on-ovhcloud/index.html.md)). Use this guide to try a release bundle on a test server, or to see what the provider does. An install of the hosted service gets its servers only from the provider.
+The hopbox Terraform provider does these steps for each server of an install, apart from step 2 ([Install hopbox on your servers with Terraform](/guide/install-with-terraform/index.html.md)). The operator makes the XFS file system of step 2 on each host before the provider runs. Use this guide to try a release bundle on a test server, or to see what the provider does. An install of the hosted service gets its servers only from the provider.
 
 The release files of hopbox are not public yet. The hopbox team gives them on request.
 

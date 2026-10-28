@@ -672,7 +672,7 @@ Migration `0013_pools.sql`. One row per pool. A pool is a named group of servers
 | `version` | `bigint` | The row version. |
 | `created_at` | `timestamptz` | When the pool was made. |
 | `updated_at` | `timestamptz` | The last change. |
-| `ovh_plan` | `text` | The OVHcloud plan code of the servers of the pool, such as `24adv01`, or empty. A check holds 1 to 64 of `a-z`, `0-9`, `.`, and `-` that start with a letter or a digit. Migration `0042_pools_and_operator_sizes.sql` adds it. |
+| `ovh_plan` | `text` | Not used. Migration `0042_pools_and_operator_sizes.sql` added it for the plan of a provider, with a check of 1 to 64 of `a-z`, `0-9`, `.`, and `-` that start with a letter or a digit. Since N30, no code writes or reads it, and a new pool gets the default, the empty text. The column stays, because a release of schema version 44 still writes it (N30). |
 | `hardware` | `jsonb`, null | The hardware of the first server that enrolled into the pool: `cpu_model`, `cpu_threads`, `memory_bytes`, and `disk_bytes`, a list of the sizes of its whole disks. Null until that enrollment. A pool whose servers are all decommissioned takes the hardware of its next server. Migration `0042`. |
 | `deleted_at` | `timestamptz`, null | The delete of the pool. A deleted pool keeps its row, because its decommissioned servers and its retired sizes still name it. A check keeps the pool `default` from a delete. Migration `0042`. |
 

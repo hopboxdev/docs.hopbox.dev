@@ -17,23 +17,23 @@ So a bigger server model goes into its own pool, and a bigger size can keep its 
 
 ## What you need
 
-- An install with its first server, as [Install hopbox on an OVHcloud server with Terraform](/guide/install-on-ovhcloud/index.html.md) sets up.
+- An install with its first server, as [Install hopbox on your servers with Terraform](/guide/install-with-terraform/index.html.md) sets up.
 - Root on a control server, for the commands. Every command below runs with `sudo`.
-- For Terraform: the provider with `install_url` and an admin API key ([Install hopbox on an OVHcloud server with Terraform](/guide/install-on-ovhcloud/index.html.md#6-keep-the-admin-api-key)).
+- For Terraform: the provider with `install_url` and an admin API key ([Install hopbox on your servers with Terraform](/guide/install-with-terraform/index.html.md#6-keep-the-admin-api-key)).
 
 ## 1. Add the pool
 
 ```sh
-sudo hopboxd admin pool create big --ovh-plan 24adv01
+sudo hopboxd admin pool create big
 ```
 
-`--ovh-plan` records the OVHcloud plan code of the servers of the pool. Leave it out for a pool of adopted servers. The pool has no hardware until its first server enrolls:
+The pool has no hardware until its first server enrolls:
 
 ```text
 $ sudo hopboxd admin pool list
-NAME     OVH PLAN  SERVERS  SIZES  HARDWARE
-big      24adv01   0        0      -
-default  -         1        0      -
+NAME     SERVERS  SIZES  HARDWARE
+big      0        0      -
+default  1        0      -
 ```
 
 ## 2. Enroll a server into the pool
@@ -52,14 +52,7 @@ hopboxd: error: enroll at https://10.0.0.1:7443: failed_precondition: failed pre
 
 RAM and each disk can differ by 2%, because two servers of one model can show a few MiB more or less. The CPU model, the thread count, and the count of disks must be the same.
 
-To put another model in a pool, decommission every server of the pool first. A pool without a live server takes the hardware of its next server. The pool keeps its `ovh_plan`, which then names the old model, and no call changes the plan of a pool. So for another model, prefer a new pool. To keep the name, delete the empty pool and create it again with the new plan, before the first server of the new model enrolls:
-
-```sh
-sudo hopboxd admin pool delete big
-sudo hopboxd admin pool create big --ovh-plan 24adv02
-```
-
-The delete needs a pool without live sizes, so retire the sizes of the pool first. With Terraform, a change of `ovh_plan` of the `hopbox_pool` does the same delete and create.
+To put another model in a pool, decommission every server of the pool first. A pool without a live server takes the hardware of its next server. A new pool for the new model keeps the pools of the install clear, so prefer one.
 
 ## 3. Add a size for the pool
 
@@ -107,8 +100,7 @@ The provider manages pools and sizes with `hopbox_pool` and `hopbox_size`. Both 
 
 ```hcl
 resource "hopbox_pool" "big" {
-  name     = "big"
-  ovh_plan = "24adv01"
+  name = "big"
 }
 
 resource "hopbox_size" "large" {

@@ -26,7 +26,7 @@ Each guide, reference page, and release note also has a Markdown copy at its URL
 
 ## Guides: Run an install
 
-- [Install hopbox on an OVHcloud server with Terraform](https://docs.hopbox.dev/guide/install-on-ovhcloud/index.html.md): How to install hopbox on an OVHcloud server with Terraform, and how to upgrade, import, and destroy it.
+- [Install hopbox on your servers with Terraform](https://docs.hopbox.dev/guide/install-with-terraform/index.html.md): How to set up Debian 13 hosts from any provider and install hopbox on them with Terraform. Also how to upgrade, grow a fleet with floating addresses, import, and destroy.
 - [Install hopbox on a Debian 13 server by hand](https://docs.hopbox.dev/guide/install-debian/index.html.md): How to install hopbox on a Debian 13 server by hand, the path that the Terraform provider automates, and how to upgrade it and roll it back.
 - [First sign-in on a new install](https://docs.hopbox.dev/guide/first-sign-in/index.html.md): How the first instance admin signs in to a new install with a login link, reads the audit log, and turns on magic links.
 - [Sign in with GitHub and Google](https://docs.hopbox.dev/guide/github-google-sign-in/index.html.md): How an operator registers the GitHub OAuth app and the Google OAuth client of an install, gives hopbox their clients, and signs in with GitHub.
@@ -69,7 +69,7 @@ Each guide, reference page, and release note also has a Markdown copy at its URL
 - [The bootstrap config of hopboxd](https://docs.hopbox.dev/reference/hopboxd-config/index.html.md): Every key and default of the bootstrap config /etc/hopbox/hopboxd.toml, and its errors.
 - [Server layout](https://docs.hopbox.dev/reference/server-layout/index.html.md): Every path, user, ID range, systemd unit, and reserved port that hopboxd install makes on a server, the image cache, and the file of the bootstrap admin API key.
 - [Release bundle](https://docs.hopbox.dev/reference/release-bundle/index.html.md): The release bundle: its file, contents, manifest, the checks of a release, make bundle, tools/bundle, and the Firecracker pins.
-- [hopbox Terraform provider](https://docs.hopbox.dev/reference/terraform-provider/index.html.md): The hopbox Terraform provider, its provider block, the OVHcloud API rights, the resource hopbox_server, its steps and errors, and the binary.
+- [hopbox Terraform provider](https://docs.hopbox.dev/reference/terraform-provider/index.html.md): The hopbox Terraform provider for any Debian 13 host over SSH, its provider block, the host that the operator sets up, the resources hopbox_server, hopbox_pool, and hopbox_size, their steps and errors, and the binary.
 - [The preflight check](https://docs.hopbox.dev/reference/preflight/index.html.md): The preflight checks of a server, their severities, their errors, the tested OS and kernel, and the tested server.
 - [Metrics](https://docs.hopbox.dev/reference/metrics/index.html.md): The Prometheus metrics listener of hopboxd and every metric that it serves.
 - [The DNS role](https://docs.hopbox.dev/reference/dns/index.html.md): The DNS role: its listeners, zone, answers, and push. Also its TXT records, the parent zone, metrics, and logs.

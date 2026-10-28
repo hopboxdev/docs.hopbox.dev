@@ -3113,9 +3113,8 @@ components:
         ovhPlan:
           type: string
           title: ovh_plan
-          description: |-
-            ovh_plan is the OVHcloud plan code of the servers of the pool, such as 24adv01.
-             Leave it empty for a pool of adopted servers.
+          description: ovh_plan is deprecated. The call ignores it, and the pool records no plan of a provider.
+          deprecated: true
       title: CreatePoolRequest
       additionalProperties: false
       description: CreatePoolRequest names the new pool.
@@ -4393,7 +4392,10 @@ components:
         ovhPlan:
           type: string
           title: ovh_plan
-          description: ovh_plan is the OVHcloud plan code of the servers of the pool, such as 24adv01, or empty.
+          description: |-
+            ovh_plan is deprecated, and always empty. The operator orders each server at its provider,
+             so a pool records no plan of a provider.
+          deprecated: true
         hardware:
           allOf:
             - $ref: '#/components/schemas/hopbox.admin.v1.PoolHardware'

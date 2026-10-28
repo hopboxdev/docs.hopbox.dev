@@ -4,7 +4,7 @@
 
 The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack, read Q90.
 
-An edge server takes the public traffic of an install: the URL of each machine, SSH, the API, and the console. It also takes the egress of the machines to the internet ([the egress of the machines](/reference/egress/index.html.md)). A small install runs every role on one server. A bigger install runs the edge role and the DNS role on two servers of their own, `edge1` and `edge2`. The install then has two name servers. When one edge server stops, the other one takes the traffic. This guide adds two edge servers to an install on the vRack, and checks a machine through each one.
+An edge server takes the public traffic of an install: the URL of each machine, SSH, the API, and the console. It also takes the egress of the machines to the internet ([the egress of the machines](/reference/egress/index.html.md)). A small install runs every role on one server. A bigger install runs the edge role and the DNS role on two servers of their own, `edge1` and `edge2`. The install then has two name servers. When one edge server stops, the other one takes the traffic. This guide adds two edge servers to an install whose servers talk over their peer addresses. Then it reaches a machine through each edge server.
 
 An edge server without the node role reaches each machine over the mesh, the WireGuard device `hbm0` between the servers ([the mesh](/reference/mesh/index.html.md)). [The edge role](/reference/edge/index.html.md#the-way-to-the-machines) covers the way to the machines in full.
 
@@ -17,16 +17,16 @@ The release files of hopbox are not public yet. The hopbox team gives them on re
 3. The edge server finds the node of the machine in its routes. It connects to the address of the machine over `hbm0`, from its mesh address.
 4. The node lets the connection reach the machine, because the mesh address belongs to an edge server.
 
-A floating address is an Additional IP of OVHcloud: a public IPv4 address that the account routes to one server. A replacement of the edge server takes the same address, so the zone never changes. The floating IPv6 address of an edge server is an address that the operator assigns to its uplink, at the provider and on the host. `hopboxd` does not put it there ([the edge role](/reference/edge/index.html.md#the-public-ipv6-address)). The IPv6 egress of the machines leaves from another address: the IPv6 address of the uplink.
+A floating address is a public IPv4 address that the provider of the servers can route to one server and then to another. Examples are an Additional IP of OVHcloud, and a floating IP of another provider. The operator routes it to the edge server at the provider. A replacement of the edge server takes the same address, so the zone never changes. The floating IPv6 address of an edge server is an IPv6 address that the operator routes to the edge server at the provider. The edge server holds it on its uplink as a `/128`. `hopboxd` does not put it there ([the edge role](/reference/edge/index.html.md#the-public-ipv6-address)). The IPv6 egress of the machines leaves from another address: the IPv6 address of the uplink.
 
 ## What you need
 
-- An install with a control server on the vRack, and nodes in the mesh ([the mesh](/reference/mesh/index.html.md#which-servers-join)).
-- Two servers for `edge1` and `edge2`, each with an address on the vRack in `172.31.0.0/16`. The Terraform provider sets it ([hopbox Terraform provider](/reference/terraform-provider/index.html.md)).
-- One floating IPv4 address for each edge server, routed to it and held on its public interface. The Terraform provider routes it with the attribute `floating_addresses`. This guide uses `203.0.113.101` for `edge1` and `203.0.113.102` for `edge2`.
-- One floating IPv6 address for each edge server, held on its uplink. This guide uses `2001:db8::11` for `edge1` and `2001:db8::12` for `edge2`.
+- An install with a control server that listens on its peer address, and nodes in the mesh ([the mesh](/reference/mesh/index.html.md#which-servers-join)).
+- Two servers for `edge1` and `edge2`.
+- One floating IPv4 address for each edge server. This guide uses `203.0.113.101` for `edge1` and `203.0.113.102` for `edge2`. The operator routes each address to its edge server at the provider. The edge server holds it on its uplink as a `/32`, and the peer address stays the source of its default route. So the connections of the edge server to the other servers leave from its peer address. The Terraform provider sets this up with the attribute `floating_addresses` ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#the-network-setup-of-an-edge-server)). Without the provider, set it up by hand.
+- One floating IPv6 address for each edge server, held on its uplink as a `/128`. This guide uses `2001:db8::11` for `edge1` and `2001:db8::12` for `edge2`. The Terraform provider sets this up with the attribute `public_ipv6`.
 - An IPv6 default route and a global IPv6 address on the uplink of each edge server, for the IPv6 egress of the machines. This guide uses `2001:db8:1::21` for `edge1` and `2001:db8:2::22` for `edge2`.
-- The internal URL of the control server, such as `https://172.31.0.11:7443`.
+- The internal URL of the control server on its peer address, such as `https://203.0.113.11:7443` ([the internal listener](/reference/internal-listener/index.html.md)).
 - The peer address of each server: its public IPv4 address on its uplink, at which the other servers reach it ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses)). This guide uses `203.0.113.21` for `edge1`, `203.0.113.22` for `edge2`, and `203.0.113.31` for the node `node1`.
 - `dig`, `curl`, and `ssh` on your laptop.
 
@@ -53,30 +53,28 @@ The tested OS runs `systemd-resolved` on port 53 of a loopback address. So `dns.
 
 ### Install and enroll each edge server
 
-On the control server, make a token for each edge server:
+On the control server, make a token for each edge server. The token names the peer address of the edge server, so the enrollment must come from that address, and the server keeps it:
 
 ```sh
-sudo hopboxd admin enrollment-token create --roles edge,dns
+sudo hopboxd admin enrollment-token create --roles edge,dns --peer-address 203.0.113.21
 ```
 
 On `edge1`, install with the URL of the control server, and enroll with the token:
 
 ```sh
-sudo hopboxd install --roles edge,dns --control-url https://172.31.0.11:7443
+sudo hopboxd install --roles edge,dns --control-url https://203.0.113.11:7443
 sudo hopboxd enroll --token <token>
 ```
 
-Do the same on `edge2` with its own token.
+Do the same on `edge2` with its own token, for the peer address `203.0.113.22`.
 
-### Give each server its peer address
+### Reach the servers through the edge servers
 
-The host firewall of each server takes the mesh port, the ports of the egress tunnels, and SSH on its public interface only from the peer addresses of the install ([the host firewall](/reference/host-firewall/index.html.md#sets)). Port 22 of a server without the edge role takes only the peer addresses of the edge servers. A server with a vRack address keeps its public port 22 closed, also before you set the peer addresses. Until then, SSH reaches it only through an edge server at its vRack address.
+On its public interface, the host firewall of each server takes the mesh port and the ports of the egress tunnels only from the peer addresses of the install ([the host firewall](/reference/host-firewall/index.html.md#sets)). Port 22 of a server without the edge role takes only the peer addresses of the edge servers, the set `jump_hosts`.
 
-The servers of this guide enroll on the vRack, so their tokens name no peer address. On the control server, set the peer address of each enrolled server instead:
+Each edge server got its peer address from its token. A server that enrolled without a peer address, such as a server from before peer addresses, has no part in these sets. On the control server, set its peer address. For example, for `node1`:
 
 ```sh
-sudo hopboxd admin server set-peer-address <id of edge1> 203.0.113.21
-sudo hopboxd admin server set-peer-address <id of edge2> 203.0.113.22
 sudo hopboxd admin server set-peer-address <id of node1> 203.0.113.31
 ```
 
@@ -86,7 +84,7 @@ Within 5 s, each server holds the peer addresses of the edge servers in the set 
 sudo nft list set inet hopbox_host jump_hosts
 ```
 
-From your laptop, port 22 of `node1` times out. Log in to `node1` through `edge1` as the jump host, at the peer address of `node1`:
+From your laptop, port 22 of `node1` times out. Log in to `node1` through `edge1` as the jump host, at the peer address of `node1`. `edge1` dials `node1` from its peer address, the source of its default route:
 
 ```sh
 nc -vz -w 3 203.0.113.31 22
@@ -196,9 +194,8 @@ A DNS server keeps the last zones of the control plane on its disk ([the DNS rol
 
 The new server takes the same addresses as the old one:
 
-1. The Terraform provider moves the floating IPv4 address to the new server.
-2. Move the floating IPv6 address to the uplink of the new server, at the provider and on the host.
-3. Write the bootstrap config of the new server with the same `edge.public_ipv6` and `edge.public_ipv4`.
-4. Install and enroll the new server as above, and set its peer address. The servers of the install then take SSH from the new server as a jump host.
+1. Write the bootstrap configuration of the new server with the same `edge.public_ipv6` and `edge.public_ipv4`. Put the floating IPv4 address on its uplink as a `/32`, and the floating IPv6 address as a `/128`. The Terraform provider does this step with `floating_addresses` and `public_ipv6`.
+2. Install and enroll the new server as above, with a token for its own peer address. The servers of the install then take SSH from the new server as a jump host.
+3. Route the floating IPv4 address and the floating IPv6 address to the new server at the provider. The Terraform provider never moves an address.
 
 The public addresses of the install stay the same, so the zone and the glue records need no change. The IPv6 egress of the machines leaves from the uplink address of the new server, so its IPv6 source changes ([the egress of the machines](/reference/egress/index.html.md#the-source-addresses)).
