@@ -52,6 +52,8 @@ Your account can hold several sign-in methods. Once it has GitHub or Google, a n
 
 If your sign-in is older than 10 minutes, "Link GitHub" and "Link Google" send you to sign in again first, then back to "Account". "Email me a link" shows a notice and the button "Sign in again" instead, which also brings you back to "Account". After the new sign-in, start the link again.
 
+If your account is an instance admin, each new method sends a security notice to every instance admin. Each email of your account gets a copy, also the new one, unless another account holds it as verified ([Use the Admin area](/guide/admin-area/index.html.md#read-the-security-notices)).
+
 ## More pages
 
 | Page | Where | What you do there |

@@ -2821,7 +2821,7 @@ components:
         summary:
           type: string
           title: summary
-          description: summary says what changed, in one to three sentences.
+          description: summary says what changed, in one or more sentences. A change of several settings has more.
         advice:
           type: string
           title: advice
@@ -2829,11 +2829,11 @@ components:
         actorKind:
           type: string
           title: actor_kind
-          description: 'actor_kind is the actor kind of the audit entry: session, admin_key, or local_root.'
+          description: 'actor_kind is the actor kind of the audit entry: session, cli_token, admin_key, or local_root.'
         actorAccountId:
           type: string
           title: actor_account_id
-          description: actor_account_id is the UUID of the account of a session. It is empty for other actors.
+          description: actor_account_id is the UUID of the account of a session or of a CLI token. It is empty for other actors.
         actorName:
           type: string
           title: actor_name
@@ -2841,7 +2841,7 @@ components:
         actorCredentialId:
           type: string
           title: actor_credential_id
-          description: actor_credential_id is the UUID of the session or of the admin key. It is empty for local_root.
+          description: actor_credential_id is the UUID of the session, of the CLI token, or of the admin key. It is empty for local_root.
         targetKind:
           type: string
           title: target_kind
@@ -2859,8 +2859,8 @@ components:
       additionalProperties: false
       description: |-
         AdminNotice tells an instance admin about an action of another caller that leaves something
-         that lasts: a new admin key, a grant of the instance admin role, or a change of the OAuth or
-         mail config. It never holds a secret.
+         that lasts, such as a new admin key, a grant of the instance admin role, a new sign-in method
+         of an instance admin, or a change of the OAuth or mail config. It never holds a secret.
     hopbox.admin.v1.Allocation:
       type: object
       properties:

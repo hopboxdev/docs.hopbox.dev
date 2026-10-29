@@ -536,7 +536,7 @@
 </tr>
 <tr>
 <td>Audit entry</td>
-<td>action <code dir="auto">install_config.update</code>, no target, details <code dir="auto">domain</code> (the new domain), <code dir="auto">old_domain</code>, <code dir="auto">public_addresses</code> (the new addresses, joined by commas), and <code dir="auto">old_public_addresses</code>. Also <code dir="auto">acme_directory_url</code>, <code dir="auto">acme_email</code>, <code dir="auto">acme_terms_agreed</code> (<code dir="auto">true</code> or <code dir="auto">false</code>), and <code dir="auto">mail_transport</code> (<code dir="auto">smtp</code> or <code dir="auto">file</code>), each with its <code dir="auto">old_</code> detail.</td>
+<td>action <code dir="auto">install_config.update</code>, no target, details <code dir="auto">domain</code> (the new domain), <code dir="auto">old_domain</code>, <code dir="auto">public_addresses</code> (the new addresses, joined by commas), and <code dir="auto">old_public_addresses</code>. Also <code dir="auto">acme_directory_url</code>, <code dir="auto">acme_email</code>, <code dir="auto">acme_terms_agreed</code> (<code dir="auto">true</code> or <code dir="auto">false</code>), and <code dir="auto">mail_transport</code> (<code dir="auto">smtp</code> or <code dir="auto">file</code>), each with its <code dir="auto">old_</code> detail. A change of the domain, of an ACME setting, or of the mail transport tells the instance admins (<a href="#notices-to-instance-admins">Notices to instance admins</a>).</td>
 </tr>
 </tbody>
 </table>
@@ -563,12 +563,12 @@
 <tr>
 <td><code dir="auto">acme_directory_url</code></td>
 <td>optional string</td>
-<td>The new ACME directory: an <code dir="auto">https</code> URL of a host, with at most 2048 characters, and without user info or a fragment. A new directory also sets <code dir="auto">acme_terms_agreed</code> to <code dir="auto">false</code>, unless the request sets <code dir="auto">acme_terms_agreed</code> too. Leave the field out to keep the directory.</td>
+<td>The new ACME directory: an <code dir="auto">https</code> URL of a host, with at most 2048 characters, and without user info or a fragment. It holds no whitespace and no control character. A new directory also sets <code dir="auto">acme_terms_agreed</code> to <code dir="auto">false</code>, unless the request sets <code dir="auto">acme_terms_agreed</code> too. Leave the field out to keep the directory.</td>
 </tr>
 <tr>
 <td><code dir="auto">acme_email</code></td>
 <td>optional string</td>
-<td>The new contact email of the ACME account. It must be one plain email address, such as <code dir="auto">ops@example.org</code>, and the install keeps it in lowercase. An empty string removes the contact. Leave the field out to keep the email.</td>
+<td>The new contact email of the ACME account. It must be one plain email address, such as <code dir="auto">ops@example.org</code>, without whitespace or a control character. The install keeps it in lowercase. An empty string removes the contact. Leave the field out to keep the email.</td>
 </tr>
 <tr>
 <td><code dir="auto">acme_terms_agreed</code></td>
@@ -589,7 +589,7 @@
 </table>
 <p>The message <code dir="auto">PublicAddresses</code> has one field, <code dir="auto">addresses</code>, a repeated string. Each address must follow the rules in <a href="/reference/domain-rules/#public-addresses">Domain rules</a>: at most 16 IPv4 or IPv6 addresses, none twice. The install keeps them in the text form of Go <code dir="auto">netip</code>, in their order. So <code dir="auto">2001:DB8::10</code> becomes <code dir="auto">2001:db8::10</code>, and an IPv4 address in IPv6 form, such as <code dir="auto">::ffff:203.0.113.10</code>, becomes <code dir="auto">203.0.113.10</code>.</p>
 <p>With <code dir="auto">expected_version</code>, two admins that change the config at the same time cannot overwrite each other: the second one gets <code dir="auto">aborted</code> with the message <code dir="auto">conflict: the install config is at version &lt;n&gt;, not &lt;m&gt;. Read it again</code>. The call locks the row until it commits, so the version check and the change happen as one step.</p>
-<p>A request that sets no field gets <code dir="auto">invalid_argument</code> with the message <code dir="auto">invalid argument: the update sets no setting</code>. <code dir="auto">expected_version</code> alone sets no field. A bad domain gets <code dir="auto">invalid_argument</code> with the rule that it breaks, for example <code dir="auto">invalid argument: invalid name: the install domain "localhost" must have at least two labels, such as hop.example.org</code>. A bad address gets <code dir="auto">invalid_argument</code> with the rule that it breaks, for example <code dir="auto">invalid argument: invalid public address: "0.0.0.0" is not an address that a client on another host can reach</code>. A bad ACME setting gets <code dir="auto">invalid_argument</code> too, for example <code dir="auto">invalid argument: invalid ACME setting: "http://acme.example.org/directory" is not an https URL of a host without user info or a fragment, such as https://acme-v02.api.letsencrypt.org/directory</code>. <code dir="auto">MAIL_TRANSPORT_UNSPECIFIED</code> or an unknown transport gets <code dir="auto">invalid_argument</code> with the message <code dir="auto">invalid argument: the mail transport &lt;n&gt; is not smtp or file</code>.</p>
+<p>A request that sets no field gets <code dir="auto">invalid_argument</code> with the message <code dir="auto">invalid argument: the update sets no setting</code>. <code dir="auto">expected_version</code> alone sets no field. A bad domain gets <code dir="auto">invalid_argument</code> with the rule that it breaks, for example <code dir="auto">invalid argument: invalid name: the install domain "localhost" must have at least two labels, such as hop.example.org</code>. A bad address gets <code dir="auto">invalid_argument</code> with the rule that it breaks, for example <code dir="auto">invalid argument: invalid public address: "0.0.0.0" is not an address that a client on another host can reach</code>. A bad ACME setting gets <code dir="auto">invalid_argument</code> too, for example <code dir="auto">invalid argument: invalid ACME setting: "http://acme.example.org/directory" is not an https URL of a host without user info or a fragment, such as https://acme-v02.api.letsencrypt.org/directory</code>. Whitespace or a control character gets, for example, <code dir="auto">invalid argument: invalid ACME setting: the directory URL holds the character ' '. It can hold no whitespace and no control character</code>. <code dir="auto">MAIL_TRANSPORT_UNSPECIFIED</code> or an unknown transport gets <code dir="auto">invalid_argument</code> with the message <code dir="auto">invalid argument: the mail transport &lt;n&gt; is not smtp or file</code>.</p>
 <p>While the transport is <code dir="auto">MAIL_TRANSPORT_FILE</code>, each update logs <code dir="auto">mail goes to files, not to recipients</code> at level warn (<a href="/reference/mail/#logs">Mail</a>).</p>
 <p>A change of an input of the ACME job publishes the change event <code dir="auto">acme.config_changed</code> in the transaction of the change (<a href="/reference/acme/#settings">the certificate of the install</a>). It also resets the failures of the ACME job, so the job tries again at once, unless the CA asked for the wait (<a href="/reference/acme/#renewal-and-backoff">the certificate of the install</a>).</p>
 <p>The response <code dir="auto">UpdateInstallConfigResponse</code> has the field <code dir="auto">config</code>, an <code dir="auto">InstallConfig</code>.</p>
@@ -1983,8 +1983,16 @@
 <td>When it makes the account an instance admin.</td>
 </tr>
 <tr>
+<td>A new sign-in method of an account: a link from a session (<a href="/reference/sessions/#link-a-new-sign-in-method">Sessions, cookies, and sign-in links</a>), or a sign-in that joins the account through a verified email</td>
+<td>When the account is an instance admin (plan question Q106). A stolen session can link the email or the GitHub user of an attacker, and so keep the role after the session ends. The audit entry <code dir="auto">account.link_sign_in_method</code> then has the detail <code dir="auto">instance_admin</code> set to <code dir="auto">true</code>. The method of a login link never joins an existing account, because it proves no email.</td>
+</tr>
+<tr>
 <td><code dir="auto">RevokeInstanceAdmin</code></td>
 <td>Always. Otherwise a stolen session can revoke the other admins first, so that nobody hears of its later actions. The notice comes before the revoke, so the revoked account gets the email and a notice too. Its notice shows only if it gets the role again.</td>
+</tr>
+<tr>
+<td><code dir="auto">DeleteAccount</code> (<a href="/reference/auth-api/#deleteaccount">the sign-in, account, and audit API</a>)</td>
+<td>When the account is an instance admin (Q106). Otherwise a stolen session can remove an admin in silence, as with a revoke. The notice comes before the delete, so each email of the deleted account gets the copy of the actor. The audit entry <code dir="auto">account.delete</code> then has the detail <code dir="auto">instance_admin</code> set to <code dir="auto">true</code>.</td>
 </tr>
 <tr>
 <td><code dir="auto">SetSMTPConfig</code> and <code dir="auto">ClearSMTPConfig</code></td>
@@ -1996,22 +2004,22 @@
 </tr>
 <tr>
 <td><code dir="auto">UpdateInstallConfig</code></td>
-<td>When it changes <code dir="auto">mail_transport</code>, because the transport decides whether the install uses the SMTP server.</td>
+<td>When it changes <code dir="auto">domain</code>, <code dir="auto">acme_directory_url</code>, <code dir="auto">acme_email</code>, <code dir="auto">acme_terms_agreed</code>, or <code dir="auto">mail_transport</code>. The transport decides whether the install uses the SMTP server. The domain decides where the console and every link of the install go, and the ACME settings decide which CA issues the certificate of the install (Q106). A change of <code dir="auto">public_addresses</code> alone tells nobody. <code dir="auto">hopboxd admin config set</code> and <code dir="auto">hopboxd install --domain</code> call <code dir="auto">UpdateInstallConfig</code>, so their changes tell the instance admins too.</td>
 </tr>
 </tbody>
 </table>
 <p>A notice is the audit entry of the call. In the transaction of the call, each instance admin other than the actor gets an open notice in the table <code dir="auto">admin_notices</code> (<a href="/reference/control-store/#admin_notices">Control store tables</a>). The banner of the console and the Admin area show the open notices (<a href="/reference/console/#admin-area">Console</a>), and <code dir="auto">ListAdminNotices</code> returns them. <code dir="auto">hopboxd admin</code> has no command for them, because root has no account and so no notices.</p>
-<p>After the commit, hopbox sends an email to each email of each of these instance admins. When the actor is a session, its account gets a copy too. The person whose session someone stole is the person who knows best that the action was not theirs. The sign-in of a login link had no session before the grant, so its account gets no copy. An email that no sign-in method verified gets the notice too, because only root adds such an email to an account, in a login link.</p>
+<p>After the commit, hopbox sends an email to each email of each of these instance admins. When the actor is a session, its account gets a copy too. For a link from a session, the copy also goes to the email of the new method, unless another account holds that email as verified. A method that joins at a sign-in through a verified email is different, because whoever proved the email acted, and that person is maybe not the owner of the account. So the account gets an open notice in the console like each other instance admin, and its email says that a new sign-in method joined the account. The person whose session someone stole is the person who knows best that the action was not theirs. The sign-in of a login link had no session before the grant, so its account gets no copy. An email that no sign-in method verified gets the notice too, because only root adds such an email to an account, in a login link.</p>
 <p>The email has these parts:</p>
 <ul>
 <li>What changed, with the facts of the audit entry, such as the name, the ID, and the end of a new key.</li>
-<li>Who did it: the session and its account, the admin API key, or root on a control server with its user and process.</li>
+<li>Who did it: the session and its account, the CLI token and its account, the admin API key, or root on a control server with its user and process.</li>
 <li>The time and the ID of the audit entry.</li>
-<li>How to undo it: the page of the Admin area and the <code dir="auto">hopboxd admin</code> command. For an action of a session, also how to revoke the role of its account, which closes the admin API to each session of the account at once.</li>
+<li>How to undo it: the page of the Admin area and the <code dir="auto">hopboxd admin</code> command. For an action of a session, also how to revoke the role of its account, which closes the admin API to each session of the account at once. For a new sign-in method, the command <code dir="auto">hopboxd admin account sign-in-method remove</code> with the IDs of the account and of the method. A method that joined at a sign-in through a verified email had no session before, so its advice says to revoke the role first, because the holder of that email can sign in again. Each value in a command of the advice is in POSIX single quotes, and each <code dir="auto">'</code> in it is written as <code dir="auto">'\''</code>. So a POSIX shell, such as sh, bash, or zsh, reads each value as one word, also a value with shell code in it, such as an ACME directory URL with <code dir="auto">$(...)</code> in its query. In another shell, such as tcsh, these quotes are not safe, so run the command in sh, bash, or zsh. A delete is final, so its advice says to read the audit log for the other actions of the deleted account.</li>
 <li>The link to <code dir="auto">/admin/notices</code>, or for the copy of the actor, a line that says why the actor gets it.</li>
 </ul>
 <p>The email and the notice never hold a secret: no admin key, no client secret, and no SMTP password. They hold only the facts of the audit entry, which never holds a secret value either.</p>
-<p>A change of the mail config sends its email the way that the install sent mail before the change, and the new way only when that fails. The changes of the mail config are <code dir="auto">SetSMTPConfig</code>, <code dir="auto">ClearSMTPConfig</code>, and a change of <code dir="auto">mail_transport</code>. So a new SMTP server that an attacker sets does not swallow the notice of its own change.</p>
+<p>A change of the mail config sends its email the way that the install sent mail before the change, and the new way only when that fails. The changes of the mail config are <code dir="auto">SetSMTPConfig</code>, <code dir="auto">ClearSMTPConfig</code>, and a change of <code dir="auto">mail_transport</code>. So a new SMTP server that an attacker sets does not swallow the notice of its own change. A change of <code dir="auto">domain</code> also sends its email the old way first. Each email of the change names the old domain in its first line, its subject, and its link, also when it goes the new way after the old way failed. So no email links to a domain that an attacker set.</p>
 <p>A failed email never fails the call. The emails of one notice share one limit of 20 s. For each address that fails, hopbox logs <code dir="auto">the email of an admin notice failed</code> at level error, with <code dir="auto">audit_entry</code>, <code dir="auto">account</code>, and <code dir="auto">err</code>. It also writes the audit entry <code dir="auto">admin_notice.mail_failed</code>, with the actor kind <code dir="auto">system</code>, the target kind <code dir="auto">audit_entry</code> and the ID of the entry of the call, and the details <code dir="auto">account</code>, <code dir="auto">email</code>, and <code dir="auto">error</code>. The error is the reply of the mail server. If that text looks like a credential, the audit log refuses it, so <code dir="auto">error</code> holds a fixed text instead, and only the log has the reply. An address can also look like a credential, for example <code dir="auto">hbx_ops@example.org</code> stored before the audit log refused such values. Then the entry goes without <code dir="auto">email</code>, and <code dir="auto">account</code> still names the recipient. The detail <code dir="auto">email_sha256</code> holds the first 16 hex digits of the SHA-256 of the address, so you can tell apart the addresses of one account. So one such value never costs the entries of the other addresses. The notice stays in the Admin area. An install without an SMTP config fails each email this way. With the file transport, the email goes to the mail folder (<a href="/reference/mail/#the-file-transport">Mail</a>). After the sends, hopbox logs <code dir="auto">sent the emails of an admin notice</code> at level info, with <code dir="auto">audit_entry</code>, <code dir="auto">action</code>, <code dir="auto">sent</code>, and <code dir="auto">failed</code>. If it cannot write the audit entries of the failures, it logs <code dir="auto">the audit entries of the failed emails of an admin notice failed</code> at level error.</p>
 <div class="sl-heading-wrapper level-h3"><h3 id="adminnotice">AdminNotice</h3><a class="sl-anchor-link" href="#adminnotice"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “AdminNotice”</span></a></div>
 <table>
@@ -2036,7 +2044,7 @@
 <tr>
 <td><code dir="auto">summary</code></td>
 <td>string</td>
-<td>What changed, in one to three sentences, such as <code dir="auto">An admin API key was made: "key1", ID &lt;id&gt;, valid until &lt;time&gt;.</code></td>
+<td>What changed, in one or more sentences, such as <code dir="auto">An admin API key was made: "key1", ID &lt;id&gt;, valid until &lt;time&gt;.</code></td>
 </tr>
 <tr>
 <td><code dir="auto">advice</code></td>
@@ -2046,22 +2054,22 @@
 <tr>
 <td><code dir="auto">actor_kind</code></td>
 <td>string</td>
-<td>The actor kind of the audit entry: <code dir="auto">session</code>, <code dir="auto">admin_key</code>, or <code dir="auto">local_root</code>.</td>
+<td>The actor kind of the audit entry: <code dir="auto">session</code>, <code dir="auto">cli_token</code>, <code dir="auto">admin_key</code>, or <code dir="auto">local_root</code>. A <code dir="auto">cli_token</code> acts only in the delete of its account.</td>
 </tr>
 <tr>
 <td><code dir="auto">actor_account_id</code></td>
 <td>string</td>
-<td>The UUID of the account of a session. Empty for the other actors.</td>
+<td>The UUID of the account of a session or of a CLI token. Empty for the other actors.</td>
 </tr>
 <tr>
 <td><code dir="auto">actor_name</code></td>
 <td>string</td>
-<td>The display name of that account with its first email, such as <code dir="auto">User 1 &lt;user1@example.org&gt;</code>, or its first email alone. Empty for the other actors.</td>
+<td>The display name of that account with its first email, such as <code dir="auto">User 1 &lt;user1@example.org&gt;</code>, or its first email alone. Empty for the other actors, and once the account is deleted.</td>
 </tr>
 <tr>
 <td><code dir="auto">actor_credential_id</code></td>
 <td>string</td>
-<td>The UUID of the session or of the admin key. Empty for <code dir="auto">local_root</code>.</td>
+<td>The UUID of the session, of the CLI token, or of the admin key. Empty for <code dir="auto">local_root</code>.</td>
 </tr>
 <tr>
 <td><code dir="auto">target_kind</code></td>

@@ -102,13 +102,13 @@
 <td><code dir="auto">acme_directory_url</code></td>
 <td><code dir="auto">--acme-directory-url</code></td>
 <td><code dir="auto">https://acme-v02.api.letsencrypt.org/directory</code></td>
-<td>The ACME directory of the CA. The directory is the URL from which an ACME client reads every other URL of the CA. The default is the production CA of Let’s Encrypt. It must be an <code dir="auto">https</code> URL of a host, with at most 2048 characters, and without user info or a fragment.</td>
+<td>The ACME directory of the CA. The directory is the URL from which an ACME client reads every other URL of the CA. The default is the production CA of Let’s Encrypt. It must be an <code dir="auto">https</code> URL of a host, with at most 2048 characters, and without user info or a fragment. It holds no whitespace and no control character. A notice to the instance admins puts it in a shell command in single quotes (<a href="/reference/admin-api/#notices-to-instance-admins">the admin API</a>).</td>
 </tr>
 <tr>
 <td><code dir="auto">acme_email</code></td>
 <td><code dir="auto">--acme-email</code></td>
 <td>empty</td>
-<td>The contact email of the ACME account. The CA can send mail about the account to it. An empty value removes the contact from the install, but the CA keeps the old contact of the account. A new email updates the contact at the CA. hopbox keeps it in lowercase.</td>
+<td>The contact email of the ACME account. The CA can send mail about the account to it. An empty value removes the contact from the install, but the CA keeps the old contact of the account. A new email updates the contact at the CA. hopbox keeps it in lowercase. It holds no whitespace and no control character, as the directory.</td>
 </tr>
 <tr>
 <td><code dir="auto">acme_terms_agreed</code></td>

@@ -193,6 +193,8 @@ Signs in with the token of a magic link, and sets the session cookie ([Sessions,
 | Idempotent option | no |
 | Audit entries | `account.create` for a new account, then `auth.sign_in` ([Audit entries](#audit-entries)). A link writes only `account.link_sign_in_method`. |
 
+A new method of an instance admin tells the instance admins, in the console and by email ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). This covers a link and a sign-in that joins the account through a verified email.
+
 The request `VerifyMagicLinkRequest` has the field `token`, a string: the value after `#token=` in the link. The response `VerifyMagicLinkResponse` has these fields, and the header `Set-Cookie` with the session cookie. A link has no `Set-Cookie`.
 
 | Field | Type | Description |
@@ -497,7 +499,7 @@ Deletes the account, its personal org, its sessions, its emails, and its sign-in
 | Procedure | `/hopbox.v1.AccountService/DeleteAccount` |
 | Policy action | `account.delete`: the `session` or `cli_token` of the account |
 | Idempotent option | no |
-| Audit entries | action `account.delete`, target kind `account`, details `personal_org`. Each other org of the account gets the action `org.member_remove`, with the account as its target. Its details are `role` and `reason` (`account deleted`). The owners of the org see it. |
+| Audit entries | action `account.delete`, target kind `account`, details `personal_org`, and `instance_admin` set to `true` for an instance admin. It comes before the entries of the delete itself. Each other org of the account gets the action `org.member_remove`, with the account as its target. Its details are `role` and `reason` (`account deleted`). The owners of the org see it. |
 
 The request `DeleteAccountRequest` and the response `DeleteAccountResponse` have no fields.
 
@@ -507,7 +509,7 @@ The request `DeleteAccountRequest` and the response `DeleteAccountResponse` have
 | The account is the last instance admin: `failed precondition: the account is the last instance admin, and an install keeps at least one. Make another account an instance admin first` | `failed_precondition` |
 | The personal org of the account, or another org of the account, is suspended: `failed precondition: org suspended: an instance admin suspended an org of the account, and nothing deletes its data until the suspension ends. Ask for the end of the suspension first` ([the org API](/reference/org-api/index.html.md#suspension)) | `failed_precondition` |
 
-An instance admin that is not the last one loses the role with the delete. The delete locks the account, then each org of the account, before the check ([Control store tables](/reference/control-store/index.html.md#orgs)). So two owners of one org that delete their accounts at the same time leave one owner.
+An instance admin that is not the last one loses the role with the delete. The delete of an instance admin tells the other instance admins, in the console and by email ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). A stolen session can otherwise remove an admin in silence. The notice comes before the delete, so each email of the deleted account gets a copy too. The delete locks the account, then each org of the account, before the check ([Control store tables](/reference/control-store/index.html.md#orgs)). So two owners of one org that delete their accounts at the same time leave one owner.
 
 A call that runs at the same time as the delete, with a session or a CLI token of the account, can pass the check of its credential before the delete ends. When such a call then reads the account or its personal org, it fails with `not_found`, because the account no longer exists. A `GetAccount` or a second `DeleteAccount` of the deleted account gets `not_found` too.
 
@@ -816,8 +818,8 @@ The sign-in calls write these entries in the transaction of the sign-in. Their a
 | Action | When | Target | Details |
 | --- | --- | --- | --- |
 | `account.create` | A sign-in created the account. | the account | `method`, `email`, `personal_org` |
-| `account.link_sign_in_method` | A sign-in linked its method to the account through a verified email. | the new method | `kind`, `email` |
-| `account.link_sign_in_method` | A link from a session added a method to the account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#link-a-new-sign-in-method)). The actor is that session, not a new one. | the new method | `kind`, `email`, `session`, and `magic_link` or the details of the provider: `oauth_flow`, `subject`, and for GitHub `login` |
+| `account.link_sign_in_method` | A sign-in linked its method to the account through a verified email. | the new method | `kind`, `email`, and `instance_admin` set to `true` when the account is an instance admin |
+| `account.link_sign_in_method` | A link from a session added a method to the account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#link-a-new-sign-in-method)). The actor is that session, not a new one. | the new method | `kind`, `email`, `session`, and `magic_link` or the details of the provider: `oauth_flow`, `subject`, and for GitHub `login`. Also `instance_admin` set to `true` when the account is an instance admin. |
 | `auth.sign_in` | Every sign-in with a link. | the session | `method` (`email_link` or `login_link`), `email`, `new_account`, and `magic_link` or `login_link`: the UUID of the link |
 | `auth.sign_in` | Every sign-in with GitHub or Google ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#audit-entries)). | the session | `method` (`github` or `google`), `email`, `new_account`, `oauth_flow`, `subject`, and for GitHub `login` |
 | `auth.sign_in` | A poll of a device flow took the CLI tokens. The actor is the new CLI sign-in, with actor kind `cli_token`. | the CLI sign-in, target kind `cli_sign_in` | `method` (`device`), `client_name`, `device_sign_in` |

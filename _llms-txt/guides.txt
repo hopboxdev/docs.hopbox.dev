@@ -1153,7 +1153,7 @@ The console at the old domain stops working at once. The session cookie and the 
 
 ## Read the security notices
 
-Some actions last after the session that did them: a new admin API key, a new instance admin, the revoke of an instance admin, and a change of the SMTP server, of the mail transport, or of the GitHub or Google app. If another caller does one of them, you get a notice in the console and an email ([the admin API](/reference/admin-api/#notices-to-instance-admins)). The email goes to each email of your account, also when the SMTP server just changed. If you do one of them yourself, you get a copy of the email, and no notice in the console.
+Some actions last after the session that did them: a new admin API key, a new instance admin, the revoke of an instance admin, a new sign-in method of an instance admin, the delete of an instance admin account, and a change of the SMTP server, of the mail transport, of the domain, of the ACME settings, or of the GitHub or Google app. If another caller does one of them, you get a notice in the console and an email ([the admin API](/reference/admin-api/#notices-to-instance-admins)). The email goes to each email of your account, also when the SMTP server just changed. The email of a new domain names the old domain and links there. If you do one of them yourself, you get a copy of the email, and no notice in the console.
 
 While you have an open notice, each page of the console shows a banner with the count, such as “2 security notices for the instance admins”. To read and close the notices, do these steps:
 
@@ -1265,6 +1265,8 @@ Your account can hold several sign-in methods. Once it has GitHub or Google, a n
 3. To link an email, such as `ann.work@example.org`, type it in the field “Email” and click “Email me a link”. Open the link in the same browser. The console adds the email and opens “Account” again.
 
 If your sign-in is older than 10 minutes, “Link GitHub” and “Link Google” send you to sign in again first, then back to “Account”. “Email me a link” shows a notice and the button “Sign in again” instead, which also brings you back to “Account”. After the new sign-in, start the link again.
+
+If your account is an instance admin, each new method sends a security notice to every instance admin. Each email of your account gets a copy, also the new one, unless another account holds it as verified ([Use the Admin area](/guide/admin-area/#read-the-security-notices)).
 
 ## More pages
 

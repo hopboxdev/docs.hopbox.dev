@@ -603,6 +603,7 @@
 </tr>
 </tbody>
 </table>
+<p>A new method of an instance admin tells the instance admins, in the console and by email (<a href="/reference/admin-api/#notices-to-instance-admins">the admin API</a>). This covers a link and a sign-in that joins the account through a verified email.</p>
 <p>The request <code dir="auto">VerifyMagicLinkRequest</code> has the field <code dir="auto">token</code>, a string: the value after <code dir="auto">#token=</code> in the link. The response <code dir="auto">VerifyMagicLinkResponse</code> has these fields, and the header <code dir="auto">Set-Cookie</code> with the session cookie. A link has no <code dir="auto">Set-Cookie</code>.</p>
 <table>
 <thead>
@@ -1243,7 +1244,7 @@
 </tr>
 <tr>
 <td>Audit entries</td>
-<td>action <code dir="auto">account.delete</code>, target kind <code dir="auto">account</code>, details <code dir="auto">personal_org</code>. Each other org of the account gets the action <code dir="auto">org.member_remove</code>, with the account as its target. Its details are <code dir="auto">role</code> and <code dir="auto">reason</code> (<code dir="auto">account deleted</code>). The owners of the org see it.</td>
+<td>action <code dir="auto">account.delete</code>, target kind <code dir="auto">account</code>, details <code dir="auto">personal_org</code>, and <code dir="auto">instance_admin</code> set to <code dir="auto">true</code> for an instance admin. It comes before the entries of the delete itself. Each other org of the account gets the action <code dir="auto">org.member_remove</code>, with the account as its target. Its details are <code dir="auto">role</code> and <code dir="auto">reason</code> (<code dir="auto">account deleted</code>). The owners of the org see it.</td>
 </tr>
 </tbody>
 </table>
@@ -1270,7 +1271,7 @@
 </tr>
 </tbody>
 </table>
-<p>An instance admin that is not the last one loses the role with the delete. The delete locks the account, then each org of the account, before the check (<a href="/reference/control-store/#orgs">Control store tables</a>). So two owners of one org that delete their accounts at the same time leave one owner.</p>
+<p>An instance admin that is not the last one loses the role with the delete. The delete of an instance admin tells the other instance admins, in the console and by email (<a href="/reference/admin-api/#notices-to-instance-admins">the admin API</a>). A stolen session can otherwise remove an admin in silence. The notice comes before the delete, so each email of the deleted account gets a copy too. The delete locks the account, then each org of the account, before the check (<a href="/reference/control-store/#orgs">Control store tables</a>). So two owners of one org that delete their accounts at the same time leave one owner.</p>
 <p>A call that runs at the same time as the delete, with a session or a CLI token of the account, can pass the check of its credential before the delete ends. When such a call then reads the account or its personal org, it fails with <code dir="auto">not_found</code>, because the account no longer exists. A <code dir="auto">GetAccount</code> or a second <code dir="auto">DeleteAccount</code> of the deleted account gets <code dir="auto">not_found</code> too.</p>
 <div class="sl-heading-wrapper level-h3"><h3 id="listsigninmethods">ListSignInMethods</h3><a class="sl-anchor-link" href="#listsigninmethods"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “ListSignInMethods”</span></a></div>
 <p>Lists the sign-in methods of the account, oldest first.</p>
@@ -2006,13 +2007,13 @@
 <td><code dir="auto">account.link_sign_in_method</code></td>
 <td>A sign-in linked its method to the account through a verified email.</td>
 <td>the new method</td>
-<td><code dir="auto">kind</code>, <code dir="auto">email</code></td>
+<td><code dir="auto">kind</code>, <code dir="auto">email</code>, and <code dir="auto">instance_admin</code> set to <code dir="auto">true</code> when the account is an instance admin</td>
 </tr>
 <tr>
 <td><code dir="auto">account.link_sign_in_method</code></td>
 <td>A link from a session added a method to the account (<a href="/reference/sessions/#link-a-new-sign-in-method">Sessions, cookies, and sign-in links</a>). The actor is that session, not a new one.</td>
 <td>the new method</td>
-<td><code dir="auto">kind</code>, <code dir="auto">email</code>, <code dir="auto">session</code>, and <code dir="auto">magic_link</code> or the details of the provider: <code dir="auto">oauth_flow</code>, <code dir="auto">subject</code>, and for GitHub <code dir="auto">login</code></td>
+<td><code dir="auto">kind</code>, <code dir="auto">email</code>, <code dir="auto">session</code>, and <code dir="auto">magic_link</code> or the details of the provider: <code dir="auto">oauth_flow</code>, <code dir="auto">subject</code>, and for GitHub <code dir="auto">login</code>. Also <code dir="auto">instance_admin</code> set to <code dir="auto">true</code> when the account is an instance admin.</td>
 </tr>
 <tr>
 <td><code dir="auto">auth.sign_in</code></td>

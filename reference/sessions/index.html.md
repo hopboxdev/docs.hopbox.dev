@@ -208,7 +208,7 @@ A link starts no session and sets no cookie. The session of the browser stays. A
 4. It refuses an email that another account holds as verified: `failed_precondition` with `the email kim@example.org is a verified email of another account, so it signs in only to that account`. The method of an email decides where a magic link of that email signs in. So without this step, the holder of the mailbox could move the magic links of another account to the own account.
 5. It refuses a second identity of the same provider: `the account already signs in with another GitHub identity. Remove that method first, then link the new one`.
 6. It adds the method. The email of the method becomes a verified email of the account. For an identity of a provider, this step skips an email that another account holds as verified. An unverified email of the account, such as the email of a login link, becomes verified.
-7. It writes the audit entry `account.link_sign_in_method` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#audit-entries)).
+7. It writes the audit entry `account.link_sign_in_method` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#audit-entries)). If the account is an instance admin, the entry is a notice to the instance admins, and hopbox sends its email after the commit ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)).
 
 A link of GitHub or Google needs no match between its email and the emails of the account. The session proves the account, and the provider proves the identity. So a login-link account, whose email is unverified, can link GitHub or Google (plan question Q23).
 

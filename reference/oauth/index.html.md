@@ -249,7 +249,7 @@ A sign-in writes the entries of [the sign-in, account, and audit API](/reference
 | `subject` | the subject at the provider |
 | `login` | the GitHub login. Google has no login, so a sign-in with Google has no `login`. |
 
-A first sign-in also writes `account.create`, and a link by a verified email writes `account.link_sign_in_method` with the `kind` `github` or `google`. A link to a signed-in account writes only `account.link_sign_in_method`, with the session as the actor. Its details are `kind`, `email`, `session`, `oauth_flow`, `subject`, and for GitHub `login`. A start, a refused callback, and a failed callback write no entry, because no account acts. The log records above cover them.
+A first sign-in also writes `account.create`, and a link by a verified email writes `account.link_sign_in_method` with the `kind` `github` or `google`. A link to a signed-in account writes only `account.link_sign_in_method`, with the session as the actor. Its details are `kind`, `email`, `session`, `oauth_flow`, `subject`, and for GitHub `login`. Each `account.link_sign_in_method` of an instance admin also has `instance_admin` set to `true`, and tells the instance admins ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). A start, a refused callback, and a failed callback write no entry, because no account acts. The log records above cover them.
 
 The calls of the config write the entries of [the admin API](/reference/admin-api/index.html.md#getoauthconfig): `oauth_config.get`, `oauth_config.set`, and `oauth_config.clear`.
 
