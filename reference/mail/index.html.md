@@ -2,7 +2,7 @@
 
 > The mail transports smtp and file, the mail that hopbox sends, and the file transport of dev installs: its folder, file names, bounds, logs, and how to read the mail.
 
-hopbox sends two kinds of mail: magic links and invitations to orgs. The mail transport of the install says how hopbox delivers each mail. A production install uses the SMTP transport, which sends each mail through the SMTP server of the install ([SMTP config](/reference/smtp/index.html.md)). A dev or test install without an SMTP server can use the file transport. That transport writes each mail to a file on the server and sends nothing. The code is in `internal/mail`.
+hopbox sends three kinds of mail: magic links, invitations to orgs, and security notices to the instance admins. The mail transport of the install says how hopbox delivers each mail. A production install uses the SMTP transport, which sends each mail through the SMTP server of the install ([SMTP config](/reference/smtp/index.html.md)). A dev or test install without an SMTP server can use the file transport. That transport writes each mail to a file on the server and sends nothing. The code is in `internal/mail`.
 
 ## Mail transports
 
@@ -31,6 +31,7 @@ The transport shows in these places:
 | --- | --- | --- |
 | Magic link | `RequestMagicLink` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#requestmagiclink)) | [Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#magic-links) |
 | Invitation | `CreateInvitation` ([the org API](/reference/org-api/index.html.md#createinvitation)) | The org, the role, the link, and the end of the link |
+| Security notice | A call that leaves something that lasts, such as `CreateAdminKey` ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)) | What changed, who did it, when, the ID of the audit entry, and how to undo the change. It never holds a secret. |
 
 Each transport delivers the same message: plain text in UTF-8, in quoted-printable. Its headers are `Date`, `MIME-Version`, `Message-ID`, `Subject`, `From`, `To`, `Content-Transfer-Encoding`, and `Content-Type`. The sender is the `from` of the SMTP config. With the file transport and no SMTP config, the sender is `hopbox <no-reply@<domain>>`, with the domain of the install. The `From` header then reads `"hopbox" <no-reply@<domain>>`, because go-mail quotes the name.
 
@@ -92,7 +93,7 @@ sudo hopboxd admin mail show [NAME] [--raw]
 
 ### Failures
 
-If a write fails, `RequestMagicLink` fails with `unavailable: the server failed to send the email. Retry later`, as it does after a failed SMTP send. `CreateInvitation` still returns the link, with `email_sent` set to `false`. The log has the error.
+If a write fails, `RequestMagicLink` fails with `unavailable: the server failed to send the email. Retry later`, as it does after a failed SMTP send. `CreateInvitation` still returns the link, with `email_sent` set to `false`. The log has the error. A failed security notice never fails its call. The log and the audit log record it ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)).
 
 ### Invitations
 

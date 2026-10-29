@@ -51,6 +51,7 @@ The DNS role of hopbox serves only the records of hopbox in the zone of the inst
 | --- | --- | --- |
 | Magic link | `RequestMagicLink` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#requestmagiclink)) | [Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#magic-links) |
 | Invitation | `CreateInvitation` ([the org API](/reference/org-api/index.html.md#createinvitation)) | The org, the role, the link, and the end of the link |
+| Security notice | A call that leaves something that lasts, such as `CreateAdminKey` ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)) | What changed, who did it, when, the ID of the audit entry, and how to undo the change. It never holds a secret. |
 
 Each mail is plain text in UTF-8, with a `Date` and a `Message-ID` ([Mail](/reference/mail/index.html.md#the-mail-that-hopbox-sends)). hopbox connects with a timeout of 15 s for the connection and each reply. A send waits at most 20 s in all.
 

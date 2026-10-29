@@ -96,7 +96,7 @@ The internal listener now makes the install CA at its next handshake, without a 
 TOKEN="$(sudo hopboxd admin enrollment-token create)"
 ```
 
-The token works once, for 1 hour, in the pool `default`. It is a secret, so keep it in a variable and out of your shell history.
+The token works once, for 1 hour, in the pool `default`. It is a secret, so keep it in a variable and out of your shell history. If `hopboxd enroll` fails after its call, for example when the connection breaks, run it again with the same token within that hour. The server sends the same request again, and gets the certificate of the first call ([Enrollment and the install PKI](/reference/enrollment/index.html.md#retry-after-a-lost-answer)).
 
 All servers of a pool have identical hardware. The first server of a pool records its CPU model, CPU threads, RAM, and disks, and the enrollment of a server with other hardware fails ([Enrollment and the install PKI](/reference/enrollment/index.html.md#hardware-of-a-pool)). If the new server is another model, make the token for another pool ([Add pools and sizes](/guide/pools-and-sizes/index.html.md)).
 

@@ -97,6 +97,19 @@ The page never shows the password, and the API never returns it. The page says o
 
 The console at the old domain stops working at once. The session cookie and the `Origin` check belong to one domain ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#calls-with-the-cookie)).
 
+## Read the security notices
+
+Some actions last after the session that did them: a new admin API key, a new instance admin, the revoke of an instance admin, and a change of the SMTP server, of the mail transport, or of the GitHub or Google app. If another caller does one of them, you get a notice in the console and an email ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). The email goes to each email of your account, also when the SMTP server just changed. If you do one of them yourself, you get a copy of the email, and no notice in the console.
+
+While you have an open notice, each page of the console shows a banner with the count, such as "2 security notices for the instance admins". To read and close the notices, do these steps:
+
+1. Click "See the notices" in the banner, or open the page "Notices" of the Admin area.
+2. Read each notice. It says what changed, who did it, when, and the ID of its audit entry.
+3. If nobody that you trust made the change, do what the notice says. For example, revoke the new key on the page "Admin keys", or revoke the role on the page "Instance admins".
+4. Click "Dismiss" on a notice. With two or more notices, the page also has the button "Dismiss all". A dismissed notice leaves your list. The audit log keeps the action.
+
+A dismiss changes only your own list. Each other instance admin has a list of their own.
+
 ## Read the audit log
 
 The page "Audit log" lists the actions of everyone on the install, newest first. Each action of the Admin area is there, with the actor kind `session`. Each read of the admin API writes an entry too. So a page of the Admin area adds entries each time that it loads.

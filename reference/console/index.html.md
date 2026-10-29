@@ -63,7 +63,7 @@ A path with no page shows "Page not found". A path with a file extension, or und
 
 The Admin area is the part of the console for instance admins. [Use the Admin area](/guide/admin-area/index.html.md) shows how to use it. The code is in `web/apps/console/src/admin`.
 
-Only an instance admin sees the link "Admin" at the top right. The routes under `/admin` read `instance_admin` of `GetAccount` before they load. For any other account, each of them shows "Page not found". This only hides the pages. The server decides each call: the admin API takes a session only from an instance admin with a sign-in within the last 10 minutes ([the admin API](/reference/admin-api/index.html.md#admin-sessions)).
+Only an instance admin sees the link "Admin" at the top right. While `admin_notices` of `GetAccount` is more than 0, each page that needs a session also shows a banner under the top bar, such as "2 security notices for the instance admins". Its link "See the notices" opens `/admin/notices`. The banner reads the count with `GetAccount`, which needs no recent sign-in, so it shows also after 10 minutes. The routes under `/admin` read `instance_admin` of `GetAccount` before they load. For any other account, each of them shows "Page not found". This only hides the pages. The server decides each call: the admin API takes a session only from an instance admin with a sign-in within the last 10 minutes ([the admin API](/reference/admin-api/index.html.md#admin-sessions)).
 
 | Path | What it does | Calls |
 | --- | --- | --- |
@@ -79,6 +79,7 @@ Only an instance admin sees the link "Admin" at the top right. The routes under 
 | `/admin/admin-keys` | The admin API keys. A new key shows its secret once. The revoke action. | `ListAdminKeys`, `CreateAdminKey`, `RevokeAdminKey` |
 | `/admin/config` | The domain, the public addresses, the ACME settings, the mail transport, and maintenance mode. A form that changes the domain. A form for the SMTP server, and a form for the app of GitHub and of Google. | `GetInstallConfig`, `UpdateInstallConfig`, `GetSMTPConfig`, `SetSMTPConfig`, `ClearSMTPConfig`, `GetOAuthConfig`, `SetOAuthClient`, `ClearOAuthClient` |
 | `/admin/audit` | The audit log of the whole install, newest first, page by page. | `ListAuditEntries` with `whole_install` |
+| `/admin/notices` | The open notices of this instance admin, newest first ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). Each one says what changed, who did it, when, the ID of its audit entry, and how to undo the change. The button "Dismiss" of a notice, and with two or more notices the button "Dismiss all", remove notices from the list of this account only. | `ListAdminNotices`, `DismissAdminNotices`, `GetAccount` |
 
 ### Drain of a server
 
@@ -122,7 +123,7 @@ The console has the look of the public site [hopbox.dev](https://hopbox.dev). It
 | Background | `#0A0E0B`, with panels in `#111712` |
 | Text | `#ECF2EC`, and `#A3B1A5` for secondary text |
 | Accent | lime `#C4F05A`, for links, the main button, the focus ring, and the state `running` |
-| Warning | amber `#FFB443`, for a public URL, a state that changes, and the `not verified` tag of an email |
+| Warning | amber `#FFB443`, for a public URL, a state that changes, the `not verified` tag of an email, and the banner and the notices of an instance admin |
 | Error | `#FF7A6B`, for errors and the delete buttons |
 | Text font | Bricolage Grotesque |
 | Code font | JetBrains Mono, for names, URLs, and the web terminal |
@@ -291,7 +292,7 @@ The console pins each package to an exact version in `web/apps/console/package.j
 
 | Test | What it checks | Command |
 | --- | --- | --- |
-| `web/apps/console/test/*.test.ts` | With vitest: the rules of the return path and the browser storage, the live machine list, the labels, and the error texts. Also the clicks that close a dialog, and the colors that the web terminal takes from the tokens. For the Admin area: the form of labels and of amounts, the labels of the server states, and the copy of the machine states. | `make test-console`, or `node_modules/.bin/vitest run` in `web/apps/console` |
+| `web/apps/console/test/*.test.ts` | With vitest: the rules of the return path and the browser storage, the live machine list, the labels, and the error texts. Also the clicks that close a dialog, and the colors that the web terminal takes from the tokens. For the Admin area: the form of labels and of amounts, the labels of the server states, the copy of the machine states, and the actor and the count of the notices. | `make test-console`, or `node_modules/.bin/vitest run` in `web/apps/console` |
 | `internal/console` | the routes, the headers, the cache, gzip, and the page of a binary without the console | `make test` |
 | `TestConsoleTakesOnlyTheFreePaths` in `internal/api` | that the console hides no API route | `make test` |
 | `TestConsole` in `internal/control` | the whole console in Chromium with Playwright, `web/apps/console/e2e` | `make test-console` only |
@@ -315,14 +316,15 @@ The console pins each package to an exact version in `web/apps/console/package.j
 15. Creates a pool and a size in it, retires the size, deletes the pool, and finds the image `default`.
 16. Sets the limits of the org `Team`, suspends it with a reason, and unsuspends it. It checks both dialogs at a desktop and a phone width. It finds `box1` in the machine list with its address, finds no link or button of a terminal or a shell, and stops `box1`.
 17. Makes `user1@example.org` an instance admin, and revokes the role. Creates an admin key, which shows its secret once: after a visit to another page, the page no longer holds the secret. Then it revokes the key.
-18. Sets the SMTP server and the GitHub app with a password and a client secret. The fields empty after the save, and the page says only that each secret is set. The page and the audit log never hold either secret.
-19. Checks that each page of the Admin area fits a phone width of 360 pixels without a horizontal scroll.
-20. Makes the session 11 minutes old, and clicks "Cordon". The action fails and asks for a sign-in again, and the server stays `ready`. The suite signs in with a new login link, comes back to `/admin/servers`, and the cordon works. After the run, the Go test reads the audit log: each action of the Admin area has the actor kind `session`. The test also finds the new SMTP server of the install.
-21. Turns on the file mail transport, and links the email `ann.work@example.org` on `/account`. It opens the link from the mail file, and finds the email link in the sign-in methods. Then it makes the session 11 minutes old, and checks that a second link asks for a sign-in again.
-22. Drains a second server of the test, which holds no machine, from its page. The empty checks of the test come 2 s apart. The badge shows `draining` or `shutting down`, the section "Drain" shows, and the button "Uncordon" is gone. Then the badge shows `decommissioned`, and the page has no drain button. The audit log has `server.drain` with the actor kind `session`, and `server.decommission` with the actor `system`. The Playwright test is "the drain button drains a server, which then leaves the install".
-23. Checks that no page error and no policy violation happened.
+18. Finds the banner of the notices, and opens `/admin/notices` from it. The notices hold the admin key `notice1`, which the Go test registered as root, and the login-link grants of the setup. The suite clicks "Dismiss all", and the banner goes on each page.
+19. Sets the SMTP server and the GitHub app with a password and a client secret. The fields empty after the save, and the page says only that each secret is set. The page and the audit log never hold either secret.
+20. Checks that each page of the Admin area fits a phone width of 360 pixels without a horizontal scroll.
+21. Makes the session 11 minutes old, and clicks "Cordon". The action fails and asks for a sign-in again, and the server stays `ready`. The suite signs in with a new login link, comes back to `/admin/servers`, and the cordon works. After the run, the Go test reads the audit log: each action of the Admin area has the actor kind `session`. The test also finds the new SMTP server of the install.
+22. Turns on the file mail transport, and links the email `ann.work@example.org` on `/account`. It opens the link from the mail file, and finds the email link in the sign-in methods. Then it makes the session 11 minutes old, and checks that a second link asks for a sign-in again.
+23. Drains a second server of the test, which holds no machine, from its page. The empty checks of the test come 2 s apart. The badge shows `draining` or `shutting down`, the section "Drain" shows, and the button "Uncordon" is gone. Then the badge shows `decommissioned`, and the page has no drain button. The audit log has `server.drain` with the actor kind `session`, and `server.decommission` with the actor `system`. The Playwright test is "the drain button drains a server, which then leaves the install".
+24. Checks that no page error and no policy violation happened.
 
-Steps 12, 14 to 22 each start with a new sign-in through a login link, and step 11 starts without cookies. So they need no session from the steps before them, and their order does not matter. Each sign-in goes through the page of the link and the real sign-in of the API, as for a person.
+Steps 12, 14 to 23 each start with a new sign-in through a login link, and step 11 starts without cookies. So they need no session from the steps before them, and their order does not matter. Each sign-in goes through the page of the link and the real sign-in of the API, as for a person.
 
 `TestConsole` gives Playwright the install in env vars, so you do not set them yourself. `HOPBOX_E2E_PROXY` is the proxy that serves the console and the API. `HOPBOX_E2E_LOGIN_LINK` is the first login link of `ann@example.org`, the account of the suite and an instance admin. A `POST` to `HOPBOX_E2E_LOGIN`, a URL on loopback, returns a new login link of that account. `HOPBOX_E2E_USER_COOKIE` is the session token of `user1@example.org`, an account with a verified email that is not an instance admin. `HOPBOX_E2E_USER_CODE` and `HOPBOX_E2E_USER_CODE_2` are the codes of the two device sign-ins. A `POST` to `HOPBOX_E2E_AGE_SESSIONS`, a URL on loopback, makes every session of `ann@example.org` 11 minutes old. A `POST` to `HOPBOX_E2E_MAIL`, a URL on loopback, turns on the file mail transport. A `GET` of it returns the link in the newest mail file. `HOPBOX_E2E_TEAM_ORG` is the ID of the org `Team`, where `bob@example.org` is a member of the account of the suite. `HOPBOX_E2E_DRAIN_SERVER` is the ID of a second server, cordoned and without machines, which the suite drains. `HOPBOX_E2E_PEER_ADDRESS` is the peer address of the first server, which the server page shows. The others are `HOPBOX_E2E_URL`, `HOPBOX_E2E_SSH_KEY`, and `HOPBOX_E2E_MACHINE`.
 

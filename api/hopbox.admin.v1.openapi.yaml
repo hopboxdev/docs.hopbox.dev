@@ -724,6 +724,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.UpdateInstallConfigResponse'
+  /hopbox.admin.v1.InstanceAdminService/DismissAdminNotices:
+    post:
+      tags:
+        - hopbox.admin.v1.InstanceAdminService
+      summary: DismissAdminNotices
+      description: |-
+        DismissAdminNotices removes notices from the list of the instance admin of the session.
+         The audit log keeps their entries.
+      operationId: hopbox.admin.v1.InstanceAdminService.DismissAdminNotices
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.DismissAdminNoticesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.DismissAdminNoticesResponse'
   /hopbox.admin.v1.InstanceAdminService/GrantInstanceAdmin:
     post:
       tags:
@@ -763,6 +804,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.GrantInstanceAdminResponse'
+  /hopbox.admin.v1.InstanceAdminService/ListAdminNotices:
+    post:
+      tags:
+        - hopbox.admin.v1.InstanceAdminService
+      summary: ListAdminNotices
+      description: |-
+        ListAdminNotices lists the open notices of the instance admin of the session, newest first.
+         Only an admin session makes it, because each notice belongs to an account.
+      operationId: hopbox.admin.v1.InstanceAdminService.ListAdminNotices
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.ListAdminNoticesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.ListAdminNoticesResponse'
   /hopbox.admin.v1.InstanceAdminService/ListInstanceAdmins:
     post:
       tags:
@@ -2680,6 +2762,60 @@ components:
         - ADMIN_KEY_LIFETIME_90_DAYS
         - ADMIN_KEY_LIFETIME_365_DAYS
       description: AdminKeyLifetime is a preset lifetime of a new admin API key.
+    hopbox.admin.v1.AdminNotice:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the audit entry of the action.
+        action:
+          type: string
+          title: action
+          description: action is the action of the audit entry, such as admin_key.create.
+        summary:
+          type: string
+          title: summary
+          description: summary says what changed, in one to three sentences.
+        advice:
+          type: string
+          title: advice
+          description: advice says how to undo the change if nobody that the reader trusts made it.
+        actorKind:
+          type: string
+          title: actor_kind
+          description: 'actor_kind is the actor kind of the audit entry: session, admin_key, or local_root.'
+        actorAccountId:
+          type: string
+          title: actor_account_id
+          description: actor_account_id is the UUID of the account of a session. It is empty for other actors.
+        actorName:
+          type: string
+          title: actor_name
+          description: actor_name is the display name of that account, or its first email, or empty.
+        actorCredentialId:
+          type: string
+          title: actor_credential_id
+          description: actor_credential_id is the UUID of the session or of the admin key. It is empty for local_root.
+        targetKind:
+          type: string
+          title: target_kind
+          description: target_kind is the target kind of the audit entry, or empty.
+        targetId:
+          type: string
+          title: target_id
+          description: target_id is the target ID of the audit entry, or empty.
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is the time of the action.
+      title: AdminNotice
+      additionalProperties: false
+      description: |-
+        AdminNotice tells an instance admin about an action of another caller that leaves something
+         that lasts: a new admin key, a grant of the instance admin role, or a change of the OAuth or
+         mail config. It never holds a secret.
     hopbox.admin.v1.Allocation:
       type: object
       properties:
@@ -3405,6 +3541,29 @@ components:
       title: DeletePoolResponse
       additionalProperties: false
       description: DeletePoolResponse has no fields.
+    hopbox.admin.v1.DismissAdminNoticesRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+          title: ids
+          description: ids are the UUIDs of the notices, at most 100. An ID that is not open is skipped.
+      title: DismissAdminNoticesRequest
+      additionalProperties: false
+      description: DismissAdminNoticesRequest names the notices.
+    hopbox.admin.v1.DismissAdminNoticesResponse:
+      type: object
+      properties:
+        dismissed:
+          type: integer
+          title: dismissed
+          format: int32
+          description: dismissed counts the notices that the call removed.
+      title: DismissAdminNoticesResponse
+      additionalProperties: false
+      description: DismissAdminNoticesResponse counts the dismissed notices.
     hopbox.admin.v1.DrainServerRequest:
       type: object
       properties:
@@ -3888,6 +4047,27 @@ components:
       title: ListAdminKeysResponse
       additionalProperties: false
       description: ListAdminKeysResponse lists the keys.
+    hopbox.admin.v1.ListAdminNoticesRequest:
+      type: object
+      title: ListAdminNoticesRequest
+      additionalProperties: false
+      description: ListAdminNoticesRequest has no fields.
+    hopbox.admin.v1.ListAdminNoticesResponse:
+      type: object
+      properties:
+        notices:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.AdminNotice'
+          title: notices
+        total:
+          type: integer
+          title: total
+          format: int32
+          description: total counts every open notice of the account, also those after the first 100.
+      title: ListAdminNoticesResponse
+      additionalProperties: false
+      description: ListAdminNoticesResponse lists the open notices, newest first, at most 100.
     hopbox.admin.v1.ListControlProcessesRequest:
       type: object
       title: ListControlProcessesRequest

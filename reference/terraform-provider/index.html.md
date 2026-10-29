@@ -462,6 +462,8 @@ The update takes these steps:
 
 The restart stops the services of the server for some seconds. On the only edge, the API, the URLs, SSH, and DNS stop for that time.
 
+If the answer of the enrollment in step 3 gets lost, the registry ends the removal, but the server keeps its old identity. Run `terraform apply` again within the lifetime of the token, 1 hour. The provider runs `hopboxd install` without a token, and the server takes the token of its pending enrollment, so it gets the certificate of the first call ([Enrollment and the install PKI](/reference/enrollment/index.html.md#retry-after-a-lost-answer)). The add of `node` back works the same way. The first enrollment of a new server is not covered: a rerun makes a new token and enrolls a second server.
+
 After a failed update, the state keeps the old `roles`, because the update writes no new roles, and a refresh reads the same roles from the registry. The removal stays pending. Then take one of two ways:
 
 - To go on, fix the cause, such as a machine without room, and run `terraform apply` again. It returns the pending removal and waits again.

@@ -36,6 +36,7 @@ browser() {
 | `personal_org_id` | string | The UUID of the personal org of the account. |
 | `version` | int64 | The version of the account. It starts at 1 and grows by 1 with each change. |
 | `create_time` | `google.protobuf.Timestamp` | The time of the first sign-in. |
+| `admin_notices` | int32 | The count of the open notices of an instance admin, which the Admin area lists ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). The console shows a banner while it is more than 0. It is 0 for any other account. |
 
 ### AccountEmail
 
@@ -224,6 +225,8 @@ Signs in with the token of a first-admin login link, and sets the session cookie
 | Audit entries | `account.create` for a new account, `auth.sign_in`, and `instance_admin.grant` for an account that was not an instance admin yet |
 
 The request `VerifyLoginLinkRequest` has the field `token`. The response `VerifyLoginLinkResponse` has the fields of `VerifyMagicLinkResponse`, and the header `Set-Cookie` with the session cookie. The errors are those of `VerifyMagicLink`.
+
+A grant of the role tells the other instance admins, in the console and by email ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). The new instance admin gets no copy.
 
 ```sh
 curl -s -i -X POST -H 'Content-Type: application/json' -H 'Connect-Protocol-Version: 1' \
@@ -828,4 +831,5 @@ The removal of a role from a running server writes these entries ([the admin API
 | --- | --- | --- |
 | `server.remove_roles_start` | `RemoveServerRoles` started a removal. A second call with the same roles writes none. | `roles`, the roles that go joined by commas, and `cordoned_before` (`true` or `false`) |
 | `server.remove_roles` | An enrollment with the roles that stay ended the removal ([Enrollment and the install PKI](/reference/enrollment/index.html.md#remove-roles-from-an-enrolled-server)). The actor is the server. | `old_roles`, `roles`, `token_id`, and `serial`, and `peer_address` when the token gave the server its peer address |
+| `server.enroll_retry` | A retry of an enrollment with a used token and the same key got the certificate of that use again, such as after the end of a removal whose answer got lost ([Enrollment and the install PKI](/reference/enrollment/index.html.md#retry-after-a-lost-answer)). The actor is the caller, most often `anonymous`. | `pool`, `token_id`, `roles`, and `serial` |
 | `server.remove_roles_cancel` | `CancelRoleRemoval` ended a pending removal. | `roles`, and `moved`. `moved` counts the machines that a removal of `node` moved before the cancel. It is 0 for a removal of `edge` or `dns`. |

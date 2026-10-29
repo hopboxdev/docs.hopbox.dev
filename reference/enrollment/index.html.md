@@ -80,7 +80,7 @@ An enrollment token lets one server enroll into one pool.
 | `<secret>` | 32 random bytes as 64 lowercase hex digits |
 | `<cahash>` | the hash of the install CA, 64 lowercase hex digits |
 | Lifetime | 1 hour from its creation by default. The call that makes it can set another `ttl`, at most 24 hours. |
-| Use | once. The first enrollment that uses the token spends it. |
+| Use | once. The first enrollment that uses the token spends it. A retry of that enrollment with the same key gets the same certificate again, until the token expires ([Retry after a lost answer](#retry-after-a-lost-answer)). |
 | Scope | one pool, by default the pool `default` |
 | Peer address | none by default. A token can name the peer address of its server. The enrollment must then come from that address ([Peer addresses](#peer-addresses)). |
 | Storage | the table `enrollment_tokens` ([Control store tables](/reference/control-store/index.html.md#enrollment_tokens)). It keeps the SHA-256 of the secret, never the secret. |
@@ -145,13 +145,13 @@ hopboxd enroll --token=TOKEN [--config=PATH] [--json]
 3. Only with the node role, it runs the preflight check ([the preflight check](/reference/preflight/index.html.md)) and prints one line for each check to standard error. A failed check of severity `fail` stops the enrollment.
 4. It checks that `<data_dir>/server` holds no identity yet.
 5. It reads the hardware of the server ([Hardware of a pool](#hardware-of-a-pool)).
-6. It makes a new ECDSA P-256 key and a certificate request for it. The request names nothing: the control role sets every name.
-7. It dials the first URL of `channel.control_urls` over TLS 1.3 with HTTP/2. If the dial fails, it goes on to the next URL. A call that reached a control server is never sent again, because the token works once. In the handshake, it finds the CA certificate with the CA hash of the token in the chain of the control role. The certificate of the control role must chain to that CA and name `hopbox://control`. If a check fails, it ends the handshake and sends nothing.
+6. It makes a new ECDSA P-256 key and a certificate request for it. The request names nothing: the control role sets every name. Before the call, it saves the key and the request with the token and the roles in `<data_dir>/server/pending.pem`. If that file holds a pending enrollment for the same token and the same roles, it sends that request again instead ([Retry after a lost answer](#retry-after-a-lost-answer)).
+7. It dials the first URL of `channel.control_urls` over TLS 1.3 with HTTP/2. If the dial fails, it goes on to the next URL. A call that reached a control server can have used the token, so the next URL never gets it. In the handshake, it finds the CA certificate with the CA hash of the token in the chain of the control role. The certificate of the control role must chain to that CA and name `hopbox://control`. If a check fails, it ends the handshake and sends nothing.
 8. It calls `EnrollmentService.Enroll` with the token, the request, the host name of the server, the roles, and the hardware.
 9. It checks the answer. The CA certificate must have the hash of the token. The signature of the server certificate must be from the CA. The certificate must hold the new key and name the server ID and the roles of the answer.
-10. It saves the identity in `<data_dir>/server`.
+10. It saves the identity in `<data_dir>/server`, and removes `pending.pem`.
 
-The whole command has at most 60 seconds.
+The whole command has at most 60 seconds. After a failed first try, `enroll` removes `pending.pem` again, and the dir `<data_dir>/server` when it made it, in two cases. In the first case, no call left the server, because each dial failed or each control listener failed the check of the CA. In the second case, the control role refused the call with an error of its own, after a rollback of the call. So a refused token does not stay on the disk, and a later `hopboxd install` without a token does not send it again. An error that a lost answer can give keeps `pending.pem` for a retry: `unavailable`, `deadline_exceeded`, `canceled`, `unknown`, `internal`, `aborted`, `resource_exhausted`, and `data_loss`. A failed commit of the control role can give `internal`, and a conflict can give `aborted`, so the server keeps its key after these codes too. A refused retry keeps `pending.pem` until its token surely expired ([Retry after a lost answer](#retry-after-a-lost-answer)).
 
 On success, `enroll` prints the server ID on standard output, and this line on standard error:
 
@@ -217,6 +217,26 @@ An enrollment also ends the removal of roles from a running server, the reverse 
 
 The log record of the end is `removed roles from a server`, with `component=service` and the fields `server`, `removed`, and `roles`.
 
+### Retry after a lost answer
+
+The answer of `Enroll` can get lost after the control role used the token, for example when the connection breaks. The server then has no new identity, but the registry holds the new server or its new roles. After an add or the end of a removal, the old certificate of the server fails at once, because its roles no longer match the registry. So a used token works again in one case: a retry with the same key. The owner decided this on 2026-10-29 (plan question Q101). The rule holds for a new server, for an add of roles, and for the end of a removal. For a new server, the retry needs the same token: run `hopboxd enroll` again with it. The Terraform provider makes a new token on each run of a first enrollment, so a rerun of the provider after a lost answer enrolls a second server, and the first one stays in the registry as `unresponsive`. The provider retries only the add of a role and the end of a removal ([hopbox Terraform provider](/reference/terraform-provider/index.html.md)).
+
+1. Before the call, the server saves its new key and its certificate request in `<data_dir>/server/pending.pem`, with the token and the roles ([Identity files](#identity-files)).
+2. A later enrollment with the same token and the same roles sends the same request again. `hopboxd enroll` does it when it gets the same token. `hopboxd install` without `--enroll-token` takes the token of `pending.pem` when its roles are the enrolling roles that the install asks for ([hopboxd](/reference/hopboxd/index.html.md#install)). So a run of the Terraform provider that gives no token, because the registry holds the new roles already, ends the change. After a lost answer, run the enrollment again without a token or with the same token. Do not give a new token: an enrollment with another token replaces `pending.pem` with a new key before its call, so the key of the used token is gone.
+3. A server with an identity calls with its current certificate first. If the control role refuses that call with `unauthenticated`, the server calls once more without a client certificate.
+4. The control role finds the token used. It looks for a certificate of the server of the token that holds the key of the request, and that is not retired and not expired. The request must parse, and its signature must be valid. Its roles must be the roles of that certificate, in the same order. The registry must hold the same roles, and the server must not be decommissioned. A caller with a server certificate must be that server. The address of the call must pass the rule of [Peer addresses](#peer-addresses).
+5. The token must not be expired. So the retry works for the lifetime of the token: 1 hour by default, and at most 24 hours.
+6. The control role answers with the same certificate, the server ID, the CA, and the pool. It changes nothing in the registry and issues no certificate. It writes the audit entry `server.enroll_retry`.
+7. The server saves the identity and removes `pending.pem`. `hopboxd install` then restarts `hopboxd` with it.
+
+A retry that fails a check of step 4, other than the address, gets the error of a used token, `the enrollment token is not valid: it was used already. Make a new token`, and changes nothing. A retry from another address fails with `permission_denied`, as in [Peer addresses](#peer-addresses). A retry after the end of the token gets `the enrollment token is not valid: it expired at <time>. Make a new token`. So a thief of a token without the private key of the server gets nothing: a request for another key gets the error of a used token. The certificate itself is not a secret, and it works only with the private key.
+
+The audit entry `server.enroll_retry` has the actor of the caller, most often `anonymous`. Its target is the server: the target kind `server` and the server ID. Its details are `pool`, `token_id`, `roles`, and `serial`, the serial of the certificate that the retry sent again. The log record is `sent the certificate of an enrollment again`, with `component=service` and the fields `server`, `serial`, and `roles`.
+
+A control process of a release before this rule refuses each retry as a used token. During an upgrade of the control servers, a retry that reaches such a process fails. So the server keeps `pending.pem` after a refused retry, and a later retry at a control process of this release succeeds within the lifetime of the token. The server does not know the end of its token. It writes the header `Not-After` in `pending.pem`: the time that the server saved `pending.pem`, before its first call, plus 24 hours, the longest lifetime of a token. A refused retry after that time removes `pending.pem`. Until then, a run of `hopboxd install` without a token after a lost answer sends the token again and fails with each refusal. The rule needs no migration.
+
+These rules are build defaults of Q101, not owner decisions: the window of the lifetime of the token, the second call without a client certificate, and the token of `pending.pem` for `hopboxd install`. After the end of the token, no call gives the server its new identity, and the registry keeps refusing the old certificate. So run the provider or `hopboxd install` again within the lifetime of the token.
+
 ### Hardware of a pool
 
 All servers of a pool have identical hardware. So the first server that enrolls into a pool records its hardware in the pool, and the enrollment of a new server with other hardware fails (plan question Q61). The pool shows the hardware in the field `hardware` ([the admin API](/reference/admin-api/index.html.md#poolservice)).
@@ -266,6 +286,7 @@ A pool whose servers are all decommissioned takes the hardware of its next serve
 | `enroll at <url>: failed_precondition: the hardware of this server differs from the pool <pool>: ...` | The server has other hardware than the first server of its pool ([Hardware of a pool](#hardware-of-a-pool)). |
 | `node: the control plane sent another CA than the token names` | The answer holds another CA certificate. |
 | `node: the certificate does not hold the key of this server` | The answer holds a certificate for another key. |
+| `node: <path> must hold one PRIVATE KEY block and one CERTIFICATE REQUEST block with the token, the roles, and the end. Remove it to enroll with a new key` | `<data_dir>/server/pending.pem` does not load ([Retry after a lost answer](#retry-after-a-lost-answer)). |
 
 ## Identity files
 
@@ -274,16 +295,17 @@ A pool whose servers are all decommissioned takes the hardware of its next serve
 | `<data_dir>/server` | `0700` | The dir of the identity. `enroll` makes it. |
 | `<data_dir>/server/identity.pem` | `0600` | One `CERTIFICATE` block, the server certificate, and one `PRIVATE KEY` block, the PKCS #8 key of the server. |
 | `<data_dir>/server/ca.pem` | `0644` | One `CERTIFICATE` block, the install CA. |
+| `<data_dir>/server/pending.pem` | `0600` | The key and the request of an enrollment whose answer the server has not saved yet: one `PRIVATE KEY` block, and one `CERTIFICATE REQUEST` block with the headers `Token`, `Roles`, and `Not-After`. The enrollment writes it before its first call. It removes it after the save of the identity, after a first call that the control role refused or that never left the server, and after a refused retry once `Not-After` passed ([Retry after a lost answer](#retry-after-a-lost-answer)). |
 
 The default `data_dir` is `/var/lib/hopbox`, so the default dir is `/var/lib/hopbox/server`.
 
 Each write goes to a temp file `.<name>.<random>.tmp` in the same dir, which `hopboxd` syncs and then renames. The CA file goes first and the identity file last. So a crash leaves the old identity or the new one, never a half. A renewal rewrites `identity.pem` in the same way.
 
-`hopboxd` checks the identity each time that it reads it. It refuses an `identity.pem` that is not a regular file. It refuses one that group or others can read, with `node: <path> has mode <mode>, which lets group or others read the key of the server. Use mode 0600`. It refuses one that belongs to another user than the user of `hopboxd`. It also refuses a certificate that the CA of `ca.pem` did not sign, and a certificate that does not hold the key of the file.
+`hopboxd` checks `pending.pem` as it checks `identity.pem`: the mode, the owner, and that the request holds the key of the file. `hopboxd` checks the identity each time that it reads it. It refuses an `identity.pem` that is not a regular file. It refuses one that group or others can read, with `node: <path> has mode <mode>, which lets group or others read the key of the server. Use mode 0600`. It refuses one that belongs to another user than the user of `hopboxd`. It also refuses a certificate that the CA of `ca.pem` did not sign, and a certificate that does not hold the key of the file.
 
 ### Enroll again
 
-You can enroll a server again, for example after its install starts from nothing. Stop `hopboxd`, remove `<data_dir>/server`, and run `hopboxd enroll` with a new token. The server then gets a new server ID. The old server stays in the registry, unresponsive.
+You can enroll a server again, for example after its install starts from nothing. Stop `hopboxd`, remove `<data_dir>/server`, and run `hopboxd enroll` with a new token. The removal of the dir also removes `pending.pem`, so the server makes a new key. The server then gets a new server ID. The old server stays in the registry, unresponsive.
 
 ## EnrollmentService
 
@@ -294,10 +316,10 @@ You can enroll a server again, for example after its install starts from nothing
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.cluster.v1.EnrollmentService/Enroll` |
-| Credential | the enrollment token in the request. The call needs no client certificate. |
+| Credential | the enrollment token in the request. The call needs no client certificate. A retry with a used token also needs the private key of the certificate that the use issued ([Retry after a lost answer](#retry-after-a-lost-answer)). |
 | Policy action | `server.enroll`, every caller ([the API server](/reference/api/index.html.md#callers-and-policy)) |
 | Idempotent option | no |
-| Audit entry | `server.enroll` |
+| Audit entry | `server.enroll`, or `server.enroll_retry` for a retry |
 
 `EnrollRequest`:
 
@@ -335,15 +357,16 @@ The control role checks the request in this order:
 4. The host name.
 5. The install CA exists, or the control role makes it.
 6. The CA hash of the token is the hash of the install CA.
-7. For a new server, the hardware: a CPU model, CPU threads, RAM, and no disk of 0 bytes. A server that changes its roles skips this check, and goes on as [Add roles to an enrolled server](#add-roles-to-an-enrolled-server) and [Remove roles from an enrolled server](#remove-roles-from-an-enrolled-server) say.
-8. In one transaction, it locks the token row. The token must exist, its secret must match, it must not be used, and it must not be expired. Each role of the request must be a role of the token. Otherwise the call fails with `unauthenticated` and the message `the enrollment token is not valid: it allows only the roles <roles>, not <role>. Make a token with --roles`, and the token stays unused.
-9. In the same transaction, the certificate request must parse, its signature must be valid, and its key must be ECDSA P-256. Then the CA signs the certificate. So the CA signs only for a caller that holds a live token, and a bad request leaves the token unused.
-10. In the same transaction, it takes the lock of the server registry. Then it checks the address from which the call came ([Peer addresses](#peer-addresses)). A token with a peer address needs that address. A token without one needs loopback once a server of the install has or had a peer address. Otherwise the call fails with `permission_denied`. The certificate of step 9 then goes nowhere, and the token stays unused.
-11. In the same transaction, it locks the row of the pool of the token. A pool that an instance admin deleted after the make of the token fails with `failed_precondition`, and the token stays unused ([the admin API](/reference/admin-api/index.html.md#deletepool)).
-12. A pool without hardware records the hardware of the request. A pool with hardware compares it with the request ([Hardware of a pool](#hardware-of-a-pool)). Other hardware fails with `failed_precondition`, and the token stays unused. The lock of the pool makes two first enrollments at the same time record the hardware once.
-13. A token with a peer address that another server holds fails with `already_exists`, and the token stays unused. The transaction inserts the server with the peer address of the token, its certificate, and the use of the token, and writes the audit entry.
+7. In one transaction, it locks the token row. The token must exist, and its secret must match. A token that an enrollment used already makes the call a retry, for every caller. The retry goes on as [Retry after a lost answer](#retry-after-a-lost-answer) says, and the steps below do not run. For an unused token, the transaction ends without a change.
+8. For a new server, the hardware: a CPU model, CPU threads, RAM, and no disk of 0 bytes. A server that changes its roles skips this check, and goes on as [Add roles to an enrolled server](#add-roles-to-an-enrolled-server) and [Remove roles from an enrolled server](#remove-roles-from-an-enrolled-server) say.
+9. In one transaction, it locks the token row. The token must exist, its secret must match, it must not be used, and it must not be expired. Each role of the request must be a role of the token. Otherwise the call fails with `unauthenticated` and the message `the enrollment token is not valid: it allows only the roles <roles>, not <role>. Make a token with --roles`, and the token stays unused.
+10. In the same transaction, the certificate request must parse, its signature must be valid, and its key must be ECDSA P-256. Then the CA signs the certificate. So the CA signs only for a caller that holds a live token, and a bad request leaves the token unused.
+11. In the same transaction, it takes the lock of the server registry. Then it checks the address from which the call came ([Peer addresses](#peer-addresses)). A token with a peer address needs that address. A token without one needs loopback once a server of the install has or had a peer address. Otherwise the call fails with `permission_denied`. The certificate of step 10 then goes nowhere, and the token stays unused.
+12. In the same transaction, it locks the row of the pool of the token. A pool that an instance admin deleted after the make of the token fails with `failed_precondition`, and the token stays unused ([the admin API](/reference/admin-api/index.html.md#deletepool)).
+13. A pool without hardware records the hardware of the request. A pool with hardware compares it with the request ([Hardware of a pool](#hardware-of-a-pool)). Other hardware fails with `failed_precondition`, and the token stays unused. The lock of the pool makes two first enrollments at the same time record the hardware once.
+14. A token with a peer address that another server holds fails with `already_exists`, and the token stays unused. The transaction inserts the server with the peer address of the token, its certificate, and the use of the token, and writes the audit entry.
 
-Two enrollments with one token wait for each other on the row lock, so only one of them succeeds.
+Two enrollments with one token wait for each other on the row lock, so only one of them uses the token. The other one is a retry: it gets the same certificate only with the same key.
 
 The new server has the state `unresponsive` until its first heartbeat. The heartbeat makes it `ready` ([the control channel](/reference/control-channel/index.html.md#server-states)).
 
@@ -368,7 +391,7 @@ The service also writes the log record `enrolled a server` with `component=servi
 | `unauthenticated` | `the enrollment token is not valid: it does not have the form hbxe_<id>_<secret>_<cahash>` | The token is not a token. |
 | `unauthenticated` | `the enrollment token is not valid: it was made for another install CA` | The CA hash of the token is not the hash of the install CA. |
 | `unauthenticated` | `the enrollment token is not valid` | No token has the ID, or the secret does not match. |
-| `unauthenticated` | `the enrollment token is not valid: it was used already. Make a new token` | A server enrolled with the token already. |
+| `unauthenticated` | `the enrollment token is not valid: it was used already. Make a new token` | A server enrolled with the token already, and the call is no retry with the same key ([Retry after a lost answer](#retry-after-a-lost-answer)). |
 | `unauthenticated` | `the enrollment token is not valid: it expired at <time>. Make a new token` | The lifetime of the token is over. The time is in RFC 3339, in UTC. |
 | `permission_denied` | `permission denied: the enrollment comes from <address>, but the token allows only the peer address <peer address>` | The token names a peer address, and the call came from another address. `<address>` is `an unknown address` when the call has no network address. |
 | `permission_denied` | `permission denied: the enrollment comes from <address>, and a token without a peer address enrolls only from this control server once a server of the install has a peer address. Make a token with --peer-address` | The token names no peer address, a server of the install has or had one, and the call came neither from loopback nor from the address of the control server on which it came. |

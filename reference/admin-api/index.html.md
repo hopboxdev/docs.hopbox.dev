@@ -20,7 +20,7 @@ The admin API has these services:
 | `hopbox.admin.v1.KeyringService` | `RotateKEK`, `StageKEK`, `PromoteKEK`, `ListKEKs`, `RewrapSealedValues` |
 | `hopbox.admin.v1.MailService` | `ListMailFiles`, `GetMailFile` |
 | `hopbox.admin.v1.LoginLinkService` | `CreateLoginLink` |
-| `hopbox.admin.v1.InstanceAdminService` | `ListInstanceAdmins`, `GrantInstanceAdmin`, `RevokeInstanceAdmin` |
+| `hopbox.admin.v1.InstanceAdminService` | `ListInstanceAdmins`, `GrantInstanceAdmin`, `RevokeInstanceAdmin`, `ListAdminNotices`, `DismissAdminNotices` |
 | `hopbox.admin.v1.AccountService` | `ListAccountSignInMethods`, `RemoveAccountSignInMethod` |
 | `hopbox.admin.v1.ServerService` | `CreateEnrollmentToken`, `ListServers`, `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DecommissionServer`, `DrainServer`, `ListControlProcesses` |
 | `hopbox.admin.v1.PoolService` | `CreatePool`, `GetPool`, `ListPools`, `DeletePool` |
@@ -39,7 +39,7 @@ An admin session can make these calls, and no other call of the admin API:
 | Service | Calls |
 | --- | --- |
 | `hopbox.admin.v1.InstallConfigService` | `GetInstallConfig`, `UpdateInstallConfig`, `GetSMTPConfig`, `SetSMTPConfig`, `ClearSMTPConfig`, `GetOAuthConfig`, `SetOAuthClient`, `ClearOAuthClient` |
-| `hopbox.admin.v1.InstanceAdminService` | `ListInstanceAdmins`, `GrantInstanceAdmin`, `RevokeInstanceAdmin` |
+| `hopbox.admin.v1.InstanceAdminService` | `ListInstanceAdmins`, `GrantInstanceAdmin`, `RevokeInstanceAdmin`, `ListAdminNotices`, `DismissAdminNotices` |
 | `hopbox.admin.v1.AdminKeyService` | `CreateAdminKey`, `ListAdminKeys`, `RevokeAdminKey` |
 | `hopbox.admin.v1.ServerService` | `ListServers`, `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DrainServer` (only of a server that hosts no control process) |
 | `hopbox.admin.v1.PoolService` | `CreatePool`, `GetPool`, `ListPools`, `DeletePool` |
@@ -733,7 +733,7 @@ The response `GrantInstanceAdminResponse` has the field `account_id`. A request 
 
 ### RevokeInstanceAdmin
 
-Takes the instance admin role from an account. Its sessions lose the role at their next call.
+Takes the instance admin role from an account. Its sessions lose the role at their next call. The revoke tells the instance admins and the revoked account ([Notices to instance admins](#notices-to-instance-admins)).
 
 | Item | Value |
 | --- | --- |
@@ -749,6 +749,91 @@ The request `RevokeInstanceAdminRequest` has the field `account_id`. The respons
 | The ID is not a UUID | `invalid_argument` |
 | The account is not an instance admin | `not_found` |
 | The account is the last instance admin: `failed precondition: the account <id> is the last instance admin, and an install keeps at least one. Grant the role to another account first` | `failed_precondition` |
+
+### Notices to instance admins
+
+Some calls leave something that lasts after the session that made them. For example, a stolen admin session of 10 minutes can make an admin key that works for 365 days. So these calls tell the instance admins, in the console and by email (plan question Q103):
+
+| Call | When it tells the instance admins |
+| --- | --- |
+| `CreateAdminKey` | Always. |
+| `RegisterAdminKey` | When it makes a key, with `registered` set to `true`. |
+| `GrantInstanceAdmin` | When the account was not an instance admin. |
+| The sign-in of a login link ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#verifyloginlink)) | When it makes the account an instance admin. |
+| `RevokeInstanceAdmin` | Always. Otherwise a stolen session can revoke the other admins first, so that nobody hears of its later actions. The notice comes before the revoke, so the revoked account gets the email and a notice too. Its notice shows only if it gets the role again. |
+| `SetSMTPConfig` and `ClearSMTPConfig` | Always. |
+| `SetOAuthClient` and `ClearOAuthClient` | Always. |
+| `UpdateInstallConfig` | When it changes `mail_transport`, because the transport decides whether the install uses the SMTP server. |
+
+A notice is the audit entry of the call. In the transaction of the call, each instance admin other than the actor gets an open notice in the table `admin_notices` ([Control store tables](/reference/control-store/index.html.md#admin_notices)). The banner of the console and the Admin area show the open notices ([Console](/reference/console/index.html.md#admin-area)), and `ListAdminNotices` returns them. `hopboxd admin` has no command for them, because root has no account and so no notices.
+
+After the commit, hopbox sends an email to each email of each of these instance admins. When the actor is a session, its account gets a copy too. The person whose session someone stole is the person who knows best that the action was not theirs. The sign-in of a login link had no session before the grant, so its account gets no copy. An email that no sign-in method verified gets the notice too, because only root adds such an email to an account, in a login link.
+
+The email has these parts:
+
+- What changed, with the facts of the audit entry, such as the name, the ID, and the end of a new key.
+- Who did it: the session and its account, the admin API key, or root on a control server with its user and process.
+- The time and the ID of the audit entry.
+- How to undo it: the page of the Admin area and the `hopboxd admin` command. For an action of a session, also how to revoke the role of its account, which closes the admin API to each session of the account at once.
+- The link to `/admin/notices`, or for the copy of the actor, a line that says why the actor gets it.
+
+The email and the notice never hold a secret: no admin key, no client secret, and no SMTP password. They hold only the facts of the audit entry, which never holds a secret value either.
+
+A change of the mail config sends its email the way that the install sent mail before the change, and the new way only when that fails. The changes of the mail config are `SetSMTPConfig`, `ClearSMTPConfig`, and a change of `mail_transport`. So a new SMTP server that an attacker sets does not swallow the notice of its own change.
+
+A failed email never fails the call. The emails of one notice share one limit of 20 s. For each address that fails, hopbox logs `the email of an admin notice failed` at level error, with `audit_entry`, `account`, and `err`. It also writes the audit entry `admin_notice.mail_failed`, with the actor kind `system`, the target kind `audit_entry` and the ID of the entry of the call, and the details `account`, `email`, and `error`. The error is the reply of the mail server. If that text looks like a credential, the audit log refuses it, so `error` holds a fixed text instead, and only the log has the reply. The notice stays in the Admin area. An install without an SMTP config fails each email this way. With the file transport, the email goes to the mail folder ([Mail](/reference/mail/index.html.md#the-file-transport)). After the sends, hopbox logs `sent the emails of an admin notice` at level info, with `audit_entry`, `action`, `sent`, and `failed`. If it cannot write the audit entries of the failures, it logs `the audit entries of the failed emails of an admin notice failed` at level error.
+
+### AdminNotice
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | string | The UUID of the audit entry of the action. |
+| `action` | string | The action of the audit entry, such as `admin_key.create`. |
+| `summary` | string | What changed, in one to three sentences, such as `An admin API key was made: "key1", ID <id>, valid until <time>.` |
+| `advice` | string | How to undo the change if nobody that the reader trusts made it. |
+| `actor_kind` | string | The actor kind of the audit entry: `session`, `admin_key`, or `local_root`. |
+| `actor_account_id` | string | The UUID of the account of a session. Empty for the other actors. |
+| `actor_name` | string | The display name of that account with its first email, such as `User 1 <user1@example.org>`, or its first email alone. Empty for the other actors. |
+| `actor_credential_id` | string | The UUID of the session or of the admin key. Empty for `local_root`. |
+| `target_kind` | string | The target kind of the audit entry, or empty. |
+| `target_id` | string | The target ID of the audit entry, or empty. |
+| `create_time` | `google.protobuf.Timestamp` | The time of the action. |
+
+### ListAdminNotices
+
+Lists the open notices of the instance admin of the session, newest first, at most 100.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.InstanceAdminService/ListAdminNotices` |
+| Policy action | `admin_notice.list`: an [admin session](#admin-sessions) only. A notice belongs to an account, so `local_root` and an admin API key get `permission_denied`. |
+| Idempotent option | no |
+| Audit entry | action `admin_notice.list`, no target |
+
+The request `ListAdminNoticesRequest` has no fields. The response `ListAdminNoticesResponse` has these fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `notices` | repeated `AdminNotice` | The open notices, newest first, at most 100. |
+| `total` | int32 | The count of all open notices of the account. It is more than the length of `notices` when the account has more than 100. |
+
+### DismissAdminNotices
+
+Removes notices from the list of the instance admin of the session. The audit log keeps the entries of the actions.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.InstanceAdminService/DismissAdminNotices` |
+| Policy action | `admin_notice.dismiss`: an [admin session](#admin-sessions) only |
+| Idempotent option | no. A second call skips the notices that the first call removed. |
+| Audit entry | action `admin_notice.dismiss`, no target, details `notices`, the removed IDs joined by commas, and `count` |
+
+The request `DismissAdminNoticesRequest` has the field `ids`, 1 to 100 UUIDs of notices. An ID that names no open notice of the account is skipped, also an open notice of another instance admin. The response `DismissAdminNoticesResponse` has the field `dismissed`, the count of the removed notices.
+
+| Error | Code |
+| --- | --- |
+| No ID, more than 100 IDs, or an ID that is not a UUID | `invalid_argument` |
+| A caller other than an admin session | `permission_denied`, or `unauthenticated` for an anonymous caller |
 
 ## AccountService
 

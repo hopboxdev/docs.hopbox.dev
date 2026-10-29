@@ -2414,6 +2414,13 @@ components:
             - $ref: '#/components/schemas/google.protobuf.Timestamp'
           title: create_time
           description: create_time is the time of the first sign-in.
+        adminNotices:
+          type: integer
+          title: admin_notices
+          format: int32
+          description: |-
+            admin_notices counts the open notices of an instance admin, which the Admin area lists.
+             It is 0 for any other account.
       title: Account
       additionalProperties: false
       description: Account is the record of one person in the install.
