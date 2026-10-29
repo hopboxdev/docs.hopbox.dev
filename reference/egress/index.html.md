@@ -45,9 +45,32 @@ An egress edge is an edge server that takes the egress of the nodes now. The con
 - That version equals its `hopboxd_version`. So an edge server that went back to a release without the tunnels takes no egress.
 - Its state is `ready`, `cordoned`, or `draining`.
 
-An edge server says `egress_exit` in each heartbeat while its tunnel `hbe0` is ready, with the reverse path filter off ([the control channel](/reference/control-channel/index.html.md#heartbeat), [The reverse path filter](#the-reverse-path-filter)). After a restart, it keeps the tunnel that it finds, so it says `egress_exit` also before its first mesh.
+An edge server says `egress_exit` in each heartbeat while its tunnel `hbe0` is ready, with the reverse path filter off ([the control channel](/reference/control-channel/index.html.md#heartbeat), [The reverse path filter](#the-reverse-path-filter)). Its uplink must also work ([The uplink of an egress edge](#the-uplink-of-an-egress-edge)). After a restart, it keeps the tunnel that it finds, and its first check of the uplink gives the state of the uplink at once. So it says `egress_exit` also before its first mesh.
 
 The leader marks a silent edge server `unresponsive` after 20 s. The next heartbeat of each node then gets a mesh without that edge server. So the egress moves to the other egress edges within 20 s, one sweep of the leader, and one heartbeat of the node. `TestEgress` of the test fleet checks this bound with 40 s.
+
+### The uplink of an egress edge
+
+The egress tunnels, the mesh, and the control channel run over the peer address of an edge server. The edge server can still reach the other servers while its uplink reaches nothing else. For example, its uplink lost the IPv4 default route, but a route of its own, or a shared subnet, still reaches the other servers. The edge server then stays `ready` and keeps its tunnel, but the egress of the machines goes nowhere. So the unit `channel` of each edge server also checks its uplink, at its start and then every 2 s. These two conditions together make a working uplink:
+
+- The main table has an IPv4 default route. If it has more than one, the check takes the route with the lowest metric.
+- The device of that route is up and has a carrier. `ip link show` lists no `NO-CARRIER` for it. For a route with several next hops (ECMP), one device of a next hop with a carrier is enough. This is not the same as a fully working uplink. If `net.ipv4.conf.all.ignore_routes_with_linkdown` is 0, the default, the kernel still sends some flows to a next hop without a carrier. Those flows fail.
+
+| Item | Value |
+| --- | --- |
+| Loss before the edge server takes no egress | 4 s. A DHCP renew that replaces the default route takes less. |
+| Time that the uplink works again before the edge server takes the egress again | 30 s, after the uplink worked once since the start of `hopboxd`. A new loss in this time starts the 30 s again. So an uplink that flaps moves the machines at most once in 30 s. |
+
+The first check after a start takes the state of the uplink at once. If the uplink does not work at the start, the first check that finds it working also counts at once. The hold-down is against an uplink that flaps, and a start into a loss is no flap. So after a start into a loss, an uplink that flaps can move the machines twice before the hold-down applies. A failed read of the uplink keeps the last state. While the uplink does not work, the heartbeats say no `egress_exit`, and the nodes leave the edge server at their next mesh. A node without another egress edge fails closed ([Fail closed](#fail-closed)). So the egress of a machine moves after 4 to 6 s, one heartbeat of the edge server, and one heartbeat of the node. `TestEgress` checks this bound with 24 s. It also checks that the egress comes back after 30 s at least, and within 50 s.
+
+The check reads IPv4 alone. An edge server without an IPv6 default route refuses the IPv6 egress, and keeps the IPv4 egress ([IPv6 without an uplink address](#ipv6-without-an-uplink-address)). A server with the node role and the edge role is the local exit of its own machines ([The local exit](#the-local-exit)). Its own machines leave through its uplink also while the check says that the uplink does not work.
+
+The check reads the kernel of the edge server alone, and sends no packet to an address outside the install. So it does not find these faults, and the edge server keeps the egress through them:
+
+- The gateway or the network of the provider drops the traffic to the internet, but carries the traffic to the other servers.
+- The provider routes the floating address of the edge server to another server, so the replies of the IPv4 egress go to that server.
+
+The owner decided this rule and its times on 2026-10-29 (plan question Q104).
 
 ### A control role of an older release
 
@@ -279,6 +302,9 @@ The tunnels and the check of the uplink of an edge server log with `component=eg
 | `the uplink of this edge server holds no peer address of the install, so its own connections leave from the address that the kernel picks` | warn | `device` | No address of the uplink is in the set `peers`, or more than one is. |
 | `this edge server has no IPv4 default route, so it keeps neither its floating addresses nor the source of its own connections` | warn | | The check found no IPv4 default route in the main table. |
 | `cannot read the uplink of this edge server. The next check tries again` | error | `err`, `retry_in` | A read of the routes or the addresses failed. |
+| `the uplink of this edge server cannot carry the egress of the machines, so this server takes no egress until its uplink works again` | warn | `device`, `reason` | The uplink did not work for 4 s, or did not work at the start ([The uplink of an egress edge](#the-uplink-of-an-egress-edge)). `reason` is `no IPv4 default route`, or `the device of the IPv4 default route is down or has no carrier`. `device` is empty without a default route. For a route with several next hops, `device` is the first device. |
+| `the uplink of this edge server works, so this server takes the egress of the machines` | info | `device` | The uplink worked for 30 s after a loss, or worked for the first time after a start without a working uplink. |
+| `cannot read the uplink of this edge server, so egress_exit keeps its last value. The next check tries again` | error | `err`, `retry_in` | A read of the routes or of the device failed. It logs once until the error changes. |
 | `cannot watch the addresses and the routes of the host, so the uplink of this edge server gets a check only every <interval>` | warn | `err` | The watch of netlink did not start. The interval is 2 s. |
 | `the watch of the addresses and the routes of the host ended, so the uplink of this edge server gets a check only every <interval>` | warn | | The watch of netlink stopped. The interval is 2 s. |
 
@@ -307,9 +333,11 @@ These errors come in the field `err` of `cannot set up the egress tunnels. The n
 
 | Test | Where it runs | What it checks |
 | --- | --- | --- |
-| The tests of `internal/egress` without root | `make test`, also on a Mac | One tunnel for each egress edge, at most 16, and the order of a new tunnel and of its use. A restart keeps the tunnels until the first mesh, and counts none while the filter of a tunnel is on. No mesh key, no tunnel. One tunnel with each node on an edge server. A change of mode removes the old tunnels. A repair and its log, a failure, the reverse path filter, and `egress_exit`. The router advertisements of IPv6 forwarding. The pick of the uplink address of the NAT66. The removal of what the IPv6 block left, with the rules last, and nothing to do on a new server. |
+| The tests of `internal/egress` without root | `make test`, also on a Mac | One tunnel for each egress edge, at most 16, and the order of a new tunnel and of its use. A restart keeps the tunnels until the first mesh, and counts none while the filter of a tunnel is on. No mesh key, no tunnel. One tunnel with each node on an edge server. A change of mode removes the old tunnels. A repair and its log, a failure, the reverse path filter, and `egress_exit`. The hold-down of the uplink of an egress edge, its logs, and a failed read. The router advertisements of IPv6 forwarding. The pick of the uplink address of the NAT66. The removal of what the IPv6 block left, with the rules last, and nothing to do on a new server. |
 | `TestFindUplink` of `internal/egress` | `make test-linux` | An uplink with a static address, an address of a router advertisement, the floating address, and a unique local address. The pick takes the static address, or the preferred source of the default route, and never the floating address. |
 | `TestEdgeSourceStaysOnThePeerAddress` of `internal/egress` | `make test-linux` | The source of the own connections of an edge server, and the check of its uplink ([the edge role](/reference/edge/index.html.md#the-check-of-the-uplink)). |
+| `TestUplinkHealthReadsTheKernel` of `internal/egress` | `make test-linux` | An uplink that loses its carrier, and then its IPv4 default route, while the route to a peer stays ([The uplink of an egress edge](#the-uplink-of-an-egress-edge)). |
+| `TestUplinkHealthReadsEachNextHop` of `internal/egress` | `make test-linux` | A default route with a next hop on each of two uplinks. The uplink works until both lose their carrier. |
 | `TestLeftoversRemoveTheIPv6Block` of `internal/egress` | `make test-linux` | What a release before N29 left on an edge server: the address of the block, the table `hopbox_egress6` with its two default routes, and its two rules. A check removes them, and keeps the other addresses, routes, and rules. |
 | `TestTheTunnelsCarryTheEgressBothWays` of `internal/egress` | `make test-linux`, as root in a privileged container | A node and an edge server on one link, each with its mesh device and the real kernel WireGuard. A packet of a machine with the mark of its tunnel reaches the edge server with the address of the machine. The reply with the return mark comes back through the tunnel. It checks IPv4 and IPv6. |
 | `TestIPv6ForwardingKeepsTheDefaultRouteOfTheUplink` of `internal/egress` | `make test-linux` | A host whose uplink takes its IPv6 default route from a real router advertisement. After IPv6 forwarding turns on, the route stays, and a new advertisement renews it. |
