@@ -202,7 +202,7 @@ A link needs a recent sign-in when it starts. From then on, it binds to its sess
 
 A link starts no session and sets no cookie. The session of the browser stays. A link does these steps in one transaction:
 
-1. It takes the transaction lock `LockKeySignIn`, and checks that the session is still live. A share lock on the session row keeps a sign-out from ending it before the link commits.
+1. It takes the transaction lock `LockKeySignIn`, then `LockKeyAdminNotices` ([the bundled Postgres](/reference/postgres/index.html.md#order-of-the-advisory-locks)), and checks that the session is still live. A share lock on the session row keeps a sign-out from ending it before the link commits.
 2. It refuses a method that signs in to another account: `failed_precondition`, or `409` at the callback. The message names the method, for example `this Google identity signs in to another account. Remove it from that account first`.
 3. It refuses a method that the account has: `already_exists`, or `409` at the callback. `RequestMagicLink` refuses an email method of the account before it sends the mail.
 4. It refuses an email that another account holds as verified: `failed_precondition` with `the email kim@example.org is a verified email of another account, so it signs in only to that account`. The method of an email decides where a magic link of that email signs in. So without this step, the holder of the mailbox could move the magic links of another account to the own account.

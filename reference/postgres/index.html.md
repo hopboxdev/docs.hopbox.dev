@@ -441,6 +441,24 @@ The file `internal/store/locks.go` holds every advisory lock key of hopbox. Each
 | `LockKeyNodeSubnets` | `0x686f70626f780018` | A transaction lock of each claim of a node subnet. So two nodes that get their first machine at once never pick the same subnet ([Control store tables](/reference/control-store/index.html.md#node_subnets)). |
 | `LockKeyReleaseImages` | `0x686f70626f780019` | A transaction lock of each register of the default image of a release at the start of the control role, around the check for an image of a newer release and the insert ([hopboxd](/reference/hopboxd/index.html.md#the-default-image-of-the-release)). |
 | `LockKeyMeshAddresses` | `0x686f70626f78001a` | A transaction lock of each claim of a mesh address. So two servers that join the mesh at once never pick the same address ([Control store tables](/reference/control-store/index.html.md#mesh_members)). |
+| `LockKeyAdminNotices` | `0x686f70626f78001b` | A transaction lock of each write of a notice to the instance admins and of each account delete. Each one takes it before the rows that the notices lock: the accounts, the rows of `instance_admins`, and `install_config`. So none of them deadlocks on the account rows of the instance admins ([Control store tables](/reference/control-store/index.html.md#orgs)). A write of a notice without it fails with an internal error. |
+
+#### Order of the advisory locks
+
+A transaction that takes two advisory locks takes them in this order, so two transactions never wait for each other on them:
+
+1. `LockKeySignIn`
+2. `LockKeyAdminNotices`
+
+Today only these two meet in one transaction: a link of a sign-in method, the sign-in of a login link, and a sign-in that joins an account through a verified email. A sign-in learns that it joins an instance admin only under `LockKeySignIn`, so that lock comes first. Each other key is the only advisory lock of its transaction:
+
+- `LockKeyServerRegistry` comes before the row of the server, in an enrollment, the retry and the resync of an enrollment, a change of the roles, `SetServerPeerAddress`, `DecommissionServer`, and each empty check of a drain.
+- `LockKeyMagicLinks`, `LockKeyInvitations`, `LockKeyDeviceAuthorizations`, `LockKeyDeviceApprovals`, `LockKeyOAuthFlows`, `LockKeyNodeSubnets`, `LockKeyReleaseImages`, and `LockKeyMeshAddresses` each guard one count or one claim.
+- The shared take of `LockKeyRetiredGuestHostKeys` keeps each write of guest SSH host keys apart from a `hopboxd` of v0.1.0.
+- `LockKeyMigrations` is a session lock of the runner on a connection of its own. The write of a row of `control_processes` takes it alone, as a shared transaction lock.
+- `LockKeyLeader` is a session lock on a connection of its own.
+
+A new transaction that needs two of these keys adds the pair to the numbered list, in the order that every transaction then follows.
 
 ### Queries
 
