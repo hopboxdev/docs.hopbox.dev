@@ -122,6 +122,7 @@ The spec holds the env vars and the secrets of the machine. No part of hopbox lo
 | `authorized_keys` | repeated string | The public keys that sshd in the machine accepts for every Linux user: the client key of the SSH front door ([the SSH front door](/reference/ssh-front-door/index.html.md#keys)). Empty while the install has no keys of the front door, which needs a key-encryption key. The control role then logs `the machine specs go out without the key of the SSH front door` at level warn, with `component=service` and `err`. |
 | `env_unresolved` | bool | The env of the machine did not resolve. The spec then holds no env, and the executor pushes nothing to the guest with it. |
 | `move` | `MachineMove` | Set while the machine moves to this node: where the node pulls its disk ([Cold moves](#cold-moves)). Not set for any other machine. |
+| `give_back_move_id` | string | Set while an instance admin asks this node to give the machine back to the source node of a failed move ([Give-back](#give-back)). Empty otherwise. |
 
 ### A machine whose env does not resolve
 
@@ -187,6 +188,19 @@ The control role gives the machine back only while it is in `moving` on the targ
 
 A spec with the current state `moving` and without `move` makes the executor wait. A control process of a release without moves sends such a spec. The executor then logs `the executor cannot reach the target` with its reason. The node-local state of the executor keeps the move. While the disk of that move is not whole, a spec with another current state boots nothing either.
 
+### Give-back
+
+A failed move can leave a machine on its target while the source keeps a copy of its disk ([Cold move](/reference/cold-move/index.html.md#give-back)). An instance admin can ask the target node to give the machine back. The spec of the machine then names the move in `give_back_move_id`. For each new version of the spec, the executor answers once, with a report of its current state, once no other report waits:
+
+| Node | Field of the report |
+| --- | --- |
+| It never proved the pull of the move, holds no disk file of the machine, and runs no microVM of it. A partial copy of a pull is no disk file. | `released_move_id`. The report has no `pulled_move_id`. |
+| It proved the pull, or holds the whole disk of the move, and its disk file is here | `kept_move_id`, with `pulled_move_id` while the disk is here |
+| It holds a disk file without the proof of the move, it proved the pull and lost the disk file, or it cannot read the disk file | `withheld_move_id`, with `withheld_reason` |
+| A microVM of the machine runs | none |
+
+A release gives the machine back to the source in the transaction of the report, and ends the grant of the target. So no later report of the target is accepted, and the executor never boots the machine. A node reports the feature `give-back` in its heartbeats ([the control channel](/reference/control-channel/index.html.md#heartbeat)), and the control role asks only a node that reports it.
+
 ### MachineMove
 
 | Field | Type | Description |
@@ -211,6 +225,10 @@ A spec with the current state `moving` and without `move` makes the executor wai
 | `ssh_host_keys` | repeated string | For a report of `running`, the public SSH host keys of the guest, as the guest agent reported them in its status. Each one is in the `authorized_keys` format without a comment. The executor leaves out a key that does not parse, and a key that it has already. After a change of the keys, the executor reports `running` again. A report of another state carries none. | at most 8, each one key without options or a comment |
 | `pulled_move_id` | string | The ID of the move whose whole disk the executor pulled, with a digest that matches. The executor sets it on each report once the disk is here, until a later move. A step of the target of a move without it fails the move ([Cold moves](#cold-moves)). A value that is not a UUID counts as empty. | |
 | `pull_received` | uint64 | For a report of the same state during a pull, the bytes that the last pull wrote. Above 0, it holds off the pull deadline of the move. 0 on every other report. | |
+| `released_move_id` | string | The answer to a give-back: the node never proved the pull of that move, and gives the machine back ([Give-back](#give-back)). A value that is not a UUID counts as empty. | not with `kept_move_id` or `pulled_move_id` |
+| `kept_move_id` | string | The answer to a give-back: the node holds the whole disk of that move, and keeps the machine. A value that is not a UUID counts as empty. | |
+| `withheld_move_id` | string | The node gives neither answer to the give-back of that move, because either one can drop the newest disk ([Give-back](#give-back)). The control role writes the note of `withheld_reason` to the move, and the give-back keeps waiting. A value that is not a UUID counts as empty. | not with `released_move_id` or `kept_move_id` |
+| `withheld_reason` | `GiveBackWithheld` | Why the node withholds its answer: `GIVE_BACK_WITHHELD_DISK_WITHOUT_PROOF`, `GIVE_BACK_WITHHELD_PROOF_WITHOUT_DISK`, or `GIVE_BACK_WITHHELD_DISK_UNREADABLE`. | required with `withheld_move_id` |
 
 ### What the control role does
 
@@ -219,7 +237,7 @@ A spec with the current state `moving` and without `move` makes the executor wai
 1. It checks that the certificate of the channel was not retired ([the control channel](/reference/control-channel/index.html.md#certificate-renewal)).
 2. It locks the machine row. A machine that is gone, or that runs on another node, refuses the report as stale.
 3. It fences the report with its lease (`lease.Fenced`, [Control store tables](/reference/control-store/index.html.md#fenced-writes)). A report of another grant, or of an expired one, is stale. One case differs. A report of `deleted` for a machine that is `deleted` already, with the grant of the delete, is accepted and changes nothing. That is the case of a lost answer, because the delete ended the lease.
-4. A report of the state that the machine has already, with no higher boot generation, changes no state. A repeated report of `running` still writes the route record with its grant, and the count of step 6.
+4. A report that answers a give-back of the machine ends the give-back ([Give-back](#give-back)). After a release, the machine is on its source node, and the report changes nothing else. A report of the state that the machine has already, with no higher boot generation, changes no state. A repeated report of `running` still writes the route record with its grant, and the count of step 6.
 5. It checks the step from the current state to the new state with `domain.CheckStep` ([Domain rules](/reference/domain-rules/index.html.md#steps-between-current-states)).
 6. A report of `running` writes `skipped_env` to the machine. The service then logs `the guest agent left env values out of a machine` at level warn, with `machine` and `count`, for a count above 0. A change of the count alone publishes `machine.state_changed`.
 7. It writes `current_state`, and moves `current_reboot_generation` up to `boot_generation`. For a new state, it also sets `state_changed_at`.

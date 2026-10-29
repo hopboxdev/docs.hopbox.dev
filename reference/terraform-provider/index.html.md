@@ -536,6 +536,7 @@ The delete moves every machine of the server cold to other nodes before the serv
 | The drain decommissions the server. | The delete goes on with step 4. |
 | A machine cannot move, and no move runs any more. | The delete fails with `the drain of the server <id> cannot move the machines <name> (<reason>), ..., so they stay on the server with their disks, and the server stays in the install. Fix each reason, then run terraform destroy again`. |
 | The drain finds the server empty, but the decommission is refused. | The delete fails with `the drain of the server <id> cannot decommission it: <error>. The server stays in the install`. |
+| An instance admin cancels the drain ([the admin API](/reference/admin-api/index.html.md#canceldrain)). | The delete fails with `the drain of the server <id> ended before its decommission, and the server is <state>. Run terraform destroy again`. The server stays in the install and in the Terraform state. The provider never cancels a drain itself. |
 | The server is not decommissioned after 6 h. | The delete fails with `the server <id> did not leave the install within 6h0m0s: ... The drain goes on in the install. Run terraform destroy again: it waits for the drain, then stops hopboxd on the server`. |
 | A read of the server fails with `unauthenticated` or `permission_denied`, such as for a revoked admin API key. | The delete fails at once with that error. No wait fixes it. |
 | The SSH connection to the first server breaks during the wait. | The delete logs in again and goes on waiting. |

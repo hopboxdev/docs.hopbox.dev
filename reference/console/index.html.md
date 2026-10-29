@@ -89,7 +89,7 @@ The server page has the button "Drain" in the danger style. It opens the dialog 
 - A running machine stops, moves, and boots again, so it loses its memory.
 - Each machine keeps its disk, name, URL, SSH port, and address.
 - Once the server holds nothing, the drain decommissions it.
-- "You cannot stop a drain."
+- "Until then, Cancel drain ends the drain and keeps the server."
 - If Terraform manages the server, run terraform destroy instead, because the next refresh of Terraform drops a drained server from its state.
 
 A server without the role `node` has no button "Drain", because it holds no machine and the install refuses its drain. An admin session cannot drain a server that hosts a control process: the call fails with `permission_denied` ([the admin API](/reference/admin-api/index.html.md#drainserver)).
@@ -98,8 +98,9 @@ While the server drains, the page changes:
 
 - The button reads "Drain again". It starts the drain again, to try the stranded machines again. Its dialog says that the drain tries each stranded machine again and counts its empty checks from zero.
 - The buttons "Cordon" and "Uncordon" are hidden, because a drain keeps the server cordoned.
+- The button "Cancel drain" calls `CancelDrain` ([the admin API](/reference/admin-api/index.html.md#canceldrain)) after the dialog "Cancel the drain of <name>". The dialog says that no new move starts, that a move whose machine still stops ends, and that a move whose disk copies already goes on to its end. It names the state that the server gets back: cordoned or ready.
 - The section "Drain" shows these facts: Started, Moves, Empty checks (`n of 3`, and how long ago the last one ran), and Waits, the error of the drain.
-- A notice says that the drain cannot go on by itself when the drain is stuck.
+- A notice says that the drain cannot go on by itself when the drain is stuck. It says that a machine without room moves once a node has room, and that a cancel keeps the server.
 - A table lists each stranded machine with its reason. A machine whose disk copy a failed move left on this server shows "on another node" under its name.
 
 The admin API has no stream of servers. So the list of servers and the page of a server read again every 2 s while a drain runs.
@@ -321,7 +322,7 @@ The console pins each package to an exact version in `web/apps/console/package.j
 20. Checks that each page of the Admin area fits a phone width of 360 pixels without a horizontal scroll.
 21. Makes the session 11 minutes old, and clicks "Cordon". The action fails and asks for a sign-in again, and the server stays `ready`. The suite signs in with a new login link, comes back to `/admin/servers`, and the cordon works. After the run, the Go test reads the audit log: each action of the Admin area has the actor kind `session`. The test also finds the new SMTP server of the install.
 22. Turns on the file mail transport, and links the email `ann.work@example.org` on `/account`. It opens the link from the mail file, and finds the email link in the sign-in methods. Then it makes the session 11 minutes old, and checks that a second link asks for a sign-in again.
-23. Drains a second server of the test, which holds no machine, from its page. The empty checks of the test come 2 s apart. The badge shows `draining` or `shutting down`, the section "Drain" shows, and the button "Uncordon" is gone. Then the badge shows `decommissioned`, and the page has no drain button. The audit log has `server.drain` with the actor kind `session`, and `server.decommission` with the actor `system`. The Playwright test is "the drain button drains a server, which then leaves the install".
+23. Drains a second server of the test, which holds no machine, from its page. The empty checks of the test come 2 s apart. The badge shows `draining` or `shutting down`, the section "Drain" shows, and the button "Uncordon" is gone. Then the badge shows `decommissioned`, and the page has no drain button and no button "Cancel drain". The audit log has `server.drain` with the actor kind `session`, and `server.decommission` with the actor `system`. The Playwright test is "the drain button drains a server, which then leaves the install".
 24. Checks that no page error and no policy violation happened.
 
 Steps 12, 14 to 23 each start with a new sign-in through a login link, and step 11 starts without cookies. So they need no session from the steps before them, and their order does not matter. Each sign-in goes through the page of the link and the real sign-in of the API, as for a person.

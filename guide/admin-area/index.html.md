@@ -48,14 +48,16 @@ The Admin area does not add or remove a server. The hopbox Terraform provider do
 A drain moves every machine of a server to other nodes, and then decommissions the server ([Drain a node](/guide/drain-a-node/index.html.md)). A running machine stops, moves, and boots again, so it loses its memory. Each machine keeps its disk, name, URL, SSH port, and address.
 
 1. Click the name of the server `node1`. The page of the server opens.
-2. Click "Drain". The dialog "Drain node1" explains the drain. It says that you cannot stop a drain. It also says to destroy a server that Terraform manages with Terraform, because the next refresh of Terraform drops a drained server from its state.
+2. Click "Drain". The dialog "Drain node1" explains the drain. It says that "Cancel drain" ends the drain and keeps the server. It also says to destroy a server that Terraform manages with Terraform, because the next refresh of Terraform drops a drained server from its state.
 3. Click "Drain". The state changes to `draining`. The buttons "Cordon" and "Uncordon" disappear, because a drain keeps the server cordoned.
 4. Watch the section "Drain". It shows when the drain started, the moves that run, and the empty checks, such as `1 of 3`. The page reads again every 2 s.
 5. When the server holds nothing, the state changes to `shutting down`, and after 3 empty checks, to `decommissioned`.
 
 Only a server with the role `node` has the button. The Admin area cannot drain a server that hosts a control process, because the drain ends in a decommission. Drain such a server as root on a control server, or with `terraform destroy`.
 
-A machine that the drain cannot move shows in a table with its reason. The notice "The drain cannot go on by itself" appears when each machine left on the server is stranded. Fix the reason, then click "Drain again" to try the machines again.
+A machine that the drain cannot move shows in a table with its reason. The notice "The drain cannot go on by itself" appears when each machine left on the server is stranded. A machine without room moves once a node has room, because the drain tries it again each minute. For the other reasons, fix the reason, then click "Drain again" to try the machines again.
+
+To keep the server, click "Cancel drain" during the drain. No new move starts, a move whose machine still stops ends, and a move whose disk copies already goes on to its end. The server turns cordoned or ready, as it was before the drain ([Drain a node](/guide/drain-a-node/index.html.md#cancel-a-drain)).
 
 ## Handle an abuse report
 

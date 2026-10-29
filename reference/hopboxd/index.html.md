@@ -65,6 +65,7 @@ hopboxd --log-level=debug version
 | `admin server drain` | Moves every machine of a server to other nodes, then decommissions the server, through the admin socket. |
 | `admin server remove-role` | Starts the removal of the roles edge, dns, node, or more than one from a running server, through the admin socket. |
 | `admin server cancel-remove-role` | Ends the pending removal of roles from a server that cannot finish, through the admin socket. |
+| `admin server cancel-drain` | Ends the drain of a server, which turns cordoned or ready as it was before the drain, through the admin socket. |
 | `admin server decommission` | Takes a server out of the install for good, through the admin socket. |
 | `admin control list` | Lists the control processes of the install, live or not, through the admin socket. |
 | `admin pool create` | Adds a pool of servers. |
@@ -84,7 +85,7 @@ hopboxd --log-level=debug version
 | `admin machine list` | Lists the machines of every org, or of one org, with metadata only. |
 | `admin machine stop` | Stops any machine, also in a suspended org, and waits for it. |
 | `admin machine delete` | Deletes any machine, also in a suspended org, and waits for it. |
-| `admin machine move` | Moves any machine cold to another node. It returns at once. With `--cancel`, it ends the move of the machine that runs. |
+| `admin machine move` | Moves any machine cold to another node. It returns at once. With `--cancel`, it ends the move of the machine that runs. With `--give-back` too, it asks the target node to give back a machine that a failed move left there. |
 | `admin machine moves` | Lists the cold moves of one machine, or of every machine, newest first. |
 | `admin image register` | Adds an image from its `artifact.json`. |
 | `admin image list` | Lists the images of the install. |
@@ -1114,7 +1115,7 @@ Prints the server with the ID `<id>`. It calls `GetServer` ([the admin API](/ref
 - `peer_address`: the public IPv4 address at which the other servers reach the server, empty for a server without one ([Enrollment and the install PKI](/reference/enrollment/index.html.md#peer-addresses))
 - `mesh_address` and `mesh_public_key`: the part of the server in the mesh, empty for a server outside the mesh ([the mesh](/reference/mesh/index.html.md))
 - `dns_zone_serial`: the serial of the zones that the DNS role of the server served at its last heartbeat, empty on a server without the DNS role or without zones ([the DNS role](/reference/dns/index.html.md#the-serial-of-each-dns-server))
-- Only while the server drains: `drain_start_time`, `drain_moving`, `drain_empty_checks`, `drain_last_check_time` (empty before the first check), `drain_error`, and `drain_stuck` (`true` or `false`). Then one line `drain_stranded` for each stranded machine, with the value `<name> <machine id>: <reason>`.
+- Only while the server drains: `drain_start_time`, `drain_moving`, `drain_empty_checks`, `drain_last_check_time` (empty before the first check), `drain_error`, `drain_stuck` (`true` or `false`), and `drain_cordoned_before` (`true` or `false`). Then one line `drain_stranded` for each stranded machine, with the value `<name> <machine id>: <reason>`.
 - `removed_roles`: the roles that a removal took from the server, joined by commas ([the admin API](/reference/admin-api/index.html.md#removeserverroles))
 - Only while a removal of roles is pending: `removal_roles` (joined by commas), `removal_start_time`, `removal_cordoned_before`, `removal_moving`, `removal_error`, `removal_stuck`, and `removal_ready` (`true` or `false`). Then one line `removal_stranded` for each stranded machine, with the value `<name> <machine id>: <reason>`.
 
@@ -1137,7 +1138,7 @@ The JSON object has these keys:
 - `mesh`: an object with `address` and `public_key`, or `null` for a server outside the mesh
 - `dns_zone_serial`: a number, or `null` on a server without the DNS role or without zones
 - `peer_address`: a string, empty for a server without one
-- `drain`: `null` for a server that does not drain, or an object with `start_time`, `moving`, `stranded` (a list of objects with `machine_id`, `name`, `reason`, and `on_server`), `empty_checks`, `last_check_time` (`null` before the first check), `error`, and `stuck`
+- `drain`: `null` for a server that does not drain, or an object with `start_time`, `moving`, `stranded` (a list of objects with `machine_id`, `name`, `reason`, and `on_server`), `empty_checks`, `last_check_time` (`null` before the first check), `error`, `stuck`, and `cordoned_before`
 - `removal`: `null` without a pending removal of roles, or an object with `roles`, `start_time`, `cordoned_before`, `moving`, `stranded` (as in `drain`), `error`, `stuck`, and `ready`
 - `removed_roles`: the roles that a removal took from the server
 
@@ -1210,7 +1211,7 @@ sudo hopboxd admin machine delete --id 01a1460c-1f6e-7b8a-9c42-3d5e7f8a9b10
 ### admin machine move
 
 ```sh
-hopboxd admin machine move (--name=NAME | --id=ID) [--to=SERVER_ID | --cancel] [--json]
+hopboxd admin machine move (--name=NAME | --id=ID) [--to=SERVER_ID | --cancel [--give-back] | --withdraw-give-back] [--json]
 ```
 
 Moves any machine cold to another node, also in a suspended org ([Cold move](/reference/cold-move/index.html.md)). The node of the machine stops it. The other node then pulls its disk, and boots it if its target is `running`. It calls `MoveMachine` of the admin API ([the admin API](/reference/admin-api/index.html.md#movemachine)), with a new idempotency key. The command returns at once, with the move in the state `stopping`. Follow the move with `admin machine moves`.
@@ -1221,6 +1222,8 @@ Moves any machine cold to another node, also in a suspended org ([Cold move](/re
 | `--id` | string | none | The UUID of the machine. |
 | `--to` | string | none | The UUID of the node to move the machine to. Without it, placement picks a node. |
 | `--cancel` | bool | `false` | Ends the move of the machine that runs, with `CancelMove` of the admin API ([the admin API](/reference/admin-api/index.html.md#cancelmove)). The machine stays on its source node with its disk, or goes back there, stopped. Give `--to` or `--cancel`, not both. |
+| `--give-back` | bool | `false` | With `--cancel`, also asks the target node to give back a machine that a failed move left there while its source keeps a copy of its disk, also after the move failed ([Cold move](/reference/cold-move/index.html.md#give-back)). The target node gives it back only when it never proved the pull of the move. Otherwise it keeps the machine, and the source removes its copy. Without `--cancel`, the command fails with `--give-back needs --cancel`. |
+| `--withdraw-give-back` | bool | `false` | Takes back a give-back that waits for the answer of the target node, such as one that the node withholds ([Cold move](/reference/cold-move/index.html.md#give-back)). The move gets back its state from before the request. Give only one of `--to`, `--cancel`, and `--withdraw-give-back`. |
 | `--json` | bool | `false` | Prints one JSON object with the key `move`, which has the keys of `admin machine moves --json`. |
 
 ```console
@@ -1243,18 +1246,30 @@ target_server_id	01a14600-1b2c-7d3e-8f40-516273849506
 state	failed
 ```
 
+A failed move can leave the machine on its target while the source keeps a copy of its disk, so the machine does not move again. Ask for the give-back. The command returns at once, with the line `give_back` `requested`. Follow the answer of the target node with `admin machine moves`: `done` gives the machine back to its source node, stopped, and `kept` leaves it on the target, whose disk is whole:
+
+```console
+$ sudo hopboxd admin machine move --name box1 --cancel --give-back
+id	01a1460c-2a7b-7c11-8d23-4e5f6a7b8c9d
+machine_id	01a1460c-1f6e-7b8a-9c42-3d5e7f8a9b10
+source_server_id	01a14600-0a1b-7c2d-8e3f-405162738495
+target_server_id	01a14600-1b2c-7d3e-8f40-516273849506
+state	failed
+give_back	requested
+```
+
 ### admin machine moves
 
 ```sh
 hopboxd admin machine moves [--id=ID] [--json]
 ```
 
-Lists the cold moves of one machine, or of every machine, newest first. It calls `ListMoves` of the admin API ([the admin API](/reference/admin-api/index.html.md#listmoves)) for each page. Each line holds one move, with tabs between its parts. The parts are the ID of the move, the machine, the state, the source node, and the target node. Then come the node that still holds an old copy, and the error of a failed move.
+Lists the cold moves of one machine, or of every machine, newest first. It calls `ListMoves` of the admin API ([the admin API](/reference/admin-api/index.html.md#listmoves)) for each page. Each line holds one move, with tabs between its parts. The parts are the ID of the move, the machine, the state, the source node, and the target node. Then come the node that still holds an old copy, and the error of a failed move. A move with a give-back ends with `give_back=` and its state: `requested`, `done`, or `kept`. A give-back that the target node withholds adds `give_back_note=` and the note of its reason.
 
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
 | `--id` | string | none | Lists only the moves of the machine with this UUID. |
-| `--json` | bool | `false` | Prints one JSON object with the key `moves`. Each move has the keys `id`, `machine_id`, `source_server_id`, `target_server_id`, and `state`. It also has `target_state`, `error`, `cleanup_server_id`, `create_time`, and `update_time`. |
+| `--json` | bool | `false` | Prints one JSON object with the key `moves`. Each move has the keys `id`, `machine_id`, `source_server_id`, `target_server_id`, and `state`. It also has `target_state`, `error`, `cleanup_server_id`, `create_time`, `update_time`, `give_back` (`requested`, `done`, `kept`, or empty without a give-back), and `give_back_note`, why the target node withholds its answer, or empty. |
 
 The states are `stopping`, `pulling`, `done`, and `failed` ([Cold move](/reference/cold-move/index.html.md#the-steps-of-a-move)).
 
@@ -1421,7 +1436,7 @@ peer_address	203.0.113.12
 hopboxd admin server drain <id> [--json]
 ```
 
-Moves every machine of the server `<id>` cold to other nodes, then decommissions the server ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node), [Drain a node](/guide/drain-a-node/index.html.md)). It calls `DrainServer` ([the admin API](/reference/admin-api/index.html.md#drainserver)) and prints the server after the change, as `admin server get` does. The command returns at once. A leader job does the moves. Follow the drain with `admin server get`. A second run starts the drain again: it tries each stranded machine again, and counts the empty checks from zero. A server that drains stays cordoned, so `admin server uncordon` refuses it. A server without the role `node` holds no machine, so the command refuses it: run `admin server decommission` for it. Do not drain a server that Terraform manages. Run `terraform destroy` instead, which drains it first. After a drain outside Terraform, the next refresh drops a decommissioned node from the Terraform state, and fails on the first server.
+Moves every machine of the server `<id>` cold to other nodes, then decommissions the server ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node), [Drain a node](/guide/drain-a-node/index.html.md)). It calls `DrainServer` ([the admin API](/reference/admin-api/index.html.md#drainserver)) and prints the server after the change, as `admin server get` does. The command returns at once. A leader job does the moves. Follow the drain with `admin server get`. A second run starts the drain again: it tries each stranded machine again, and counts the empty checks from zero. A server that drains stays cordoned, so `admin server uncordon` refuses it. To keep the server, run `admin server cancel-drain`. A server without the role `node` holds no machine, so the command refuses it: run `admin server decommission` for it. Do not drain a server that Terraform manages. Run `terraform destroy` instead, which drains it first. After a drain outside Terraform, the next refresh drops a decommissioned node from the Terraform state, and fails on the first server.
 
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -1444,6 +1459,7 @@ drain_empty_checks	0
 drain_last_check_time	
 drain_error	
 drain_stuck	false
+drain_cordoned_before	false
 removed_roles	
 ```
 
@@ -1490,6 +1506,27 @@ Ends the pending removal of roles from the server `<id>` that cannot finish, suc
 | --- | --- | --- | --- |
 | `<id>` | string | none, required | The ID of the server. |
 | `--json` | bool | `false` | Prints one JSON object, as `admin server get --json` does. |
+
+### admin server cancel-drain
+
+```sh
+hopboxd admin server cancel-drain <id> [--json]
+```
+
+Ends the drain of the server `<id>`, such as a drain that started by mistake. It calls `CancelDrain` ([the admin API](/reference/admin-api/index.html.md#canceldrain)) and prints the server after the cancel, as `admin server get` does. No new move starts. A move whose source still stops its machine ends, and the machine keeps its own target on the server. A move whose target pulls the disk goes on to its end, so that machine runs on its new node. The stranded machines stay on the server. The server turns `cordoned` when `drain_cordoned_before` was `true`, and `ready` otherwise. For a server that Terraform manages, a cancel during `terraform destroy` fails the destroy, and the server stays in the Terraform state.
+
+| Argument or flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `<id>` | string | none, required | The ID of the server. |
+| `--json` | bool | `false` | Prints one JSON object, as `admin server get --json` does. |
+
+Example:
+
+```text
+$ sudo hopboxd admin server cancel-drain 01a14404-ce7b-72d9-b18e-5006c3e462db | grep -E '^(state|cordoned|drain)'
+state	ready
+cordoned	false
+```
 
 ### admin server decommission
 
@@ -2081,8 +2118,9 @@ If the source must come back instead, run `hopboxd admin maintenance off` on it.
 | `unavailable: unavailable: <key> is promoted, but the control process <id> still seals with <old key>: ...` | `admin kek promote` ran out of time while a process still seals with the old key. The promote stays recorded. |
 | `failed_precondition: failed precondition: the server <id> holds <n> machines, such as <names>. Drain it first, so that its machines move to other nodes, or delete them` | `admin server decommission` of a server with machines. |
 | `failed_precondition: failed precondition: the move <move id> of the machine <machine id> runs from or to the server <id>. Wait for its end, or cancel it` | `admin server decommission` of a server that a move runs from or to. |
-| `failed_precondition: failed precondition: the server <id> keeps a copy of the disk of the machine <name>, which a failed move left <state> on another node. Delete the machine, or keep the server` | `admin server decommission` of a server that keeps the only copy of a disk. |
-| `failed_precondition: failed precondition: the server <id> drains, and stays cordoned until the drain decommissions it. A drain cannot stop. Follow it with hopboxd admin server get, and fix the reasons of its stranded machines. For a server that Terraform manages, run terraform destroy, which waits for the drain` | `admin server uncordon` of a server that drains. |
+| `failed_precondition: failed precondition: the server <id> keeps a copy of the disk of the machine <name>, which a failed move left <state> on another node. Give the machine back with hopboxd admin machine move --cancel --give-back, delete it, or keep the server` | `admin server decommission` of a server that keeps the only copy of a disk. |
+| `failed_precondition: failed precondition: the server <id> drains, and stays cordoned until the drain decommissions it. To keep the server, cancel the drain with hopboxd admin server cancel-drain <id>` | `admin server uncordon` of a server that drains. |
+| `failed_precondition: failed precondition: the server <id> does not drain` | `admin server cancel-drain` of a server without a drain. |
 | `failed_precondition: failed precondition: the control process <process> knows the migrations up to <n>, and only a hopboxd that knows migration 51 drains servers. Upgrade it first` | `admin server drain` while a live control process runs a release of the schema version below 51. |
 | `failed_precondition: failed precondition: the server <id> has no role node, so it holds no machine to move. Decommission it instead` | `admin server drain` of a server without the role `node`. |
 | `failed_precondition: failed precondition: the server <id> has a pending removal of the roles <roles>. Wait for its end, or cancel it with hopboxd admin server cancel-remove-role <id>` | `admin server drain` of a server with a pending removal of roles, or `admin server remove-role` with other roles than the pending removal. |

@@ -22,7 +22,7 @@ The admin API has these services:
 | `hopbox.admin.v1.LoginLinkService` | `CreateLoginLink` |
 | `hopbox.admin.v1.InstanceAdminService` | `ListInstanceAdmins`, `GrantInstanceAdmin`, `RevokeInstanceAdmin`, `ListAdminNotices`, `DismissAdminNotices` |
 | `hopbox.admin.v1.AccountService` | `ListAccountSignInMethods`, `RemoveAccountSignInMethod` |
-| `hopbox.admin.v1.ServerService` | `CreateEnrollmentToken`, `ListServers`, `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DecommissionServer`, `DrainServer`, `ListControlProcesses` |
+| `hopbox.admin.v1.ServerService` | `CreateEnrollmentToken`, `ListServers`, `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DecommissionServer`, `DrainServer`, `CancelDrain`, `ListControlProcesses` |
 | `hopbox.admin.v1.PoolService` | `CreatePool`, `GetPool`, `ListPools`, `DeletePool` |
 | `hopbox.admin.v1.SizeService` | `CreateSize`, `GetSize`, `ListSizes`, `RetireSize` |
 | `hopbox.admin.v1.OrgService` | `ListOrgs`, `SuspendOrg`, `UnsuspendOrg`, `SetOrgLimits`, `GetDefaultOrgLimits`, `SetDefaultOrgLimits` |
@@ -41,7 +41,7 @@ An admin session can make these calls, and no other call of the admin API:
 | `hopbox.admin.v1.InstallConfigService` | `GetInstallConfig`, `UpdateInstallConfig`, `GetSMTPConfig`, `SetSMTPConfig`, `ClearSMTPConfig`, `GetOAuthConfig`, `SetOAuthClient`, `ClearOAuthClient` |
 | `hopbox.admin.v1.InstanceAdminService` | `ListInstanceAdmins`, `GrantInstanceAdmin`, `RevokeInstanceAdmin`, `ListAdminNotices`, `DismissAdminNotices` |
 | `hopbox.admin.v1.AdminKeyService` | `CreateAdminKey`, `ListAdminKeys`, `RevokeAdminKey` |
-| `hopbox.admin.v1.ServerService` | `ListServers`, `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DrainServer` (only of a server that hosts no control process) |
+| `hopbox.admin.v1.ServerService` | `ListServers`, `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DrainServer` (only of a server that hosts no control process), `CancelDrain` |
 | `hopbox.admin.v1.PoolService` | `CreatePool`, `GetPool`, `ListPools`, `DeletePool` |
 | `hopbox.admin.v1.SizeService` | `CreateSize`, `GetSize`, `ListSizes`, `RetireSize` |
 | `hopbox.admin.v1.OrgService` | `ListOrgs`, `SuspendOrg`, `UnsuspendOrg`, `SetOrgLimits`, `GetDefaultOrgLimits`, `SetDefaultOrgLimits` |
@@ -1049,7 +1049,8 @@ The message `ServerDrain` has these fields:
 | `empty_checks` | int32 | The empty checks in a row: 0 to 3. |
 | `last_check_time` | `google.protobuf.Timestamp` | The time of the last empty check. Absent before the first one. |
 | `error` | string | Why the drain waits now, such as a refused decommission. Empty while the drain goes on. |
-| `stuck` | bool | True when no move runs, every machine left on the server is stranded, and a machine is stranded or the decommission was refused. A second `DrainServer` tries again. |
+| `stuck` | bool | True when no move runs, every machine left on the server is stranded, and a machine is stranded or the decommission was refused. A second `DrainServer` tries again. The drain also tries a machine that no node had room for again once a minute ([Cold move](/reference/cold-move/index.html.md#the-machines-of-the-node)). |
+| `cordoned_before` | bool | True when the server was cordoned before the drain, or an instance admin cordoned it during the drain. [CancelDrain](#canceldrain) then keeps the cordon. A drain that a release of the schema version 57 or 58 started holds no such record, and shows `true`. |
 
 The message `ServerRoleRemoval` has these fields:
 
@@ -1247,7 +1248,7 @@ The request `CordonServerRequest` has the field `id`, the ID of the server. The 
 
 ### UncordonServer
 
-Lets new machines land on a cordoned server again. The call clears the flag `cordoned`. A `cordoned` server turns `ready`. An `unresponsive` server stays `unresponsive`, and turns `ready` with its next heartbeat. An uncordon of a server that is not cordoned changes nothing. A server that drains stays cordoned until its decommission, so the call refuses it ([DrainServer](#drainserver)). The removal of the role `node` keeps its server cordoned too, so the call refuses such a server until the end or the cancel of the removal ([RemoveServerRoles](#removeserverroles)).
+Lets new machines land on a cordoned server again. The call clears the flag `cordoned`. A `cordoned` server turns `ready`. An `unresponsive` server stays `unresponsive`, and turns `ready` with its next heartbeat. An uncordon of a server that is not cordoned changes nothing. A server that drains stays cordoned until its decommission or the cancel of the drain, so the call refuses it ([DrainServer](#drainserver), [CancelDrain](#canceldrain)). The removal of the role `node` keeps its server cordoned too, so the call refuses such a server until the end or the cancel of the removal ([RemoveServerRoles](#removeserverroles)).
 
 | Item | Value |
 | --- | --- |
@@ -1309,7 +1310,7 @@ The request `DecommissionServerRequest` has the field `id`, the ID of the server
 
 Moves every machine of a server cold to other nodes, then decommissions the server ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node), [Drain a node](/guide/drain-a-node/index.html.md)). The call cordons the server and sets its state to `draining`, then returns at once. A leader job moves the machines, at most 2 at once. A machine that cannot move stays on the server with its disk: a running machine with no room keeps running, a machine whose move failed stays stopped. The `drain` of the `Server` names it. Once the server is empty, 3 empty checks in a row, one minute apart, decommission it. A drain never deletes a machine.
 
-A second call starts the drain again, as a retry. It clears the stranded list, restarts `start_time`, and counts the empty checks from zero. A server that drains stays cordoned, so `UncordonServer` refuses it with `failed precondition: the server <id> drains, and stays cordoned until the drain decommissions it. A drain cannot stop. Follow it with hopboxd admin server get, and fix the reasons of its stranded machines. For a server that Terraform manages, run terraform destroy, which waits for the drain`. An `unresponsive` server keeps that state with the flag set, and turns `draining` at its next heartbeat.
+A second call starts the drain again, as a retry. It clears the stranded list, restarts `start_time`, and counts the empty checks from zero. The drain records whether the server was cordoned at its first start, and a retry keeps that record. `CordonServer` during the drain sets it too. [CancelDrain](#canceldrain) ends the drain. A server that drains stays cordoned, so `UncordonServer` refuses it with `failed precondition: the server <id> drains, and stays cordoned until the drain decommissions it. To keep the server, cancel the drain with hopboxd admin server cancel-drain <id>`. An `unresponsive` server keeps that state with the flag set, and turns `draining` at its next heartbeat.
 
 | Item | Value |
 | --- | --- |
@@ -1368,9 +1369,28 @@ Ends the pending removal of roles from a server that cannot finish. An example i
 
 The request `CancelRoleRemovalRequest` has the field `id`, the ID of the server. The response `CancelRoleRemovalResponse` has the field `server`, the `Server` after the cancel.
 
+### CancelDrain
+
+Ends the drain of a server (plan question Q102). An example is a drain that started by mistake. No new move starts. Each move from the server that started since the first start of the drain, and whose source still stops its machine, ends as `CancelMove` ends it ([CancelMove](#cancelmove)). Its machine keeps its own target on the server, so a running machine boots there again. Each move whose target pulls the disk goes on to its end, because its machine stopped already, and a cancel of the pull leaves it stopped on the source. Such a move ends `done` on the target, or fails and gives the machine back by the rules of a move ([Cold move](/reference/cold-move/index.html.md#end-of-a-move)). A machine that moved stays on its new node. The stranded machines stay on the server.
+
+The server turns `cordoned` when `drain.cordoned_before` is `true`, and `ready` otherwise. A `shutting_down` server turns the same way. An `unresponsive` server keeps that state with the flag of its cordon, and its next heartbeat gives it the state of the cordon. The row of the drain goes.
+
+`hopboxd admin server cancel-drain` calls it ([hopboxd](/reference/hopboxd/index.html.md#admin-server-cancel-drain)), and so does the button "Cancel drain" of the Admin area ([Use the Admin area](/guide/admin-area/index.html.md)). For a server that Terraform manages, a cancel during `terraform destroy` fails the destroy ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#drain-of-a-server)).
+
+The call refuses while a live control process runs a release of the schema version below 59. The leader of such a release does not know the cancel, and can set the drain going again.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.ServerService/CancelDrain` |
+| Policy action | `server.drain_cancel`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no. A second call fails, because the drain is gone. |
+| Audit entry | action `server.drain_cancel`, target kind `server`, target ID the server ID, details `old_state`, `state`, `cordoned` (`true` or `false`), `moved`, the count of machines that moved before the cancel, `canceled_moves`, and `pulling`, the moves that go on. Each move that the cancel ends writes the entry `machine.cancel_move` with the detail `drain`. |
+
+The request `CancelDrainRequest` has the field `id`, the ID of the server. The response `CancelDrainResponse` has the field `server`, the `Server` after the cancel, without a `drain`.
+
 ### Errors of ServerService
 
-`GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `SetServerPeerAddress`, `DecommissionServer`, `DrainServer`, `RemoveServerRoles`, and `CancelRoleRemoval` check the policy first, and then the ID.
+`GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `SetServerPeerAddress`, `DecommissionServer`, `DrainServer`, `RemoveServerRoles`, `CancelRoleRemoval`, and `CancelDrain` check the policy first, and then the ID.
 
 | Error | Cause |
 | --- | --- |
@@ -1383,8 +1403,8 @@ The request `CancelRoleRemovalRequest` has the field `id`, the ID of the server.
 | `invalid_argument` with `invalid argument: invalid label: ...` | `SetServerLabels` with a label that breaks a rule. The rest of the message names the label and the rule. |
 | `failed_precondition` with `failed precondition: the server <id> holds <n> machines, such as <names>. Drain it first, so that its machines move to other nodes, or delete them` | `DecommissionServer` of a server with machines. `<names>` holds up to 5 names. Without names, the message reads `holds <n> machines. Drain it first, ...`. |
 | `failed_precondition` with `failed precondition: the move <move id> of the machine <machine id> runs from or to the server <id>. Wait for its end, or cancel it` | `DecommissionServer` of a server that a move runs from or to. |
-| `failed_precondition` with `failed precondition: the server <id> keeps a copy of the disk of the machine <name>, which a failed move left <state> on another node. Delete the machine, or keep the server` | `DecommissionServer` of a server that keeps the only copy of a disk after a failed move. |
-| `failed_precondition` with `failed precondition: the server <id> drains, and stays cordoned until the drain decommissions it. A drain cannot stop. Follow it with hopboxd admin server get, and fix the reasons of its stranded machines. For a server that Terraform manages, run terraform destroy, which waits for the drain` | `UncordonServer` of a server that drains. |
+| `failed_precondition` with `failed precondition: the server <id> keeps a copy of the disk of the machine <name>, which a failed move left <state> on another node. Give the machine back with hopboxd admin machine move --cancel --give-back, delete it, or keep the server` | `DecommissionServer` of a server that keeps the only copy of a disk after a failed move. |
+| `failed_precondition` with `failed precondition: the server <id> drains, and stays cordoned until the drain decommissions it. To keep the server, cancel the drain with hopboxd admin server cancel-drain <id>` | `UncordonServer` of a server that drains. |
 | `failed_precondition` with `failed precondition: the control process <process> knows the migrations up to <n>, and only a hopboxd that knows migration 51 drains servers. Upgrade it first` | `DrainServer` while a live control process runs a release of the schema version below 51. |
 | `failed_precondition` with `failed precondition: the server <id> has no role node, so it holds no machine to move. Decommission it instead` | `DrainServer` of a server without the role `node`. |
 | `permission_denied` with `permission denied: the server <id> hosts a control process, so only root on a control server or an admin API key drains it` | `DrainServer` by an admin session of a server that hosts a control process. A new sign-in does not change it. |
@@ -1400,7 +1420,9 @@ The request `CancelRoleRemovalRequest` has the field `id`, the ID of the server.
 | `failed_precondition` with `failed precondition: the control process <process> knows the migrations up to <n>, and only a hopboxd that knows migration 56 removes roles from servers. Upgrade it first` | `RemoveServerRoles` while a live control process runs a release of the schema version below 56. |
 | `failed_precondition` with `failed precondition: the roles <roles> cannot leave the server <id>: <reason>` | `RemoveServerRoles` that breaks a check. The reason is one of these: `the server runs hopboxd <version>, whose heartbeats name no feature remove-role. Upgrade the server first`, `no other ready server keeps the role <role>, and the install needs one`, `no other ready edge server holds a floating address, and the public addresses of the install must be floating addresses. Give an edge server a floating address first`, `no other ready node exists, so the machines of the server have nowhere to go`, or `the public addresses of the install name the address <address> of the server, so the zone still sends traffic to it. Set the public addresses without it first: hopboxd admin config set --public-address`. |
 | `failed_precondition` with `failed precondition: the server <id> has no pending removal of a role` | `CancelRoleRemoval` of a server without a removal. |
-| `aborted` with `conflict: moves from the server <id> kept starting during the cancel. Retry` | `CancelRoleRemoval` while moves of the removal kept starting, or the removal changed, in 3 tries. |
+| `aborted` with `conflict: moves from the server <id> kept starting during the cancel. Retry` | `CancelRoleRemoval` while moves of the removal kept starting, or the removal changed, in 3 tries. `CancelDrain` while moves of the drain kept starting, or a new drain replaced the drain, in 3 tries. |
+| `failed_precondition` with `failed precondition: the server <id> does not drain` | `CancelDrain` of a server without a drain. |
+| `failed_precondition` with `failed precondition: the control process <process> knows the migrations up to <n>, and only a hopboxd that knows migration 59 cancels drains. Upgrade it first` | `CancelDrain` while a live control process runs a release of the schema version below 59. |
 
 Example:
 
@@ -1875,18 +1897,22 @@ The response `MoveMachineResponse` has the field `move`, a `Move`. [Cold move](/
 
 Ends the cold move of a machine that runs ([Cold move](/reference/cold-move/index.html.md#pull-deadline-and-cancel)). The move ends in the state `failed`, with the error `an instance admin canceled the move`. A machine in `stopping` gets its own target back on its node. A machine in `pulling` goes back to its source node with its disk, stopped, and the target node removes what it pulled. A machine that is no longer in `moving` on the target node stays there ([Cold move](/reference/cold-move/index.html.md#a-step-that-an-older-control-process-accepted)).
 
+With `give_back`, the call also asks the target node to give such a machine back to its source node, also after its move failed (plan question Q102, [Cold move](/reference/cold-move/index.html.md#give-back)). The target node answers through its control channel. It gives the machine back only when it never proved the pull of the move. Otherwise it keeps the machine, and the source removes its copy. The call returns at once with `give_back` `MOVE_GIVE_BACK_REQUESTED`. Read the answer in `give_back` of the move with `ListMoves`. A `give_back` on a move whose machine stays on its source, or goes back there, only cancels the move.
+
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.MachineService/CancelMove` |
 | Policy action | `machine.cancel_move`: `local_root` and `admin_key` |
-| Idempotent option | no. A second call fails with `failed_precondition`, because the move no longer runs. |
-| Audit entry | action `machine.cancel_move`, org the org of the machine, target kind `machine`, details `name`, `move`, and `state`, the state of the move before the cancel. A move in `pulling` also gets the entry `machine.move` of a failed move, with the actor `system`. |
+| Idempotent option | no. A second call fails with `failed_precondition`, because the move no longer runs. A second call with `give_back` asks again while the give-back waits for its answer. |
+| Audit entry | action `machine.cancel_move`, org the org of the machine, target kind `machine`, details `name`, `move`, and `state`, the state of the move before the cancel, and `give_back` `requested` for a give-back. A move in `pulling` also gets the entry `machine.move` of a failed move, with the actor `system`. The answer of the target writes the entry `machine.move` with the actor `system` and `give_back` `done` or `kept`. |
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `id`, `name` | string | | Name the machine. |
+| `give_back` | bool | `false` | Also ask the target node to give back a machine that the move left there while the source keeps a copy of its disk. |
+| `withdraw_give_back` | bool | `false` | Take back a give-back that waits for the answer of the target node, in place of a cancel. The move gets back its state from before the request, without `give_back` and without its note. A machine without such a give-back gets `failed_precondition` with `the machine has no give-back that waits for an answer`. With `give_back` too, the call fails with `invalid_argument`. The audit entry is `machine.cancel_move` with `give_back` `withdrawn`. |
 
-The response `CancelMoveResponse` has the field `move`, a `Move`. A machine without a move that runs gets `failed_precondition` with the message `the machine has no move that runs`.
+The response `CancelMoveResponse` has the field `move`, a `Move`. A machine without a move that runs gets `failed_precondition` with the message `the machine has no move that runs`. With `give_back`, the message is `the machine has no move that runs, and no failed move left it on its node while another node keeps a copy of its disk`. A give-back also refuses with `failed_precondition` when the target node reports no feature `give-back`, or while a live control process runs a release of the schema version below 59 ([Cold move](/reference/cold-move/index.html.md#give-back)).
 
 ### ListMoves
 
@@ -1921,6 +1947,15 @@ The response `ListMovesResponse` has the fields `moves`, a repeated `Move`, and 
 | `cleanup_server_id` | string | The UUID of the node that still holds an old copy of the files of the machine: the source after a move that is done, the target after a move that failed. Empty once that node removed them. |
 | `create_time` | Timestamp | When the move started. |
 | `update_time` | Timestamp | When the move changed last. |
+| `give_back` | `MoveGiveBack` | The give-back that an instance admin asked for, with the answer of the target node. |
+| `give_back_note` | string | Why the target node withholds its answer to a give-back that waits, such as a disk file on the target without the proof of the pull ([Cold move](/reference/cold-move/index.html.md#give-back)). Empty otherwise. |
+
+| `MoveGiveBack` | Meaning |
+| --- | --- |
+| `MOVE_GIVE_BACK_UNSPECIFIED` | No give-back was asked for. |
+| `MOVE_GIVE_BACK_REQUESTED` | The target node did not answer yet. |
+| `MOVE_GIVE_BACK_DONE` | The target node never proved the pull, and the machine went back to its source node, stopped. The target removes what it pulled. |
+| `MOVE_GIVE_BACK_KEPT` | The target node holds the whole disk of the move, so it keeps the machine. The source removes its copy. |
 
 | `MoveState` | Meaning |
 | --- | --- |

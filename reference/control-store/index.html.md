@@ -844,6 +844,8 @@ The state changes in these steps:
 | `CordonServer` | `ready` | `cordoned`. The flag is set in every state but `decommissioned`. |
 | `UncordonServer` | `cordoned` | `ready`. The flag is cleared in every state but `decommissioned`. It refuses a server with a row in `server_drains`. |
 | `DrainServer` | `ready` or `cordoned` | `draining`, with the flag set. An `unresponsive` server keeps its state with the flag set. |
+| `CancelDrain` | `draining` or `shutting_down` | `cordoned` or `ready`, with the flag of `server_drains.cordoned_before`. An `unresponsive` server keeps its state, and gets the flag. |
+| The drain job, for a server without a row in `server_drains` | `draining` or `shutting_down` | `cordoned` if the flag `cordoned` is set, else `ready`. A heartbeat that raced a cancel can leave such a server. |
 | The drain, the first empty check | `draining` | `shutting_down` |
 | The drain, a check that finds the server not empty, or `DrainServer` again | `shutting_down` | `draining` |
 | `DecommissionServer`, and the third empty check of the drain | `ready`, `cordoned`, `unresponsive`, `draining`, or `shutting_down` | `decommissioned`, for good. It refuses a server with a row of `machines` whose `current_state` is not `deleted`, or whose `allocations` are not empty, a server that a move runs from or to, and a server that keeps a copy of a disk after a failed move. It deletes the row of `server_drains`, and clears `cleanup_server_id` of the moves that name the server. It refuses a server that shares its host with the last live control process while another server is not `decommissioned` ([control_processes](#control_processes)). |
@@ -1266,6 +1268,8 @@ Migration `0050_machine_moves.sql`. One row per cold move of a machine ([Cold mo
 | `version` | `bigint` | The row version. |
 | `created_at` | `timestamptz` | The start of the move. The stop timeout counts from it. |
 | `updated_at` | `timestamptz` | The last change. In `pulling`, it is the time of the hand-off or of the last progress of the pull, and the pull deadline counts from it. |
+| `give_back` | `text`, can be null | The give-back of a failed move that an instance admin asked for: `requested`, then `done` or `kept` by the answer of the target node ([Cold move](/reference/cold-move/index.html.md#give-back)). Null without one. Migration `0059_drain_cancel.sql` adds it. |
+| `give_back_note` | `text` | Why the target node withholds its answer to a requested give-back. Empty otherwise, and again after the answer or a withdraw. Migration `0059_drain_cancel.sql` adds it. |
 
 The unique partial index `machine_moves_active` lets one move of a machine run at a time, in `stopping` or `pulling`. The index `machine_moves_serving` lists the disks that a source serves, and `machine_moves_cleanup` the old copies of a node. A change of a move locks the machine row first, then the move row. The rows stay after the move as its record.
 
@@ -1285,10 +1289,13 @@ Migration `0051_server_drains.sql`. One row per server that drains ([Cold move](
 | `version` | `bigint` | `1` | The row version. |
 | `created_at` | `timestamptz` | the time of the insert | The start of the first drain. |
 | `updated_at` | `timestamptz` | the time of the insert | The last change. |
+| `cordoned_before` | `boolean`, can be null | null | True when the server was cordoned before the drain, or `CordonServer` ran during the drain. A retry keeps it. A cancel of the drain gives the server this cordon. Null for a drain that a release of the schema version 57 or 58 started, and its cancel keeps the cordon. Migration `0059_drain_cancel.sql` adds it. |
+
+The cancel of a drain deletes the row ([Cold move](/reference/cold-move/index.html.md#cancel-of-a-drain)). Migration `0059_drain_cancel.sql` has the line `-- oldest_schema_version: 57`. A release of the schema version 57 or 58 never reads its columns, and writes no `cordoned_before`. While a live row of `control_processes` has a `schema_version` below 59, `CancelDrain` refuses.
 
 ## drain_strands
 
-Migration `0051_server_drains.sql`. One row per machine that the drain of a server cannot move, with the reason. A retry of the drain drops the rows, and the drain tries each machine again.
+Migration `0051_server_drains.sql`. One row per machine that the drain of a server cannot move, with the reason. A retry of the drain drops the rows, and the drain tries each machine again. The drain also tries a machine with `retry_at` again once that time passed ([Cold move](/reference/cold-move/index.html.md#the-machines-of-the-node)).
 
 | Column | Type | Description |
 | --- | --- | --- |
@@ -1298,6 +1305,7 @@ Migration `0051_server_drains.sql`. One row per machine that the drain of a serv
 | `version` | `bigint` | The row version. |
 | `created_at` | `timestamptz` | The time of the row. |
 | `updated_at` | `timestamptz` | The last change. |
+| `retry_at` | `timestamptz`, can be null | The time at which the drain tries the machine again, for a machine that no node had room for. Null for the other reasons, which wait for a new `DrainServer`. Migration `0059_drain_cancel.sql` adds it. |
 
 The primary key is `(server_id, machine_id)`. The index `drain_strands_machine` lists the rows of a machine.
 

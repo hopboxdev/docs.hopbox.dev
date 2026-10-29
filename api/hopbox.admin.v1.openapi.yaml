@@ -1181,7 +1181,8 @@ paths:
       summary: CancelMove
       description: |-
         CancelMove ends the move of a machine that runs. The machine stays on its source node with its disk, or goes
-         back there, stopped. The target node removes what it pulled.
+         back there, stopped. The target node removes what it pulled. With give_back, it also asks the target node
+         to give back a machine that a failed move left there while its source keeps a copy of its disk.
       operationId: hopbox.admin.v1.MachineService.CancelMove
       parameters:
         - name: Connect-Protocol-Version
@@ -1892,6 +1893,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.ListPoolsResponse'
+  /hopbox.admin.v1.ServerService/CancelDrain:
+    post:
+      tags:
+        - hopbox.admin.v1.ServerService
+      summary: CancelDrain
+      description: |-
+        CancelDrain ends the drain of a server. No new move starts. A move of
+         the drain whose source still stops its machine ends as CancelMove ends
+         it, so the machine keeps its own target on the server. A move whose
+         target pulls the disk goes on to its end. The server turns cordoned or
+         ready, as it was before the drain.
+      operationId: hopbox.admin.v1.ServerService.CancelDrain
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.CancelDrainRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.CancelDrainResponse'
   /hopbox.admin.v1.ServerService/CancelRoleRemoval:
     post:
       tags:
@@ -2876,6 +2921,26 @@ components:
       title: CPUFingerprint
       additionalProperties: false
       description: CPUFingerprint describes the CPU of a server.
+    hopbox.admin.v1.CancelDrainRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the ID of the server.
+      title: CancelDrainRequest
+      additionalProperties: false
+      description: CancelDrainRequest names a server.
+    hopbox.admin.v1.CancelDrainResponse:
+      type: object
+      properties:
+        server:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.Server'
+          title: server
+      title: CancelDrainResponse
+      additionalProperties: false
+      description: CancelDrainResponse holds the server after the cancel.
     hopbox.admin.v1.CancelMoveRequest:
       type: object
       anyOf:
@@ -2907,6 +2972,21 @@ components:
                     - id
                 - required:
                     - name
+      properties:
+        giveBack:
+          type: boolean
+          title: give_back
+          description: |-
+            give_back asks the target node of the move to give the machine back to the source node, when the move fails
+             or failed while the machine was not in the state moving on the target, and the source keeps a copy of its
+             disk. The target node gives it back only when it never proved the pull of the move. Otherwise it keeps the
+             machine, and the source removes its copy. The answer shows in give_back of the move.
+        withdrawGiveBack:
+          type: boolean
+          title: withdraw_give_back
+          description: |-
+            withdraw_give_back takes back a give-back that waits for the answer of the target node. The move gets back its
+             state from before the request, and the spec of the target no longer names it. It cancels no move.
       title: CancelMoveRequest
       description: CancelMoveRequest names the machine whose move ends.
     hopbox.admin.v1.CancelMoveResponse:
@@ -4424,9 +4504,29 @@ components:
             - $ref: '#/components/schemas/google.protobuf.Timestamp'
           title: update_time
           description: update_time is when the move changed last.
+        giveBack:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.MoveGiveBack'
+          title: give_back
+          description: give_back is the give-back that an instance admin asked for, with the answer of the target node.
+        giveBackNote:
+          type: string
+          title: give_back_note
+          description: |-
+            give_back_note says why the target node does not answer a give-back that waits, such as a disk file on the
+             target without the proof of the pull. It is empty otherwise.
       title: Move
       additionalProperties: false
       description: Move is one cold move of a machine.
+    hopbox.admin.v1.MoveGiveBack:
+      type: string
+      title: MoveGiveBack
+      enum:
+        - MOVE_GIVE_BACK_UNSPECIFIED
+        - MOVE_GIVE_BACK_REQUESTED
+        - MOVE_GIVE_BACK_DONE
+        - MOVE_GIVE_BACK_KEPT
+      description: MoveGiveBack is the give-back of a failed move that an instance admin asked for.
     hopbox.admin.v1.MoveMachineRequest:
       type: object
       anyOf:
@@ -5271,6 +5371,12 @@ components:
           description: |-
             stuck is true when the drain cannot go on by itself: no move runs, and each machine left
              on the server is stranded, or the error names a refusal. A second DrainServer tries again.
+        cordonedBefore:
+          type: boolean
+          title: cordoned_before
+          description: |-
+            cordoned_before is true when the server was cordoned before the drain, or an instance admin
+             cordoned it during the drain. CancelDrain then keeps the cordon.
       title: ServerDrain
       additionalProperties: false
       description: ServerDrain is the drain of a server.
