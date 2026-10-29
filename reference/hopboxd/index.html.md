@@ -257,7 +257,7 @@ hopboxd: enrolled as the server 01a14404-ce7b-72d9-b18e-5006c3e462db. hopboxd ru
 01a14404-ce7b-72d9-b18e-5006c3e462db
 ```
 
-A server that is enrolled already, and whose config lists a role beyond those of its identity, adds the new roles in place ([Enrollment and the install PKI](/reference/enrollment/index.html.md#add-roles-to-an-enrolled-server)). The token must allow each new role. A server whose config leaves out a role of its identity ends the removal of that role instead ([Enrollment and the install PKI](/reference/enrollment/index.html.md#remove-roles-from-an-enrolled-server)). The token must allow each role that stays. The server keeps its ID. `enroll` then prints `hopboxd: the server <id> has the roles <roles> now. Restart hopboxd to use them: systemctl restart hopboxd`. `hopboxd install` restarts it on its own.
+A server that is enrolled already, and whose config lists a role beyond those of its identity, adds the new roles in place ([Enrollment and the install PKI](/reference/enrollment/index.html.md#add-roles-to-an-enrolled-server)). The token must allow each new role. A server whose config leaves out a role of its identity ends the removal of that role instead ([Enrollment and the install PKI](/reference/enrollment/index.html.md#remove-roles-from-an-enrolled-server)). The token must allow each role that stays. The server keeps its ID. `enroll` then prints `hopboxd: the server <id> has the roles <roles> now. Restart hopboxd to use them: systemctl restart hopboxd`. `hopboxd install` restarts it on its own. On the installed server, `enroll` takes the lock of the install, and writes the marker `/opt/hopbox/.restart-pending` before the call to the control role. It keeps the marker once the identity on disk changed. If an install, an upgrade, or another `enroll` holds the lock, `enroll` stops before the call with `another hopboxd install, upgrade, or enroll runs on this server. Wait for it to end`. So if you forget the restart, or `enroll` stops after the save, the next `hopboxd install` restarts `hopboxd`. A restart by hand leaves the marker, so that install restarts `hopboxd` once more. The installed server is the one whose config `/etc/hopbox/hopboxd.toml` names the same `data_dir` as `--config`.
 
 
 | Error | Cause |
@@ -425,7 +425,7 @@ The log records go to standard error between these lines, as JSON ([Logs](#logs)
 | `<dir> has mode <mode>, which lets group or others change it, ...` | A dir of the host that the install writes into, such as `/etc/systemd/system`, is writable by group or others. |
 | `/usr/local/bin/hopboxd is not a symlink, ...` | A regular file is there, for example a `hopboxd` from a build from source. |
 | `/etc/subuid gives <user> the IDs <a> to <b>, which overlap the IDs 1879048192 to 1879113727 of the jailer` | Another range takes IDs of the jailer. `/etc/passwd` and `/etc/group` give a similar error for a user or a group with such an ID. |
-| `another hopboxd install or upgrade runs on this server. Wait for it to end` | Another run holds `/opt/hopbox/.lock`. |
+| `another hopboxd install, upgrade, or enroll runs on this server. Wait for it to end` | Another run holds `/opt/hopbox/.lock`. |
 | `--control-url and --label need a role that enrolls: node, dns, edge, or more than one` | `--control-url` or `--label` on a server with only the control role. |
 | `--dns-listen needs the role dns` | `--dns-listen` on a server without the role `dns`. |
 | `--edge-public-ipv4 needs the role edge` | `--edge-public-ipv4` on a server without the role `edge`. |
@@ -542,7 +542,7 @@ A release without the feature `floating-addresses` refuses the key `edge.floatin
 | --- | --- |
 | `give --bundle or --rollback` | Neither flag, or both. |
 | `--bundle needs --sha256: ...` | `--bundle` without `--sha256`. |
-| `another hopboxd install or upgrade runs on this server. Wait for it to end` | Another run holds `/opt/hopbox/.lock`. |
+| `another hopboxd install, upgrade, or enroll runs on this server. Wait for it to end` | Another run holds `/opt/hopbox/.lock`. |
 | `the control store has the schema migration <n>, which runs only with a hopboxd that knows migration <o> or later, and hopboxd <version> knows the migrations up to <m>. ...` | The release cannot run on the database. Nothing changed. |
 | `read the schema version of the control store: ...` | No Postgres answers, and neither the Postgres of the current release nor the one of the new release starts. Nothing changed. |
 | `--sha256 checks a bundle file, so it needs --bundle` | `--sha256` with `--rollback`. |

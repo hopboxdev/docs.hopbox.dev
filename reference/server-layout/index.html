@@ -139,7 +139,7 @@
 <td>root</td>
 <td>0644</td>
 <td>every role</td>
-<td>Exists from the first change of the config, the release, or a unit, or from just before the change of the identity, until the restart of <code dir="auto">hopboxd</code> that runs it. A run that stopped between the two leaves it, and the next install then restarts <code dir="auto">hopboxd</code>.</td>
+<td>Exists from the first change of the config, the release, or a unit, or from just before the change of the identity, until the restart of <code dir="auto">hopboxd</code> that runs it. A run that stopped between the two leaves it, and the next install then restarts <code dir="auto">hopboxd</code>. After <code dir="auto">hopboxd enroll</code> changes the roles of an enrolled server, the marker stays until the next install, also when you restart <code dir="auto">hopboxd</code> by hand.</td>
 </tr>
 <tr>
 <td><code dir="auto">/usr/local/bin/hopboxd</code></td>

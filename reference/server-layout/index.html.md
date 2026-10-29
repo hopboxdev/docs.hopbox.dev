@@ -15,7 +15,7 @@ The install makes the paths of the roles in the bootstrap config. `<data_dir>` i
 | `/opt/hopbox/current` | root | symlink | every role | Points to `releases/<version>` of the release that runs. The unit runs `/opt/hopbox/current/hopboxd`, and the config names `/opt/hopbox/current/postgres`. |
 | `/opt/hopbox/previous` | root | symlink | every role | Points to the release that ran before, for a rollback. A first install has none. |
 | `/opt/hopbox/.lock` | root | 0600 | every role | The lock of `install` and `upgrade`. See [Releases](#releases). |
-| `/opt/hopbox/.restart-pending` | root | 0644 | every role | Exists from the first change of the config, the release, or a unit, or from just before the change of the identity, until the restart of `hopboxd` that runs it. A run that stopped between the two leaves it, and the next install then restarts `hopboxd`. |
+| `/opt/hopbox/.restart-pending` | root | 0644 | every role | Exists from the first change of the config, the release, or a unit, or from just before the change of the identity, until the restart of `hopboxd` that runs it. A run that stopped between the two leaves it, and the next install then restarts `hopboxd`. After `hopboxd enroll` changes the roles of an enrolled server, the marker stays until the next install, also when you restart `hopboxd` by hand. |
 | `/usr/local/bin/hopboxd` | root | symlink | every role | Points to `/opt/hopbox/current/hopboxd`, so `sudo hopboxd admin ...` runs the current release. |
 | `/etc/hopbox` | root | 0755 | every role | The config dir. |
 | `/etc/hopbox/hopboxd.toml` | root | 0644 | every role | The bootstrap config ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md)). It holds no secret. |
