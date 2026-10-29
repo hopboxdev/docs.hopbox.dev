@@ -80,7 +80,7 @@ An enrollment token lets one server enroll into one pool.
 | `<secret>` | 32 random bytes as 64 lowercase hex digits |
 | `<cahash>` | the hash of the install CA, 64 lowercase hex digits |
 | Lifetime | 1 hour from its creation by default. The call that makes it can set another `ttl`, at most 24 hours. |
-| Use | once. The first enrollment that uses the token spends it. A retry of that enrollment with the same key gets the same certificate again, until the token expires ([Retry after a lost answer](#retry-after-a-lost-answer)). |
+| Use | once. The first enrollment that uses the token spends it. A retry of that enrollment with the same key gets the same certificate again, until the token expires ([Retry after a lost answer](#retry-after-a-lost-answer)). A token that names a server can also resync that server ([Resync after the end of the token](#resync-after-the-end-of-the-token)). |
 | Scope | one pool, by default the pool `default` |
 | Peer address | none by default. A token can name the peer address of its server. The enrollment must then come from that address ([Peer addresses](#peer-addresses)). |
 | Storage | the table `enrollment_tokens` ([Control store tables](/reference/control-store/index.html.md#enrollment_tokens)). It keeps the SHA-256 of the secret, never the secret. |
@@ -223,8 +223,8 @@ The answer of `Enroll` can get lost after the control role used the token, for e
 
 1. Before the call, the server saves its new key and its certificate request in `<data_dir>/server/pending.pem`, with the token and the roles ([Identity files](#identity-files)).
 2. A later enrollment with the same token and the same roles sends the same request again. `hopboxd enroll` does it when it gets the same token. `hopboxd install` without `--enroll-token` takes the token of `pending.pem` when its roles are the enrolling roles that the install asks for ([hopboxd](/reference/hopboxd/index.html.md#install)). So a run of the Terraform provider that gives no token, because the registry holds the new roles already, ends the change. After a lost answer, run the enrollment again without a token or with the same token. Do not give a new token: an enrollment with another token replaces `pending.pem` with a new key before its call, so the key of the used token is gone.
-3. A server with an identity calls with its current certificate first. If the control role refuses that call with `unauthenticated`, the server calls once more without a client certificate.
-4. The control role finds the token used. It looks for a certificate of the server of the token that holds the key of the request, and that is not retired and not expired. The request must parse, and its signature must be valid. Its roles must be the roles of that certificate, in the same order. The registry must hold the same roles, and the server must not be decommissioned. A caller with a server certificate must be that server. The address of the call must pass the rule of [Peer addresses](#peer-addresses).
+3. A server with an identity calls with its current certificate first. If the internal listener refuses that certificate with `unauthenticated` and the message `the credential is not valid`, the server calls once more without a client certificate. A refusal of the token, with another message, gets no second call.
+4. The control role finds the token used. It looks for a certificate of the server of the token that holds the key of the request, and that is not retired and not expired. The request must parse, and its signature must be valid. Its roles must be the roles of that certificate, in any order. The registry must hold the same roles, and the server must not be decommissioned. A caller with a server certificate must be that server. The address of the call must pass the rule of [Peer addresses](#peer-addresses).
 5. The token must not be expired. So the retry works for the lifetime of the token: 1 hour by default, and at most 24 hours.
 6. The control role answers with the same certificate, the server ID, the CA, and the pool. It changes nothing in the registry and issues no certificate. It writes the audit entry `server.enroll_retry`.
 7. The server saves the identity and removes `pending.pem`. `hopboxd install` then restarts `hopboxd` with it.
@@ -235,7 +235,41 @@ The audit entry `server.enroll_retry` has the actor of the caller, most often `a
 
 A control process of a release before this rule refuses each retry as a used token. During an upgrade of the control servers, a retry that reaches such a process fails. So the server keeps `pending.pem` after a refused retry, and a later retry at a control process of this release succeeds within the lifetime of the token. The server does not know the end of its token. It writes the header `Not-After` in `pending.pem`: the time that the server saved `pending.pem`, before its first call, plus 24 hours, the longest lifetime of a token. A refused retry after that time removes `pending.pem`. Until then, a run of `hopboxd install` without a token after a lost answer sends the token again and fails with each refusal. The rule needs no migration.
 
-These rules are build defaults of Q101, not owner decisions: the window of the lifetime of the token, the second call without a client certificate, and the token of `pending.pem` for `hopboxd install`. After the end of the token, no call gives the server its new identity, and the registry keeps refusing the old certificate. So run the provider or `hopboxd install` again within the lifetime of the token.
+These rules are build defaults of Q101, not owner decisions: the window of the lifetime of the token, the second call without a client certificate, and the token of `pending.pem` for `hopboxd install`. After the end of the token, no retry gives the server its new identity, and the registry keeps refusing the old certificate. Then a resync with a new token gives it a certificate ([Resync after the end of the token](#resync-after-the-end-of-the-token)).
+
+### Resync after the end of the token
+
+A server that lost the answer of an add or of the end of a removal, and whose token then expired, has no retry. The registry refuses its old certificate, because its roles differ from the registry. A resync gives such a server a new certificate with the roles of the registry. The server proves the key of its old certificate, and calls with a new token that an admin made for it. The owner decided this on 2026-10-29 (plan question Q105).
+
+To resync a server:
+
+1. On a control server, read the roles of the server in the registry: `sudo hopboxd admin server get <id>`.
+2. Make a token that names the server and allows each of those roles, such as `sudo hopboxd admin enrollment-token create --server <id> --roles node,dns --peer-address <peer address>`.
+3. On the server, run the install of the change again with that token, such as `sudo hopboxd install --roles node,dns --enroll-token <token>`. The roles that enroll must be the roles of the registry.
+
+`hopboxd enroll --token <token>` also resyncs, and then you restart `hopboxd`. The resync takes these steps:
+
+1. The server calls `Enroll` with its old certificate first, as for a change of its roles. The internal listener refuses that certificate with `the credential is not valid`.
+2. If `pending.pem` holds a pending enrollment for the same token and the same roles, the server sends that request again without a client certificate ([Retry after a lost answer](#retry-after-a-lost-answer)).
+3. If the control role refuses that call too, or no such pending enrollment exists, the server calls again without a client certificate. Its request is for the key of its old identity. An enrolled server sends no hardware on any call. So a token that names no server fails as a new server without hardware, and never enrolls a second server. The server then adds to the error: `A resync of the server <id> needs a token that names it, such as from hopboxd admin enrollment-token create --server <id>, and a control process of this release`. If the answer of the call of step 2 got lost, the server makes no call of step 3, and keeps `pending.pem` for the next run.
+4. The control role finds the token unused, so the call is no retry. The caller has no client certificate, and the token names a server, so the call is a resync. The token must be live, and it must allow each role of the request.
+5. It takes the lock of the server registry, and checks the address of the call ([Peer addresses](#peer-addresses)). It locks the row of the server, and checks the peer address and the pool of the token, as for an add. A token that names a peer address gives that address to a server without one. A token whose peer address another server holds fails with `already_exists`.
+6. Under the lock of the row, the control role looks for a certificate of the server of the token that holds the key of the request, and that is not retired and not expired. The request must parse, and its signature must be valid. The first use of another certificate retires the old one under the same lock, so a retirement cannot come between this check and the issue.
+7. The server must not be decommissioned. The roles of the request must be the roles of the server in the registry, in any order. `hopboxd install` sends the roles in its own order, so the order does not count.
+8. The control role issues a certificate for the key with the roles in the order of the registry, and uses the token. It changes nothing else in the registry, other than the peer address of step 5. It writes the audit entry `server.enroll_resync`.
+9. The server saves the new certificate with its old key, and removes `pending.pem`. `hopboxd install` then restarts `hopboxd` with it.
+
+Each refusal comes before the use of the token, so the token stays unused, and nothing changes. If the answer of the resync gets lost, run the same command again with the same token within its lifetime. That call is a retry of the resync: its request is for the old key, and the control role sends the certificate of the resync again. The old certificate and the certificate of the resync hold the same key, so a retry takes the newest live certificate of that key. So a retry of the token of the lost add with the old key, within the lifetime of that token, also gets the certificate of the resync. Its audit entry `server.enroll_retry` then names the token of the add. The caller proves the key in both cases, so it gets no more than the resync gave.
+
+A thief needs the private key of a live certificate of the server, and a token that an admin made for that server. With both, the thief gets the certificate that the server gets: the roles of the registry, with a new lifetime of 30 days.
+
+A server whose old certificate expired has no resync. The internal listener checks the validity period of a client certificate in the TLS handshake, so the first call fails before `Enroll`, and the server never gets `the credential is not valid`. Such a server needs a decommission and a new enrollment. A server whose old certificate a renewal retired gets the refusal of its key at step 6. Its first call also writes the alarm of a retired certificate ([Client certificates on each call](#client-certificates-on-each-call)).
+
+The audit entry `server.enroll_resync` has the actor of the caller, most often `anonymous`. Its target is the server: the target kind `server` and the server ID. Its details are `pool`, `token_id`, `roles`, `serial`, the serial of the new certificate, and `old_serial`, the serial of the certificate whose key the request holds. It also has `peer_address` when the token gave the server its peer address. The log record is `resynced a server`, with `component=service` and the fields `server`, `serial`, and `roles`.
+
+A control process of a release before this rule refuses a resync with `invalid argument: the server reports no hardware. Update hopboxd on the server`. During an upgrade of the control servers, run the resync again once each control process runs this release. The rule needs no migration.
+
+These rules are build defaults of Q105, not owner decisions: the key of the old identity as the proof, the token of `hopboxd admin enrollment-token create --server` for every role of the registry, the call without a client certificate after the refusal of the old certificate, and the retry of a resync with the same token. A resync needs an identity, so it does not cover the first enrollment of a new server. The Terraform provider makes no token when the registry holds the roles of its plan, so it never resyncs. Run the resync by hand.
 
 ### Hardware of a pool
 
@@ -316,10 +350,10 @@ You can enroll a server again, for example after its install starts from nothing
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.cluster.v1.EnrollmentService/Enroll` |
-| Credential | the enrollment token in the request. The call needs no client certificate. A retry with a used token also needs the private key of the certificate that the use issued ([Retry after a lost answer](#retry-after-a-lost-answer)). |
+| Credential | the enrollment token in the request. The call needs no client certificate. A retry with a used token also needs the private key of the certificate that the use issued ([Retry after a lost answer](#retry-after-a-lost-answer)). A resync also needs the private key of a live certificate of the server that the token names ([Resync after the end of the token](#resync-after-the-end-of-the-token)). |
 | Policy action | `server.enroll`, every caller ([the API server](/reference/api/index.html.md#callers-and-policy)) |
 | Idempotent option | no |
-| Audit entry | `server.enroll`, or `server.enroll_retry` for a retry |
+| Audit entry | `server.enroll`, `server.enroll_retry` for a retry, or `server.enroll_resync` for a resync |
 
 `EnrollRequest`:
 
@@ -358,7 +392,7 @@ The control role checks the request in this order:
 5. The install CA exists, or the control role makes it.
 6. The CA hash of the token is the hash of the install CA.
 7. In one transaction, it locks the token row. The token must exist, and its secret must match. A token that an enrollment used already makes the call a retry, for every caller. The retry goes on as [Retry after a lost answer](#retry-after-a-lost-answer) says, and the steps below do not run. For an unused token, the transaction ends without a change.
-8. For a new server, the hardware: a CPU model, CPU threads, RAM, and no disk of 0 bytes. A server that changes its roles skips this check, and goes on as [Add roles to an enrolled server](#add-roles-to-an-enrolled-server) and [Remove roles from an enrolled server](#remove-roles-from-an-enrolled-server) say.
+8. A caller without a client certificate whose token names a server makes the call a resync. The resync goes on as [Resync after the end of the token](#resync-after-the-end-of-the-token) says, and the steps below do not run. For a new server, the hardware: a CPU model, CPU threads, RAM, and no disk of 0 bytes. A server that changes its roles skips this check, and goes on as [Add roles to an enrolled server](#add-roles-to-an-enrolled-server) and [Remove roles from an enrolled server](#remove-roles-from-an-enrolled-server) say.
 9. In one transaction, it locks the token row. The token must exist, its secret must match, it must not be used, and it must not be expired. Each role of the request must be a role of the token. Otherwise the call fails with `unauthenticated` and the message `the enrollment token is not valid: it allows only the roles <roles>, not <role>. Make a token with --roles`, and the token stays unused.
 10. In the same transaction, the certificate request must parse, its signature must be valid, and its key must be ECDSA P-256. Then the CA signs the certificate. So the CA signs only for a caller that holds a live token, and a bad request leaves the token unused.
 11. In the same transaction, it takes the lock of the server registry. Then it checks the address from which the call came ([Peer addresses](#peer-addresses)). A token with a peer address needs that address. A token without one needs loopback once a server of the install has or had a peer address. Otherwise the call fails with `permission_denied`. The certificate of step 10 then goes nowhere, and the token stays unused.
@@ -399,7 +433,7 @@ The service also writes the log record `enrolled a server` with `component=servi
 | `invalid_argument` | `invalid argument: unknown server role: "<role>". A server enrolls with the roles: node, dns, edge` | A role that a server cannot enroll with, such as `control`. |
 | `invalid_argument` | `invalid argument: unknown server role: the role "<role>" appears twice` | A role appears twice. |
 | `unauthenticated` | `the enrollment token is not valid: it names the peer address <address>, but the server has the peer address <server address>. Make a token with --peer-address <server address>` | A server that adds roles to itself with a token whose peer address is not its own, such as after `SetServerPeerAddress` changed it. |
-| `already_exists` | `already exists: the server <id> has the peer address <address>. A peer address belongs to one server until its decommission` | Another server that is not decommissioned took the peer address of the token after its make. |
+| `already_exists` | `already exists: the server <id> has the peer address <address>. A peer address belongs to one server until its decommission` | Another server that is not decommissioned took the peer address of the token after its make. This also holds for an add and a resync. |
 | `invalid_argument` | `invalid argument: the host name has <n> bytes, more than 253` | The host name is too long. |
 | `invalid_argument` | `invalid argument: the host name "<name>" holds a character that is not printable ASCII` | The host name holds a space, a control character, or a character that is not ASCII. |
 | `invalid_argument` | `invalid argument: pki: the certificate request is not valid: ...` | The request does not parse, its signature is wrong, or its key is not ECDSA P-256. |
@@ -415,6 +449,9 @@ The service also writes the log record `enrolled a server` with `component=servi
 | `failed_precondition` | `failed precondition: the server <id> has a pending removal of the roles <roles>. Let it end, or cancel it with hopboxd admin server cancel-remove-role <id>, before a token adds a role` | A token that adds a role while a removal is pending. The token stays unused. |
 | `invalid_argument` | `invalid argument: the roles add <roles> and drop <roles> of the server <id>. A change of the roles adds roles or drops them, one change at a time` | A list that adds a role and drops another. The token stays unused. |
 | `invalid_argument` | `invalid argument: the server <id> has the roles <roles> already` | A server that names the roles that it has. |
+| `unauthenticated` | `the enrollment token is not valid: it names the enrolled server <id>, and enrolls no new server. A resync needs a request for the key of a live certificate of that server` | A call without a client certificate with a token that names a server, and a request for another key, such as a new server. It is also the refusal of a resync whose old certificate was retired. A resync whose old certificate expired fails earlier, in the TLS handshake. The token stays unused. |
+| `invalid_argument` | `invalid argument: the request names the roles <roles>, but the server <id> has the roles <roles> in the registry. A resync asks for the roles of the registry` | A resync with other roles than the registry. The token stays unused. |
+| `failed_precondition` | `failed precondition: the server <id> is decommissioned` | A resync of a decommissioned server. The token stays unused. |
 
 ## Client certificates on each call
 
