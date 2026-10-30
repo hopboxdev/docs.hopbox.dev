@@ -4010,6 +4010,16 @@
 <td><code dir="auto">text</code></td>
 <td>Why the target node withholds its answer to a requested give-back. Empty otherwise, and again after the answer or a withdraw. Migration <code dir="auto">0059_drain_cancel.sql</code> adds it.</td>
 </tr>
+<tr>
+<td><code dir="auto">pull_started_at</code></td>
+<td><code dir="auto">timestamptz</code>, can be null</td>
+<td>The hand-off to the target, when the first pull starts, or the first restart of the pull from zero. The time limit of the move counts from it (<a href="/reference/cold-move/#pull-deadline-and-cancel">Cold move</a>). Null for a move that a control process of schema version 57 to 59 handed off: its time limit counts from <code dir="auto">created_at</code>. Migration <code dir="auto">0060_move_pull_budget.sql</code> adds it.</td>
+</tr>
+<tr>
+<td><code dir="auto">pull_restarts</code></td>
+<td><code dir="auto">integer</code>, default 0</td>
+<td>The restarts of the pull from zero after a copy with another digest that the target reported. Only the first one sets <code dir="auto">pull_started_at</code> again. Migration <code dir="auto">0060_move_pull_budget.sql</code> adds it, with the line <code dir="auto">-- oldest_schema_version: 57</code>: a <code dir="auto">hopboxd</code> of schema version 57 to 59 never reads either column.</td>
+</tr>
 </tbody>
 </table>
 <p>The unique partial index <code dir="auto">machine_moves_active</code> lets one move of a machine run at a time, in <code dir="auto">stopping</code> or <code dir="auto">pulling</code>. The index <code dir="auto">machine_moves_serving</code> lists the disks that a source serves, and <code dir="auto">machine_moves_cleanup</code> the old copies of a node. A change of a move locks the machine row first, then the move row. The rows stay after the move as its record.</p>

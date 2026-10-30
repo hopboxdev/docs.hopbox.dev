@@ -686,6 +686,12 @@
 <td></td>
 </tr>
 <tr>
+<td><code dir="auto">pull_restarted</code></td>
+<td>bool</td>
+<td>For a report of the same state during a pull, after a pull whose copy had another digest than the disk of the source: the next pull starts from zero. The first such report of a move gives the move a new time limit, from that report (<a href="/reference/cold-move/#pull-deadline-and-cancel">Cold move</a>). A control role of an older release ignores it.</td>
+<td></td>
+</tr>
+<tr>
 <td><code dir="auto">released_move_id</code></td>
 <td>string</td>
 <td>The answer to a give-back: the node never proved the pull of that move, and gives the machine back (<a href="#give-back">Give-back</a>). A value that is not a UUID counts as empty.</td>
