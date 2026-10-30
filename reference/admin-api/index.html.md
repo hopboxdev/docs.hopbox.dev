@@ -1360,6 +1360,8 @@ The request `RemoveServerRolesRequest` has the fields `id`, the ID of the server
 
 Ends the pending removal of roles from a server that cannot finish. An example is a removal of `node` with a machine that has no room elsewhere. No new move starts. Each move from the server that started with a removal of `node` and still runs ends as `CancelMove` ends it ([the machine API](/reference/machine-api/index.html.md)). A removal of `edge` or `dns` has no moves, so its cancel ends no move, also a move that an admin started. A machine that moved stays on its new node. The registry keeps every role of the server, `removed_roles` does not change, and the stranded machines go. The cordon of the removal goes. A cordon that the server had before the removal stays.
 
+The cancel takes the lock of the server registry first, before the rows of the machines and the row of the server, as the start and the end of a removal do ([the bundled Postgres](/reference/postgres/index.html.md#order-of-the-advisory-locks)). So the checks of a removal from another server, and the end, the resync, or the decommission of the same server, see the cancel whole or not at all. If a move of the removal starts during the cancel, the cancel tries again, at most 3 times. A control process of an older build can end the removal during the cancel. The cancel then fails with `failed_precondition`.
+
 `hopboxd admin server cancel-remove-role` calls it ([hopboxd](/reference/hopboxd/index.html.md#admin-server-cancel-remove-role)). After a cancel, put the role back in the Terraform configuration, so the next plan shows no change ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#roles-of-a-running-server)).
 
 | Item | Value |
