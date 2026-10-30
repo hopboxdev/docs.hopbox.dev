@@ -175,6 +175,7 @@ Request ID: <request ID>
 | `403 Forbidden` | A link: the session ended between the start and the callback. | `this call needs a credential: the session that started the link ended. Sign in again, then link the method again` |
 | `409 Conflict` | A link: the account has this identity already. | `already exists: the account already signs in with this GitHub identity` |
 | `404 Not Found` | The provider name is unknown. | `no sign-in provider "gitlab". Use github or google` |
+| `404 Not Found` | The account of the identity was deleted during the sign-in ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)). The flow is used, so start the sign-in again. It then makes a new account. | `not found: the account of this sign-in method was deleted during the sign-in. Sign in again to make a new account` |
 | `404 Not Found` | The install has no client for the provider, or no domain. | `failed precondition: this install has no GitHub client, so it offers no sign-in with GitHub` |
 | `429 Too Many Requests` | A rate limit refused the request. | the message of the limit, see below |
 | `502 Bad Gateway` | The provider did not answer, or answered with an error of its own. | `unavailable: GitHub did not answer. Start the sign-in again later` |
