@@ -326,8 +326,8 @@ A leave, a removal, and the delete of an account take the account out of the org
 
 | Method | Called by |
 | --- | --- |
-| `MemberLeaving(org, account)` | `LeaveOrg`, `RemoveOrgMember`, and `DeleteAccount`, once for each org other than the personal org |
-| `OrgDeleting(org)` | `DeleteOrg`, and `DeleteAccount` for the personal org |
+| `MemberLeaving(org, account)` | `LeaveOrg`, `RemoveOrgMember`, and `DeleteAccount`, once for each org other than the personal org. The admin `DeleteAccount` calls it once for each org that it does not delete. |
+| `OrgDeleting(org)` | `DeleteOrg`, and `DeleteAccount` for the personal org. The admin `DeleteAccount` calls it for the personal org and for each org that the account owns alone ([the admin API](/reference/admin-api/index.html.md#deleteaccount)). |
 | `OrgSuspending(org)` | `SuspendOrg` of the admin API ([the admin API](/reference/admin-api/index.html.md#suspendorg)) |
 
 Each call holds the row lock of the org while the method runs. A leave, a removal, and an account delete also hold the lock of the account, which they take first. The lock order is the account row, then the org row, then the rows of the resource, such as machines ([Control store tables](/reference/control-store/index.html.md#orgs)). A change of a resource outside these calls takes the locks in the same order.
@@ -515,7 +515,7 @@ An instance admin can suspend an org, for example to handle abuse. The calls are
 | The org sends no invitations. `CreateInvitation` fails with `failed_precondition`. | now |
 | The org takes no new members. `AcceptInvitation` fails with `failed_precondition`. | now |
 | Owners can still change roles and rename the org. | now |
-| Nothing deletes the data of the org, for example the evidence of abuse. `DeleteOrg`, `LeaveOrg`, and `RemoveOrgMember` in the org fail with `failed_precondition`. So does `DeleteAccount` of a member of the org, or of the account of a suspended personal org. | now |
+| Nothing deletes the data of the org, for example the evidence of abuse. `DeleteOrg`, `LeaveOrg`, and `RemoveOrgMember` in the org fail with `failed_precondition`. So does `DeleteAccount` of a member of the org, or of the account of a suspended personal org. The admin `DeleteAccount` goes on, and its audit entry keeps the evidence ([the admin API](/reference/admin-api/index.html.md#deleteaccount)). | now |
 | The env vars and secrets of the org do not change. `SetVar` and `DeleteVar` fail with `failed_precondition` ([the env var API](/reference/vars-api/index.html.md#suspension)). | now |
 | The members cannot delete a machine of the org. `DeleteMachine` fails with `failed_precondition` ([Domain rules](/reference/domain-rules/index.html.md#org-suspension)). | now |
 | The machines of the org stop. A hibernated machine stays hibernated ([Domain rules](/reference/domain-rules/index.html.md#org-suspension)). | now, through `OrgSuspending` |
@@ -537,9 +537,9 @@ The org calls write these entries in the transaction of the change. Their org is
 | --- | --- | --- | --- |
 | `org.create` | `CreateOrg` | the org | `name` |
 | `org.update` | `UpdateOrg` | the org | `name`, `old_name` |
-| `org.delete` | `DeleteOrg` | the org | `name` |
+| `org.delete` | `DeleteOrg`, and the admin `DeleteAccount` for each org that the account owns alone | the org | `name`, and `reason` (`account deleted`) for the admin `DeleteAccount` |
 | `org.member_set_role` | `SetOrgMemberRole` | the account | `role`, `old_role` |
-| `org.member_remove` | `RemoveOrgMember`, and `DeleteAccount` for each org of the account | the account | `role`, `reason` (`removed` or `account deleted`) |
+| `org.member_remove` | `RemoveOrgMember`, and both `DeleteAccount` calls for each org of the account that stays | the account | `role`, `reason` (`removed` or `account deleted`) |
 | `org.leave` | `LeaveOrg` | the account | `role` |
 | `org.invitation_create` | `CreateInvitation` | the invitation | `email`, `role` |
 | `org.invitation_revoke` | `RevokeInvitation`, `CreateInvitation` for the invitation that it replaces, and a leave, a removal, an account delete, or a role change of the inviter | the invitation | `email`, `role`, and for a revoke by another call `reason`: `replaced`, `inviter left`, or `inviter role changed` |

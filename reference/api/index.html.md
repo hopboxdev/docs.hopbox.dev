@@ -132,6 +132,7 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `instance_admin.revoke` | `InstanceAdminService.RevokeInstanceAdmin` | the install | `local_root`, `admin_key`, an admin `session` |
 | `admin_account.list_sign_in_methods` | admin `AccountService.ListAccountSignInMethods` | the install | `local_root`, `admin_key` |
 | `admin_account.remove_sign_in_method` | admin `AccountService.RemoveAccountSignInMethod` | the install | `local_root`, `admin_key` |
+| `admin_account.delete` | admin `AccountService.DeleteAccount` | the install | `local_root`, `admin_key` |
 | `admin_key.create` | `AdminKeyService.CreateAdminKey` | the install | `local_root`, an admin `session` |
 | `admin_key.register` | `AdminKeyService.RegisterAdminKey` | the install | `local_root` only |
 | `admin_key.list` | `AdminKeyService.ListAdminKeys` | the install | `local_root`, an admin `session` |

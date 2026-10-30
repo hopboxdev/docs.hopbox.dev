@@ -511,6 +511,8 @@ The request `DeleteAccountRequest` and the response `DeleteAccountResponse` have
 
 An instance admin that is not the last one loses the role with the delete. The delete of an instance admin tells the other instance admins, in the console and by email ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). A stolen session can otherwise remove an admin in silence. The notice comes before the delete, so each email of the deleted account gets a copy too. The delete takes the transaction lock of the notices to the instance admins, then locks the account, then each org of the account, before the check ([Control store tables](/reference/control-store/index.html.md#orgs)). So two owners of one org that delete their accounts at the same time leave one owner.
 
+An operator deletes another account with the admin `DeleteAccount` ([the admin API](/reference/admin-api/index.html.md#deleteaccount)). That call also deletes the orgs that the account owns alone, and a suspended org does not hold it back.
+
 A call that runs at the same time as the delete, with a session or a CLI token of the account, can pass the check of its credential before the delete ends. When such a call then reads the account or its personal org, it fails with `not_found`, because the account no longer exists. A `GetAccount` or a second `DeleteAccount` of the deleted account gets `not_found` too.
 
 ### ListSignInMethods
@@ -689,6 +691,7 @@ The response `CreateAPIKeyResponse` has the fields `key`, an `APIKey`, and `secr
 | No name, a bad name, an unknown kind or lifetime, or an expiry in the past or more than 365 days ahead: `invalid argument: the expiry date <time> must be in the future and at most 365 days ahead`. The policy check comes first, so a caller that cannot make a key gets `permission_denied` instead. | `invalid_argument` |
 | An org key in a personal org: `invalid argument: a personal org has no shared machines, so it takes no org key. Make a member key, or an org key in a team org` | `invalid_argument` |
 | The org holds 100 API keys, expired ones included: `usage limit exceeded: an org holds at most 100 API keys. Revoke one first` | `resource_exhausted` |
+| A delete of the org ended while the call waited for the lock of the org: `not found: the org <id> was deleted` | `not_found` |
 | A retry with an idempotency key that made a key already | `already_exists` |
 
 ```sh

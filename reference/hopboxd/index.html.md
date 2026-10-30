@@ -56,6 +56,7 @@ hopboxd --log-level=debug version
 | `admin instance-admin revoke` | Takes the instance admin role from an account. |
 | `admin account sign-in-method list` | Lists the sign-in methods of an account. |
 | `admin account sign-in-method remove` | Removes a sign-in method of an account, to recover its sign-in. |
+| `admin account delete` | Deletes an account with its personal org and the orgs that it owns alone, for example after abuse. |
 | `admin enrollment-token create` | Makes an enrollment token for a new server through the admin socket. |
 | `admin server list` | Lists the enrolled servers through the admin socket. |
 | `admin server get` | Prints one server through the admin socket. |
@@ -1051,6 +1052,41 @@ Removes one sign-in method of an account. It calls `RemoveAccountSignInMethod` (
 | `--account-id` | string | none, required | The UUID of the account, as `list` prints it. |
 | `--method-id` | string | none, required | The UUID of the method. |
 | `--allow-last` | bool | `false` | Removes also the last method. The account then has no identity of a provider, so it signs in through a new method that proves one of its verified emails, such as a magic link. An account without a verified email keeps its last method, and the command fails with `failed_precondition`. |
+
+### admin account delete
+
+```sh
+hopboxd admin account delete --account-id=ID --reason=TEXT [--json]
+```
+
+Deletes an account, for example an account of the open sign-up that abused the install. It calls the admin `DeleteAccount` ([the admin API](/reference/admin-api/index.html.md#deleteaccount)). The command deletes the account, its personal org, and each org in which the account is the only owner. The other members of such an org lose it. A suspended org does not hold the command back, because the audit entry `admin_account.delete` keeps the reason and the IDs of the deleted orgs. The command takes the account out of each other org, as the self-delete does. It prints the ID of each deleted org on its own line, with the personal org first.
+
+The command deletes no machine. While a machine that the delete removes is not deleted, the command fails with `failed_precondition`. Such a machine is in an org that the command deletes, or the account made it and did not share it. The error names each such machine, up to the 20 oldest, with the `admin machine delete` command for it. A shared machine of the account in an org that stays does not hold the command back, and it stays. The command also fails for the last instance admin. The delete of an instance admin tells the other instance admins ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)).
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--account-id` | string | none, required | The UUID of the account. |
+| `--reason` | string | none, required | Why the account goes. At most 256 characters. The audit log keeps it. |
+| `--json` | bool | `false` | Prints one JSON object, `{"deleted_org_ids":["<id>",...]}`, instead of the lines. |
+
+To delete an account and its machines:
+
+1. Run `sudo hopboxd admin account delete` with the ID of the account and a reason.
+2. If the command fails with `failed_precondition`, run each `hopboxd admin machine delete` command of the error with `sudo`.
+3. Run the delete of the account again. Repeat steps 2 and 3 until the command prints the deleted orgs.
+
+```text
+$ sudo hopboxd admin account delete --account-id 01a15c02-7d1e-7a4c-9b51-2b1c5e8f0a7d --reason 'abuse report 1'
+hopboxd: error: failed_precondition: failed precondition: 1 machine is not deleted, and the delete of an account deletes no machine. Delete each one first: hopboxd admin machine delete --id=01a15c02-a1b2-7c3d-8e4f-5a6b7c8d9e0f ("box1" in the org 01a15c02-7d1f-7b20-8a3e-4c1d2e3f4a5b)
+```
+
+After `sudo hopboxd admin machine delete --id=01a15c02-a1b2-7c3d-8e4f-5a6b7c8d9e0f`, the delete of the account goes through:
+
+```text
+$ sudo hopboxd admin account delete --account-id 01a15c02-7d1e-7a4c-9b51-2b1c5e8f0a7d --reason 'abuse report 1'
+01a15c02-7d1f-7b20-8a3e-4c1d2e3f4a5b
+01a15c02-9e41-7c08-9d12-5f6a7b8c9d0e
+```
 
 ### admin enrollment-token create
 

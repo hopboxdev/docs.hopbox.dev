@@ -181,7 +181,7 @@ These operations publish `edge.access_changed` in their transaction:
 | Operation | Why |
 | --- | --- |
 | `SignOut` of a session ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#signout)) | The delete of the session deletes the tokens of its machine URLs. |
-| `DeleteAccount` | The account loses every machine. |
+| `DeleteAccount`, and the admin `DeleteAccount` | The account loses every machine. The members of each org that the admin call deletes lose the org. |
 | `RemoveOrgMember` and `LeaveOrg` | The account loses the shared machines of the org. |
 | `SuspendOrg` | The machine URLs of the org stop. |
 | `RemoveSSHKey` | The open SSH connections of the key end ([the SSH front door](/reference/ssh-front-door/index.html.md#checks-of-an-open-connection)). |
@@ -482,7 +482,7 @@ Migrations `0008_orgs.sql` and `0017_org_limits_and_suspension.sql`. One row per
 | `suspended_at` | `timestamptz`, can be null | The start of the suspension of the org. Null for an org that is not suspended ([the org API](/reference/org-api/index.html.md#suspension)). |
 | `suspend_reason` | `text` | The reason of the suspension, or empty. |
 
-A change can take the last owner from an org. Such a change first locks the org rows with `FOR NO KEY UPDATE`. Then it counts the owners in a new statement, which sees the changes that committed during the wait. `FOR NO KEY UPDATE` leaves the key of the org row free, so another transaction can still write a row that names the org, such as a machine. Only `DeleteOrg` takes `FOR UPDATE`, because it deletes the row.
+A change can take the last owner from an org. Such a change first locks the org rows with `FOR NO KEY UPDATE`. Then it counts the owners in a new statement, which sees the changes that committed during the wait. `FOR NO KEY UPDATE` leaves the key of the org row free, so another transaction can still write a row that names the org, such as a machine. `DeleteOrg` takes `FOR UPDATE`, because it deletes the row. The delete of an account deletes its personal org under `FOR NO KEY UPDATE`, and the `DELETE` then takes the full lock of the row. The admin delete of an account deletes the orgs that the account owns alone in the same way ([the admin API](/reference/admin-api/index.html.md#deleteaccount)). A write that names such an org waits for the delete, then fails with `not_found`, because the org is gone.
 
 The lock order is the account row, then the org row, then the rows of the resources in the org, such as machines. Every change follows it:
 

@@ -102,6 +102,8 @@ While an org is suspended, nothing deletes its data, for example the evidence of
 - `LeaveOrg` and `RemoveOrgMember` in the org, because they delete what the account made in the org and did not share.
 - `DeleteAccount` of an account whose personal org is suspended, or that is a member of a suspended org.
 
+The admin `DeleteAccount` of an operator goes on in a suspended org. Its audit entry keeps the evidence instead ([the admin API](/reference/admin-api/index.html.md#deleteaccount)).
+
 The env vars and secrets of a suspended org do not change either. `SetVar` and `DeleteVar` fail with `failed_precondition` and `org suspended: an instance admin suspended the org, so its env vars and secrets do not change until the suspension ends` ([the env var API](/reference/vars-api/index.html.md#suspension)).
 
 The rule holds for the members of the org. Instance admins can stop or delete a machine of a suspended org, for example to handle abuse. The admin API has these calls ([the admin API](/reference/admin-api/index.html.md#machineservice)).

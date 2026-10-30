@@ -21,7 +21,7 @@ The admin API has these services:
 | `hopbox.admin.v1.MailService` | `ListMailFiles`, `GetMailFile` |
 | `hopbox.admin.v1.LoginLinkService` | `CreateLoginLink` |
 | `hopbox.admin.v1.InstanceAdminService` | `ListInstanceAdmins`, `GrantInstanceAdmin`, `RevokeInstanceAdmin`, `ListAdminNotices`, `DismissAdminNotices` |
-| `hopbox.admin.v1.AccountService` | `ListAccountSignInMethods`, `RemoveAccountSignInMethod` |
+| `hopbox.admin.v1.AccountService` | `ListAccountSignInMethods`, `RemoveAccountSignInMethod`, `DeleteAccount` |
 | `hopbox.admin.v1.ServerService` | `CreateEnrollmentToken`, `ListServers`, `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DecommissionServer`, `DrainServer`, `CancelDrain`, `ListControlProcesses` |
 | `hopbox.admin.v1.PoolService` | `CreatePool`, `GetPool`, `ListPools`, `DeletePool` |
 | `hopbox.admin.v1.SizeService` | `CreateSize`, `GetSize`, `ListSizes`, `RetireSize` |
@@ -762,6 +762,7 @@ Some calls leave something that lasts after the session that made them. For exam
 | The sign-in of a login link ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#verifyloginlink)) | When it makes the account an instance admin. |
 | A new sign-in method of an account: a link from a session ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#link-a-new-sign-in-method)), or a sign-in that joins the account through a verified email | When the account is an instance admin (plan question Q106). A stolen session can link the email or the GitHub user of an attacker, and so keep the role after the session ends. The audit entry `account.link_sign_in_method` then has the detail `instance_admin` set to `true`. The method of a login link never joins an existing account, because it proves no email. |
 | `RevokeInstanceAdmin` | Always. Otherwise a stolen session can revoke the other admins first, so that nobody hears of its later actions. The notice comes before the revoke, so the revoked account gets the email and a notice too. Its notice shows only if it gets the role again. |
+| The admin `DeleteAccount` ([DeleteAccount](#deleteaccount)) | When the account is an instance admin, as for the self-delete in the next row. The audit entry `admin_account.delete` then has the detail `instance_admin` set to `true`. The actor is root or an admin API key, so no account gets the copy of the actor. Each email of the deleted account gets the notice as an instance admin. |
 | `DeleteAccount` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#deleteaccount)) | When the account is an instance admin (Q106). Otherwise a stolen session can remove an admin in silence, as with a revoke. The notice comes before the delete, so each email of the deleted account gets the copy of the actor. The audit entry `account.delete` then has the detail `instance_admin` set to `true`. |
 | `SetSMTPConfig` and `ClearSMTPConfig` | Always. |
 | `SetOAuthClient` and `ClearOAuthClient` | Always. |
@@ -776,7 +777,7 @@ The email has these parts:
 - What changed, with the facts of the audit entry, such as the name, the ID, and the end of a new key.
 - Who did it: the session and its account, the CLI token and its account, the admin API key, or root on a control server with its user and process.
 - The time and the ID of the audit entry.
-- How to undo it: the page of the Admin area and the `hopboxd admin` command. For an action of a session, also how to revoke the role of its account, which closes the admin API to each session of the account at once. For a new sign-in method, the command `hopboxd admin account sign-in-method remove` with the IDs of the account and of the method. A method that joined at a sign-in through a verified email had no session before, so its advice says to revoke the role first, because the holder of that email can sign in again. Each value in a command of the advice is in POSIX single quotes, and each `'` in it is written as `'\''`. So a POSIX shell, such as sh, bash, or zsh, reads each value as one word, also a value with shell code in it, such as an ACME directory URL with `$(...)` in its query. In another shell, such as tcsh, these quotes are not safe, so run the command in sh, bash, or zsh. A delete is final, so its advice says to read the audit log for the other actions of the deleted account.
+- How to undo it: the page of the Admin area and the `hopboxd admin` command. For an action of a session, also how to revoke the role of its account, which closes the admin API to each session of the account at once. For a new sign-in method, the command `hopboxd admin account sign-in-method remove` with the IDs of the account and of the method. A method that joined at a sign-in through a verified email had no session before, so its advice says to revoke the role first, because the holder of that email can sign in again. Each value in a command of the advice is in POSIX single quotes, and each `'` in it is written as `'\''`. So a POSIX shell, such as sh, bash, or zsh, reads each value as one word, also a value with shell code in it, such as an ACME directory URL with `$(...)` in its query. In another shell, such as tcsh, these quotes are not safe, so run the command in sh, bash, or zsh. A delete is final, so its advice says to read the audit log for the other actions of the deleted account. The advice of an admin delete by an admin API key gives the command that revokes the key.
 - The link to `/admin/notices`, or for the copy of the actor, a line that says why the actor gets it. A change of the domain names both domains in place of the link.
 
 The email and the notice never hold a secret: no admin key, no client secret, and no SMTP password. They hold only the facts of the audit entry, which never holds a secret value either.
@@ -841,6 +842,8 @@ The request `DismissAdminNoticesRequest` has the field `ids`, 1 to 100 UUIDs of 
 
 `hopbox.admin.v1.AccountService` lets an operator recover the sign-in of an account. A person can lose the only sign-in method of the account, for example the GitHub user. A new GitHub user with the same verified email then fails, because the account has an identity of a provider ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#recover-a-lost-identity)). The operator removes the old method. The account then has no identity of a provider, so a magic link or the new GitHub user links through the verified email.
 
+The service also deletes an account, for example an account of the open sign-up that abused the install ([DeleteAccount](#deleteaccount)).
+
 ### ListAccountSignInMethods
 
 Lists the sign-in methods of one account, oldest first.
@@ -895,6 +898,44 @@ The response `RemoveAccountSignInMethodResponse` has no fields.
 | No account has the ID, or the account has no such method | `not_found` |
 | The method is the last one, and `allow_last` is `false`: `failed precondition: this is the last sign-in method of the account. Allow the removal of the last method to remove it. ...` | `failed_precondition` |
 | The method is the last one, and the account has no verified email, such as the account of a login link. No new method can reach such an account: `failed precondition: the account has no verified email, so no new sign-in method can reach it. Keep its last method` | `failed_precondition` |
+
+### DeleteAccount
+
+Deletes an account for an operator, for example an account of the open sign-up that abused the install. The call takes the steps of the self-delete `DeleteAccount` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#deleteaccount)), with the differences in the second table. It deletes the account, its personal org, its sessions, its emails, its sign-in methods, its CLI sign-ins, its member keys, and its SSH keys. It takes the account out of each other org, and deletes what the account made there and did not share ([the org API](/reference/org-api/index.html.md#what-a-member-leaves-behind)).
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.AccountService/DeleteAccount` |
+| Policy action | `admin_account.delete`: `local_root` and `admin_key` |
+| Idempotent option | no. A second call gets `not_found`. |
+| Audit entries | action `admin_account.delete`, target kind `account`, in no org. The details are `personal_org`, `reason`, `deleted_orgs`, and `instance_admin` set to `true` for an instance admin. `deleted_orgs` holds the IDs of the deleted orgs, joined by commas, with the personal org first. The entry comes before the entries of the delete itself. Each deleted org other than the personal org gets the action `org.delete`, with the details `name` and `reason` (`account deleted`). Each other org of the account gets `org.member_remove`, as for the self-delete. |
+
+The admin delete differs from the self-delete in these rules:
+
+| Rule | Self-delete | Admin delete |
+| --- | --- | --- |
+| An org other than the personal org in which the account is the only owner | The delete fails. | The call deletes the org, its memberships, its invitations, and its resources, as `DeleteOrg` does. The account never comes back to hand the org over to another member. |
+| A suspended org of the account | The delete fails, so that the org keeps its evidence. | The call goes on. Its audit entry keeps the evidence: the actor, the reason, and the IDs of the deleted orgs. |
+| A machine that the delete removes | The delete removes it. | The call fails while such a machine is not deleted. Such a machine is in an org that the call deletes, or the account made it and did not share it. The error names each such machine, up to 20, with its `hopboxd admin machine delete` command ([hopboxd](/reference/hopboxd/index.html.md#admin-machine-delete)). Run each command, then the call again. A machine with the target `deleted` does not hold the call back. |
+| The reason | none | Required. The audit entry keeps it. |
+
+The rules for the last instance admin and for the notice are the same as for the self-delete. The call fails for the last instance admin. The delete of an instance admin tells the instance admins ([Notices to instance admins](#notices-to-instance-admins)).
+
+The request `DeleteAccountRequest` has these fields:
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `account_id` | string | none, required | The UUID of the account. |
+| `reason` | string | none, required | Why the account goes. At most 256 characters, without control characters. The server drops the spaces around it. |
+
+The response `DeleteAccountResponse` has the field `deleted_org_ids`, the UUIDs of the deleted orgs, with the personal org first.
+
+| Error | Code |
+| --- | --- |
+| The ID is not a UUID, or the reason is empty or breaks a rule. An empty reason gets `invalid argument: give the reason of the delete, which the audit log keeps`. | `invalid_argument` |
+| No account has the ID: `not found: no account has the ID <id>` | `not_found` |
+| The account is the last instance admin: `failed precondition: the account is the last instance admin, and an install keeps at least one. Make another account an instance admin first` | `failed_precondition` |
+| A machine is not deleted: `failed precondition: 2 machines are not deleted, and the delete of an account deletes no machine. Delete each one first: hopboxd admin machine delete --id=<id> ("box1" in the org <org id>), hopboxd admin machine delete --id=<id> ("box2" in the org <org id>)`. The error names the 20 oldest such machines, with the command for each. If more machines hold the call back, the error ends with `. <n> more machines are not deleted, so run the delete again after these`. For one more machine, it says `1 more machine is not deleted`. | `failed_precondition` |
 
 ## AdminKeyService
 

@@ -4,6 +4,47 @@ info:
   description: The admin API of hopbox, package hopbox.admin.v1. Only instance admins and root on a control server can call it.
   version: v1
 paths:
+  /hopbox.admin.v1.AccountService/DeleteAccount:
+    post:
+      tags:
+        - hopbox.admin.v1.AccountService
+      summary: DeleteAccount
+      description: |-
+        DeleteAccount deletes an account with its personal org and the orgs that it owns alone, also when an org is
+         suspended. It refuses while a machine in one of these orgs, or a private machine of the account, is not deleted.
+      operationId: hopbox.admin.v1.AccountService.DeleteAccount
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.DeleteAccountRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.DeleteAccountResponse'
   /hopbox.admin.v1.AccountService/ListAccountSignInMethods:
     post:
       tags:
@@ -3553,6 +3594,32 @@ components:
       description: |-
         DefaultOrgLimits are the limits of every org without an override,
          and the most orgs that one account owns.
+    hopbox.admin.v1.DeleteAccountRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          description: account_id is the UUID of the account.
+        reason:
+          type: string
+          title: reason
+          description: reason says why the account goes, at most 256 characters. The audit log keeps it.
+      title: DeleteAccountRequest
+      additionalProperties: false
+      description: DeleteAccountRequest names the account, and the reason of the delete.
+    hopbox.admin.v1.DeleteAccountResponse:
+      type: object
+      properties:
+        deletedOrgIds:
+          type: array
+          items:
+            type: string
+          title: deleted_org_ids
+          description: deleted_org_ids are the UUIDs of the deleted orgs, the personal org first.
+      title: DeleteAccountResponse
+      additionalProperties: false
+      description: DeleteAccountResponse names the deleted orgs.
     hopbox.admin.v1.DeleteMachineRequest:
       type: object
       anyOf:
@@ -6256,7 +6323,8 @@ tags:
   - name: hopbox.admin.v1.AccountService
     description: |-
       AccountService lets an operator recover the sign-in of an account, for example after its
-       person lost the GitHub user that the account signs in with.
+       person lost the GitHub user that the account signs in with. It also deletes an account, for example
+       one that abused the install.
   - name: hopbox.admin.v1.AdminKeyService
     description: |-
       AdminKeyService manages the admin API keys. An admin API key has install scope and calls the

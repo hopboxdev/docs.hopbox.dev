@@ -69,6 +69,8 @@ An abuse report names the machine `box1` in the org `org1`. You stop the machine
 4. Type a reason, such as `abuse report 1`, and click "Suspend". The members of `org1` see the reason. The org stops its machines, and creates and starts no machine until the end of the suspension.
 5. When the report is settled, click "Unsuspend".
 
+The Admin area does not delete an account. If the account of the report is a bot of the open sign-up, delete it as root on a control server. Run `sudo hopboxd admin account delete --account-id=ID --reason='abuse report 1'`. If it fails, delete each machine that the error names, with the `sudo hopboxd admin machine delete` command that the error gives for it. These are the machines in the personal org of the account, the machines in each org that the account owns alone, and the machines that the account made and did not share. Then run the delete of the account again. The command also deletes the orgs that the account owns alone, also when they are suspended. The audit entry `admin_account.delete` keeps the reason and the IDs of the deleted orgs ([hopboxd](/reference/hopboxd/index.html.md#admin-account-delete)).
+
 The Admin area has no shell and no file access for a machine. It never shows a secret or an env var of an org. An instance admin sees the metadata of an org, not its contents. The audit log of `org1` shows each of these actions to the owners of the org.
 
 To change the limits of one org, click "Limits" in its row. A field that you leave empty takes the default of the install. The section "Default limits" sets those defaults.
@@ -159,3 +161,4 @@ Some work never goes through the Admin area. Run `sudo hopboxd admin` on a contr
 | An enrollment token for a new server | `hopboxd admin enrollment-token create`, or the Terraform provider |
 | The register of an admin key from its hash, or of an image | `hopboxd admin admin-key register` and `hopboxd admin image register` |
 | The recovery of a lost sign-in method | `hopboxd admin account sign-in-method remove` |
+| The delete of another account | `hopboxd admin account delete` |
