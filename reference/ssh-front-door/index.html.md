@@ -49,7 +49,7 @@ The front door reads the port that the client dialed from the connection trackin
 
 The redirect needs Linux, the kernel module `nf_tables`, and `CAP_NET_ADMIN`. `hopboxd.service` runs `hopboxd` as root ([Server layout](/reference/server-layout/index.html.md#hopboxdservice)). On a system without nftables, such as macOS, the edge role logs a warning and serves only its own port. A connection to that port is outside the SSH ports, so it reaches no machine there. With `edge.ssh_redirect = false`, the operator makes the redirect. A connection then reaches the front door with the port that the client dialed, as the kernel tracks it.
 
-A flush of the nftables ruleset also drops the table `inet hopbox_edge`, and with it every SSH port. So every 2 s, the front door checks its table: the table, its chains `prerouting` and `output`, and one rule in each. If a part is gone, it installs the table again, and logs `the nftables table inet hopbox_edge lost a part outside hopboxd, so the SSH front door installed it again. Do not flush the nftables ruleset of an edge server` at level error. A stop of the edge role ends the checks before it removes the table.
+A flush of the nftables ruleset also drops the table `inet hopbox_edge`, and with it every SSH port. So every 2 s, the front door checks its table: the table, its chains `prerouting` and `output`, and one rule in each. If a part is gone, it installs the table again, and logs `the nftables table inet hopbox_edge lost a part outside hopboxd, so the SSH front door installed it again. Do not flush the nftables ruleset of an edge server` at level error. Each nftables request ends after 10 s, so a kernel answer that never comes does not block the front door. A check that gets no answer within 10 s counts as a broken table, so the front door installs the table again and logs the same error. A stop of the edge role ends the checks before it removes the table.
 
 `hopboxd install` keeps the SSH ports out of the ports of outgoing connections on a server with the node role ([Server layout](/reference/server-layout/index.html.md#reserved-ports)). The redirect matches only new connections, so the answers to an outgoing connection of the edge server never reach the front door.
 
@@ -137,7 +137,7 @@ When the edge server has no mesh device yet, each channel fails with the reason 
 
 ## Channels and requests
 
-The front door forwards each channel and each request that the table names, both ways, with its answer. It refuses the others. A refused channel fails with `the SSH front door of hopbox does not forward <type> channels`. A refused request that wants an answer gets a failure.
+The front door forwards each channel and each request that the table names, both ways, with its answer. It refuses the others. When one side ends while the front door opens a channel on it, the front door refuses the channel with `the connection to the machine ended` or `the connection of the client ended`, and the connection ends. In `golang.org/x/crypto/ssh`, such an open can get no answer at all. It then waits until `hopboxd` restarts, and the gauge `hopbox_edge_ssh_lost_opens` counts it. A refused channel fails with `the SSH front door of hopbox does not forward <type> channels`. A refused request that wants an answer gets a failure.
 
 | From | Channels | Requests |
 | --- | --- | --- |
@@ -251,9 +251,10 @@ The edge role serves these metrics on the metrics listener of `hopboxd` ([Metric
 | `hopbox_edge_ssh_connections_total` | counter | `result` | The TCP connections of the front door, by result. See the table of results below. |
 | `hopbox_edge_ssh_auth_total` | counter | `result` | The keys that clients signed with: `allowed`, `refused`, `limited`, or `error` (the control role did not answer). |
 | `hopbox_edge_ssh_unreachable_total` | counter | `reason` | The signed-in connections that reached no OpenSSH server: `not_running`, `no_address`, `no_host_key`, `dial`, or `handshake`. |
-| `hopbox_edge_ssh_channels_total` | counter | `type`, `result` | The channels, by type, and by result: `forwarded`, `refused` (by the other side), or `prohibited` (by the front door). An unknown type counts as `other`. |
+| `hopbox_edge_ssh_channels_total` | counter | `type`, `result` | The channels, by type, and by result: `forwarded`, `refused` (by the other side, or because its connection ended during the open), or `prohibited` (by the front door). An unknown type counts as `other`. |
 | `hopbox_edge_ssh_ended_total` | counter | `reason` | The open connections that the front door ended: `access_lost`, `route_changed`, or `shutdown`. |
 | `hopbox_edge_ssh_open_connections` | gauge | none | The signed-in connections that the front door holds now. |
+| `hopbox_edge_ssh_lost_opens` | gauge | none | The channel opens that got no answer and still wait, after their connection ended. Each one holds a little memory until `hopboxd` restarts. |
 
 | `result` of `hopbox_edge_ssh_connections_total` | Meaning |
 | --- | --- |
@@ -274,7 +275,7 @@ The front door logs with `component=sshfd`.
 | `SSH front door listening` | info | The listener is open, with `addr`. |
 | `the SSH ports reach the front door` | info | The redirect is in place, with `ports` and `listen_port`. |
 | `this system has no nftables, so no SSH port reaches the front door. Only Linux runs the redirect` | warn | `edge.ssh_redirect` on a system without nftables, with `os`. |
-| `the nftables table inet hopbox_edge lost a part outside hopboxd, so the SSH front door installed it again. ...` | error | The check of the redirect found its table broken, and installed it again. |
+| `the nftables table inet hopbox_edge lost a part outside hopboxd, so the SSH front door installed it again. ...` | error | The check of the redirect found its table broken, or got no answer within 10 s, and installed it again. |
 | `cannot repair the redirect of the SSH ports` | error | `err`. The check of the redirect failed. It tries again 2 s later. |
 | `serving the SSH host key of the install` | info | The first keys, with the `fingerprint` of the host key. |
 | `closed a connection that reached no SSH port` | debug | A connection came to a port outside the SSH ports, with `client`, `port`, and `err`. |

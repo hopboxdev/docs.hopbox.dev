@@ -122,6 +122,7 @@ A server with the edge role adds these metrics to the listener of its `hopboxd r
 | `hopbox_edge_ssh_channels_total` | counter | `type`, `result` | The SSH channels that the front door forwarded or refused. |
 | `hopbox_edge_ssh_ended_total` | counter | `reason` | The open SSH connections that the front door ended. |
 | `hopbox_edge_ssh_open_connections` | gauge | none | The signed-in SSH connections that the front door holds now. |
+| `hopbox_edge_ssh_lost_opens` | gauge | none | The channel opens of the front door that got no answer and still wait, after their connection ended ([the SSH front door](/reference/ssh-front-door/index.html.md#channels-and-requests)). |
 
 | Label | Values |
 | --- | --- |
@@ -160,7 +161,7 @@ A server with the node role serves the traffic counters of each machine with net
 | `hopbox_machine_inbound_packets_total` | counter | `machine` | Packets to the machine of connections that the node opened. |
 | `hopbox_machine_egress_bytes_total` | counter | `machine` | Bytes from the machine that the node let out. |
 | `hopbox_machine_egress_packets_total` | counter | `machine` | Packets from the machine that the node let out. |
-| `hopbox_node_network_repairs_total` | counter | none | The installs of the table `inet hopbox_node` after it lost a part outside `hopboxd` ([the node network](/reference/node-network/index.html.md#the-table-must-stay)). |
+| `hopbox_node_network_repairs_total` | counter | none | The installs of the table `inet hopbox_node` after it lost a part outside `hopboxd`, or after a check that got no answer within 10 s ([the node network](/reference/node-network/index.html.md#the-table-must-stay)). |
 
 ```sh
 curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(machine|node_network)_'
@@ -188,7 +189,7 @@ Every server on Linux serves these metrics of its table `inet hopbox_host` ([the
 
 | Metric | Type | Labels | Description |
 | --- | --- | --- | --- |
-| `hopbox_host_firewall_repairs_total` | counter | none | The installs of the table `inet hopbox_host` after it lost a part outside `hopboxd` ([the host firewall](/reference/host-firewall/index.html.md#the-table-must-stay)). |
+| `hopbox_host_firewall_repairs_total` | counter | none | The installs of the table `inet hopbox_host` after it lost a part outside `hopboxd`, or after a check that got no answer within 10 s ([the host firewall](/reference/host-firewall/index.html.md#the-table-must-stay)). |
 | `hopbox_host_firewall_up` | gauge | none | 1 when the last check found the table whole or installed it. 0 when its install failed. A host without nftables serves neither metric. |
 
 ```sh

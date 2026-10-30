@@ -43,7 +43,7 @@ The checks run in the order of this table.
 | `kvm` | `fail` | Opens `/dev/kvm` for reading and writing, and asks for the KVM API version with the ioctl `KVM_GET_API_VERSION`. The version must be 12. |
 | `cgroup2` | `fail` | Checks with `statfs` that `/sys/fs/cgroup` is a cgroup v2 file system, the unified hierarchy that the jailer needs. |
 | `tun` | `fail` | Opens `/dev/net/tun` for reading and writing. |
-| `nftables` | `fail` | Opens a netlink socket for nftables and lists the tables. This needs the kernel module `nf_tables` and the capability `CAP_NET_ADMIN`. |
+| `nftables` | `fail` | Opens a netlink socket for nftables and lists the tables, with a bound of 10 s. This needs the kernel module `nf_tables` and the capability `CAP_NET_ADMIN`. |
 | `reflink` | `fail` | Makes a missing `data_dir`. Then it writes a test file of 64 KiB in `data_dir` and clones it with the ioctl `FICLONE`. It removes both files after the test. The test files are `.preflight-reflink-<random>` and `.preflight-reflink-<random>.clone`. |
 | `kernel` | `warn` | Compares the operating system and the kernel release with the tested host. |
 

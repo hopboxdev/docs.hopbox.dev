@@ -696,7 +696,7 @@ The attributes of OVHcloud and of the vRack go, with the order of a server, and 
 | `The state of the server cannot move to this release` | A state of version 0 without `ipv4` or without a pinned host key. Run `terraform state rm` on the resource, and import the server by its peer address. |
 | `/var/lib/hopbox-provider is not a dir of root with mode 0700. Remove it` | Another user made the work dir of the provider. |
 
-A failed script on the server gives `the script exited with status <n>:` and the end of its error output. A connection that breaks during a script gives `remote: the connection broke: ...`. The provider resumes an upload after it ([Uploads](#uploads)), and fails every other step.
+A failed script on the server gives `the script exited with status <n>:` and the end of its error output. A connection that breaks during a script, or while the provider opens the session of a script, gives `remote: the connection broke: ...`. The provider resumes an upload after it ([Uploads](#uploads)), and fails every other step.
 
 ## Resource hopbox_pool
 

@@ -417,6 +417,8 @@ The unit watches nftables. After each change in nftables, and every 2 s in case 
 the nftables table inet hopbox_host lost a part outside hopboxd, so the host firewall installs it again. Do not flush the nftables ruleset of a server
 ```
 
+Each nftables request of `hopboxd` ends after 10 s, so a kernel answer that never comes fails the request with `i/o timeout` and does not block the unit. A check that times out counts as a broken table: the unit logs the error above with the `i/o timeout` in `err`, adds 1 to `hopbox_host_firewall_repairs_total`, and installs the table again. The 10 s also cover the batch of an install, which the kernel applies in the send of the request. The largest batch that fits in one netlink message took under 30 ms on a host with every CPU busy.
+
 The bound of the repair is 2 s, the time between two checks. In the test fleet, the table was back 22 to 48 ms after a flush. A change in nftables within 2 s of a repair waits for the next check. So two writers of the table take turns every 2 s, not at the speed of the events. Two `hopboxd` processes or another tool can be such writers. In the gap, the server has no host firewall. A connection that opened in the gap stays open after the repair, because the table takes the packets of each connection that conntrack knows. While `hopboxd` does not run, nothing repairs the table, and the next start installs it.
 
 On an edge server, each check also finds the uplink of the NAT66 again. A check installs the table again after a new uplink or uplink address, and after new sets.
@@ -448,7 +450,7 @@ ssh -J debian@203.0.113.101 debian@203.0.113.31
 
 | Metric | Type | Labels | Description |
 | --- | --- | --- | --- |
-| `hopbox_host_firewall_repairs_total` | counter | none | The installs of the table after it lost a part outside `hopboxd`. On a healthy server, it stays flat. It can grow every 2 s while nothing else writes nftables. Then the kernel reads a rule back in another form than the one that `hopboxd` wrote. |
+| `hopbox_host_firewall_repairs_total` | counter | none | The installs of the table after it lost a part outside `hopboxd`, or after a check that got no answer within 10 s. On a healthy server, it stays flat. It can grow every 2 s while nothing else writes nftables. Then the kernel reads a rule back in another form than the one that `hopboxd` wrote. |
 | `hopbox_host_firewall_up` | gauge | none | 1 when the last check found the table whole or installed it. 0 when its install failed. |
 
 A host without nftables, such as a Mac, serves neither metric.
@@ -460,7 +462,7 @@ The firewall logs with `component=hostfw`. A check logs a state only after a cha
 | Message | Level | Fields | When |
 | --- | --- | --- | --- |
 | `the host firewall installed its table` | info | `table`, `jump_hosts`, `peers`, `registered` | An install at the start, or after a change of a set or of the uplink. `peers` and `registered` are the counts of the addresses of these sets. A repair logs the next row instead. |
-| `the nftables table inet hopbox_host lost a part outside hopboxd, so the host firewall installs it again. Do not flush the nftables ruleset of a server` | error | `err`, `repairs` | A check found the table broken, at most once a minute ([The table must stay](#the-table-must-stay)). |
+| `the nftables table inet hopbox_host lost a part outside hopboxd, so the host firewall installs it again. Do not flush the nftables ruleset of a server` | error | `err`, `repairs` | A check found the table broken, or got no answer within 10 s (`i/o timeout` in `err`), at most once a minute ([The table must stay](#the-table-must-stay)). |
 | `this server had a vRack address, so port 22 of its public interface takes the jump hosts alone. The file of the last sets keeps that, so the host firewall removed the file of the vRack interface` | info | `file`, `peers_file` | The start removed `<data_dir>/hostfw/vrack-interface` of a release before N31 ([Never a lockout](#never-a-lockout)). |
 | `cannot read the file of the vRack interface of an older release, so the host firewall keeps port 22 of the public interface closed` | error | `err`, `file` | The start cannot read `<data_dir>/hostfw/vrack-interface`. The file stays. |
 | `cannot remove the file of the vRack interface of an older release. The next start tries again` | error | `err`, `file` | The remove of `<data_dir>/hostfw/vrack-interface` failed. Port 22 stays closed, because the file `peers` keeps `knew_edge`. |

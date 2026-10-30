@@ -343,6 +343,8 @@ The machine unit of `hopboxd` watches nftables, apart from the control channel. 
 the nftables table inet hopbox_node lost a part outside hopboxd, so the node network installs it again. Do not flush the nftables ruleset of a node
 ```
 
+Each nftables request of `hopboxd` ends after 10 s, so a kernel answer that never comes fails the request with `i/o timeout` and does not block the unit. A check that times out counts as a broken table. The node logs the error above with the `i/o timeout` in `err`, adds 1 to `hopbox_node_network_repairs_total`, and installs the table again. As after a flush, the traffic counters start again from zero, and the node ends the connections of machines to the node. The 10 s also cover the batch of an install, which the kernel applies in the send of the request. The largest batch that fits in one netlink message took under 30 ms on a host with every CPU busy.
+
 Run also checks the table once at its start, so a flush between the setup and the start of the watch waits for no event. The bound of the repair is 2 s, the time between two checks. The watch is usually much faster: on the [tested server](/reference/preflight/index.html.md#the-tested-server), the table was back 8 to 48 ms after its delete. One repair of 20 took 1.73 s, so a change in nftables can also miss the watch. While `hopboxd` does not run, nothing repairs the table, and the next start installs it.
 
 In the gap, a machine can open a connection to a service of the node. Such a connection has no mark of the node, so the chain `input` drops its packets once the table is back. This holds also after conntrack takes the connection up again, for example after a keepalive of the node. To end such connections at once, the node also does this after each repair, and at each start:
@@ -384,7 +386,7 @@ The metrics listener serves the counters of each connected machine ([Metrics](/r
 | `hopbox_machine_inbound_packets_total` | counter | Packets to the machine of connections that the node opened. |
 | `hopbox_machine_egress_bytes_total` | counter | Bytes from the machine that the node let out. |
 | `hopbox_machine_egress_packets_total` | counter | Packets from the machine that the node let out. |
-| `hopbox_node_network_repairs_total` | counter | The installs of the table after it lost a part outside `hopboxd`. It has no label. See [The table must stay](#the-table-must-stay). |
+| `hopbox_node_network_repairs_total` | counter | The installs of the table after it lost a part outside `hopboxd`, or after a check that got no answer within 10 s. It has no label. See [The table must stay](#the-table-must-stay). |
 
 ### Inbound traffic as a use
 
@@ -403,7 +405,7 @@ The node network logs with `component=netcfg`.
 | `the node network is ready` | info | `table`, `machines`, `nameservers`, `edges` | The start installed the table. `machines` is the count of the tap devices that the node took over. `edges` is the count of the edge servers of the table before it. |
 | `connected a machine` | info | `machine`, `tap`, `address` | A boot connected the tap device of a machine. |
 | `disconnected a machine` | info | `machine`, `tap` | The node removed the tap device of a machine. |
-| `the nftables table inet hopbox_node lost a part outside hopboxd, so the node network installs it again. Do not flush the nftables ruleset of a node` | error | `err`, `machines` | A check found the table broken ([The table must stay](#the-table-must-stay)). |
+| `the nftables table inet hopbox_node lost a part outside hopboxd, so the node network installs it again. Do not flush the nftables ruleset of a node` | error | `err`, `machines` | A check found the table broken, or got no answer within 10 s (`i/o timeout` in `err`) ([The table must stay](#the-table-must-stay)). |
 | `cannot repair the node network` | error | `err` | A check found the table broken, and the install of the table failed. The next check tries again. |
 | `ended the connections that machines opened to the node without the table` | warn | `sockets`, `flows` | See [The table must stay](#the-table-must-stay). |
 | `cannot end every connection of a machine to the node` | error | `err`, `sockets`, `flows` | See [The table must stay](#the-table-must-stay). |
@@ -424,7 +426,7 @@ The node network logs with `component=netcfg`.
 | `netcfg: install the nftables table inet hopbox_node: ... hopboxd needs CAP_NET_ADMIN and the kernel needs nf_tables` | The start cannot make the table. The machine unit does not start. |
 | `netcfg: read the IPv6 forwarding of the host: ...` or `netcfg: record the IPv6 forwarding: ...` | The start cannot read `net.ipv6.conf.all.forwarding`, or cannot write `<data_dir>/network/forward-guard-ipv6`. The machine unit does not start. |
 | `firecracker: netcfg: connect the tap device <tap> of machine <id>: ...` | The boot fails, and the driver removes the device. The executor reports the machine `failed`, and the restart policy applies. |
-| `the nftables table inet hopbox_node lost a part outside hopboxd, ...` (error) | A flush of the ruleset or a change of the table. The node installs the table again. See [The table must stay](#the-table-must-stay). |
+| `the nftables table inet hopbox_node lost a part outside hopboxd, ...` (error) | A flush of the ruleset or a change of the table. With `i/o timeout` in `err`, a request of the check got no answer within 10 s. The node installs the table again. See [The table must stay](#the-table-must-stay). |
 | `cannot watch nftables, so the node network checks its table only every 2s` (warning) | The watch of nftables did not start. The check every 2 s still repairs the table. |
 | `the machine boots without network` (warning) | The spec of the machine has no address, or the node has no node network. |
 | `no capacity: the subnet <subnet> of node <id> has no free machine address ...` | The create fails. A delete frees an address after its hold. |
