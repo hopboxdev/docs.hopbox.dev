@@ -95,7 +95,7 @@ Each call has one typed caller. Its kind is also the actor kind of its audit ent
 | Kind | Caller | Proved by |
 | --- | --- | --- |
 | `anonymous` | A caller without a credential. | no credential |
-| `session` | A user signed in to the console. The caller also says whether the account is an instance admin. | the session cookie ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md)) |
+| `session` | A user signed in to the console. The caller also says whether the account is an instance admin, and whether it is pending. | the session cookie ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md)) |
 | `cli_token` | A user through the hopbox CLI. It acts as its account in every org of the account. The caller also says whether the account is an instance admin. | a CLI access token ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#cli-tokens)) |
 | `member_key` | A member API key, which acts as its account, only in the org of the key. | an API key ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#api-keys)) |
 | `org_key` | An org API key: a service credential of one org, with the rights of a member without personal resources. | an API key ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#api-keys)) |
@@ -136,6 +136,11 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `admin_account.list` | admin `AccountService.ListAccounts` | the install | `local_root`, `admin_key`, an admin `session` |
 | `admin_account.suspend` | admin `AccountService.SuspendAccount` | the install | `local_root`, `admin_key`, an admin `session` |
 | `admin_account.unsuspend` | admin `AccountService.UnsuspendAccount` | the install | `local_root`, `admin_key`, an admin `session` |
+| `admin_account.approve` | admin `AccountService.ApproveAccount` | the install | `local_root`, `admin_key`, an admin `session` |
+| `admin_account.reject` | admin `AccountService.RejectAccount` | the install | `local_root`, `admin_key`, an admin `session` |
+| `sign_up_block.list` | admin `AccountService.ListSignUpBlocks` | the install | `local_root`, `admin_key`, an admin `session` |
+| `sign_up_block.add` | admin `AccountService.BlockSignUp` | the install | `local_root`, `admin_key`, an admin `session` |
+| `sign_up_block.remove` | admin `AccountService.UnblockSignUp` | the install | `local_root`, `admin_key`, an admin `session` |
 | `admin_key.create` | `AdminKeyService.CreateAdminKey` | the install | `local_root`, an admin `session` |
 | `admin_key.register` | `AdminKeyService.RegisterAdminKey` | the install | `local_root` only |
 | `admin_key.list` | `AdminKeyService.ListAdminKeys` | the install | `local_root`, an admin `session` |
@@ -154,6 +159,7 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `account.get` | `AccountService.GetAccount` | the account of the caller | the `session`, `cli_token`, or `member_key` of the account |
 | `account.update` | `AccountService.UpdateAccount` | the account of the caller | the `session` or `cli_token` of the account |
 | `account.delete` | `AccountService.DeleteAccount` | the account of the caller | the `session` or `cli_token` of the account |
+| `account.set_sign_up_note` | `AccountService.SetSignUpNote` | the account of the caller | the `session` or `cli_token` of the account. Only a pending account has a note, and a pending account has no CLI token. |
 | `account.list_sign_in_methods` | `AccountService.ListSignInMethods` | the account of the caller | the `session` or `cli_token` of the account |
 | `account.remove_sign_in_method` | `AccountService.RemoveSignInMethod` | the account of the caller | the `session` or `cli_token` of the account |
 | `account.link_sign_in_method` | `AuthService.RequestMagicLink` with `link`, and `GET /auth/{provider}/start?link=1` ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#link-to-a-signed-in-account)) | the account of the caller | the `session` of the account, with a sign-in within the last 10 minutes ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#recent-sign-in)) |
@@ -267,6 +273,8 @@ Health and reflection do not call the service layer, so the API runs the policy 
 An admin `session` is the `session` of an instance admin whose sign-in is at most 10 minutes old ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#recent-sign-in)). The Admin area of the console calls the admin API with it. Every other `session` is refused on these actions, and so is the `cli_token` of an instance admin. [The admin API](/reference/admin-api/index.html.md#admin-sessions) lists the calls.
 
 A refused `anonymous` caller gets `unauthenticated` with the fixed message `this call needs a credential`, which names no action. Any other refused caller gets `permission_denied`, and the message names the caller kind and the action. One case is different. Sometimes the check refuses the `session` of an instance admin only because its sign-in is too old. The check then returns the error of a recent sign-in instead ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#recent-sign-in)). That error has the detail `hopbox.v1.RecentSignInRequired`, so the console asks the person to sign in again.
+
+The `session` of a pending account is the other case ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#pending-accounts)). The gate reads the state of the account with the session on each call. The check allows such a session only `account.get`, `account.set_sign_up_note`, `account.delete`, `auth.sign_out`, and the actions that `anonymous` can do. Each other action gets `permission_denied` with the message `permission denied: the account waits for approval by an instance admin`. That error has the detail `hopbox.v1.AccountPending` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#accountpending)), so the console shows the page of a pending account.
 
 ## Idempotency keys
 

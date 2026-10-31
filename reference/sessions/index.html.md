@@ -1,8 +1,8 @@
 # Sessions, cookies, and sign-in links
 
-> The session cookie, the lifetimes, the check against cross-site requests, the magic links and login links, what a sign-in does, and the rate limits.
+> The session cookie, the lifetimes, the check against cross-site requests, the magic links and login links, what a sign-in does, the sign-up modes, the limits of new accounts, the pending accounts, and the rate limits.
 
-A person signs in to the console of an install with a magic link, with GitHub, or with Google. On the first day, the first instance admin signs in with a first-admin login link. A sign-in starts a session, and a cookie holds the session in the browser. This page gives the cookie, the lifetimes, the check against cross-site requests, the recent sign-in, the form of the links, the link of a new sign-in method, and the rate limits. [The sign-in, account, and audit API](/reference/auth-api/index.html.md) lists the calls. [Sign-in with GitHub and Google](/reference/oauth/index.html.md) covers the sign-in with GitHub and Google. [CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md) covers the credentials of the hopbox CLI, scripts, and SSH clients. The code is in `internal/auth`, `internal/service`, and `internal/api`.
+A person signs in to the console of an install with a magic link, with GitHub, or with Google. On the first day, the first instance admin signs in with a first-admin login link. A sign-in starts a session, and a cookie holds the session in the browser. This page gives the cookie, the lifetimes, the check against cross-site requests, and the recent sign-in. It also gives the form of the links, the sign-up modes, the pending accounts, the link of a new sign-in method, and the rate limits. [The sign-in, account, and audit API](/reference/auth-api/index.html.md) lists the calls. [Sign-in with GitHub and Google](/reference/oauth/index.html.md) covers the sign-in with GitHub and Google. [CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md) covers the credentials of the hopbox CLI, scripts, and SSH clients. The code is in `internal/auth`, `internal/service`, and `internal/api`.
 
 ## Lifetimes
 
@@ -175,7 +175,7 @@ Each sign-in proves an identity: a method and an email. It then reaches one acco
    ```
 
    The rule protects an account against a lapsed domain. The new owner of the domain can prove an old address of the account, with a magic link or at a provider. The email of a method follows the provider, so a rule by email misses an old address. So once the account has an identity at a provider, the email alone links nothing. A person who lost every method of the account gets help from the operator ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#recover-a-lost-identity)).
-3. Else, the sign-in creates an account with the email, the method, and a personal org named `Personal`, with the account as its owner. A magic link, GitHub, and Google mark the email verified. A login link leaves it unverified. GitHub and Google also give the account the name of the person at the provider as its display name. The display name stays empty for a name that breaks the rules of [Domain rules](/reference/domain-rules/index.html.md#display-names). At GitHub, an empty name falls back to the login.
+3. Else, the sign-in creates an account with the email, the method, and a personal org named `Personal`, with the account as its owner. The sign-up mode gives the state and the tier of the new account ([Sign-up modes](#sign-up-modes)). The limits of new accounts apply first ([Limits of new accounts](#limits-of-new-accounts)). A magic link, GitHub, and Google mark the email verified. A login link leaves it unverified. GitHub and Google also give the account the name of the person at the provider as its display name. The display name stays empty for a name that breaks the rules of [Domain rules](/reference/domain-rules/index.html.md#display-names). At GitHub, an empty name falls back to the login.
 
 So the email of a login link never links to another account. A magic link, GitHub, or Google with the same email reaches another account. A second login link for the same email reaches the account of the first one. A verified email belongs to at most one account.
 
@@ -196,6 +196,64 @@ The transaction of the sign-in rolls back, so a magic link or a login link stays
 A refused link writes the log record `sign-in link refused` at level info, with `component=service` and `kind`, never the token. A refusal for a reason other than the token has the field `reason` too: `another session asked for the link`, or `the account needs a link for a new sign-in method`.
 
 Two first sign-ins with one email at the same time make one account: each sign-in takes a transaction lock (`LockKeySignIn`).
+
+### Sign-up modes
+
+The install setting `sign_up_mode` gives the state and the tier of the account that a first sign-in of a new person creates. An instance admin changes it with `UpdateInstallConfig` ([the admin API](/reference/admin-api/index.html.md#updateinstallconfig)) or with `hopboxd admin config set --sign-up-mode` ([hopboxd](/reference/hopboxd/index.html.md#admin-config-set)).
+
+| Mode | The new account |
+| --- | --- |
+| `approval` | The state `pending` and the tier `limited`, with its personal org. An instance admin approves or rejects it ([Pending accounts](#pending-accounts)). This is the default of a new install. Migration `0062` also sets it on an install that exists. |
+| `open` | The state `active` and the tier `limited`. No limit depends on the tier yet. |
+
+These sign-ins ignore the mode and the limits of new accounts:
+
+- A first-admin login link. Its new account is active, with the tier `full`, and it becomes an instance admin.
+- A sign-in that reaches an account that exists, and the link of a new sign-in method to an account ([Link a new sign-in method](#link-a-new-sign-in-method)).
+
+Each other first sign-in writes a row in `account_sign_ups` ([Control store tables](/reference/control-store/index.html.md#account_sign_ups)). The row keeps the method and the client address. For GitHub, it also keeps the login and the creation time of the GitHub user ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#providers)). The client address is the address that asked for the magic link, or that started the flow of GitHub or Google. It is not the address that opens the link. The audit entry `account.create` has the details `state` and `client_ip` too, and `login` for GitHub ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#audit-entries)).
+
+A `hopboxd` of the schema version 57 to 61 does not know the mode. In each mode, its first sign-in makes an active account of the tier `full`, and writes no row in `account_sign_ups`.
+
+### Limits of new accounts
+
+A first sign-in of a new person runs these checks in this order, in the transaction of the sign-in, under `LockKeySignIn`. A refusal rolls the transaction back and makes no account. So a magic link stays unused. A flow of GitHub or Google is used, and the person starts it again.
+
+| Check | Message | Code |
+| --- | --- | --- |
+| An entry of the block list matches the email, the domain of the email or one of its parent domains, or the identity at GitHub or Google ([Domain rules](/reference/domain-rules/index.html.md#block-list-entries)). A blocked identity at GitHub or Google also joins no account that exists through a shared verified email. That sign-in fails with the same error. | `permission denied: this install takes no new account for this sign-in` | `permission_denied`, or `403` at the callback of [Sign-in with GitHub and Google](/reference/oauth/index.html.md#errors) |
+| The client address made 3 accounts in the last 24 hours. | `too many requests: this client address made the most new accounts of a day. Retry tomorrow` | `resource_exhausted`, or `429` at the callback |
+| In the mode `approval` only: the install holds 50 pending accounts. | `too many requests: this install takes no new accounts now. Retry later` | `resource_exhausted`, or `429` at the callback |
+| In the mode `approval` only: a live control process has a schema version below 62 (`service.SignUpSchema`). Such a release lets a pending account act. | `unavailable: the install upgrades now, so it takes no new accounts. Retry later` | `unavailable`, or `503` with `Retry-After: 30` at the callback |
+
+The limit of a client counts the rows of `account_sign_ups` of the last 24 hours. A client is one IPv4 address, or one IPv6 /64, as for the rate limits of links ([Rate limits](#rate-limits)). A loopback address and an empty address have no limit. The rows of a rejected or a deleted account still count. The leader deletes such a row one day after the sign-up ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). A login link writes no row, so it does not count.
+
+Each refusal writes the log record `sign-up refused` with `component=service`, `kind`, and `reason`. The first three checks log at level info, with `client_ip`. Their reasons are `an entry of the block list matches`, `the client made the most new accounts of a day`, and `the install holds the most pending accounts`. These three also count in `hopbox_account_creations_total` with `state="refused"` after the transaction of the sign-in ends ([Metrics](/reference/metrics/index.html.md#metrics-of-the-accounts)). The refusals by the limit of a client and by the cap of pending accounts also count in `hopbox_rate_limited_total`, with the limits `account_creations` and `pending_cap`. A refusal by the cap of pending accounts also gives the instance admins a notice, at most one every hour ([the admin API](/reference/admin-api/index.html.md#notices-of-new-accounts)). The check of the schema logs at level warn, with the reason `a control process of an older release is live`, `control_process`, and `schema_version`. It does not count in the metric.
+
+### Pending accounts
+
+A pending account waits for approval by an instance admin. It signs in, and its session lives as any other session. The request gate reads the state of the account with the session on each call, as it reads the instance admin role. The policy check allows the session of a pending account only these calls:
+
+- `GetAccount`, which returns `pending` and the note ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#getaccount))
+- `SetSignUpNote`, which writes one note of at most 500 characters to the instance admins ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#setsignupnote))
+- `DeleteAccount`, so the person deletes the account ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#deleteaccount))
+- `SignOut`
+- the calls that a caller without a credential can make, such as `GetInstallInfo`
+
+Each other call fails with `permission_denied`, the message `permission denied: the account waits for approval by an instance admin`, and the detail `hopbox.v1.AccountPending` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#accountpending)). The console reads the detail and shows the page of a pending account.
+
+The other ways of a pending account in are closed too:
+
+| What | Result |
+| --- | --- |
+| The poll of a device sign-in that the person approved | It fails with the same error, and uses up the device code. |
+| A CLI access token or a member API key | It works only for an active account, so it counts as revoked ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#how-the-request-gate-reads-them)). |
+| A role in an org | Only an active account acts in an org (`GetActingRole`), so a pending account acts in none. |
+| A change that locks the account of its caller, such as `CreateOrg` | It fails with the same error. |
+| An SSH key at the SSH front door | It opens nothing. The reason is `the account of the key waits for approval` ([the SSH front door](/reference/ssh-front-door/index.html.md#who-opens-a-machine)). |
+| `GrantInstanceAdmin` of a pending account | `failed_precondition` with the message `failed precondition: the account waits for approval. Approve it first` ([the admin API](/reference/admin-api/index.html.md#grantinstanceadmin)). |
+
+An instance admin approves the account with `ApproveAccount`, or rejects it with `RejectAccount` ([the admin API](/reference/admin-api/index.html.md#approveaccount)). The leader deletes a pending account that nobody approves after 30 days ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)).
 
 ## Link a new sign-in method
 

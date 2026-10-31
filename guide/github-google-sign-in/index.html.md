@@ -142,6 +142,13 @@ Location: /
 
 The callback compared the state of the URL with the state of the cookie. Then it traded the code at GitHub, read your primary email, and made your account with a personal org. Your email is verified, because GitHub verified it. Without the cookie, the callback fails with `400`, so a link from another site cannot end a sign-in in your browser ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#callback)).
 
+The install has the default sign-up mode `approval`, so the new account is pending ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#pending-accounts)). A pending account cannot list its sign-in methods or link a new one. Approve it as root. The pending list gives its ID, the GitHub login, and the creation time of the GitHub user:
+
+```sh
+admin account list --state pending --json
+admin account approve --account-id <account id>
+```
+
 Copy the session cookie, and read your account:
 
 ```sh

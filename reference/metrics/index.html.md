@@ -4,6 +4,8 @@
 
 `hopboxd` serves Prometheus metrics on a loopback listener. The code is in `internal/obs`, `internal/api`, `internal/audit`, `internal/service`, `internal/placement`, `internal/node/executor`, `internal/node/machines`, `internal/node/netcfg`, `internal/mesh`, and `internal/dns`.
 
+The counter `hopbox_account_creations_total` came with milestone A2, the approval of new accounts (metrics catalog).
+
 ## Listener
 
 | Item | Value |
@@ -76,6 +78,30 @@ hopbox_placements_total{reason="",result="placed"} 4
 hopbox_placements_total{reason="ram",result="no_capacity"} 1
 ```
 
+## Metrics of the accounts
+
+The control role counts the first sign-ins of new people, so an instance admin sees a flood of sign-ups ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)).
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_account_creations_total` | counter | `method`, `state` | The first sign-ins of new people, by sign-in method and by the result. Each control process counts the sign-ins that it serves. |
+
+| Label | Values |
+| --- | --- |
+| `method` | `email_link`, `github`, `google`, or `login_link` |
+| `state` | `pending` for a new pending account, `active` for a new active account, and `refused` for a sign-in that a limit of new accounts refused ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#limits-of-new-accounts)). The refusal while an older release runs does not count. |
+
+A sign-in counts after its transaction ends, so a refusal counts once for each try. A sign-in that reaches an account that exists does not count. A first-admin login link counts as `active`.
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_account_creations_total'
+```
+
+```text
+hopbox_account_creations_total{method="github",state="pending"} 2
+hopbox_account_creations_total{method="email_link",state="refused"} 1
+```
+
 ## Metrics of the control role
 
 Each control process counts these events itself, so the sum over the control processes is the count of the install. A count starts from zero at each start of `hopboxd`.
@@ -91,7 +117,7 @@ Each control process counts these events itself, so the sum over the control pro
 | --- | --- |
 | `action` | The action of the audit entry, such as `org.create`, `api_key.create`, `machine.create`, or `machine.set_url_port` |
 | `actor_kind` | `anonymous`, `session`, `cli_token`, `member_key`, `org_key`, `admin_key`, `local_root`, `server`, `ssh_key`, `control`, or `system` |
-| `limit` of `hopbox_rate_limited_total` | `sign_in_links`: the sign-in links of an email or of a client. `device_sign_ins`: the device sign-ins of a client, and the device sign-ins that wait for an approval. `device_codes`: the wrong codes of the device approvals of an account. `oauth_starts`: the sign-ins with GitHub and Google of a client and of the install. `oauth_callbacks`: the callbacks of a client in one control process. `invitations`: the invitations of an org, of an account, and to an email. `machine_url_codes`: the machine URL codes of a browser. |
+| `limit` of `hopbox_rate_limited_total` | `sign_in_links`: the sign-in links of an email or of a client. `device_sign_ins`: the device sign-ins of a client, and the device sign-ins that wait for an approval. `device_codes`: the wrong codes of the device approvals of an account. `oauth_starts`: the sign-ins with GitHub and Google of a client and of the install. `oauth_callbacks`: the callbacks of a client in one control process. `invitations`: the invitations of an org, of an account, and to an email. `machine_url_codes`: the machine URL codes of a browser. `account_creations`: the new accounts of a client address in a day ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#limits-of-new-accounts)). `pending_cap`: the first sign-ins that the cap of 50 pending accounts refused. `sign_up_notes`: the changes of the note of a pending account in an hour ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#setsignupnote)). |
 | `limit` of `hopbox_limit_refusals_total` | `machines`, `vcpus`, `memory`, and `disk`: the usage limits of the org. `orgs`: the orgs that one account owns (`max_orgs_per_account`). |
 | `kind` | `member`, `org`, or `admin` |
 | `lifetime` | `30d`, `90d`, `365d`, or `custom` for a key with a custom expiry |

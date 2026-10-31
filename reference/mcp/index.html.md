@@ -160,6 +160,7 @@ The server serves no tool for these unary methods (`mcp.Excluded`). No tool take
 | `AccountService.DeleteAccount` | it deletes the account and its personal org |
 | `AccountService.RemoveSignInMethod` | it can remove the way that a person signs in |
 | `AccountService.EndCLISignIn` | only a session in the console can call it ([the sign-in, account, and audit API](/reference/auth-api/index.html.md)) |
+| `AccountService.SetSignUpNote` | the note of a pending account is for the console only. A pending account has no CLI token and no API key, so no MCP client acts for it ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#setsignupnote)). |
 
 The streaming methods `Exec`, `Upload`, `Download`, and `StreamMachineLogs` get the hand-written tools below. `WatchMachines` gets no tool. A client reads the state of a machine with `GetMachine` instead.
 

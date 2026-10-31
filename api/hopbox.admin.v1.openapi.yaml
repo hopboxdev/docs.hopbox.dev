@@ -4,6 +4,88 @@ info:
   description: The admin API of hopbox, package hopbox.admin.v1. Only instance admins and root on a control server can call it.
   version: v1
 paths:
+  /hopbox.admin.v1.AccountService/ApproveAccount:
+    post:
+      tags:
+        - hopbox.admin.v1.AccountService
+      summary: ApproveAccount
+      description: |-
+        ApproveAccount makes a pending account active, with the tier full or limited. The person gets an email,
+         if the install sends mail. An account that is not pending fails with FAILED_PRECONDITION.
+      operationId: hopbox.admin.v1.AccountService.ApproveAccount
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.ApproveAccountRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.ApproveAccountResponse'
+  /hopbox.admin.v1.AccountService/BlockSignUp:
+    post:
+      tags:
+        - hopbox.admin.v1.AccountService
+      summary: BlockSignUp
+      description: |-
+        BlockSignUp adds an entry to the block list of sign-ups, for example a whole email domain. The block
+         stops only new accounts. An entry that exists stays as it is.
+      operationId: hopbox.admin.v1.AccountService.BlockSignUp
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.BlockSignUpRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.BlockSignUpResponse'
   /hopbox.admin.v1.AccountService/DeleteAccount:
     post:
       tags:
@@ -124,6 +206,87 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.ListAccountsResponse'
+  /hopbox.admin.v1.AccountService/ListSignUpBlocks:
+    post:
+      tags:
+        - hopbox.admin.v1.AccountService
+      summary: ListSignUpBlocks
+      description: ListSignUpBlocks lists the block list of sign-ups, oldest first.
+      operationId: hopbox.admin.v1.AccountService.ListSignUpBlocks
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.ListSignUpBlocksRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.ListSignUpBlocksResponse'
+  /hopbox.admin.v1.AccountService/RejectAccount:
+    post:
+      tags:
+        - hopbox.admin.v1.AccountService
+      summary: RejectAccount
+      description: |-
+        RejectAccount deletes a pending account and its personal org. With block, each verified email of the
+         account, and its GitHub user or Google account, goes on the block list of sign-ups. An account that
+         is not pending fails with FAILED_PRECONDITION.
+      operationId: hopbox.admin.v1.AccountService.RejectAccount
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.RejectAccountRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.RejectAccountResponse'
   /hopbox.admin.v1.AccountService/RemoveAccountSignInMethod:
     post:
       tags:
@@ -207,6 +370,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.SuspendAccountResponse'
+  /hopbox.admin.v1.AccountService/UnblockSignUp:
+    post:
+      tags:
+        - hopbox.admin.v1.AccountService
+      summary: UnblockSignUp
+      description: UnblockSignUp removes an entry from the block list of sign-ups.
+      operationId: hopbox.admin.v1.AccountService.UnblockSignUp
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.UnblockSignUpRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.UnblockSignUpResponse'
   /hopbox.admin.v1.AccountService/UnsuspendAccount:
     post:
       tags:
@@ -2932,6 +3134,21 @@ components:
             - $ref: '#/components/schemas/google.protobuf.Timestamp'
           title: create_time
           description: create_time is the time when the account was created.
+        signInMethods:
+          type: array
+          items:
+            type: string
+          title: sign_in_methods
+          description: |-
+            sign_in_methods lists the kinds of the sign-in methods of the account once each: email_link, login_link,
+             github, or google.
+        signUp:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.AccountSignUp'
+          title: sign_up
+          description: |-
+            sign_up is the sign-up of the account. It is unset for an account from before the sign-up modes, or of
+             a first-admin login link.
       title: Account
       additionalProperties: false
       description: Account is an account as an instance admin sees it.
@@ -2990,6 +3207,40 @@ components:
       title: AccountSignInMethod
       additionalProperties: false
       description: AccountSignInMethod is one sign-in method of an account.
+    hopbox.admin.v1.AccountSignUp:
+      type: object
+      properties:
+        method:
+          type: string
+          title: method
+          description: 'method is the kind of the first sign-in: email_link, github, or google.'
+        clientIp:
+          type: string
+          title: client_ip
+          description: client_ip is the IP address that started the first sign-in, or empty.
+        githubLogin:
+          type: string
+          title: github_login
+          description: github_login is the GitHub login of a GitHub sign-up, or empty.
+        githubCreateTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: github_create_time
+          description: |-
+            github_create_time is the creation time of the GitHub user of a GitHub sign-up. A GitHub user made the same
+             day is a hint of abuse. It is unset for another sign-up.
+        note:
+          type: string
+          title: note
+          description: note is the note of a pending account to the instance admins, at most 500 characters, or empty.
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is the time of the sign-up.
+      title: AccountSignUp
+      additionalProperties: false
+      description: AccountSignUp is what an instance admin sees of the first sign-in of an account.
     hopbox.admin.v1.AccountState:
       type: string
       title: AccountState
@@ -3114,6 +3365,12 @@ components:
             - $ref: '#/components/schemas/google.protobuf.Timestamp'
           title: create_time
           description: create_time is the time of the action.
+        kind:
+          type: string
+          title: kind
+          description: |-
+            kind is security for an action that outlasts the session that did it, or sign_up for a new pending
+             account. The console lists the two kinds under their own headings.
       title: AdminNotice
       additionalProperties: false
       description: |-
@@ -3141,6 +3398,59 @@ components:
       title: Allocation
       additionalProperties: false
       description: Allocation is what one machine holds on its server.
+    hopbox.admin.v1.ApproveAccountRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          description: account_id is the UUID of the account.
+        tier:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.AccountTier'
+          title: tier
+          description: tier is the tier of the account after the approve. ACCOUNT_TIER_UNSPECIFIED gives ACCOUNT_TIER_FULL.
+      title: ApproveAccountRequest
+      additionalProperties: false
+      description: ApproveAccountRequest names the pending account, and its tier.
+    hopbox.admin.v1.ApproveAccountResponse:
+      type: object
+      properties:
+        account:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.Account'
+          title: account
+      title: ApproveAccountResponse
+      additionalProperties: false
+      description: ApproveAccountResponse holds the account after the change.
+    hopbox.admin.v1.BlockSignUpRequest:
+      type: object
+      properties:
+        kind:
+          type: string
+          title: kind
+          description: kind is email, email_domain, github, or google.
+        value:
+          type: string
+          title: value
+          description: value is an email, a domain such as example.net, a numeric GitHub user ID, or the sub claim of a Google account.
+        reason:
+          type: string
+          title: reason
+          description: reason says why, at most 256 characters, or is empty.
+      title: BlockSignUpRequest
+      additionalProperties: false
+      description: BlockSignUpRequest names the entry to add.
+    hopbox.admin.v1.BlockSignUpResponse:
+      type: object
+      properties:
+        block:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.SignUpBlock'
+          title: block
+      title: BlockSignUpResponse
+      additionalProperties: false
+      description: BlockSignUpResponse holds the entry.
     hopbox.admin.v1.CPUFingerprint:
       type: object
       properties:
@@ -4285,6 +4595,11 @@ components:
           type: boolean
           title: maintenance
           description: maintenance is true while the install is in maintenance mode. SetMaintenance changes it.
+        signUpMode:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.SignUpMode'
+          title: sign_up_mode
+          description: sign_up_mode is how a new person gets an account. The default is SIGN_UP_MODE_APPROVAL.
       title: InstallConfig
       additionalProperties: false
       description: InstallConfig holds the settings of the install.
@@ -4700,6 +5015,22 @@ components:
       title: ListServersResponse
       additionalProperties: false
       description: ListServersResponse holds the servers.
+    hopbox.admin.v1.ListSignUpBlocksRequest:
+      type: object
+      title: ListSignUpBlocksRequest
+      additionalProperties: false
+      description: ListSignUpBlocksRequest has no fields.
+    hopbox.admin.v1.ListSignUpBlocksResponse:
+      type: object
+      properties:
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.SignUpBlock'
+          title: blocks
+      title: ListSignUpBlocksResponse
+      additionalProperties: false
+      description: ListSignUpBlocksResponse lists the block list.
     hopbox.admin.v1.ListSizesRequest:
       type: object
       properties:
@@ -5296,6 +5627,36 @@ components:
       title: RegisterImageResponse
       additionalProperties: false
       description: RegisterImageResponse holds the image.
+    hopbox.admin.v1.RejectAccountRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          description: account_id is the UUID of the account.
+        block:
+          type: boolean
+          title: block
+          description: block puts each verified email of the account, and its GitHub user or Google account, on the block list.
+        reason:
+          type: string
+          title: reason
+          description: reason says why, at most 256 characters, or is empty. The audit log and each new entry of the block list keep it.
+      title: RejectAccountRequest
+      additionalProperties: false
+      description: RejectAccountRequest names the pending account.
+    hopbox.admin.v1.RejectAccountResponse:
+      type: object
+      properties:
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.SignUpBlock'
+          title: blocks
+          description: blocks are the entries that the block added or found. It is empty without block.
+      title: RejectAccountResponse
+      additionalProperties: false
+      description: RejectAccountResponse lists the entries of the block list of the reject.
     hopbox.admin.v1.RemoveAccountSignInMethodRequest:
       type: object
       properties:
@@ -6095,6 +6456,41 @@ components:
         - SIGN_IN_PROVIDER_GITHUB
         - SIGN_IN_PROVIDER_GOOGLE
       description: SignInProvider is a provider of sign-in through OAuth.
+    hopbox.admin.v1.SignUpBlock:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the entry.
+        kind:
+          type: string
+          title: kind
+          description: 'kind is what the entry matches: email, email_domain, github (the numeric user ID), or google (the sub claim).'
+        value:
+          type: string
+          title: value
+          description: value is the email, the domain, or the ID at the provider.
+        reason:
+          type: string
+          title: reason
+          description: reason says why the entry exists, or is empty.
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is the time of the entry.
+      title: SignUpBlock
+      additionalProperties: false
+      description: SignUpBlock is one entry of the block list of sign-ups.
+    hopbox.admin.v1.SignUpMode:
+      type: string
+      title: SignUpMode
+      enum:
+        - SIGN_UP_MODE_UNSPECIFIED
+        - SIGN_UP_MODE_OPEN
+        - SIGN_UP_MODE_APPROVAL
+      description: SignUpMode says how a new person gets an account.
     hopbox.admin.v1.Size:
       type: object
       properties:
@@ -6306,6 +6702,26 @@ components:
       title: SuspendOrgResponse
       additionalProperties: false
       description: SuspendOrgResponse holds the org after the change.
+    hopbox.admin.v1.UnblockSignUpRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the entry.
+      title: UnblockSignUpRequest
+      additionalProperties: false
+      description: UnblockSignUpRequest names the entry to remove.
+    hopbox.admin.v1.UnblockSignUpResponse:
+      type: object
+      properties:
+        block:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.SignUpBlock'
+          title: block
+      title: UnblockSignUpResponse
+      additionalProperties: false
+      description: UnblockSignUpResponse holds the removed entry.
     hopbox.admin.v1.UncordonServerRequest:
       type: object
       properties:
@@ -6427,6 +6843,14 @@ components:
           description: |-
             mail_transport is the new mail transport. MAIL_TRANSPORT_UNSPECIFIED fails with INVALID_ARGUMENT.
              The SMTP config stays, so a switch back to MAIL_TRANSPORT_SMTP needs no new config. Leave it out to keep the transport.
+        signUpMode:
+          oneOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.SignUpMode'
+            - type: "null"
+          title: sign_up_mode
+          description: |-
+            sign_up_mode is the new sign-up mode. SIGN_UP_MODE_UNSPECIFIED fails with INVALID_ARGUMENT. A change
+             gives each other instance admin a notice and an email. Leave it out to keep the mode.
       title: UpdateInstallConfigRequest
       additionalProperties: false
       description: UpdateInstallConfigRequest holds the settings to change.

@@ -7,7 +7,7 @@ These services of the public API `hopbox.v1` sign people in to the console and t
 | Service | Calls |
 | --- | --- |
 | `hopbox.v1.AuthService` | `RequestMagicLink`, `VerifyMagicLink`, `VerifyLoginLink`, `SignOut`, `StartDeviceAuthorization`, `GetDeviceAuthorization`, `ApproveDevice`, `PollDeviceAuthorization`, `RefreshCLIToken` |
-| `hopbox.v1.AccountService` | `GetAccount`, `UpdateAccount`, `DeleteAccount`, `ListSignInMethods`, `RemoveSignInMethod`, `ListCLISignIns`, `EndCLISignIn` |
+| `hopbox.v1.AccountService` | `GetAccount`, `UpdateAccount`, `DeleteAccount`, `ListSignInMethods`, `RemoveSignInMethod`, `ListCLISignIns`, `EndCLISignIn`, `SetSignUpNote` |
 | `hopbox.v1.AuditService` | `ListAuditEntries` |
 | `hopbox.v1.APIKeyService` | `CreateAPIKey`, `ListAPIKeys`, `RevokeAPIKey` |
 | `hopbox.v1.SSHKeyService` | `AddSSHKey`, `ListSSHKeys`, `RemoveSSHKey` |
@@ -37,6 +37,12 @@ browser() {
 | `version` | int64 | The version of the account. It starts at 1 and grows by 1 with each change. |
 | `create_time` | `google.protobuf.Timestamp` | The time of the first sign-in. |
 | `admin_notices` | int32 | The count of the open notices of an instance admin, which the Admin area lists ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). The console shows a banner while it is more than 0. It is 0 for any other account. |
+| `pending` | bool | `true` while the account waits for approval by an instance admin ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#pending-accounts)). A pending account only reads its account, writes its note, deletes itself, and signs out. |
+| `sign_up_note` | string | The note of a pending account to the instance admins ([SetSignUpNote](#setsignupnote)), or empty. It is empty for any other account. |
+
+### AccountPending
+
+The detail of the `permission_denied` error of a call that a pending account cannot make ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#pending-accounts)). The message of the error is `permission denied: the account waits for approval by an instance admin`. A client reads the detail without parsing the message. The console then shows the page of a pending account. The message `AccountPending` has no fields.
 
 ### AccountEmail
 
@@ -209,6 +215,9 @@ The request `VerifyMagicLinkRequest` has the field `token`, a string: the value 
 | The call does not carry the `Origin` of the install and the Connect protocol header. The link stays unused. | `permission_denied` |
 | The token is unknown, used, or expired: `the sign-in link is not valid: it is unknown, used, or expired. Ask for a new link` | `unauthenticated` |
 | An instance admin suspended the account of the sign-in ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). No session starts: `permission denied: an instance admin suspended this account, so it cannot sign in. The reason: <reason>` | `permission_denied` |
+| A first sign-in of a new person, and an entry of the block list matches ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#limits-of-new-accounts)). The link stays unused: `permission denied: this install takes no new account for this sign-in` | `permission_denied` |
+| A first sign-in of a new person, and a limit of new accounts refuses it. The link stays unused: `too many requests: this client address made the most new accounts of a day. Retry tomorrow`, or `too many requests: this install takes no new accounts now. Retry later` | `resource_exhausted` |
+| A first sign-in of a new person in the sign-up mode `approval`, while a control process of a schema version below 62 runs. The link stays unused: `unavailable: the install upgrades now, so it takes no new accounts. Retry later` | `unavailable` |
 | The account of the email has GitHub or Google, and no email method for this email ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)): `the sign-in conflicts with a sign-in method of the account: the account of ann@example.org signs in with GitHub or Google, so a new sign-in method joins it only through a link. ...` | `failed_precondition` |
 | A link, and the caller is not the session that asked for it. The link stays unused: `permission denied: this link adds an email to the account of the session that asked for it. Open it in the browser where you asked for it, while you are signed in there` | `permission_denied` |
 | A link, and another account signs in with the email: `the sign-in conflicts with a sign-in method of the account: this email ann.work@example.org signs in to another account. Remove it from that account first` | `failed_precondition` |
@@ -461,7 +470,7 @@ Returns the account of the caller.
 | Idempotent option | no |
 | Audit entry | none |
 
-The request `GetAccountRequest` has no fields. The response `GetAccountResponse` has the field `account`, an `Account`.
+The request `GetAccountRequest` has no fields. The response `GetAccountResponse` has the field `account`, an `Account`. A pending account can call it, so the console reads `pending` and `sign_up_note` with it.
 
 ```sh
 browser -d '{}' $API/hopbox.v1.AccountService/GetAccount
@@ -515,6 +524,8 @@ The request `DeleteAccountRequest` and the response `DeleteAccountResponse` have
 | An instance admin suspended the account after the request gate let the call in ([the admin API](/reference/admin-api/index.html.md#suspendaccount)): `permission denied: an instance admin suspended this account. The reason: <reason>`. The call changes nothing. | `permission_denied` |
 
 An instance admin that is not the last one loses the role with the delete. The delete of an instance admin tells the other instance admins, in the console and by email ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). A stolen session can otherwise remove an admin in silence. The notice comes before the delete, so each email of the deleted account gets a copy too. The delete takes the transaction lock of the notices to the instance admins, then locks the account, then each org of the account, before the check ([Control store tables](/reference/control-store/index.html.md#orgs)). So two owners of one org that delete their accounts at the same time leave one owner.
+
+A pending account can delete itself with this call ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#pending-accounts)). The delete of an account also removes the notices of the kind `sign_up` about it ([the admin API](/reference/admin-api/index.html.md#notices-of-new-accounts)).
 
 An operator deletes another account with the admin `DeleteAccount` ([the admin API](/reference/admin-api/index.html.md#deleteaccount)). That call also deletes the orgs that the account owns alone, and a suspended org does not hold it back. A suspended account has no session and no working CLI token, so it cannot call `DeleteAccount` itself. Only the admin delete removes it.
 
@@ -605,6 +616,29 @@ The request `EndCLISignInRequest` has the field `id`, the UUID of the CLI sign-i
 | The ID is not a UUID | `invalid_argument` |
 | The account has no CLI sign-in with the ID | `not_found` |
 | An instance admin suspended the account after the request gate let the call in ([the admin API](/reference/admin-api/index.html.md#suspendaccount)): `permission denied: an instance admin suspended this account. The reason: <reason>`. The call changes nothing. | `permission_denied` |
+
+### SetSignUpNote
+
+Writes the note of a pending account to the instance admins ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#pending-accounts)). The admins see the note with the account on the page Accounts of the Admin area ([the admin API](/reference/admin-api/index.html.md#accountsignup)). An account has one note. A new note replaces the old one, and an empty note removes it. The same note again changes nothing and writes no audit entry. An account changes its note at most 10 times an hour (`service.SignUpNoteChanges`), as the audit entries of the last hour count them. The removal of the note does not wait for the limit. A refusal counts in `hopbox_rate_limited_total` with the limit `sign_up_notes` ([Metrics](/reference/metrics/index.html.md#metrics-of-the-control-role)). A delete or a reject of the account clears the note at once. The email digest to the admins never holds the note ([the admin API](/reference/admin-api/index.html.md#the-digest-of-new-pending-accounts)).
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.v1.AccountService/SetSignUpNote` |
+| Policy action | `account.set_sign_up_note`: the `session` or `cli_token` of the account. A pending account has no CLI token, so only the console calls it. |
+| Idempotent option | no. A second call with the same note changes nothing. |
+| Audit entry | action `account.set_sign_up_note`, org the personal org, target kind `account`, detail `characters` (the length of the note). The note is text of an outside person, so the audit log never keeps it. |
+
+The request `SetSignUpNoteRequest` has the field `note`, a string. The server drops the spaces at both ends. The note has at most 500 characters of valid UTF-8. It holds no control character and no format character, apart from a line break. The response `SetSignUpNoteResponse` has the field `account`, the `Account` after the change.
+
+| Error | Code |
+| --- | --- |
+| The note breaks a rule, such as `invalid argument: invalid note: it has more than 500 characters` | `invalid_argument` |
+| The account is not pending: `failed precondition: the account is active, so it has no note to the instance admins` | `failed_precondition` |
+| The 11th change of the note within an hour: `too many requests: the account changed its note 10 times within an hour. Wait, then retry` | `resource_exhausted` |
+
+```sh
+browser -d '{"note":"I work at example.org and want to try hopbox for CI."}' $API/hopbox.v1.AccountService/SetSignUpNote
+```
 
 ## AuditService
 
@@ -831,7 +865,7 @@ The sign-in calls write these entries in the transaction of the sign-in. Their a
 
 | Action | When | Target | Details |
 | --- | --- | --- | --- |
-| `account.create` | A sign-in created the account. | the account | `method`, `email`, `personal_org` |
+| `account.create` | A sign-in created the account. In the sign-up mode `approval`, the entry is also a notice to the instance admins ([the admin API](/reference/admin-api/index.html.md#notices-of-new-accounts)). | the account | `method`, `email`, `personal_org`, `state` (`pending` or `active`), `client_ip`, and for GitHub `login` |
 | `account.link_sign_in_method` | A sign-in linked its method to the account through a verified email. | the new method | `kind`, `email`, and `instance_admin` set to `true` when the account is an instance admin |
 | `account.link_sign_in_method` | A link from a session added a method to the account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#link-a-new-sign-in-method)). The actor is that session, not a new one. | the new method | `kind`, `email`, `session`, and `magic_link` or the details of the provider: `oauth_flow`, `subject`, and for GitHub `login`. Also `instance_admin` set to `true` when the account is an instance admin. |
 | `auth.sign_in` | Every sign-in with a link. | the session | `method` (`email_link` or `login_link`), `email`, `new_account`, and `magic_link` or `login_link`: the UUID of the link |

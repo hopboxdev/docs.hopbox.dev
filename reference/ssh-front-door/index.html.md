@@ -94,6 +94,7 @@ The control role finds the account of the key by its fingerprint ([CLI tokens, A
 
 - The account uses the machine, as for an exec: it created the machine, or the machine is shared and the account is a member of its org. An org admin or an org owner cannot open a private machine of another member. The rule is the policy action `machine.ssh`, with the caller kind `ssh_key` ([the API server](/reference/api/index.html.md#callers-and-policy)).
 - An instance admin did not suspend the account of the key. A suspend keeps the key, so the key works again after the unsuspend ([the admin API](/reference/admin-api/index.html.md#suspendaccount)).
+- The account of the key does not wait for approval ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#pending-accounts)). Otherwise the control role refuses the key with the reason `the account of the key waits for approval`.
 - An instance admin did not suspend the org of the machine.
 - The machine holds the port, and its target is not `deleted`.
 

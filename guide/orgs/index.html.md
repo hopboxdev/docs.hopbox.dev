@@ -10,7 +10,7 @@ This guide calls the API with curl, in the same way as the console does, so it s
 
 - `hopboxd` with the control role on a laptop, as in [Run the control role on a laptop](/guide/run-hopboxd/index.html.md), with the API on `127.0.0.1:7443`.
 - A domain and an SMTP config, as in [First sign-in on a new install](/guide/first-sign-in/index.html.md#turn-on-magic-links). An invitation is for one verified email, so each person signs in with a magic link. A local mail catcher such as [Mailpit](https://mailpit.axllent.org) works.
-- Two accounts, user1 and user2, each signed in with a magic link of [First sign-in on a new install](/guide/first-sign-in/index.html.md#turn-on-magic-links). Keep the session cookie of each one in a file: `/tmp/hb/user1` and `/tmp/hb/user2`, each with one line of the form `__Host-hopbox_session=<token>`.
+- Two accounts, user1 and user2, each signed in with a magic link of [First sign-in on a new install](/guide/first-sign-in/index.html.md#turn-on-magic-links). In the default sign-up mode `approval`, an instance admin approves each new account first ([Use the Admin area](/guide/admin-area/index.html.md#approve-or-reject-new-accounts)). Keep the session cookie of each one in a file: `/tmp/hb/user1` and `/tmp/hb/user2`, each with one line of the form `__Host-hopbox_session=<token>`.
 
 Define a function that calls the API as one of them, with the headers of the console:
 

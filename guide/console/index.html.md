@@ -17,7 +17,7 @@ Open `https://example.com/` in the browser. Without a session, the console sends
 - Magic links: a field "Email" and the button "Email me a sign-in link". The link works once, for 15 minutes.
 - No method yet: a new install shows the command that makes a first-admin login link. The operator runs it on a control server, as in [First sign-in on a new install](/guide/first-sign-in/index.html.md).
 
-The first sign-in creates your account and its personal org. The console then opens the machines of that org. The head of the org shows `live`: the list follows the install as it changes.
+The first sign-in creates your account and its personal org. In the sign-up mode `approval`, the default, the new account waits for approval by an instance admin ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#pending-accounts)). Until then, the console shows only the page of a pending account. After the approval, or at once in the mode `open`, the console opens the machines of your org. The head of the org shows `live`: the list follows the install as it changes.
 
 ## Create a machine and open a shell
 

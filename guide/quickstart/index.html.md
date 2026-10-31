@@ -11,7 +11,7 @@ The preview install is for tests. Its data can go at any time before version 1.0
 1. Open https://dev.hopbox.dev in a browser.
 2. Click "Sign in with GitHub", and approve the request on GitHub. Or type your email in "Email", and click "Email me a sign-in link". Open the link in the email. It works once, for 15 minutes.
 
-The first sign-in creates your account and its personal org, "Personal". An org holds machines, and a personal org has only you as its member. The console then opens the page "Machines" of that org. Next to the name of the org, the word `live` tells you that the list follows the install as it changes.
+The first sign-in creates your account and its personal org, "Personal". An org holds machines, and a personal org has only you as its member. In the sign-up mode `approval`, the default of an install, the new account waits for approval by an instance admin ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#pending-accounts)). Until then, the console shows only the page of a pending account. If the install sends mail, you get an email after the approval. Then the console opens the page "Machines" of your org. Next to the name of the org, the word `live` tells you that the list follows the install as it changes.
 
 The line under the title shows the usage and the limits of the org. By default, an org can hold 3 machines, 6 vCPUs, 24 GiB of RAM, and 300 GB of disk. The operator of the install can change the limits of an org.
 

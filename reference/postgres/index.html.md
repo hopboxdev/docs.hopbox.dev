@@ -430,7 +430,7 @@ The file `internal/store/locks.go` holds every advisory lock key of hopbox. Each
 | --- | --- | --- |
 | `LockKeyMigrations` | `0x686f70626f780001` | The migration runner. The write of a row of `control_processes` that is gone or has no more than 5 s left to live takes it too, as a shared transaction lock, so the runner and such a write wait for each other. |
 | `LockKeyLeader` | `0x686f70626f780002` | The leader of the control role, on its own connection ([Control store tables](/reference/control-store/index.html.md#leader-election)). |
-| `LockKeySignIn` | `0x686f70626f780010` | A sign-in that can create or link an account, as a transaction lock ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)). |
+| `LockKeySignIn` | `0x686f70626f780010` | A sign-in that can create or link an account, as a transaction lock ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)). The checks of the limits of new accounts run under it, so the counts hold until the commit ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#limits-of-new-accounts)). |
 | `LockKeyMagicLinks` | `0x686f70626f780011` | A request for a magic link, as a transaction lock, so the rate limits count every request ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#rate-limits)). |
 | `LockKeyInvitations` | `0x686f70626f780012` | A new invitation to an org, as a transaction lock, so the rate limits per inviter and per email count every invitation ([the org API](/reference/org-api/index.html.md#invitations)). |
 | `LockKeyDeviceAuthorizations` | `0x686f70626f780013` | A start of a device sign-in, as a transaction lock, so the limits of the device flow count every start ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#limits-of-the-device-flow)). |
@@ -450,11 +450,12 @@ A transaction that takes two advisory locks takes them in this order, so two tra
 1. `LockKeySignIn`
 2. `LockKeyAdminNotices`
 
-Today only these four transactions take both:
+Today only these five transactions take both:
 
 - a link of a sign-in method
 - the sign-in of a login link
 - a sign-in that joins an account through a verified email
+- a first sign-in that makes a pending account, because it writes the notices of the new account ([the admin API](/reference/admin-api/index.html.md#notices-of-new-accounts))
 - `SuspendAccount` ([the admin API](/reference/admin-api/index.html.md#suspendaccount))
 
 A sign-in learns that it joins an instance admin only under `LockKeySignIn`, so that lock comes first. Each sign-in takes `LockKeySignIn`, and so does `SuspendAccount`. So a sign-in of the account runs before the suspend, which then deletes its session, or after it, and then reads the state `suspended`. After the two locks, `SuspendAccount` takes the row of the account and the rows of its orgs. Then it takes the rows of `instance_admins`, and last the rows of the machines that it stops ([Control store tables](/reference/control-store/index.html.md#orgs)). A change in an org reads the state of the account of its caller after the lock of the org row, without a lock of its own, so the suspend adds no row lock to the order of [Control store tables](/reference/control-store/index.html.md#orgs).

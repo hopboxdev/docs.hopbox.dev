@@ -13,7 +13,7 @@ The preview install is for tests. Its data can go at any time before version 1.0
 1. Open <https://dev.hopbox.dev> in a browser.
 2. Click “Sign in with GitHub”, and approve the request on GitHub. Or type your email in “Email”, and click “Email me a sign-in link”. Open the link in the email. It works once, for 15 minutes.
 
-The first sign-in creates your account and its personal org, “Personal”. An org holds machines, and a personal org has only you as its member. The console then opens the page “Machines” of that org. Next to the name of the org, the word `live` tells you that the list follows the install as it changes.
+The first sign-in creates your account and its personal org, “Personal”. An org holds machines, and a personal org has only you as its member. In the sign-up mode `approval`, the default of an install, the new account waits for approval by an instance admin ([Sessions, cookies, and sign-in links](/reference/sessions/#pending-accounts)). Until then, the console shows only the page of a pending account. If the install sends mail, you get an email after the approval. Then the console opens the page “Machines” of your org. Next to the name of the org, the word `live` tells you that the list follows the install as it changes.
 
 The line under the title shows the usage and the limits of the org. By default, an org can hold 3 machines, 6 vCPUs, 24 GiB of RAM, and 300 GB of disk. The operator of the install can change the limits of an org.
 
@@ -1052,7 +1052,7 @@ The metric `hopbox_edge_certificate_not_after_seconds` gives the same end ([Metr
 
 # Use the Admin area
 
-> How an instance admin uses the Admin area of the console, signs in again after 10 minutes, and handles an abuse report. Also the work that stays with root.
+> How an instance admin uses the Admin area of the console, signs in again after 10 minutes, handles an abuse report, approves or rejects new accounts, and sets the sign-up mode. Also the work that stays with root.
 
 The Admin area is the part of the console for instance admins. An instance admin is an account that operates the whole install. In the Admin area, you see the servers, the pools, the sizes, the images, the accounts, the orgs, and the machines of the install. You cordon and drain nodes. You also manage the instance admins, the admin API keys, and the config of the install, and you read the audit log of the install. [Console](/reference/console/#admin-area) lists each page and its calls.
 
@@ -1137,7 +1137,7 @@ Then read what the account did:
 
 Then decide. Keep the account suspended as evidence, or delete it. To give the account back its access, click “Unsuspend” in its row. The orgs that its suspend suspended become active again, but an org that you suspended on the page “Orgs” stays suspended. The machines stay stopped until their users start them.
 
-The Admin area does not delete an account. To delete the account of the report, for example a bot of the open sign-up, run the delete as root on a control server:
+The Admin area does not delete an account. The account of the report can be a bot of the sign-up mode `open`. To delete it, run the delete as root on a control server:
 
 1. Run `sudo hopboxd admin account delete --account-id=ID --reason='abuse report 1'`, with the ID from the page “Accounts”.
 2. If it fails, delete each machine that the error names, with the `sudo hopboxd admin machine delete` command that the error gives for it. These machines are in the personal org of the account, or in an org that the account owns alone. The private machines of the account in its other orgs count too. Then run the delete of the account again.
@@ -1152,9 +1152,72 @@ Type the account ID again to delete it: 01a15c02-7d1e-7a4c-9b51-2b1c5e8f0a7d
 
 The command also deletes each org that the account owns alone. A suspended org does not stop it. The command prints the ID of each deleted org. The audit entry `admin_account.delete` keeps the reason, the IDs of the deleted orgs, and the detail `suspended`. The command deletes no audit entry of the account ([hopboxd](/reference/hopboxd/#admin-account-delete)).
 
+A bot often signs up again with a new email. In the sign-up mode `approval`, its new account waits for you. Reject it with a block, so its email and its GitHub or Google identity cannot sign up again ([Approve or reject new accounts](#approve-or-reject-new-accounts)):
+
+```sh
+sudo hopboxd admin account reject --account-id=01a15c05-3e4f-7a10-8b21-6c7d8e9f0a1b --block --reason='abuse report 1'
+```
+
+If the bot uses many addresses of one email domain, block the whole domain:
+
+```sh
+sudo hopboxd admin account block --email-domain=example.net --reason='abuse report 1'
+```
+
 The Admin area has no shell and no file access for a machine. It never shows a secret or an env var of an org. An instance admin sees the metadata of an org, not its contents. The audit log of `org1` shows each of these actions to the owners of the org.
 
 To change the limits of one org, click “Limits” in its row. A field that you leave empty takes the default of the install. The section “Default limits” sets those defaults.
+
+## Approve or reject new accounts
+
+The sign-up mode of the install decides how a new person gets an account ([Sessions, cookies, and sign-in links](/reference/sessions/#sign-up-modes)). The default is `approval`. In this mode, the first sign-in of a new person makes a pending account. A pending account can sign in, write a note to the instance admins, and delete itself, and nothing else. It waits for you.
+
+Each new pending account gives each instance admin a notice in the console. The emails come as a digest: at most one email every 15 minutes, with the new pending accounts ([the admin API](/reference/admin-api/#the-digest-of-new-pending-accounts)). The digest links to the page “Accounts” of the Admin area, where you approve or reject each account.
+
+In the Admin area:
+
+1. Open “Notices”, and click “See the pending accounts” under “New accounts”. Or open “Accounts”, and choose the filter “Pending”.
+2. Read the row of each account: its emails, its sign-in methods, its note, its client address, and the time of its sign-up. For a GitHub sign-up, the row also shows the GitHub login. A GitHub user made less than 24 hours before the sign-up gets the tag “new GitHub user”, which is a hint of a bot.
+3. Click “Approve” for an account that you trust, or “Approve as limited” to give it the tier `limited`. If the install sends mail, the person gets an email.
+4. Click “Reject” for an account that you do not want. In the dialog, check “Also block this email or identity” to keep its email and its GitHub or Google identity from a new sign-up. Then click “Reject”.
+
+The section “Block list of sign-ups” of the same page lists the block list. It blocks a whole email domain with “Block the domain”, and removes an entry with “Remove”. The page “Config” sets the sign-up mode in its section “Sign-ups”.
+
+You can also decide as root on a control server:
+
+1. List the pending accounts with their sign-ups:
+
+   ```sh
+   sudo hopboxd admin account list --state=pending --json
+   ```
+
+   For each account, `sign_up` shows the method, the client address, and the time. It also shows the note of the person. For a GitHub sign-up, it shows the GitHub login and `github_create_time`. A GitHub user made the same day is a hint of a bot.
+
+2. Approve an account that you trust. If the install sends mail, the person gets an email:
+
+   ```sh
+   sudo hopboxd admin account approve --account-id=01a15c05-3e4f-7a10-8b21-6c7d8e9f0a1b
+   ```
+
+   Add `--tier=limited` to approve the account with the tier `limited`.
+
+3. Reject an account that you do not want. The reject deletes the account and its personal org. Add `--block` to keep its email and its GitHub or Google identity from a new sign-up:
+
+   ```sh
+   sudo hopboxd admin account reject --account-id=01a15c05-3e4f-7a10-8b21-6c7d8e9f0a1b --block --reason='bot sign-up'
+   ```
+
+A pending account that nobody approves expires after 30 days, and the leader deletes it. Each client address makes at most 3 new accounts a day, and the install holds at most 50 pending accounts ([Sessions, cookies, and sign-in links](/reference/sessions/#limits-of-new-accounts)).
+
+`sudo hopboxd admin account blocks` lists the block list, and `sudo hopboxd admin account unblock --id=ID` removes an entry ([hopboxd](/reference/hopboxd/#admin-account-blocks)). A block stops only new accounts. An account that exists still signs in. A block of an email also stops the same address with any +tag, such as `user4+1@example.org` for `user4@example.org`. A block of a domain also stops its subdomains.
+
+To let each new person in at once, with an active account of the tier `limited`, set the mode `open`:
+
+```sh
+sudo hopboxd admin config set --sign-up-mode=open
+```
+
+Each change of the mode gives each other instance admin a notice and an email, with the command that sets the old mode back. Set `--sign-up-mode=approval` to go back.
 
 ## Make an admin API key
 
@@ -1184,7 +1247,15 @@ The console at the old domain stops working at once. The session cookie and the 
 
 ## Read the security notices
 
-Some actions last after the session that did them: a new admin API key, a new instance admin, the revoke of an instance admin, a new sign-in method of an instance admin, the suspend, the unsuspend, or the delete of an instance admin account, and a change of the SMTP server, of the mail transport, of the domain, of the ACME settings, or of the GitHub or Google app. If another caller does one of them, you get a notice in the console and an email ([the admin API](/reference/admin-api/#notices-to-instance-admins)). The email goes to each email of your account, also when the SMTP server just changed. The email of a new domain names the old domain and the new one, and has no link, because the console at the old domain no longer answers. Some mail clients make the new domain clickable. Check the change first, then type the new domain in your browser yourself and open the page “Notices”. If you do one of them yourself, you get a copy of the email, and no notice in the console.
+Some actions last after the session that did them:
+
+* a new admin API key, a new instance admin, or the revoke of an instance admin
+* a new sign-in method of an instance admin
+* the suspend, the unsuspend, or the delete of an instance admin account
+* a change of the SMTP server, of the mail transport, or of the domain
+* a change of the ACME settings, of the sign-up mode, or of the GitHub or Google app
+
+If another caller does one of them, you get a notice in the console and an email ([the admin API](/reference/admin-api/#notices-to-instance-admins)). The email goes to each email of your account, also when the SMTP server just changed. The email of a new domain names the old domain and the new one, and has no link, because the console at the old domain no longer answers. Some mail clients make the new domain clickable. Check the change first, then type the new domain in your browser yourself and open the page “Notices”. If you do one of them yourself, you get a copy of the email, and no notice in the console.
 
 While you have an open notice, each page of the console shows a banner with the count, such as “2 security notices for the instance admins”. To read and close the notices, do these steps:
 
@@ -1263,7 +1334,7 @@ Open `https://example.com/` in the browser. Without a session, the console sends
 * Magic links: a field “Email” and the button “Email me a sign-in link”. The link works once, for 15 minutes.
 * No method yet: a new install shows the command that makes a first-admin login link. The operator runs it on a control server, as in [First sign-in on a new install](/guide/first-sign-in/).
 
-The first sign-in creates your account and its personal org. The console then opens the machines of that org. The head of the org shows `live`: the list follows the install as it changes.
+The first sign-in creates your account and its personal org. In the sign-up mode `approval`, the default, the new account waits for approval by an instance admin ([Sessions, cookies, and sign-in links](/reference/sessions/#pending-accounts)). Until then, the console shows only the page of a pending account. After the approval, or at once in the mode `open`, the console opens the machines of your org. The head of the org shows `live`: the list follows the install as it changes.
 
 ## Create a machine and open a shell
 
@@ -3213,7 +3284,7 @@ curl -s -X POST -H 'Content-Type: application/json' -d '{"email":"ann@example.or
 {}
 ```
 
-The email holds a link of the form `https://example.com/auth/email#token=<token>`. Sign in with its token as above, with `VerifyMagicLink` in place of `VerifyLoginLink`. The first sign-in creates the account of Ann and her personal org. An email gets at most 5 links an hour ([Sessions, cookies, and sign-in links](/reference/sessions/#rate-limits)). If the SMTP server fails, the call gets `unavailable`, and the log of `hopboxd` has the record `the magic link email failed` with the cause.
+The email holds a link of the form `https://example.com/auth/email#token=<token>`. Sign in with its token as above, with `VerifyMagicLink` in place of `VerifyLoginLink`. The first sign-in creates the account of Ann and her personal org. In the default sign-up mode `approval`, the account is pending until an instance admin approves it ([Use the Admin area](/guide/admin-area/#approve-or-reject-new-accounts)). An email gets at most 5 links an hour ([Sessions, cookies, and sign-in links](/reference/sessions/#rate-limits)). If the SMTP server fails, the call gets `unavailable`, and the log of `hopboxd` has the record `the magic link email failed` with the cause.
 
 ## Magic links without an SMTP server
 
@@ -3489,6 +3560,13 @@ Location: /
 ```
 
 The callback compared the state of the URL with the state of the cookie. Then it traded the code at GitHub, read your primary email, and made your account with a personal org. Your email is verified, because GitHub verified it. Without the cookie, the callback fails with `400`, so a link from another site cannot end a sign-in in your browser ([Sign-in with GitHub and Google](/reference/oauth/#callback)).
+
+The install has the default sign-up mode `approval`, so the new account is pending ([Sessions, cookies, and sign-in links](/reference/sessions/#pending-accounts)). A pending account cannot list its sign-in methods or link a new one. Approve it as root. The pending list gives its ID, the GitHub login, and the creation time of the GitHub user:
+
+```sh
+admin account list --state pending --json
+admin account approve --account-id <account id>
+```
 
 Copy the session cookie, and read your account:
 
@@ -5302,7 +5380,7 @@ This guide calls the API with curl, in the same way as the console does, so it s
 
 * `hopboxd` with the control role on a laptop, as in [Run the control role on a laptop](/guide/run-hopboxd/), with the API on `127.0.0.1:7443`.
 * A domain and an SMTP config, as in [First sign-in on a new install](/guide/first-sign-in/#turn-on-magic-links). An invitation is for one verified email, so each person signs in with a magic link. A local mail catcher such as [Mailpit](https://mailpit.axllent.org) works.
-* Two accounts, user1 and user2, each signed in with a magic link of [First sign-in on a new install](/guide/first-sign-in/#turn-on-magic-links). Keep the session cookie of each one in a file: `/tmp/hb/user1` and `/tmp/hb/user2`, each with one line of the form `__Host-hopbox_session=<token>`.
+* Two accounts, user1 and user2, each signed in with a magic link of [First sign-in on a new install](/guide/first-sign-in/#turn-on-magic-links). In the default sign-up mode `approval`, an instance admin approves each new account first ([Use the Admin area](/guide/admin-area/#approve-or-reject-new-accounts)). Keep the session cookie of each one in a file: `/tmp/hb/user1` and `/tmp/hb/user2`, each with one line of the form `__Host-hopbox_session=<token>`.
 
 Define a function that calls the API as one of them, with the headers of the console:
 

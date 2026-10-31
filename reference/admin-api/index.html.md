@@ -1,6 +1,6 @@
 # The admin API
 
-> The admin API hopbox.admin.v1, its calls and their audit entries, including enrollment tokens, the server calls, the list and the suspend of accounts, the calls on orgs and their limits, and admin API keys, and the admin socket.
+> The admin API hopbox.admin.v1, its calls and their audit entries, including enrollment tokens, the server calls, the list, the suspend, the approval, and the reject of accounts, the block list of sign-ups, the notices and the digest of new accounts, the calls on orgs and their limits, and admin API keys, and the admin socket.
 
 The admin API is the API service `hopbox.admin.v1`. Instance admins and root on a control server use it to operate the whole install. The hopbox CLI and the SDKs never include it. This page lists its calls and the admin socket. [The API server](/reference/api/index.html.md) covers the parts that every call shares: the request gate, the policy check, the idempotency keys, and the error codes. The generated reference is [Admin API](/api/hopbox.admin.v1.openapi.yaml).
 
@@ -21,7 +21,7 @@ The admin API has these services:
 | `hopbox.admin.v1.MailService` | `ListMailFiles`, `GetMailFile` |
 | `hopbox.admin.v1.LoginLinkService` | `CreateLoginLink` |
 | `hopbox.admin.v1.InstanceAdminService` | `ListInstanceAdmins`, `GrantInstanceAdmin`, `RevokeInstanceAdmin`, `ListAdminNotices`, `DismissAdminNotices` |
-| `hopbox.admin.v1.AccountService` | `ListAccountSignInMethods`, `RemoveAccountSignInMethod`, `DeleteAccount`, `ListAccounts`, `SuspendAccount`, `UnsuspendAccount` |
+| `hopbox.admin.v1.AccountService` | `ListAccountSignInMethods`, `RemoveAccountSignInMethod`, `DeleteAccount`, `ListAccounts`, `SuspendAccount`, `UnsuspendAccount`, `ApproveAccount`, `RejectAccount`, `ListSignUpBlocks`, `BlockSignUp`, `UnblockSignUp` |
 | `hopbox.admin.v1.ServerService` | `CreateEnrollmentToken`, `ListServers`, `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DecommissionServer`, `DrainServer`, `CancelDrain`, `ListControlProcesses` |
 | `hopbox.admin.v1.PoolService` | `CreatePool`, `GetPool`, `ListPools`, `DeletePool` |
 | `hopbox.admin.v1.SizeService` | `CreateSize`, `GetSize`, `ListSizes`, `RetireSize` |
@@ -44,7 +44,7 @@ An admin session can make these calls, and no other call of the admin API:
 | `hopbox.admin.v1.ServerService` | `ListServers`, `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DrainServer` (only of a server that hosts no control process), `CancelDrain` |
 | `hopbox.admin.v1.PoolService` | `CreatePool`, `GetPool`, `ListPools`, `DeletePool` |
 | `hopbox.admin.v1.SizeService` | `CreateSize`, `GetSize`, `ListSizes`, `RetireSize` |
-| `hopbox.admin.v1.AccountService` | `ListAccounts`, `SuspendAccount`, `UnsuspendAccount` |
+| `hopbox.admin.v1.AccountService` | `ListAccounts`, `SuspendAccount`, `UnsuspendAccount`, `ApproveAccount`, `RejectAccount`, `ListSignUpBlocks`, `BlockSignUp`, `UnblockSignUp` |
 | `hopbox.admin.v1.OrgService` | `ListOrgs`, `SuspendOrg`, `UnsuspendOrg`, `SetOrgLimits`, `GetDefaultOrgLimits`, `SetDefaultOrgLimits` |
 | `hopbox.admin.v1.MachineService` | `ListMachines`, `StopMachine`, `DeleteMachine` |
 | `hopbox.admin.v1.ImageService` | `ListImages` |
@@ -150,6 +150,15 @@ The message `InstallConfig` holds the general config:
 | `acme_terms_agreed` | bool | `true` once an instance admin agreed to the terms of the CA of `acme_directory_url`. The install asks for no certificate before that. The default is `false`. |
 | `mail_transport` | `MailTransport` | How the install delivers its mail ([Mail](/reference/mail/index.html.md#mail-transports)). The default is `MAIL_TRANSPORT_SMTP`. |
 | `maintenance` | bool | `true` while the install is in maintenance mode ([the API server](/reference/api/index.html.md#maintenance-mode)). Only [SetMaintenance](#setmaintenance) changes it. The default is `false`. |
+| `sign_up_mode` | `SignUpMode` | How a new person gets an account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). The default is `SIGN_UP_MODE_APPROVAL`, for a new install and for an install that migration `0062` upgrades. |
+
+The enum `SignUpMode` has these values:
+
+| Value | Number | Meaning |
+| --- | --- | --- |
+| `SIGN_UP_MODE_UNSPECIFIED` | 0 | Never in a response. A request must not use it. |
+| `SIGN_UP_MODE_OPEN` | 1 | The first sign-in of a new person makes an active account of the tier `limited`. |
+| `SIGN_UP_MODE_APPROVAL` | 2 | The first sign-in of a new person makes a pending account, which an instance admin approves or rejects ([ApproveAccount](#approveaccount), [RejectAccount](#rejectaccount)). |
 
 The enum `MailTransport` has these values:
 
@@ -181,7 +190,7 @@ Changes the fields that the request sets, and keeps the others. It returns the c
 | Procedure | `/hopbox.admin.v1.InstallConfigService/UpdateInstallConfig` |
 | Policy action | `install_config.update`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call with the same request sets the same values again. |
-| Audit entry | action `install_config.update`, no target, details `domain` (the new domain), `old_domain`, `public_addresses` (the new addresses, joined by commas), and `old_public_addresses`. Also `acme_directory_url`, `acme_email`, `acme_terms_agreed` (`true` or `false`), and `mail_transport` (`smtp` or `file`), each with its `old_` detail. A change of the domain, of an ACME setting, or of the mail transport tells the instance admins ([Notices to instance admins](#notices-to-instance-admins)). |
+| Audit entry | action `install_config.update`, no target, details `domain` (the new domain), `old_domain`, `public_addresses` (the new addresses, joined by commas), and `old_public_addresses`. Also `acme_directory_url`, `acme_email`, `acme_terms_agreed` (`true` or `false`), and `mail_transport` (`smtp` or `file`). Also `sign_up_mode` (`open` or `approval`). Each of these has its `old_` detail. Some changes tell the instance admins: the domain, an ACME setting, the mail transport, and the sign-up mode ([Notices to instance admins](#notices-to-instance-admins)). |
 
 The request `UpdateInstallConfigRequest` has these fields:
 
@@ -193,13 +202,14 @@ The request `UpdateInstallConfigRequest` has these fields:
 | `acme_email` | optional string | The new contact email of the ACME account. It must be one plain email address, such as `ops@example.org`, without whitespace or a control character. The install keeps it in lowercase. An empty string removes the contact. Leave the field out to keep the email. |
 | `acme_terms_agreed` | optional bool | `true` records that the caller agrees to the terms of the CA of the directory. A new agreement covers the terms that the next attempt reads from the directory. `false` stops new certificates. Leave the field out to keep it. |
 | `mail_transport` | optional `MailTransport` | The new mail transport. The SMTP config stays, so a switch back to `MAIL_TRANSPORT_SMTP` needs no new config. Leave the field out to keep the transport. |
+| `sign_up_mode` | optional `SignUpMode` | The new sign-up mode. A change gives each other instance admin a notice and an email. Leave the field out to keep the mode. |
 | `expected_version` | optional int64 | The `version` of the install config that the caller read. If the config has another version now, the call fails with `aborted` and changes nothing. Leave the field out to change the config at any version. |
 
 The message `PublicAddresses` has one field, `addresses`, a repeated string. Each address must follow the rules in [Domain rules](/reference/domain-rules/index.html.md#public-addresses): at most 16 IPv4 or IPv6 addresses, none twice. The install keeps them in the text form of Go `netip`, in their order. So `2001:DB8::10` becomes `2001:db8::10`, and an IPv4 address in IPv6 form, such as `::ffff:203.0.113.10`, becomes `203.0.113.10`.
 
 With `expected_version`, two admins that change the config at the same time cannot overwrite each other: the second one gets `aborted` with the message `conflict: the install config is at version <n>, not <m>. Read it again`. The call locks the row until it commits, so the version check and the change happen as one step.
 
-A request that sets no field gets `invalid_argument` with the message `invalid argument: the update sets no setting`. `expected_version` alone sets no field. A bad domain gets `invalid_argument` with the rule that it breaks, for example `invalid argument: invalid name: the install domain "localhost" must have at least two labels, such as hop.example.org`. A bad address gets `invalid_argument` with the rule that it breaks, for example `invalid argument: invalid public address: "0.0.0.0" is not an address that a client on another host can reach`. A bad ACME setting gets `invalid_argument` too, for example `invalid argument: invalid ACME setting: "http://acme.example.org/directory" is not an https URL of a host without user info or a fragment, such as https://acme-v02.api.letsencrypt.org/directory`. Whitespace or a control character gets, for example, `invalid argument: invalid ACME setting: the directory URL holds the character ' '. It can hold no whitespace and no control character`. `MAIL_TRANSPORT_UNSPECIFIED` or an unknown transport gets `invalid_argument` with the message `invalid argument: the mail transport <n> is not smtp or file`.
+A request that sets no field gets `invalid_argument` with the message `invalid argument: the update sets no setting`. `expected_version` alone sets no field. A bad domain gets `invalid_argument` with the rule that it breaks, for example `invalid argument: invalid name: the install domain "localhost" must have at least two labels, such as hop.example.org`. A bad address gets `invalid_argument` with the rule that it breaks, for example `invalid argument: invalid public address: "0.0.0.0" is not an address that a client on another host can reach`. A bad ACME setting gets `invalid_argument` too, for example `invalid argument: invalid ACME setting: "http://acme.example.org/directory" is not an https URL of a host without user info or a fragment, such as https://acme-v02.api.letsencrypt.org/directory`. Whitespace or a control character gets, for example, `invalid argument: invalid ACME setting: the directory URL holds the character ' '. It can hold no whitespace and no control character`. `MAIL_TRANSPORT_UNSPECIFIED` or an unknown transport gets `invalid_argument` with the message `invalid argument: the mail transport <n> is not smtp or file`. `SIGN_UP_MODE_UNSPECIFIED` or an unknown mode gets `invalid_argument` with the message `invalid argument: the sign-up mode <n> is not open or approval`.
 
 While the transport is `MAIL_TRANSPORT_FILE`, each update logs `mail goes to files, not to recipients` at level warn ([Mail](/reference/mail/index.html.md#logs)).
 
@@ -730,7 +740,7 @@ The request `GrantInstanceAdminRequest` names the account with one of these fiel
 | `account_id` | string | The UUID of the account. |
 | `email` | string | A verified email of the account. An unverified email, such as the email of a login link, names no account, because many accounts can hold it. |
 
-The response `GrantInstanceAdminResponse` has the field `account_id`. A request without a field, or with an ID that is not a UUID, gets `invalid_argument`. An unknown account gets `not_found`.
+The response `GrantInstanceAdminResponse` has the field `account_id`. A request without a field, or with an ID that is not a UUID, gets `invalid_argument`. An unknown account gets `not_found`. A pending account gets `failed_precondition` with the message `failed precondition: the account waits for approval. Approve it first` ([ApproveAccount](#approveaccount)).
 
 ### RevokeInstanceAdmin
 
@@ -769,7 +779,7 @@ Some calls leave something that lasts after the session that made them. For exam
 | `DeleteAccount` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#deleteaccount)) | When the account is an instance admin (Q106). Otherwise a stolen session can remove an admin in silence, as with a revoke. The notice comes before the delete, so each email of the deleted account gets the copy of the actor. The audit entry `account.delete` then has the detail `instance_admin` set to `true`. |
 | `SetSMTPConfig` and `ClearSMTPConfig` | Always. |
 | `SetOAuthClient` and `ClearOAuthClient` | Always. |
-| `UpdateInstallConfig` | When it changes `domain`, `acme_directory_url`, `acme_email`, `acme_terms_agreed`, or `mail_transport`. The transport decides whether the install uses the SMTP server. The domain decides where the console and every link of the install go, and the ACME settings decide which CA issues the certificate of the install (Q106). A change of `public_addresses` alone tells nobody. `hopboxd admin config set` and `hopboxd install --domain` call `UpdateInstallConfig`, so their changes tell the instance admins too. |
+| `UpdateInstallConfig` | When it changes `domain`, `acme_directory_url`, `acme_email`, `acme_terms_agreed`, `mail_transport`, or `sign_up_mode`. The transport decides whether the install uses the SMTP server. The domain decides where the console and every link of the install go, and the ACME settings decide which CA issues the certificate of the install (Q106). A stolen session can set the sign-up mode `open`, which lets each new person act at once (Q109). The advice of a change of the mode is `sudo hopboxd admin config set --sign-up-mode='<old mode>'`. A change of `public_addresses` alone tells nobody. `hopboxd admin config set` and `hopboxd install --domain` call `UpdateInstallConfig`, so their changes tell the instance admins too. |
 
 A notice is the audit entry of the call. In the transaction of the call, each instance admin other than the actor gets an open notice in the table `admin_notices` ([Control store tables](/reference/control-store/index.html.md#admin_notices)). The banner of the console and the Admin area show the open notices ([Console](/reference/console/index.html.md#admin-area)), and `ListAdminNotices` returns them. `hopboxd admin` has no command for them, because root has no account and so no notices.
 
@@ -789,6 +799,52 @@ A change of the mail config sends its email the way that the install sent mail b
 
 A failed email never fails the call. The emails of one notice share one limit of 20 s. For each address that fails, hopbox logs `the email of an admin notice failed` at level error, with `audit_entry`, `account`, and `err`. It also writes the audit entry `admin_notice.mail_failed`, with the actor kind `system`, the target kind `audit_entry` and the ID of the entry of the call, and the details `account`, `email`, and `error`. The error is the reply of the mail server. If that text looks like a credential, the audit log refuses it, so `error` holds a fixed text instead, and only the log has the reply. An address can also look like a credential, for example `hbx_ops@example.org` stored before the audit log refused such values. Then the entry goes without `email`, and `account` still names the recipient. The detail `email_sha256` holds the first 16 hex digits of the SHA-256 of the address, so you can tell apart the addresses of one account. So one such value never costs the entries of the other addresses. The notice stays in the Admin area. An install without an SMTP config fails each email this way. With the file transport, the email goes to the mail folder ([Mail](/reference/mail/index.html.md#the-file-transport)). After the sends, hopbox logs `sent the emails of an admin notice` at level info, with `audit_entry`, `action`, `sent`, and `failed`. If it cannot write the audit entries of the failures, it logs `the audit entries of the failed emails of an admin notice failed` at level error.
 
+### Notices of new accounts
+
+A notice has a kind. The notices above have the kind `security`. A new pending account gives a notice of the second kind, `sign_up` ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#pending-accounts)). A sign-up is no security action of an admin, so the console lists the two kinds under their own headings.
+
+In the transaction of the first sign-in, each instance admin gets an open notice of the kind `sign_up`. The notice is the audit entry `account.create` of the new account. Its details also hold `state`, `client_ip`, and `login` for GitHub ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#audit-entries)). The sign-in takes `LockKeySignIn`, then `LockKeyAdminNotices` ([the bundled Postgres](/reference/postgres/index.html.md#order-of-the-advisory-locks)). A notice of the kind `sign_up` sends no email of its own. The digest below covers the emails.
+
+The summary of such a notice has this form:
+
+```text
+The account User 1 (<account id>) waits for approval. Signed up with GitHub user user1, from 192.0.2.1.
+```
+
+A new account without a display name shows only its ID. The advice names the page Accounts of the Admin area, and the commands `sudo hopboxd admin account approve --account-id='<id>'` and `sudo hopboxd admin account reject --account-id='<id>'`. It also says that the account expires after 30 days without a decision.
+
+When the cap of 50 pending accounts refuses a first sign-in, each instance admin gets a notice of the kind `sign_up` too, at most one every hour ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#limits-of-new-accounts)). Its audit entry has the action `admin_notice.sign_ups_full`, the actor `system`, no target, and the detail `max_pending_accounts`. The refused sign-in rolls back, so the notice goes in a transaction of its own after it, under `LockKeyAdminNotices`. If it fails, the log record is `the notice of the full cap of pending accounts failed` at level error, with `component=service` and `err`. The summary is:
+
+```text
+The install holds 50 pending accounts, the most that it takes, so it refused a new sign-up. It refuses each new sign-up until the count falls. This notice comes at most once an hour.
+```
+
+An approve, a reject, the expiry, and any delete of the account remove the notices of the kind `sign_up` about it, from every instance admin. The column `about_account_id` of `admin_notices` names the account ([Control store tables](/reference/control-store/index.html.md#admin_notices)).
+
+### The digest of new pending accounts
+
+The leader sends the instance admins an email digest of the new pending accounts ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). It checks every minute, and sends at most one digest every 15 minutes (`service.SignUpDigestEvery`). The clock of Postgres decides, through the column `sign_up_digest_at` of `install_config`, so a change of the leader keeps the interval. A digest names the pending accounts that no digest named yet, oldest first, at most 100. The rest wait for the next digest. Without such an account, the leader sends nothing.
+
+The digest goes to each email of each active instance admin. Its subject is `1 new account waits for approval on <domain>`, or `<n> new accounts wait for approval on <domain>`. For each account, it lists the emails, the account ID, the method, and the client address. It also lists the time of the sign-up. For a GitHub sign-up, it adds the GitHub login and the creation date of the GitHub user. It never holds the note of an account, because a note is text of an outside person. It links to the page Accounts of the Admin area, `/admin/accounts`, and says that a pending account expires after 30 days.
+
+```text
+Subject: 1 new account waits for approval on example.com
+
+This is a notice to the instance admins of example.com.
+
+1 new account waits for approval:
+
+- user1@example.org, account <account id>
+  Signed up with GitHub user user1 (GitHub user since 2026-10-29), from 192.0.2.1, at Fri, 30 Oct 2026 11:32:00 UTC.
+
+Approve or reject each account on the page Accounts of the Admin area: https://example.com/admin/accounts
+A pending account that nobody approves expires after 30 days.
+
+You get this email because you are an instance admin of example.com. hopbox sends at most one such email every 15 minutes.
+```
+
+Each digest writes the audit entry `admin_notice.sign_up_digest`, with the actor `system`. Its details are `accounts`, the IDs of the accounts joined by commas, and `recipients`, the count of the addresses. A failed email writes `admin_notice.mail_failed`, as for a notice above, with the entry of the digest as its target. The digest marks its accounts as named before it sends, so a failed email sends no second digest of them. An install that sends no mail marks the accounts as named too, because its admins see the notices in the console. The log records are in [hopboxd](/reference/hopboxd/index.html.md#logs).
+
 ### AdminNotice
 
 | Field | Type | Description |
@@ -804,6 +860,7 @@ A failed email never fails the call. The emails of one notice share one limit of
 | `target_kind` | string | The target kind of the audit entry, or empty. |
 | `target_id` | string | The target ID of the audit entry, or empty. |
 | `create_time` | `google.protobuf.Timestamp` | The time of the action. |
+| `kind` | string | `security` for an action that lasts after the session that did it, or `sign_up` for a new pending account ([Notices of new accounts](#notices-of-new-accounts)). |
 
 ### ListAdminNotices
 
@@ -845,7 +902,7 @@ The request `DismissAdminNoticesRequest` has the field `ids`, 1 to 100 UUIDs of 
 
 `hopbox.admin.v1.AccountService` lets an operator recover the sign-in of an account. A person can lose the only sign-in method of the account, for example the GitHub user. A new GitHub user with the same verified email then fails, because the account has an identity of a provider ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#recover-a-lost-identity)). The operator removes the old method. The account then has no identity of a provider, so a magic link or the new GitHub user links through the verified email.
 
-The service also lists the accounts of the install ([ListAccounts](#listaccounts)). It suspends an account and ends the suspension ([SuspendAccount](#suspendaccount), [UnsuspendAccount](#unsuspendaccount)). It deletes an account, for example an account of the open sign-up that abused the install ([DeleteAccount](#deleteaccount)). An admin session makes only `ListAccounts`, `SuspendAccount`, and `UnsuspendAccount` ([Admin sessions](#admin-sessions)).
+The service also lists the accounts of the install ([ListAccounts](#listaccounts)). It suspends an account and ends the suspension ([SuspendAccount](#suspendaccount), [UnsuspendAccount](#unsuspendaccount)). It deletes an account, for example an account of the sign-up mode `open` that abused the install ([DeleteAccount](#deleteaccount)). It approves and rejects pending accounts ([ApproveAccount](#approveaccount), [RejectAccount](#rejectaccount)). It also keeps the block list of sign-ups ([ListSignUpBlocks](#listsignupblocks), [BlockSignUp](#blocksignup), [UnblockSignUp](#unblocksignup)). An admin session makes only `ListAccounts`, `SuspendAccount`, `UnsuspendAccount`, and the calls of pending accounts and of the block list ([Admin sessions](#admin-sessions)).
 
 ### ListAccountSignInMethods
 
@@ -904,7 +961,7 @@ The response `RemoveAccountSignInMethodResponse` has no fields.
 
 ### DeleteAccount
 
-Deletes an account for an operator, for example an account of the open sign-up that abused the install. The call takes the steps of the self-delete `DeleteAccount` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#deleteaccount)), with the differences in the second table. It deletes the account, its personal org, its sessions, its emails, its sign-in methods, its CLI sign-ins, its member keys, and its SSH keys. It takes the account out of each other org, and deletes what the account made there and did not share ([the org API](/reference/org-api/index.html.md#what-a-member-leaves-behind)).
+Deletes an account for an operator, for example an account of the sign-up mode `open` that abused the install. The delete also removes the notices of the kind `sign_up` about the account ([Notices of new accounts](#notices-of-new-accounts)). The call takes the steps of the self-delete `DeleteAccount` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#deleteaccount)), with the differences in the second table. It deletes the account, its personal org, its sessions, its emails, its sign-in methods, its CLI sign-ins, its member keys, and its SSH keys. It takes the account out of each other org, and deletes what the account made there and did not share ([the org API](/reference/org-api/index.html.md#what-a-member-leaves-behind)).
 
 | Item | Value |
 | --- | --- |
@@ -956,14 +1013,41 @@ The message `Account` is an account as an instance admin sees it:
 | `id` | string | The UUID of the account. |
 | `display_name` | string | The display name of the account, or empty. |
 | `emails` | repeated `AccountEmail` | Each email of the account. `email` is the address, in lower case. `verified` is `true` for an email that a sign-in method proved. |
-| `state` | `AccountState` | `ACCOUNT_STATE_PENDING`, `ACCOUNT_STATE_ACTIVE`, or `ACCOUNT_STATE_SUSPENDED`. Today no account is pending. |
-| `tier` | `AccountTier` | `ACCOUNT_TIER_LIMITED` or `ACCOUNT_TIER_FULL`. A suspension keeps it. Today every account is full, and no limit depends on the tier yet. |
+| `state` | `AccountState` | `ACCOUNT_STATE_PENDING`, `ACCOUNT_STATE_ACTIVE`, or `ACCOUNT_STATE_SUSPENDED`. |
+| `tier` | `AccountTier` | `ACCOUNT_TIER_LIMITED` or `ACCOUNT_TIER_FULL`. A suspension keeps it. A pending account is limited until the approve. No limit depends on the tier yet. |
 | `instance_admin` | bool | `true` for an instance admin. |
 | `personal_org_id` | string | The UUID of the personal org of the account. |
 | `suspend_time` | `google.protobuf.Timestamp` | The start of the suspension. Unset for an account that is not suspended. |
 | `suspend_reason` | string | The reason of the suspension, or empty. |
 | `version` | int64 | The row version. It grows by 1 with each change of the account. |
 | `create_time` | `google.protobuf.Timestamp` | The creation time of the account. |
+| `sign_in_methods` | repeated string | The kinds of the sign-in methods of the account, once each, in the order of their link: `email_link`, `login_link`, `github`, or `google`. |
+| `sign_up` | [AccountSignUp](#accountsignup) | The facts of the first sign-in of the account. Unset for an account from before migration `0062`, and for an account of a first-admin login link. |
+
+### AccountSignUp
+
+The message `AccountSignUp` is what an instance admin sees of the first sign-in of an account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). The table `account_sign_ups` keeps it ([Control store tables](/reference/control-store/index.html.md#account_sign_ups)).
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `method` | string | The kind of the first sign-in: `email_link`, `github`, or `google`. |
+| `client_ip` | string | The IP address that asked for the magic link, or that started the flow of GitHub or Google. It is empty for a request without an address. |
+| `github_login` | string | The GitHub login of a GitHub sign-up, or empty. |
+| `github_create_time` | `google.protobuf.Timestamp` | The creation time of the GitHub user of a GitHub sign-up, from the field `created_at` of `GET /user` ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#providers)). A GitHub user made the same day is a hint of abuse. Unset for another sign-up. |
+| `note` | string | The note of a pending account to the instance admins, at most 500 characters, or empty ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#setsignupnote)). The note is text of an outside person, so a client shows it as plain text. |
+| `create_time` | `google.protobuf.Timestamp` | The time of the sign-up. |
+
+### SignUpBlock
+
+The message `SignUpBlock` is one entry of the block list of sign-ups. An entry stops only new accounts: an account that exists still signs in. If an entry matches the email, the domain of the email, or the identity at GitHub or Google, a first sign-in fails ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#limits-of-new-accounts)).
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | string | The UUID of the entry. |
+| `kind` | string | What the entry matches: `email`, `email_domain`, `github` (the numeric user ID), or `google` (the `sub` claim). |
+| `value` | string | The email or the domain, in lower case, or the ID at the provider. |
+| `reason` | string | Why the entry exists, or empty. |
+| `create_time` | `google.protobuf.Timestamp` | The time of the entry. |
 
 ### ListAccounts
 
@@ -1050,6 +1134,131 @@ The request `UnsuspendAccountRequest` has the field `account_id`. The response `
 | --- | --- |
 | The ID is not a UUID | `invalid_argument` |
 | No account has the ID: `not found: no account has the ID <id>` | `not_found` |
+
+### ApproveAccount
+
+Approves a pending account. The call sets the state `active` and the tier of the request. It removes the notices of the kind `sign_up` about the account ([Notices of new accounts](#notices-of-new-accounts)). The account then acts as any other account. `hopboxd admin account approve` calls it ([hopboxd](/reference/hopboxd/index.html.md#admin-account-approve)).
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.AccountService/ApproveAccount` |
+| Policy action | `admin_account.approve`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no. A second call fails with `failed_precondition`, because the account is no longer pending. |
+| Audit entry | action `admin_account.approve`, org the personal org of the account, target kind `account`, detail `tier` (`full` or `limited`) |
+
+The request `ApproveAccountRequest` has these fields:
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `account_id` | string | none, required | The UUID of the pending account. |
+| `tier` | `AccountTier` | `ACCOUNT_TIER_FULL` | The tier of the account after the approve. `ACCOUNT_TIER_UNSPECIFIED` gives `ACCOUNT_TIER_FULL`. |
+
+The response `ApproveAccountResponse` has the field `account`, the [Account](#account) after the change.
+
+If the install sends mail, hopbox sends an email to the first email of the account after the commit. A failed email never fails the call. Without mail, hopbox logs `the install sends no mail, so the approval of an account sent none` at level info. A failed email logs `the approval email failed` at level error. Both records have `account` and `err`.
+
+```text
+Subject: Your account on example.com is ready
+
+An instance admin of example.com approved your account. Sign in to use it:
+
+https://example.com/
+
+You get this email because you signed up on example.com.
+```
+
+| Error | Code |
+| --- | --- |
+| The ID is not a UUID, or the tier is unknown | `invalid_argument` |
+| No account has the ID: `not found: no account has the ID <id>` | `not_found` |
+| The account is not pending: `failed precondition: the account is active, not pending` | `failed_precondition` |
+
+### RejectAccount
+
+Rejects a pending account. The call deletes the account and its personal org, and removes the notices of the kind `sign_up` about the account. It clears the note of the account, and keeps the rest of its sign-up row for the limit of its client ([Control store tables](/reference/control-store/index.html.md#account_sign_ups)). With `block`, it also puts the identities of the account on the block list of sign-ups, each entry once. Two emails that differ only in their +tag give one entry. An email that has no form in the block list, such as an email from before the rules of [Domain rules](/reference/domain-rules/index.html.md#emails), stays off it, and the log has `an email of a rejected account stays off the block list`. So the same identity cannot sign up again. `hopboxd admin account reject` calls it ([hopboxd](/reference/hopboxd/index.html.md#admin-account-reject)).
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.AccountService/RejectAccount` |
+| Policy action | `admin_account.reject`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no. A second call gets `not_found`. |
+| Audit entry | action `admin_account.reject`, no org, target kind `account`. The details are `personal_org` and `emails`, the emails of the account joined by commas. A request with a reason adds `reason`. With `block`, `blocks` holds the IDs of the entries of the block list, joined by commas. The audit log keeps the entries of the account. |
+
+The request `RejectAccountRequest` has these fields:
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `account_id` | string | none, required | The UUID of the pending account. |
+| `block` | bool | `false` | Puts each verified email of the account on the block list, with the kind `email`. It also puts a GitHub identity there, with the kind `github` and the numeric user ID. A Google identity goes there with the kind `google` and the `sub` claim. |
+| `reason` | string | empty | Why, at most 256 characters, without control characters. The server drops the spaces around it. The audit entry and each new entry of the block list keep it. |
+
+The response `RejectAccountResponse` has the field `blocks`, a repeated [SignUpBlock](#signupblock): the entries that the block added or found. An entry that exists stays as it is, with its first reason. Without `block`, the list is empty.
+
+The call takes `LockKeyAdminNotices`, then the row of the account, then its orgs, as the delete of an account does. The row of the account in `account_sign_ups` stays one more day, so the sign-up still counts toward the limit of its client ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#limits-of-new-accounts)).
+
+| Error | Code |
+| --- | --- |
+| The ID is not a UUID, or the reason breaks a rule | `invalid_argument` |
+| No account has the ID: `not found: no account has the ID <id>` | `not_found` |
+| The account is not pending: `failed precondition: the account is active, not pending` | `failed_precondition` |
+| The pending account is a member of another org, or an instance admin: `failed precondition: the pending account <id> holds more than its personal org. Delete it with hopboxd admin account delete instead` ([DeleteAccount](#deleteaccount)) | `failed_precondition` |
+
+### ListSignUpBlocks
+
+Lists the block list of sign-ups, oldest first. `hopboxd admin account blocks` calls it ([hopboxd](/reference/hopboxd/index.html.md#admin-account-blocks)).
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.AccountService/ListSignUpBlocks` |
+| Policy action | `sign_up_block.list`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no |
+| Audit entry | action `sign_up_block.list`, no target |
+
+The request `ListSignUpBlocksRequest` has no fields. The response `ListSignUpBlocksResponse` has the field `blocks`, a repeated [SignUpBlock](#signupblock).
+
+### BlockSignUp
+
+Adds an entry to the block list of sign-ups, for example a whole email domain. An entry of the kind `email_domain` also stops the subdomains of the domain. An entry of the kind `email` loses its +tag, so it stops each +tag of the address ([Domain rules](/reference/domain-rules/index.html.md#block-list-entries)). An entry stops only new accounts. An account that exists still signs in. An entry that exists stays as it is, with its first reason, and the call returns it. `hopboxd admin account block` calls it ([hopboxd](/reference/hopboxd/index.html.md#admin-account-block)).
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.AccountService/BlockSignUp` |
+| Policy action | `sign_up_block.add`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no. A second call returns the same entry. |
+| Audit entry | action `sign_up_block.add`, no org, target kind `sign_up_block` and the ID of the entry, details `kind`, `entry` (the value), and `reason` |
+
+The request `BlockSignUpRequest` has these fields:
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `kind` | string | none, required | `email`, `email_domain`, `github`, or `google`. |
+| `value` | string | none, required | An email, such as `user1@example.org`, follows the rules of [Domain rules](/reference/domain-rules/index.html.md#emails), and the server keeps it in lower case. A domain, such as `example.net`, loses a leading `@`, and the server keeps it in lower case. A GitHub user ID or a Google `sub` claim has 1 to 255 ASCII characters without spaces. The server drops the spaces around each value. |
+| `reason` | string | empty | Why, at most 256 characters, without control characters. |
+
+The response `BlockSignUpResponse` has the field `block`, the [SignUpBlock](#signupblock).
+
+| Error | Code |
+| --- | --- |
+| An unknown kind: `invalid argument: invalid block list entry: the kind "<kind>" is not one of email, email_domain, github, google` | `invalid_argument` |
+| A value that breaks its rule, such as `invalid argument: invalid block list entry: "example" is not an email domain, such as example.org`, or a bad reason | `invalid_argument` |
+
+### UnblockSignUp
+
+Removes an entry from the block list of sign-ups. `hopboxd admin account unblock` calls it ([hopboxd](/reference/hopboxd/index.html.md#admin-account-unblock)).
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.AccountService/UnblockSignUp` |
+| Policy action | `sign_up_block.remove`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no. A second call gets `not_found`. |
+| Audit entry | action `sign_up_block.remove`, no org, target kind `sign_up_block` and the ID of the entry, details `kind` and `entry` |
+
+The request `UnblockSignUpRequest` has the field `id`, the UUID of the entry. The response `UnblockSignUpResponse` has the field `block`, the removed [SignUpBlock](#signupblock).
+
+| Error | Code |
+| --- | --- |
+| The ID is not a UUID | `invalid_argument` |
+| No entry has the ID: `not found: the block list has no entry <id>` | `not_found` |
 
 ## AdminKeyService
 

@@ -1,6 +1,6 @@
 # Domain rules
 
-> The rules of machine states and actions, restart policies, names and their suggestions and reservation, SSH ports, machine URLs, start commands, auto-delete timeouts, sizes, emails, account states and tiers, orgs, usage limits, API key kinds, credential names, SSH keys, and scopes.
+> The rules of machine states and actions, restart policies, names and their suggestions and reservation, SSH ports, machine URLs, start commands, auto-delete timeouts, sizes, emails, account states and tiers, sign-up modes, sign-up notes, block list entries, orgs, usage limits, API key kinds, credential names, SSH keys, and scopes.
 
 This page lists the rules of the domain types of hopbox. It covers machine states and actions, restart policies, machine names and their reservation, SSH ports, and the settings of a machine. It also covers the install domain, the public addresses, the TXT records of the zone, sizes, emails, and display names. It also covers org names, org roles, usage limits, the org suspension, and API key kinds. Then it covers credential names, SSH keys, and the scopes of env vars and secrets, and the names and values of env vars. The Go package `internal/domain` holds these rules. It has no I/O, so every role of `hopboxd` and the guest agent can use it.
 
@@ -311,6 +311,7 @@ hopbox compares emails in one form, so `Ann@Example.org` and `ann@example.org` n
 - It takes only one plain address, without a display name or angle brackets.
 - It has a local part, an `@`, and a domain. A domain in brackets, such as `[127.0.0.1]`, is refused.
 - It has at most 254 characters.
+- Its domain has an ASCII form of IDNA, by the lookup profile of UTS 46 that takes `--` at the third and fourth place of a label. So `user1@ab--cd.example` and `user1@r3---sn-abc.googlevideo.com` pass. `user7@a_b.example.net`, `user7@xn--zz.example`, and a domain with a zero width joiner are refused. The block list compares a domain in this form ([Block list entries](#block-list-entries)), so a domain without it could pass a block of one of its parent domains.
 
 | Email | Result |
 | --- | --- |
@@ -321,6 +322,7 @@ hopbox compares emails in one form, so `Ann@Example.org` and `ann@example.org` n
 | `ceo@İcorp.com` | `invalid email: "ceo@İcorp.com" holds the capital letter 'İ', which is not ASCII. Write it in lower case` |
 | `Ann <ann@example.org>` | `invalid email: "Ann <ann@example.org>" is not one plain email address, such as ann@example.org` |
 | `ann@[127.0.0.1]` | `invalid email: "ann@[127.0.0.1]" must have a name, an @, and a domain` |
+| `user7@a_b.example.net` | `invalid email: the domain of "user7@a_b.example.net" has no ASCII form of IDNA: <the error of IDNA>` |
 
 ## Display names
 
@@ -333,13 +335,38 @@ The display name of an account is the name that its person chose. `ValidateDispl
 
 ## Account states and tiers
 
-Each account has a state and a tier. The type `AccountState` has the values `pending`, `active`, and `suspended`. `ParseAccountState` refuses any other text with `ErrUnknownAccountState`: `unknown account state: "<text>"`. The type `AccountTier` has the values `limited` and `full`.
+Each account has a state and a tier. The type `AccountState` has the values `pending`, `active`, and `suspended`. `ParseAccountState` refuses any other text with `ErrUnknownAccountState`: `unknown account state: "<text>"`. The type `AccountTier` has the values `limited` and `full`. `ParseAccountTier` refuses any other text with `ErrUnknownAccountTier`: `unknown account tier: "<text>" is not limited or full`.
 
 | State | Meaning |
 | --- | --- |
-| `pending` | The account waits for approval by an instance admin. No release makes such an account yet. |
+| `pending` | The account waits for approval by an instance admin ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#pending-accounts)). A first sign-in in the sign-up mode `approval` makes it. |
 | `active` | The account acts as its credentials allow. |
 | `suspended` | An instance admin suspended the account. It has no session and no working credential until the unsuspend. Its data stays ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). |
+
+## Sign-up modes
+
+The type `SignUpMode` has the values `open` and `approval` ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). `ParseSignUpMode` refuses any other text with `ErrUnknownSignUpMode`: `unknown sign-up mode: "<text>" is not one of open, approval`.
+
+## Sign-up notes
+
+`ValidateSignUpNote` checks the note of a pending account to the instance admins ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#setsignupnote)). The service drops the spaces at both ends first. An error starts with `invalid note:`.
+
+- It has at most 500 characters (`MaxSignUpNoteLen`), in valid UTF-8.
+- It has no control characters and no format characters, apart from a line break.
+- It can be empty. An empty note removes the note.
+
+## Block list entries
+
+`NormalizeSignUpBlock` checks the value of an entry of the block list of sign-ups, and returns the form that a sign-in compares ([the admin API](/reference/admin-api/index.html.md#blocksignup)). It drops the spaces at both ends first. An error starts with `invalid block list entry:`.
+
+| Kind | Rule |
+| --- | --- |
+| `email` | An email of [Emails](#emails), in lower case. The domain takes its ASCII form of IDNA, so `user1@bücher.example` becomes `user1@xn--bcher-kva.example`. The local part ends before its first `+`, so `user4+1@example.org` becomes `user4@example.org`. A local part that starts with `+` stays whole. Dots stay, also at Gmail. |
+| `email_domain` | The domain of an email, in lower case and in its ASCII form of IDNA, such as `example.net`. A leading `@` goes. The domain is a registrable domain or a subdomain of one, by the Public Suffix List. So `com`, `net`, `co.uk`, and the single label `localhost` are refused with `"<domain>" is a public suffix or a single label`, and `example.co.uk` passes. |
+
+A sign-in compares its email in the same form. An entry of the kind `email_domain` matches the domain of the email and each parent domain. So `example.net` also stops `user1@mail.example.net`, but not `user1@example.network`. An email with a +tag compares without it. So the entry `user4@example.org` stops `user4+1@example.org`, and an entry that an admin writes as `user4+1@example.org` stops `user4@example.org` and each other tag. A reject with a block stores each email of the account in this form too.
+| `github` | 1 to 255 ASCII characters without spaces: the numeric user ID at GitHub. The check does not ask for digits. |
+| `google` | 1 to 255 ASCII characters without spaces: the `sub` claim at Google. |
 
 ## Credential names
 

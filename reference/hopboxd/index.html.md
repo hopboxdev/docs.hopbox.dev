@@ -60,6 +60,11 @@ hopboxd --log-level=debug version
 | `admin account list` | Lists the accounts of the install, oldest first, with their state and tier. |
 | `admin account suspend` | Suspends an account. It then cannot sign in, and its keys stop working, until the unsuspend. Its data stays. |
 | `admin account unsuspend` | Ends the suspension of an account, and of the orgs that its suspend suspended. |
+| `admin account approve` | Approves a pending account, so it acts. |
+| `admin account reject` | Rejects a pending account: deletes it and its personal org, and with `--block` keeps its identity from a new sign-up. |
+| `admin account block` | Adds an email, an email domain, a GitHub user, or a Google account to the block list of sign-ups. |
+| `admin account unblock` | Removes an entry from the block list of sign-ups. |
+| `admin account blocks` | Lists the block list of sign-ups, oldest first. |
 | `admin enrollment-token create` | Makes an enrollment token for a new server through the admin socket. |
 | `admin server list` | Lists the enrolled servers through the admin socket. |
 | `admin server get` | Prints one server through the admin socket. |
@@ -186,12 +191,14 @@ If a unit fails to start, `run` stops the units that started, in the reverse ord
 
 ### Leader jobs
 
-The leader of the control role runs these jobs. In maintenance mode, the leader pauses every job, and keeps its lease ([the API server](/reference/api/index.html.md#maintenance-mode)). It logs `maintenance mode paused the leader jobs` at level info, with `component=leader`, and `the leader jobs run` when the jobs start again or at the start of a term. A fence of the process also pauses every job, and the leader logs `the fence of this process paused the leader jobs` ([Run](#run)). If the fence lasts longer than one lease TTL (15 s), the leader gives up its lease, so another control process can lead. It logs `this process stays fenced, so it gives up the leader lease to a process that can run the leader jobs`. While it is fenced, the process does not try for the leader lock. When maintenance mode ends, the jobs start again as at the start of a term, with the sweep first and 20 s without a check of silent servers. The sweep runs once at the start of each term of the leader, and then every 10 minutes. The check of silent servers runs every 5 s. The auto-delete of idle machines and the return of SSH host keys run every minute. The check of silent servers skips the first 20 s of each term. In that time, the servers can dial again after a stop of the control role, before the leader marks any of them.
+The leader of the control role runs these jobs. In maintenance mode, the leader pauses every job, and keeps its lease ([the API server](/reference/api/index.html.md#maintenance-mode)). It logs `maintenance mode paused the leader jobs` at level info, with `component=leader`, and `the leader jobs run` when the jobs start again or at the start of a term. A fence of the process also pauses every job, and the leader logs `the fence of this process paused the leader jobs` ([Run](#run)). If the fence lasts longer than one lease TTL (15 s), the leader gives up its lease, so another control process can lead. It logs `this process stays fenced, so it gives up the leader lease to a process that can run the leader jobs`. While it is fenced, the process does not try for the leader lock. When maintenance mode ends, the jobs start again as at the start of a term, with the sweep first and 20 s without a check of silent servers. The sweep runs once at the start of each term of the leader, and then every 10 minutes. The check of silent servers runs every 5 s. The auto-delete of idle machines and the return of SSH host keys run every minute. The job of sign-ups runs once at the start of each term, after the sweep, and then every minute. The check of silent servers skips the first 20 s of each term. In that time, the servers can dial again after a stop of the control role, before the leader marks any of them.
 
 | Job | Every | What it does |
 | --- | --- | --- |
 | Sweep of idempotency keys | 10 min | Deletes the expired idempotency keys ([Control store tables](/reference/control-store/index.html.md#sweep-the-expired-keys)). |
 | Sweep of sign-ins | 10 min | Deletes the ended sessions, and the magic links, login links, and OAuth flows that are older than 24 hours ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sweep)). Deletes the expired CLI tokens, the ended CLI sign-ins, and the device sign-ins and failed device approvals that are older than 24 hours. Deletes the API keys and admin API keys that expired more than 30 days ago ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#sweep)). |
+| Expiry of pending accounts | 10 min | Deletes each pending account that is older than 30 days, with its personal org, as a reject without a block does ([the admin API](/reference/admin-api/index.html.md#rejectaccount)). It takes at most 100 accounts per run, and the next run takes the rest. Each account goes in a transaction of its own, which checks the leader lease. An account that an instance admin approved in the meantime stays. Each delete gets the audit entry `admin_account.expire` with the actor `system`, and the log record `deleted a pending account that nobody approved`. |
+| Sweep of sign-ups | 10 min | Deletes the rows of `account_sign_ups` of deleted accounts, one day after the sign-up ([Control store tables](/reference/control-store/index.html.md#account_sign_ups)). Until then, such a row counts toward the limit of new accounts of its client ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#limits-of-new-accounts)). |
 | Sweep of control processes | 10 min | Deletes the rows of the control processes that were not renewed for 24 hours. They ended without their stop ([Control store tables](/reference/control-store/index.html.md#control_processes)). |
 | Sweep of the fleet | 10 min | Deletes the enrollment tokens that expired more than 1 day ago, and the server certificates that expired more than 1 day ago. It keeps the newest certificate of each server ([Control store tables](/reference/control-store/index.html.md#enrollment_tokens)). |
 | Check of silent servers | 5 s | Marks `unresponsive` each `ready`, `cordoned`, `draining`, or `shutting_down` server whose last heartbeat is 20 s old or older: 4 missed heartbeats. The write checks the leader lease, so a leader that lost its lease writes nothing. Each server that it marks gets an audit entry `server.mark_unresponsive` with the actor `system` ([Control store tables](/reference/control-store/index.html.md#servers)). The next heartbeat of the server makes it `ready` again, or `cordoned`, or `draining` when the server has a drain ([the control channel](/reference/control-channel/index.html.md)). |
@@ -202,6 +209,7 @@ The leader of the control role runs these jobs. In maintenance mode, the leader 
 | Prune of change events | 10 min | Deletes the change events that are older than 24 hours. Every reader of the events starts from the head, so an older event serves nobody ([Control store tables](/reference/control-store/index.html.md#events)). |
 | Certificate of the install | when due | Gets the wildcard certificate of the install from the ACME CA, and renews it after two thirds of its lifetime. It starts at the start of each term, and plans again after each change of an input of the ACME job ([the certificate of the install](/reference/acme/index.html.md#the-acme-job)). Every write checks the leader lease. |
 | Auto-delete of idle machines | 1 min | Deletes each machine whose last recorded use is older than its auto-delete timeout plus 1 minute. A use is recorded at most once a minute ([the machine API](/reference/machine-api/index.html.md#auto-delete)). It takes at most 100 machines per run, the oldest last use first. The next run takes the rest. It skips the machines of a suspended org. Each machine goes in a transaction of its own, which checks the leader lease, so a leader that lost its lease deletes nothing. The delete reserves the name and the SSH port, as `DeleteMachine` does. Each delete gets an audit entry `machine.delete` with the actor `system` and the detail `reason` (`auto-delete`), and the log record `deleted an idle machine`. A machine whose delete fails gets the log record `deleting an idle machine failed`, and the job goes on with the next one. Only a lost leader lease stops the run. |
+| Sign-ups | 1 min | Sends the due email digest of new pending accounts to the instance admins ([the admin API](/reference/admin-api/index.html.md#the-digest-of-new-pending-accounts)). |
 | Read of the leader metrics | 1 min | Reads the counts of accounts, orgs, keys, and machines, and the capacity of each node, from the control store in one snapshot. The leader serves them on its metrics listener until the end of its jobs ([Metrics](/reference/metrics/index.html.md#metrics-of-the-leader)). It runs at the start of the jobs too. A read takes at most 30 s, so a control store that hangs gives a failed read. A read that fails logs `reading the leader metrics failed` at level warn, with `component=leader`, `failures`, and `err`, and the metrics keep the values of the read before. After 3 failed reads in a row, the leader serves none of them until a read works, and logs `the leader serves no leader metrics until a read of them works` at level warn. |
 | Return of SSH host keys | 1 min | Gives each SSH host key that a route record claims, and that no record lists, to the oldest record that claims it. A report that lets a key go gives it at once, but it skips a record that another transaction locks, and a `hopboxd` of v0.1.0 gives no key. It takes at most 100 keys per run, and each key goes in a transaction of its own. The write needs no leader lease, because a report makes the same write. Each key gets the log record `a machine got an SSH host key that no other machine holds` at level info, with `machine` ([Control store tables](/reference/control-store/index.html.md#route_host_keys)). |
 
@@ -704,9 +712,9 @@ Prints the settings of the install. It calls `GetInstallConfig` ([the admin API]
 
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
-| `--json` | bool | `false` | Prints one JSON object with the keys `domain`, `public_addresses`, `acme_directory_url`, `acme_email`, `acme_terms_agreed`, `mail_transport`, `maintenance`, `version`, and `update_time`. `public_addresses` is an array. It is `[]` for an install without public addresses. `acme_terms_agreed` and `maintenance` are JSON booleans. |
+| `--json` | bool | `false` | Prints one JSON object with the keys `domain`, `public_addresses`, `acme_directory_url`, `acme_email`, `acme_terms_agreed`, `mail_transport`, `maintenance`, `sign_up_mode`, `version`, and `update_time`. `public_addresses` is an array. It is `[]` for an install without public addresses. `acme_terms_agreed` and `maintenance` are JSON booleans. |
 
-The text output has one line for each setting: the name, a tab, and the value. An empty domain prints as an empty value. `public_addresses` joins the addresses by commas, in their order. An install without public addresses prints `-`. An empty `acme_email` prints `-`. `acme_terms_agreed` and `maintenance` print `true` or `false`. `mail_transport` prints `smtp` or `file` ([Mail](/reference/mail/index.html.md#mail-transports)). `maintenance` is `true` in maintenance mode ([the API server](/reference/api/index.html.md#maintenance-mode)).
+The text output has one line for each setting: the name, a tab, and the value. An empty domain prints as an empty value. `public_addresses` joins the addresses by commas, in their order. An install without public addresses prints `-`. An empty `acme_email` prints `-`. `acme_terms_agreed` and `maintenance` print `true` or `false`. `mail_transport` prints `smtp` or `file` ([Mail](/reference/mail/index.html.md#mail-transports)). `maintenance` is `true` in maintenance mode ([the API server](/reference/api/index.html.md#maintenance-mode)). `sign_up_mode` prints `open` or `approval` ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)).
 
 ```text
 $ sudo hopboxd admin config get
@@ -717,6 +725,7 @@ acme_email	ops@example.org
 acme_terms_agreed	true
 mail_transport	smtp
 maintenance	false
+sign_up_mode	approval
 version	4
 update_time	2026-10-16T09:00:00Z
 ```
@@ -726,7 +735,7 @@ update_time	2026-10-16T09:00:00Z
 ```sh
 hopboxd admin config set [--domain=DOMAIN] [--public-address=IP,... | --no-public-addresses]
   [--acme-directory-url=URL] [--acme-email=EMAIL] [--[no-]acme-agree-terms]
-  [--mail-transport=smtp|file] [--expected-version=N] [--json]
+  [--mail-transport=smtp|file] [--sign-up-mode=open|approval] [--expected-version=N] [--json]
 ```
 
 Changes the settings that the flags give, and keeps the others. It calls `UpdateInstallConfig` ([the admin API](/reference/admin-api/index.html.md#updateinstallconfig)). Then it prints the settings, as `admin config get` does. Without a setting flag, it fails. A change of the domain or of the public addresses changes the zone of the DNS role ([the DNS role](/reference/dns/index.html.md#the-zone-of-the-install)). The `--acme-` flags change the ACME settings ([the certificate of the install](/reference/acme/index.html.md#settings)).
@@ -740,6 +749,7 @@ Changes the settings that the flags give, and keeps the others. It calls `Update
 | `--acme-email` | string | none | The contact email of the ACME account. An empty value, `--acme-email ""`, removes it from the install, but the CA keeps the old contact of the account. |
 | `--acme-agree-terms` | bool | none | Agrees to the terms of the CA of the ACME directory, so the install gets its certificate. `--no-acme-agree-terms` withdraws the agreement and stops new certificates. Without either flag, the agreement stays as it is. |
 | `--mail-transport` | `smtp` or `file` | none | How the install delivers its mail ([Mail](/reference/mail/index.html.md#mail-transports)). `smtp` sends it through the SMTP server. `file` writes each mail to a file on the control server, for a dev or test install only. The SMTP config stays in both cases. |
+| `--sign-up-mode` | `open` or `approval` | none | How a new person gets an account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). `approval` makes a pending account that an instance admin approves or rejects. `open` makes an active account of the tier `limited` at once. Each change tells the other instance admins ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). |
 | `--expected-version` | int | none | The version `N` of the settings, as `admin config get` printed it. If the version is no longer `N`, the command fails with `aborted` and changes nothing. |
 | `--json` | bool | `false` | Prints one JSON object, as `admin config get --json` does. |
 
@@ -747,7 +757,7 @@ Example:
 
 ```text
 $ sudo hopboxd admin config set --domain example.com --json
-{"domain":"example.com","public_addresses":[],"acme_directory_url":"https://acme-v02.api.letsencrypt.org/directory","acme_email":"","acme_terms_agreed":false,"mail_transport":"smtp","version":2,"update_time":"2026-10-16T09:00:00Z"}
+{"domain":"example.com","public_addresses":[],"acme_directory_url":"https://acme-v02.api.letsencrypt.org/directory","acme_email":"","acme_terms_agreed":false,"mail_transport":"smtp","maintenance":false,"sign_up_mode":"approval","version":2,"update_time":"2026-10-16T09:00:00Z"}
 $ sudo hopboxd admin config set --public-address 203.0.113.10 --public-address 2001:db8::10
 domain	example.com
 public_addresses	203.0.113.10,2001:db8::10
@@ -755,6 +765,8 @@ acme_directory_url	https://acme-v02.api.letsencrypt.org/directory
 acme_email	-
 acme_terms_agreed	false
 mail_transport	smtp
+maintenance	false
+sign_up_mode	approval
 version	3
 update_time	2026-10-16T09:05:00Z
 $ sudo hopboxd admin config set --acme-email ops@example.org --acme-agree-terms
@@ -764,6 +776,8 @@ acme_directory_url	https://acme-v02.api.letsencrypt.org/directory
 acme_email	ops@example.org
 acme_terms_agreed	true
 mail_transport	smtp
+maintenance	false
+sign_up_mode	approval
 version	4
 update_time	2026-10-16T09:06:00Z
 ```
@@ -775,6 +789,7 @@ update_time	2026-10-16T09:06:00Z
 | `invalid_argument: invalid argument: invalid public address: ...` | An address of `--public-address` breaks a rule of [Domain rules](/reference/domain-rules/index.html.md#public-addresses), such as an address twice. The message names the address and the rule. |
 | `invalid_argument: invalid argument: invalid ACME setting: ...` | `--acme-directory-url` is not an `https` URL of a host, or `--acme-email` is not one plain email address. |
 | `--mail-transport "<value>" is not smtp or file` | `--mail-transport` has another value. |
+| `--sign-up-mode "<value>" is not open or approval` | `--sign-up-mode` has another value. |
 | `aborted: ...` | `--expected-version` is not the version of the settings now. |
 
 ### admin config smtp get
@@ -1063,7 +1078,7 @@ Removes one sign-in method of an account. It calls `RemoveAccountSignInMethod` (
 hopboxd admin account delete --account-id=ID --reason=TEXT [--json]
 ```
 
-Deletes an account, for example an account of the open sign-up that abused the install. It calls the admin `DeleteAccount` ([the admin API](/reference/admin-api/index.html.md#deleteaccount)). The command deletes the account, its personal org, and each org in which the account is the only owner. The other members of such an org lose it. A suspended org does not hold the command back, because the audit entry `admin_account.delete` keeps the reason and the IDs of the deleted orgs. The command takes the account out of each other org, as the self-delete does. It prints the ID of each deleted org on its own line, with the personal org first.
+Deletes an account, for example an account of the sign-up mode `open` that abused the install. It calls the admin `DeleteAccount` ([the admin API](/reference/admin-api/index.html.md#deleteaccount)). The command deletes the account, its personal org, and each org in which the account is the only owner. The other members of such an org lose it. A suspended org does not hold the command back, because the audit entry `admin_account.delete` keeps the reason and the IDs of the deleted orgs. The command takes the account out of each other org, as the self-delete does. It prints the ID of each deleted org on its own line, with the personal org first.
 
 The command deletes no machine. While a machine that the delete removes is not deleted, the command fails with `failed_precondition`. Such a machine is in an org that the command deletes, or the account made it and did not share it. The error names each such machine, up to the 20 oldest, with the `admin machine delete` command for it. A shared machine of the account in an org that stays does not hold the command back, and it stays. The command also fails for the last instance admin, and for the last instance admin that is not suspended. The delete of an instance admin tells the other instance admins ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)).
 
@@ -1074,7 +1089,7 @@ The account 01a15c02-7d1e-7a4c-9b51-2b1c5e8f0a7d is suspended. Its delete also d
 Type the account ID again to delete it:
 ```
 
-The command sends the delete again with that line as `confirm_account_id`, without the spaces around it. Another ID fails with `invalid_argument`, and nothing changes. An empty line or the end of the input fails with `the delete of a suspended account needs its account ID a second time, and none came. Nothing changed`. A script gives the ID on standard input:
+The command sends the delete again with that line as `confirm_account_id`, without the spaces around it. Another ID fails with `invalid_argument`, and nothing changes. An empty line or the end of the input fails with `the delete of a suspended account needs its account ID a second time, and none came. Nothing changed`. If standard input is not a terminal, the command ends the prompt with a line break after it reads the line, so the IDs of the deleted orgs start on a line of their own. A script gives the ID on standard input:
 
 ```sh
 ID=01a15c02-7d1e-7a4c-9b51-2b1c5e8f0a7d
@@ -1119,7 +1134,7 @@ Lists the accounts of the install, oldest first, with their state and tier. It c
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
 | `--state` | string | none | Lists only the accounts in this state: `pending`, `active`, or `suspended`. Without it, the command lists every account. Another value fails before the call. |
-| `--json` | bool | `false` | Prints one JSON object, `{"accounts":[...]}`. Each account has `id`, `display_name`, `emails`, `state`, `tier`, and `instance_admin`. It also has `personal_org_id`, `suspend_time`, `suspend_reason`, `version`, and `create_time`. Each email has `email` and `verified`. `suspend_time` is `null` for an account that is not suspended. |
+| `--json` | bool | `false` | Prints one JSON object, `{"accounts":[...]}`. Each account has `id`, `display_name`, `emails`, `state`, `tier`, and `instance_admin`. It also has `personal_org_id`, `suspend_time`, `suspend_reason`, `version`, `create_time`, `sign_in_methods`, and `sign_up`. Each email has `email` and `verified`. `suspend_time` is `null` for an account that is not suspended. `sign_in_methods` lists the kinds of the sign-in methods once each. `sign_up` has `method`, `client_ip`, `github_login`, `github_create_time`, `note`, and `create_time` ([the admin API](/reference/admin-api/index.html.md#accountsignup)). It is `null` for an account from before migration `0062` or of a login link. |
 
 Example:
 
@@ -1136,7 +1151,7 @@ hopboxd admin account suspend --account-id=ID --reason=TEXT [--json]
 
 Suspends an account, for example to handle abuse, and prints it. It calls `SuspendAccount` ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). The command deletes nothing. It ends the sessions and the CLI sign-ins of the account. The member API keys and the SSH keys of the account stop working until the unsuspend. The command suspends the personal org and each org in which the account is the only owner, with the same reason, and stops their machines. In the other orgs of the account, it stops the private machines of the account. A suspended account stays as it is, with its first reason, and the command prints it again.
 
-The command prints the account as lines of a name, a tab, and a value: `id`, `display_name`, `emails`, `state`, `tier`, `instance_admin`, `personal_org_id`, `suspend_time`, `suspend_reason`, and `version`. The line `emails` joins the emails with commas. An account without a display name has no line `display_name`. An account that is not suspended has no lines `suspend_time` and `suspend_reason`.
+The command prints the account as lines of a name, a tab, and a value: `id`, `display_name`, `emails`, `state`, `tier`, `instance_admin`, `personal_org_id`, `suspend_time`, `suspend_reason`, `sign_in_methods`, and `version`. The lines `emails` and `sign_in_methods` join their values with commas. An account without a display name has no line `display_name`. An account that is not suspended has no lines `suspend_time` and `suspend_reason`. An account without a sign-in method has no line `sign_in_methods`.
 
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -1158,6 +1173,7 @@ instance_admin	false
 personal_org_id	01a15c02-7d1f-7b20-8a3e-4c1d2e3f4a5b
 suspend_time	2026-10-30T14:02:11Z
 suspend_reason	abuse report 1
+sign_in_methods	email_link
 version	2
 ```
 
@@ -1184,7 +1200,117 @@ state	active
 tier	full
 instance_admin	false
 personal_org_id	01a15c02-7d1f-7b20-8a3e-4c1d2e3f4a5b
+sign_in_methods	email_link
 version	3
+```
+
+### admin account approve
+
+```sh
+hopboxd admin account approve --account-id=ID [--tier=full|limited] [--json]
+```
+
+Approves a pending account, so it acts, and prints it as `admin account suspend` does. It calls `ApproveAccount` ([the admin API](/reference/admin-api/index.html.md#approveaccount)). If the install sends mail, the person gets an email. An account that is not pending fails with `failed_precondition`.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--account-id` | string | none, required | The UUID of the pending account, as `admin account list --state pending` prints it. |
+| `--tier` | `full` or `limited` | `full` | The tier of the account after the approve. No limit depends on the tier yet. |
+| `--json` | bool | `false` | Prints the account as one JSON object, with the fields of `admin account list --json`. |
+
+Example:
+
+```text
+$ sudo hopboxd admin account approve --account-id 01a15c02-7d1e-7a4c-9b51-2b1c5e8f0a7d
+id	01a15c02-7d1e-7a4c-9b51-2b1c5e8f0a7d
+emails	user1@example.org
+state	active
+tier	full
+instance_admin	false
+personal_org_id	01a15c02-7d1f-7b20-8a3e-4c1d2e3f4a5b
+sign_in_methods	github
+version	2
+```
+
+### admin account reject
+
+```sh
+hopboxd admin account reject --account-id=ID [--block] [--reason=TEXT] [--json]
+```
+
+Rejects a pending account. It calls `RejectAccount` ([the admin API](/reference/admin-api/index.html.md#rejectaccount)). The command deletes the account and its personal org. With `--block`, it also puts each verified email of the account, and its GitHub user or Google account, on the block list of sign-ups. So the same identity cannot sign up again. The command prints each entry of the block list that the reject added or found, one per line: the ID, the kind, the value, and the reason, with a tab between them. Without `--block`, it prints nothing.
+
+An account that is not pending fails with `failed_precondition`. A pending account that holds another org or the instance admin role fails too. Delete such an account with [admin account delete](#admin-account-delete).
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--account-id` | string | none, required | The UUID of the pending account. |
+| `--block` | bool | `false` | Also puts the identities of the account on the block list. |
+| `--reason` | string | empty | Why, at most 256 characters. The audit log and the new entries of the block list keep it. |
+| `--json` | bool | `false` | Prints one JSON object, `{"blocks":[...]}`. Each entry has `id`, `kind`, `value`, `reason`, and `create_time`. |
+
+Example:
+
+```text
+$ sudo hopboxd admin account reject --account-id 01a15c02-7d1e-7a4c-9b51-2b1c5e8f0a7d --block --reason 'bot sign-up'
+01a15c03-2b4d-7e10-8a21-3c4d5e6f7a8b	email	user1@example.org	bot sign-up
+01a15c03-2b4d-7e11-9b32-4d5e6f7a8b9c	github	4242	bot sign-up
+```
+
+### admin account block
+
+```sh
+hopboxd admin account block (--email=EMAIL | --email-domain=DOMAIN | --github=ID | --google=SUB) [--reason=TEXT] [--json]
+```
+
+Adds an entry to the block list of sign-ups, and prints it as `admin account reject --block` does. It calls `BlockSignUp` ([the admin API](/reference/admin-api/index.html.md#blocksignup)). An entry stops only new accounts. An account that exists still signs in. An entry that exists stays as it is, with its first reason, and the command prints it.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--email` | string | none | An email, such as `user1@example.org`. The command stores it in lower case and without its +tag, so the entry also stops each +tag of the address ([Domain rules](/reference/domain-rules/index.html.md#block-list-entries)). |
+| `--email-domain` | string | none | An email domain, such as `example.net`. It blocks every email of the domain and of its subdomains, such as `mail.example.net`. A public suffix, such as `com` or `co.uk`, and a single label are refused. A leading `@` goes, and the command stores the domain in lower case, in its ASCII form of IDNA ([Domain rules](/reference/domain-rules/index.html.md#block-list-entries)). |
+| `--github` | string | none | The numeric ID of a GitHub user, as `admin account sign-in-method list` prints it in the subject. |
+| `--google` | string | none | The `sub` claim of a Google account. |
+| `--reason` | string | empty | Why, at most 256 characters. |
+| `--json` | bool | `false` | Prints the entry as one JSON object, `{"blocks":[...]}`. |
+
+Give exactly one of `--email`, `--email-domain`, `--github`, and `--google`.
+
+```sh
+sudo hopboxd admin account block --email-domain example.net --reason 'bot domain'
+```
+
+### admin account unblock
+
+```sh
+hopboxd admin account unblock --id=ID [--json]
+```
+
+Removes an entry from the block list of sign-ups, and prints the removed entry as `admin account blocks` does. It calls `UnblockSignUp` ([the admin API](/reference/admin-api/index.html.md#unblocksignup)). An unknown ID fails with `not_found`.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--id` | string | none, required | The UUID of the entry, as `admin account blocks` prints it. |
+| `--json` | bool | `false` | Prints the entry as one JSON object, `{"blocks":[...]}`. |
+
+### admin account blocks
+
+```sh
+hopboxd admin account blocks [--json]
+```
+
+Lists the block list of sign-ups, oldest first. It calls `ListSignUpBlocks` ([the admin API](/reference/admin-api/index.html.md#listsignupblocks)). The text output has one line per entry, with a tab between the fields: the ID, the kind, the value, and the reason.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--json` | bool | `false` | Prints one JSON object, `{"blocks":[...]}`. Each entry has `id`, `kind`, `value`, `reason`, and `create_time`. |
+
+Example:
+
+```text
+$ sudo hopboxd admin account blocks
+01a15c03-2b4d-7e10-8a21-3c4d5e6f7a8b	email	user1@example.org	bot sign-up
+01a15c04-5c6d-7f20-8b31-5e6f7a8b9c0d	email_domain	example.net	bot domain
 ```
 
 ### admin enrollment-token create
@@ -2335,6 +2461,10 @@ A field of type duration is a number of nanoseconds.
 | `sweep of idempotency keys failed` | warn | `component=leader`, `err` |
 | `swept ended sessions and sign-in links` | info | `component=leader`, `count`: the sessions, links, CLI tokens, CLI sign-ins, device sign-ins, failed device approvals, and expired keys |
 | `sweep of sign-ins failed` | warn | `component=leader`, `err` |
+| `deleting expired pending accounts failed` | warn | `component=leader`, `err`. The expiry of pending accounts stopped. The next sweep takes the rest. |
+| `swept the sign-ups of deleted accounts` | info | `component=leader`, `count` |
+| `sweep of sign-ups failed` | warn | `component=leader`, `err` |
+| `the digest of new pending accounts failed` | warn | `component=leader`, `err`. The digest job failed before its email, for example after the loss of the leader lease. |
 | `registered the bootstrap admin API key` | info | `component=control`, `id`, `expire_time` |
 | `registered the default image of the release` | info | `component=control`, `name`, `digest`, `id` |
 | `the install has the default image of the release already` | info | `component=control`, `digest` |
@@ -2426,6 +2556,20 @@ The service layer writes these records about machines, with `component=service`:
 | `no node has room for a machine` | warn | `org`, `err`, `request_id` ([Placement](/reference/placement/index.html.md#logs)) |
 | `deleted an idle machine` | info | `machine` |
 | `deleting an idle machine failed` | warn | `machine`, `err` |
+
+The service layer writes these records about new accounts, with `component=service`:
+
+| Message | Level | Fields |
+| --- | --- | --- |
+| `sign-up refused` | info or warn | `kind`, `reason`, and `client_ip` at level info. At level warn, `control_process` and `schema_version` in place of `client_ip` ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#limits-of-new-accounts)). |
+| `deleted a pending account that nobody approved` | info | `account`, `after` (a duration) |
+| `the install sends no mail, so the approval of an account sent none` | info | `account`, `err` ([the admin API](/reference/admin-api/index.html.md#approveaccount)) |
+| `the approval email failed` | error | `account`, `err` |
+| `an email of a rejected account stays off the block list` | warn | `account`, `err`. A reject with a block skips an email that has no form in the block list, such as an email from before the rules of [Domain rules](/reference/domain-rules/index.html.md#emails), and blocks the rest ([the admin API](/reference/admin-api/index.html.md#rejectaccount)). |
+| `sent the digest of new pending accounts` | info | `audit_entry`, `accounts`, `sent`, `failed` ([the admin API](/reference/admin-api/index.html.md#the-digest-of-new-pending-accounts)) |
+| `the email of a digest of new pending accounts failed` | error | `account` (the instance admin), `err` |
+| `the install sends no mail, so the digest of new pending accounts sent none` | info | `accounts`, `err` |
+| `the audit entries of the failed emails of a digest failed` | error | `audit_entry`, `err` |
 
 The parts of the control role write their own records:
 

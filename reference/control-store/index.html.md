@@ -1,6 +1,6 @@
 # Control store tables
 
-> The tables of the control store, leases, leader election, change events, the audit log, idempotency keys, the install config, the tables of accounts, orgs, invitations, usage, sessions, sign-in links, and instance admins, the tables of pools, the install CA, the server registry, and enrollment tokens, the tables of sizes, images, machines, machine names, SSH ports, and placements, and the tables of the DNS zone.
+> The tables of the control store, leases, leader election, change events, the audit log, idempotency keys, the install config, the tables of accounts, sign-ups, the block list, orgs, invitations, usage, sessions, sign-in links, and instance admins, the tables of pools, the install CA, the server registry, and enrollment tokens, the tables of sizes, images, machines, machine names, SSH ports, and placements, and the tables of the DNS zone.
 
 This page lists the tables of the control store and the Go packages that write them. The control store is the Postgres database of the control role. [The bundled Postgres](/reference/postgres/index.html.md) covers the bundled Postgres, the migration runner, and the advisory lock keys.
 
@@ -414,11 +414,13 @@ Migration `0006_install_config.sql`. The settings of the whole install. The tabl
 | `mail_transport` | `text` | `smtp` | How the install delivers its mail: `smtp` or `file` ([Mail](/reference/mail/index.html.md#mail-transports)). A check refuses another value. `file` allows magic links without an SMTP host. |
 | `maintenance` | `boolean` | `false` | `true` while the install is in maintenance mode ([the API server](/reference/api/index.html.md#maintenance-mode)). Only `SetMaintenance` changes it ([the admin API](/reference/admin-api/index.html.md#setmaintenance)). It lives in this table, so a copy of the store has it too. Its migration allows schema version 43 ([the bundled Postgres](/reference/postgres/index.html.md#two-releases-on-one-store)): a `hopboxd` of that version runs on the store and ignores the flag. A turn to `true` refuses while a live row of [control_processes](#control_processes) has a schema version below 44, and waits for the other live control processes to report that they ended their work. |
 | `promoted_kek` | `text` | empty | The ID of the key-encryption key that the last `PromoteKEK` made current, such as `file:2` ([the admin API](/reference/admin-api/index.html.md#promotekek)). Empty until the first promote. `PromoteKEK` sets it in the transaction that publishes the event `keyring.kek_promoted`. Each control process reads it to promote its own staged copy of that key: at its start, at each event, and at each renewal of its row while its key dir has a staged file or while it misses the key ([Sealing](/reference/sealing/index.html.md#several-control-servers)). It stays set after the promote, and a later promote replaces it. Migration `0045_control_processes.sql` adds it. |
+| `sign_up_mode` | `text` | `approval` | How a new person gets an account: `open` or `approval` ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). The check `install_config_sign_up_mode` refuses another value. |
+| `sign_up_digest_at` | `timestamptz`, can be null | null | The time of the last email digest of new pending accounts ([the admin API](/reference/admin-api/index.html.md#the-digest-of-new-pending-accounts)). Null before the first digest. The leader sends at most one digest every 15 minutes by this time, also after a change of the leader. Its write keeps `version` and `updated_at`, because it is no setting. |
 | `version` | `bigint` | `1` | The row version. |
 | `created_at` | `timestamptz` | the time of the migration | When the migration made the row. |
 | `updated_at` | `timestamptz` | the time of the migration | The last change. |
 
-Migration `0011_smtp_config.sql` adds the `smtp_` columns, `0017_org_limits_and_suspension.sql` adds the `org_max_` columns and `max_orgs_per_account`, `0033_dns.sql` adds `public_addresses`, and `0034_acme.sql` adds the `acme_` columns. Migration `0035_oauth_sign_in.sql` adds the `github_` and `google_` columns, `0040_mail_transport.sql` adds `mail_transport`, `0044_maintenance.sql` adds `maintenance`, and `0045_control_processes.sql` adds `promoted_kek`. `SetDefaultOrgLimits` changes them ([the admin API](/reference/admin-api/index.html.md#setdefaultorglimits)), and adds 1 to the version. The admin API reads and changes the row ([the admin API](/reference/admin-api/index.html.md#installconfigservice)). A rewrap of the SMTP password changes only `smtp_password`, and keeps the version ([Sealing](/reference/sealing/index.html.md#rewrap)). `GetInstallInfo` returns the domain to every caller ([the API server](/reference/api/index.html.md#installservice)). A change of `domain` or `public_addresses` raises the serial in `dns_zone` in the same transaction ([dns_zone](#dns_zone)). The inputs of the ACME job are `domain`, `public_addresses`, and the `acme_` columns. A change of one of them publishes the change event `acme.config_changed` in the same transaction ([the certificate of the install](/reference/acme/index.html.md#settings)). A change of `maintenance` adds 1 to the version, and publishes the change event `install.maintenance_changed` in the same transaction.
+Migration `0011_smtp_config.sql` adds the `smtp_` columns, `0017_org_limits_and_suspension.sql` adds the `org_max_` columns and `max_orgs_per_account`, `0033_dns.sql` adds `public_addresses`, and `0034_acme.sql` adds the `acme_` columns. Migration `0035_oauth_sign_in.sql` adds the `github_` and `google_` columns, `0040_mail_transport.sql` adds `mail_transport`, `0044_maintenance.sql` adds `maintenance`, and `0045_control_processes.sql` adds `promoted_kek`. Migration `0062_sign_up_approval.sql` adds `sign_up_mode` and `sign_up_digest_at`. Its default gives `approval` to a new install and to an install that the migration upgrades. `hopboxd install` sets no mode. `SetDefaultOrgLimits` changes them ([the admin API](/reference/admin-api/index.html.md#setdefaultorglimits)), and adds 1 to the version. The admin API reads and changes the row ([the admin API](/reference/admin-api/index.html.md#installconfigservice)). A rewrap of the SMTP password changes only `smtp_password`, and keeps the version ([Sealing](/reference/sealing/index.html.md#rewrap)). `GetInstallInfo` returns the domain to every caller ([the API server](/reference/api/index.html.md#installservice)). A change of `domain` or `public_addresses` raises the serial in `dns_zone` in the same transaction ([dns_zone](#dns_zone)). The inputs of the ACME job are `domain`, `public_addresses`, and the `acme_` columns. A change of one of them publishes the change event `acme.config_changed` in the same transaction ([the certificate of the install](/reference/acme/index.html.md#settings)). A change of `maintenance` adds 1 to the version, and publishes the change event `install.maintenance_changed` in the same transaction.
 
 ## accounts
 
@@ -431,14 +433,16 @@ Migrations `0007_accounts.sql` and `0061_account_state_tier.sql`. One row per ac
 | `version` | `bigint` | The row version. |
 | `created_at` | `timestamptz` | The first sign-in. |
 | `updated_at` | `timestamptz` | The last change. |
-| `state` | `text`, default `active` | The account state: `pending`, `active`, or `suspended`. A check constraint allows only these values. Today no release writes `pending`. `SuspendAccount` sets `suspended`, and `UnsuspendAccount` sets `active` ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). |
-| `tier` | `text`, default `full` | The account tier: `limited` or `full`. A check constraint allows only these values. A suspension keeps it. Today every account has the tier `full`, and no limit depends on it yet. |
+| `state` | `text`, default `active` | The account state: `pending`, `active`, or `suspended`. A check constraint allows only these values. A first sign-in in the sign-up mode `approval` writes `pending`, and the mode `open` writes `active` ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). `ApproveAccount` sets `active` ([the admin API](/reference/admin-api/index.html.md#approveaccount)). `SuspendAccount` sets `suspended`, and `UnsuspendAccount` sets `active` ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). |
+| `tier` | `text`, default `full` | The account tier: `limited` or `full`. A check constraint allows only these values. A suspension keeps it. A first sign-in of a new person writes `limited`, and a first-admin login link writes `full`. `ApproveAccount` sets the tier of its request. No limit depends on the tier yet. |
 | `suspended_at` | `timestamptz`, can be null | The start of the suspension of the account. Null for an account that is not suspended. |
 | `suspend_reason` | `text`, default empty | The reason of the suspension, or empty. The account sees it at its sign-in. |
 
 The check constraint `accounts_suspension` keeps two facts equal: the state `suspended`, and a value in `suspended_at`.
 
 Migration `0061_account_state_tier.sql` has the line `-- oldest_schema_version: 57`. Each account that exists gets the state `active` and the tier `full`, from the defaults. A `hopboxd` of the schema version 57 to 60 never reads the new columns. Its first sign-in of a new person makes an account that is active and full, from the defaults. But it does not refuse a suspended account. So while a live control process has a schema version below 61 (`service.AccountStateSchema`), `SuspendAccount` fails with `failed_precondition` ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). This check covers only the processes that run at the time of the suspend. A `hopboxd` of the schema version 57 to 60 that starts later, after a rollback or as an old release on a new server, does not refuse the account either. Its sign-ins, credentials, and calls let a suspended account act again while it runs. Its `UnsuspendOrg` also leaves `suspended_with_account`, which the next `SuspendOrg` clears. So do not roll back below schema version 61 while an account is suspended, or delete such accounts first.
+
+A `hopboxd` of the schema version 61 lets a pending account act, because it knows only the state `suspended`. So a first sign-in in the mode `approval` fails with `unavailable` while a live control process has a schema version below 62 (`service.SignUpSchema`). [Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#limits-of-new-accounts) gives the error. As for the suspend, this check covers only the processes that run at the time of the sign-in. So do not roll back below schema version 62 while an account is pending, or reject such accounts first.
 
 An account can go only after its personal org and its row in `instance_admins` are gone. The foreign keys of those two tables have no cascade, so the delete of an account must remove them on purpose. `DeleteAccount` does so ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#deleteaccount)). The other tables of an account cascade.
 
@@ -472,6 +476,39 @@ Migration `0007_accounts.sql`. One row per sign-in method of an account.
 | `version` | `bigint` | The row version. |
 | `created_at` | `timestamptz` | When the method joined the account. |
 
+## account_sign_ups
+
+Migration `0062_sign_up_approval.sql`. One row per account that a first sign-in made, apart from a first-admin login link ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). The row keeps the facts that an instance admin sees of the sign-up ([the admin API](/reference/admin-api/index.html.md#accountsignup)). An account from before the migration has no row.
+
+| Column | Type | Description |
+| --- | --- | --- |
+| `account_id` | `uuid`, primary key | The account. It has no foreign key, so the delete of an account takes no lock on this table, and the row stays. |
+| `method` | `text` | The kind of the first sign-in: `email_link`, `github`, or `google`. |
+| `client_ip` | `text`, default empty | The IP address that asked for the magic link, or that started the flow of GitHub or Google. It is empty for a request without an address. |
+| `github_login` | `text`, default empty | The GitHub login of a GitHub sign-up. |
+| `github_created_at` | `timestamptz`, can be null | The creation time of the GitHub user of a GitHub sign-up. Null for another sign-up. |
+| `note` | `text`, default empty | The note of the pending account to the instance admins ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#setsignupnote)). The delete of the account, its reject, and its expiry clear it, because it is text of the person. The rest of the row stays for the limit of its client. |
+| `digested_at` | `timestamptz`, can be null | The time of the email digest that named the account ([the admin API](/reference/admin-api/index.html.md#the-digest-of-new-pending-accounts)). Null until then. |
+| `version` | `bigint` | The row version. |
+| `created_at` | `timestamptz` | The time of the sign-up. |
+| `updated_at` | `timestamptz` | The last change. |
+
+The index `account_sign_ups_created` serves the limit of new accounts of a client. It counts the rows of the last 24 hours, also the rows of rejected and deleted accounts ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#limits-of-new-accounts)). The leader deletes the row of a deleted account one day after the sign-up ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)).
+
+The migration has the line `-- oldest_schema_version: 57`. A `hopboxd` of the schema version 57 to 61 never reads the new columns and tables of the migration. Its first sign-in of a new person makes an active account of the tier `full` in each mode, and writes no row here. So such a sign-up does not count toward the limit of its client.
+
+## sign_up_blocks
+
+Migration `0062_sign_up_approval.sql`. One row per entry of the block list of sign-ups ([the admin API](/reference/admin-api/index.html.md#signupblock)). A row never changes: a block inserts it, and an unblock deletes it.
+
+| Column | Type | Description |
+| --- | --- | --- |
+| `id` | `uuid`, primary key | A UUIDv7. |
+| `kind` | `text` | `email`, `email_domain`, `github`, or `google`. A check refuses another value. |
+| `value` | `text` | The email or the domain in lower case, the numeric user ID at GitHub, or the `sub` claim at Google. Unique with `kind`. |
+| `reason` | `text`, default empty | Why the entry exists. |
+| `created_at` | `timestamptz` | The time of the entry. |
+
 ## orgs
 
 Migrations `0008_orgs.sql`, `0017_org_limits_and_suspension.sql`, and `0061_account_state_tier.sql`. One row per org.
@@ -500,8 +537,10 @@ The lock order is the account row, then the org row, then the rows of the resour
 - A sign-in with a method of an account takes the key lock of the account before it writes the row of the method. The delete of an account, `RemoveSignInMethod`, and `RemoveAccountSignInMethod` delete a method row after they lock the account row with `FOR UPDATE`. So a sign-in beside one of them waits for it, and a sign-in beside a delete of its account then fails with `not_found`.
 - The delete of an account locks the row of the account first, after `LockKeyAdminNotices`. That lock holds back every new membership of the account. Then it locks every org in which the account has a role, in the order of their IDs. It locks the orgs where the account is not an owner too, because a promotion during the delete can make it one.
 - `SuspendAccount` takes `LockKeySignIn` and `LockKeyAdminNotices` first ([the bundled Postgres](/reference/postgres/index.html.md#order-of-the-advisory-locks)). Then it locks the row of the account, and every org in which the account has a role, in the order of their IDs. Then it locks the rows of `instance_admins`, and then the machine rows that it stops. `UnsuspendAccount` takes `LockKeyAdminNotices`, then the row of the account. Then it locks the orgs that the suspend of the account suspended, in the order of their IDs, with `FOR NO KEY UPDATE`.
+- A first sign-in that makes a pending account writes the notices of the new account ([the admin API](/reference/admin-api/index.html.md#notices-of-new-accounts)). So it takes `LockKeySignIn`, then `LockKeyAdminNotices`, before it inserts the account. The counts of the limits of new accounts run under `LockKeySignIn`, so they hold until the commit.
+- `ApproveAccount` locks the row of the account with `FOR UPDATE`. `RejectAccount` and the expiry of a pending account take `LockKeyAdminNotices`, then the row of the account, then its orgs, as the delete of an account does. `SetSignUpNote` locks the row of the account, so it waits for an approve or a reject that runs.
 - A sign-in of an account that exists reads the state of the account with the key lock (`FOR KEY SHARE`), under `LockKeySignIn`. The poll of an approved device sign-in reads it with the key lock too. A suspend holds the row of the account until its commit, so such a read waits for the suspend and sees the new state.
-- A change in an org reads the role of the account of its caller after the lock of the org row, and a suspended account has no role (`GetActingRole`). The suspend locks every org of the account, so a change in such an org runs before the suspend or after it. Before, the suspend stops what the change started. After, the change reads the state `suspended` and fails. The read takes no lock of its own, so the order account row, org row, machine rows stays.
+- A change in an org reads the role of the account of its caller after the lock of the org row. Only an active account has a role, so a suspended or a pending account has none (`GetActingRole`). The suspend locks every org of the account, so a change in such an org runs before the suspend or after it. Before, the suspend stops what the change started. After, the change reads the state `suspended` and fails. The read takes no lock of its own, so the order account row, org row, machine rows stays.
 - A change of the account of its caller, such as `CreateOrg`, `AcceptInvitation`, `AddSSHKey`, or `CreateAPIKey`, takes the lock of the account row first, before any org row, and reads the state with it. Most take the key lock (`FOR KEY SHARE`, `LockAccountState`). `CreateOrg`, `AddSSHKey`, `UpdateAccount`, and `RemoveSignInMethod` take the full row lock that they took before. The suspend holds the account row until its commit, so such a change runs before the suspend or after it, and then fails.
 - `RemoveOrgMember` and `LeaveOrg` take the key lock (`FOR KEY SHARE`) of the account that leaves, then the row of their one org. A resource that they delete can name that account.
 - `SetOrgMemberRole`, `RemoveOrgMember`, and `LeaveOrg` read the role of the caller again after the org lock ([the org API](/reference/org-api/index.html.md#every-org-keeps-an-owner)).
@@ -686,8 +725,10 @@ Migration `0058_admin_notices.sql`. One row per open notice of an instance admin
 | `account_id` | `uuid` | The instance admin. A delete of the account deletes the row. |
 | `audit_entry_id` | `uuid` | The audit entry of the action, a row of `audit_log`. It has no foreign key, because `audit_log` only grows. |
 | `created_at` | `timestamptz` | The time of the row. |
+| `kind` | `text`, default `security` | `security` for an action that lasts after its session, or `sign_up` for a new pending account ([the admin API](/reference/admin-api/index.html.md#notices-of-new-accounts)). A check refuses another value. |
+| `about_account_id` | `uuid`, can be null | The pending account of a notice of the kind `sign_up`. Null for the kind `security`. It has no foreign key. An approve, a reject, the expiry, and the delete of the account delete the rows that name it. The partial index `admin_notices_about_account` holds the rows where it is not null. |
 
-The primary key is `(account_id, audit_entry_id)`. The index `admin_notices_audit_entry` lists the rows of an audit entry. The migration has the line `-- oldest_schema_version: 57`. A `hopboxd` of schema version 57 never reads the table, so it runs beside the migration, and its calls write no notice.
+The primary key is `(account_id, audit_entry_id)`. The index `admin_notices_audit_entry` lists the rows of an audit entry. The migration has the line `-- oldest_schema_version: 57`. A `hopboxd` of schema version 57 never reads the table, so it runs beside the migration, and its calls write no notice. Migration `0062_sign_up_approval.sql` adds `kind` and `about_account_id`.
 
 ## pools
 

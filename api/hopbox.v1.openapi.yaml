@@ -365,6 +365,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.v1.RemoveSignInMethodResponse'
+  /hopbox.v1.AccountService/SetSignUpNote:
+    post:
+      tags:
+        - hopbox.v1.AccountService
+      summary: SetSignUpNote
+      description: |-
+        SetSignUpNote writes the note of a pending account to the instance admins. A new note replaces the old one.
+         An account that is not pending fails with FAILED_PRECONDITION.
+      operationId: hopbox.v1.AccountService.SetSignUpNote
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.SetSignUpNoteRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.SetSignUpNoteResponse'
   /hopbox.v1.AccountService/UpdateAccount:
     post:
       tags:
@@ -2421,6 +2462,17 @@ components:
           description: |-
             admin_notices counts the open notices of an instance admin, which the Admin area lists.
              It is 0 for any other account.
+        pending:
+          type: boolean
+          title: pending
+          description: |-
+            pending is true while the account waits for approval by an instance admin. A pending account only
+             reads its account, writes its note, deletes itself, and signs out. Each other call fails with
+             PERMISSION_DENIED and the detail AccountPending.
+        signUpNote:
+          type: string
+          title: sign_up_note
+          description: sign_up_note is the note of a pending account to the instance admins, or empty.
       title: Account
       additionalProperties: false
       description: Account is the record of one person in the install.
@@ -2445,6 +2497,13 @@ components:
       title: AccountEmail
       additionalProperties: false
       description: AccountEmail is one email of an account.
+    hopbox.v1.AccountPending:
+      type: object
+      title: AccountPending
+      additionalProperties: false
+      description: |-
+        AccountPending is the detail of the PERMISSION_DENIED error of a call of a pending account that such an
+         account cannot make. The console then shows the page of a pending account.
     hopbox.v1.AddSSHKeyRequest:
       type: object
       properties:
@@ -4602,6 +4661,28 @@ components:
       title: SetOrgMemberRoleResponse
       additionalProperties: false
       description: SetOrgMemberRoleResponse has no fields.
+    hopbox.v1.SetSignUpNoteRequest:
+      type: object
+      properties:
+        note:
+          type: string
+          title: note
+          description: |-
+            note is the note to the instance admins: at most 500 characters, without control characters other
+             than a line break. Spaces at either end go. An empty note removes it.
+      title: SetSignUpNoteRequest
+      additionalProperties: false
+      description: SetSignUpNoteRequest holds the note.
+    hopbox.v1.SetSignUpNoteResponse:
+      type: object
+      properties:
+        account:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Account'
+          title: account
+      title: SetSignUpNoteResponse
+      additionalProperties: false
+      description: SetSignUpNoteResponse holds the account after the change.
     hopbox.v1.SetVarRequest:
       type: object
       properties:

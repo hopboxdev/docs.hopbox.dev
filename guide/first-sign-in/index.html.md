@@ -174,7 +174,7 @@ curl -s -X POST -H 'Content-Type: application/json' -d '{"email":"ann@example.or
 {}
 ```
 
-The email holds a link of the form `https://example.com/auth/email#token=<token>`. Sign in with its token as above, with `VerifyMagicLink` in place of `VerifyLoginLink`. The first sign-in creates the account of Ann and her personal org. An email gets at most 5 links an hour ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#rate-limits)). If the SMTP server fails, the call gets `unavailable`, and the log of `hopboxd` has the record `the magic link email failed` with the cause.
+The email holds a link of the form `https://example.com/auth/email#token=<token>`. Sign in with its token as above, with `VerifyMagicLink` in place of `VerifyLoginLink`. The first sign-in creates the account of Ann and her personal org. In the default sign-up mode `approval`, the account is pending until an instance admin approves it ([Use the Admin area](/guide/admin-area/index.html.md#approve-or-reject-new-accounts)). An email gets at most 5 links an hour ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#rate-limits)). If the SMTP server fails, the call gets `unavailable`, and the log of `hopboxd` has the record `the magic link email failed` with the cause.
 
 ## Magic links without an SMTP server
 
