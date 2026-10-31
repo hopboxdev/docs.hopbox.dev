@@ -257,6 +257,7 @@ A server with the node role serves what its running machines use. At each scrape
 | Metric | Type | Labels | Description |
 | --- | --- | --- | --- |
 | `hopbox_machine_info` | gauge | `machine`, `name`, `org`, `size`, `vcpus`, `memory_bytes`, `disk_bytes` | 1 for each machine that runs on the node. It is the only series that links a machine to its org, by org ID. A query joins it to the other series on `machine`. |
+| `hopbox_machine_vcpus` | gauge | `machine` | The vCPUs of the size of the machine, the value of the label `vcpus` of `hopbox_machine_info`. A query divides the CPU time by it, because PromQL cannot read a label as a number. |
 | `hopbox_machine_cpu_seconds_total` | counter | `machine` | The CPU time of the machine since its boot, from `usage_usec` of `cpu.stat`. It starts from zero at each boot. |
 | `hopbox_machine_memory_bytes` | gauge | `machine` | The host RAM that the machine holds, from `memory.current`. |
 | `hopbox_machine_disk_bytes` | gauge | `machine` | The bytes of the blocks that the sparse disk file of the machine holds on the node. |
@@ -271,12 +272,12 @@ A server with the node role serves what its running machines use. At each scrape
 | `size` | The name of the size of the machine, such as `default` |
 | `vcpus`, `memory_bytes`, `disk_bytes` | The vCPUs, the RAM in bytes, and the disk in bytes of the size |
 
-A machine that runs before its first spec after a restart of `hopboxd` has no `hopbox_machine_info` until the spec arrives. A read that fails leaves its series out of that scrape, and the other series stay. For example, a machine can stop between the list of the machines and the read of its cgroup. The slice has no cgroup before the first machine runs in it, so the node totals are absent then.
+A machine that runs before its first spec after a restart of `hopboxd` has no `hopbox_machine_info` and no `hopbox_machine_vcpus` until the spec arrives. A read that fails leaves its series out of that scrape, and the other series stay. For example, a machine can stop between the list of the machines and the read of its cgroup. The slice has no cgroup before the first machine runs in it, so the node totals are absent then.
 
-Each running machine has 4 series in this section. A running machine with network also has 5 series in [Metrics of the node network](#metrics-of-the-node-network), and a machine without network has none of them. So a node with N running machines, each with network, serves 9 × N + 2 series of the machines. The catalog plans up to 15 series for each running machine with the metrics of later milestones.
+Each running machine has 5 series in this section. A running machine with network also has 5 series in [Metrics of the node network](#metrics-of-the-node-network), and a machine without network has none of them. So a node with N running machines, each with network, serves 10 × N + 2 series of the machines. The catalog plans up to 15 series for each running machine with the metrics of later milestones.
 
 ```sh
-curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_machines?_(info|cpu|memory|disk_bytes)'
+curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_machines?_(info|vcpus|cpu|memory|disk_bytes)'
 ```
 
 ```text
@@ -284,6 +285,7 @@ hopbox_machine_cpu_seconds_total{machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b"}
 hopbox_machine_disk_bytes{machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b"} 3.81e+09
 hopbox_machine_info{disk_bytes="100000000000",machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b",memory_bytes="8589934592",name="box1",org="0193a5b2-0000-7000-8000-000000000001",size="default",vcpus="2"} 1
 hopbox_machine_memory_bytes{machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b"} 2.15e+09
+hopbox_machine_vcpus{machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b"} 2
 hopbox_machines_cpu_seconds_total 812.4
 hopbox_machines_memory_bytes 2.15e+09
 ```
@@ -373,6 +375,32 @@ To set up node_exporter on a server, run these commands as root:
    ```
 
 The host firewall of hopbox blocks inbound traffic on port 9100 ([the host firewall](/reference/host-firewall/index.html.md)). An upgrade of `hopboxd` does not copy the file again, so run step 2 after an upgrade whose file is new.
+
+[Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/index.html.md) sets up node_exporter together with Prometheus, Alertmanager, and Grafana.
+
+## Recording rules
+
+The monitoring bundle computes these series in Prometheus, in `monitoring/rules/hopbox-recording.yml`. The alerts and the Grafana dashboards read them ([Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/index.html.md)). A name has the form `level:metric:operation`. The level names the labels that stay: `machine`, `server`, `instance`, or `install` for one value of the whole install.
+
+| Recording rule | Value |
+| --- | --- |
+| `machine:hopbox_machine_cpu_share:rate30m`, `machine:hopbox_machine_cpu_share:rate5m` | The CPU time of each machine per second, divided by `hopbox_machine_vcpus`. 1 is all vCPUs of the machine. |
+| `machine:hopbox_machine_egress_bytes:rate5m`, `machine:hopbox_machine_inbound_bytes:rate5m`, `machine:hopbox_machine_egress_connections:rate5m` | The bytes and the new outbound connections of each machine per second |
+| `server:hopbox_server_vcpus:free` | The vCPUs of each node that placement can still give |
+| `server:hopbox_server_vcpus_allocated:ratio`, `server:hopbox_server_memory_allocated:ratio` | The allocated share of the vCPU capacity and of the RAM of each node |
+| `server:hopbox_server_disk_free:ratio`, `server:hopbox_server_disk_allocated:ratio` | The free share of the data dir of each node, and the disk sizes of its machines divided by the size of the data dir |
+| `instance:node_cpu_busy:ratio_rate5m`, `instance:node_memory_available:ratio` | The busy share of the CPUs and the available share of the RAM of each host, from node_exporter |
+| `install:hopbox_account_creations:increase1h` | The new accounts of the last hour, without the refused sign-ins |
+| `install:hopbox_org_creations:increase1h`, `install:hopbox_machine_creations:increase1h` | The audit entries `org.create` and `machine.create` of the last hour |
+| `install:hopbox_url_changes:increase1h` | The audit entries `machine.set_url_port` and `machine.set_url_visibility` of the last hour |
+| `install:hopbox_api_key_creations:increase1h`, `install:hopbox_long_api_key_creations:increase1h` | The new API keys of the last hour, and those with the lifetime `365d` |
+| `install:hopbox_rate_limited:increase1h`, `install:hopbox_limit_refusals:increase1h` | The refusals of the rate limits and of the org limits in the last hour |
+| `install:hopbox_placements_no_capacity:increase15m` | The placements with the result `no_capacity` in the last 15 minutes |
+| `install:hopbox_edge_public_machine_requests:rate1h` | The requests to public machine URLs per second, over the last hour |
+
+The leader serves the gauges of the servers. After a change of the leader, two control processes can serve a series of the same server for a short time. So the `server:` rules keep the largest value of each server.
+
+A counter with labels shows only after its first event, so `increase()` misses that event. Each `install:` count adds the value of each series that is new in the window. The count needs a scrape of that `hopboxd` at the start of the window. A new series has no sample in the 5 minutes before the window. So a failed scrape does not make an old series new. After the first install of Prometheus, no series counts as new. So the totals of `hopboxd` from before the first scrape count as no burst. A control process that Prometheus did not scrape at the start of the window loses its first event in that window.
 
 ## Metrics of the process
 

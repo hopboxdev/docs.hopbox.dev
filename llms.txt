@@ -38,6 +38,7 @@ Each guide, reference page, and release note also has a Markdown copy at its URL
 - [Run the edge role and open machine URLs](https://docs.hopbox.dev/guide/machine-urls/index.html.md): How to run the edge role on a Mac and call the API through it. Also how a private URL, its port, and a public URL work.
 - [Run edge servers apart from the nodes](https://docs.hopbox.dev/guide/edge-servers/index.html.md): How to add two edge servers apart from the nodes, with floating IPv4 and IPv6 addresses. Also how to point the zone at both, reach a machine through each one, and check the egress of the machines.
 - [Run the control store on an external Postgres](https://docs.hopbox.dev/guide/external-postgres/index.html.md): How to run the control store on an external Postgres, such as managed PostgreSQL: the database, the CA and password files, the config, and the checks. Also how to move a one-server install there with hopboxd admin db export and maintenance mode.
+- [Monitor an install with Prometheus and Grafana](https://docs.hopbox.dev/guide/monitor-an-install/index.html.md): How to set up the monitoring bundle on the control server: Prometheus, Alertmanager, node_exporter, and Grafana from Debian packages, the alert email, the outside check, a test alert, and what each alert means.
 
 ## Guides: Develop on a laptop
 
