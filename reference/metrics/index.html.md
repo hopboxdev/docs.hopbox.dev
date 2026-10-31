@@ -380,3 +380,28 @@ The host firewall of hopbox blocks inbound traffic on port 9100 ([the host firew
 | --- | --- |
 | `go_` | The Go runtime: goroutines, memory, and garbage collection. |
 | `process_` | The process: CPU time, memory, open files, and start time. Linux only. On macOS, these metrics are absent. |
+
+## History of samples
+
+Each control process keeps a history of samples: once a minute, it reads the families below from its own registry, the same one that `/metrics` serves, and writes them to the table `metric_samples` of the control store ([Control store tables](/reference/control-store/index.html.md#metric_samples)). The history keeps 24 hours at 1-minute steps (Q138). The console pages Overview, Capacity, and Machines read it ([Console](/reference/console/index.html.md#admin-area)), so they show trends without Prometheus. The code is in `internal/history`.
+
+| Families | Source | What the history keeps |
+| --- | --- | --- |
+| `hopbox_accounts`, `hopbox_pending_account_oldest_seconds`, `hopbox_orgs`, `hopbox_api_keys`, `hopbox_public_machine_urls`, `hopbox_machines`, and the 8 `hopbox_server_*` gauges | leader | Every series. |
+| `hopbox_account_creations_total`, `hopbox_api_key_creations_total`, `hopbox_rate_limited_total`, `hopbox_limit_refusals_total` | each control process | Every series. |
+| `hopbox_audit_entries_total` | each control process | One series for each `action`. The values of `actor_kind` add up. |
+| `hopbox_api_calls_total` | each control process | One series for each `listener` and `code`. The values of `procedure` add up. |
+| `hopbox_executor_actions_total` | each node | One series for each `result`. The values of `action` add up. |
+| `hopbox_node_network_repairs_total`, `hopbox_machine_info`, `hopbox_machine_cpu_seconds_total`, `hopbox_machine_memory_bytes`, `hopbox_machine_disk_bytes`, `hopbox_machine_egress_bytes_total`, `hopbox_machine_egress_connections_total`, `hopbox_machines_cpu_seconds_total`, `hopbox_machines_memory_bytes` | each node | Every series. |
+| `hopbox_edge_certificate_not_after_seconds` | each edge | Every series. |
+| `hopbox_host_firewall_up` | every `hopboxd` | Every series. |
+
+A reader adds the counters of every instance, as `sum` does in Prometheus. It takes a leader family from one process for each minute, the newest sample with values in that minute, so a change of the leader counts no value twice. An increase over a range adds the increases between the samples of each series within the range. A drop of a counter is a restart, so the value after the drop counts whole. A reader reads the 15 minutes before the range too (`history.ReadMargin`), and a reader at steps of 30 minutes reads one step before the range. A series with a sample before the range began before it. Of the increase from its last sample before the range to its first sample in the range, the reader counts the part after the start of the range, at a steady rate.
+
+A series without a sample before the range is new in it, such as a counter with labels after its first event. Its first value counts whole when its instance took samples before the range, as in the recording rules of the monitoring bundle, so the console and Grafana agree. The instance is the server of the process that took the sample, or the process for a control process without the node role, as a scrape target is in Prometheus. The series of one server go on across a restart of its `hopboxd`, and the drop of their counters counts as a restart. When the history of an instance began within the range, no first value of it counts, so an old total does not count as one burst. A control process without the node role is a new instance after its restart, so it loses the events between its start and its first sample.
+
+A gap in the samples at the start of the range, such as maintenance mode, changes nothing while the gap is shorter than 15 minutes. After a longer gap, the reader counts from the end of the gap, and loses the events of the gap. The reader does not extrapolate to the end of the range, as `increase` in Prometheus does.
+
+The series of a machine merge across the processes of a restart of `hopboxd` and across the nodes of a move, by the label `machine`, and so do the node totals of a server. A series cuts the samples of the series that began before it from its first sample to its last, so the old and the new node of a move never alternate. A move back to an earlier node keeps the samples after the return. The CPU time of a machine comes from its cgroup, which outlives a restart of `hopboxd`, so its series goes on. A share of CPU over 30 minutes or an hour shows only when the samples of the machine cover the whole window. A machine that started 10 minutes ago has a share of 5 minutes only.
+
+The history keeps no other family. It drops the labels that multiply the rows of a family, such as `procedure`, so its size grows with the running machines and not with the API calls. Only the families of a process with the control role reach the history. A server with the node role alone writes no sample, so its machines are missing from the Machines page, as from the Prometheus of the monitoring bundle until Q121.

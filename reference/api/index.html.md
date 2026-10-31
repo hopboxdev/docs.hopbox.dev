@@ -233,6 +233,10 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `health.check` | `grpc.health.v1.Health`, `Check` and `Watch` | the install | every caller, also `anonymous` |
 | `reflection.read` | `grpc.reflection.v1.ServerReflection` and `grpc.reflection.v1alpha.ServerReflection` | the install | every caller, also `anonymous` |
 | `enrollment_token.create` | `ServerService.CreateEnrollmentToken` | the install | `local_root`, `admin_key` |
+| `monitor.get_overview` | `MonitorService.GetOverview` | the install | `local_root`, `admin_key`, an admin `session` |
+| `monitor.get_capacity` | `MonitorService.GetCapacity` | the install | `local_root`, `admin_key`, an admin `session` |
+| `monitor.list_top_machines` | `MonitorService.ListTopMachines` | the install | `local_root`, `admin_key`, an admin `session` |
+| `monitor.get_account_activity` | `MonitorService.GetAccountActivity` | the install | `local_root`, `admin_key`, an admin `session` |
 | `server.list` | `ServerService.ListServers` | the install | `local_root`, `admin_key`, an admin `session` |
 | `server.get` | `ServerService.GetServer` | the install | `local_root`, `admin_key`, an admin `session` |
 | `server.cordon` | `ServerService.CordonServer` | the install | `local_root`, `admin_key`, an admin `session` |

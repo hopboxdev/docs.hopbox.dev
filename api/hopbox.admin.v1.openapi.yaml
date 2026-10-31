@@ -1901,6 +1901,166 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.ListMailFilesResponse'
+  /hopbox.admin.v1.MonitorService/GetAccountActivity:
+    post:
+      tags:
+        - hopbox.admin.v1.MonitorService
+      summary: GetAccountActivity
+      description: |-
+        GetAccountActivity returns the sign-ups, the new orgs and keys, the URLs made public, and the
+         refusals of the rate limits of the last 24 hours, hour by hour, for the bursts on the Accounts page.
+      operationId: hopbox.admin.v1.MonitorService.GetAccountActivity
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.GetAccountActivityRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.GetAccountActivityResponse'
+  /hopbox.admin.v1.MonitorService/GetCapacity:
+    post:
+      tags:
+        - hopbox.admin.v1.MonitorService
+      summary: GetCapacity
+      description: GetCapacity returns the capacity of each node, what its machines hold and use, and the trend.
+      operationId: hopbox.admin.v1.MonitorService.GetCapacity
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.GetCapacityRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.GetCapacityResponse'
+  /hopbox.admin.v1.MonitorService/GetOverview:
+    post:
+      tags:
+        - hopbox.admin.v1.MonitorService
+      summary: GetOverview
+      description: |-
+        GetOverview returns the state of the whole install: its nodes, its machines, the pending accounts,
+         the events of the last 24 hours, and a health line for each part of hopbox.
+      operationId: hopbox.admin.v1.MonitorService.GetOverview
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.GetOverviewRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.GetOverviewResponse'
+  /hopbox.admin.v1.MonitorService/ListTopMachines:
+    post:
+      tags:
+        - hopbox.admin.v1.MonitorService
+      summary: ListTopMachines
+      description: ListTopMachines returns the running machines that use the most CPU, RAM, disk, or egress.
+      operationId: hopbox.admin.v1.MonitorService.ListTopMachines
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.ListTopMachinesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.ListTopMachinesResponse'
   /hopbox.admin.v1.OrgService/GetDefaultOrgLimits:
     post:
       tags:
@@ -3321,6 +3481,41 @@ components:
       title: ActionInProgress
       additionalProperties: false
       description: ActionInProgress is an action that a server started and did not finish yet.
+    hopbox.admin.v1.ActivityHour:
+      type: object
+      properties:
+        startTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: start_time
+          description: start_time is the start of the hour.
+        signUps:
+          type: string
+          title: sign_ups
+          format: int64
+        orgCreations:
+          type: string
+          title: org_creations
+          format: int64
+        apiKeyCreations:
+          type: string
+          title: api_key_creations
+          format: int64
+        urlsMadePublic:
+          type: string
+          title: urls_made_public
+          format: int64
+        rateLimited:
+          type: string
+          title: rate_limited
+          format: int64
+        urlChanges:
+          type: string
+          title: url_changes
+          format: int64
+      title: ActivityHour
+      additionalProperties: false
+      description: ActivityHour counts the events of one hour.
     hopbox.admin.v1.AdminKey:
       type: object
       properties:
@@ -4319,6 +4514,156 @@ components:
       title: DrainServerResponse
       additionalProperties: false
       description: DrainServerResponse holds the server after the start of its drain.
+    hopbox.admin.v1.EventCounts:
+      type: object
+      properties:
+        signUps:
+          type: string
+          title: sign_ups
+          format: int64
+          description: sign_ups counts the new accounts that were not refused (hopbox_account_creations_total).
+        orgCreations:
+          type: string
+          title: org_creations
+          format: int64
+          description: org_creations counts the new orgs (hopbox_audit_entries_total, action org.create).
+        apiKeyCreations:
+          type: string
+          title: api_key_creations
+          format: int64
+          description: api_key_creations counts the new API keys of every kind (hopbox_api_key_creations_total).
+        urlsMadePublic:
+          type: string
+          title: urls_made_public
+          format: int64
+          description: |-
+            urls_made_public counts the changes of the visibility of a machine URL from private to public, from
+             the audit log of the control store, because no metric names the visibility. url_changes counts them too.
+        rateLimited:
+          type: string
+          title: rate_limited
+          format: int64
+          description: rate_limited counts the requests that a rate limit refused (hopbox_rate_limited_total).
+        limitRefusals:
+          type: string
+          title: limit_refusals
+          format: int64
+          description: limit_refusals counts the calls that an org limit refused (hopbox_limit_refusals_total).
+        apiErrors:
+          type: string
+          title: api_errors
+          format: int64
+          description: |-
+            api_errors counts the API calls that ended with the code internal, unavailable, unknown, or
+             data_loss (hopbox_api_calls_total).
+        executorFailures:
+          type: string
+          title: executor_failures
+          format: int64
+          description: |-
+            executor_failures counts the failed actions of the executors of the nodes
+             (hopbox_executor_actions_total, result failed).
+        urlChanges:
+          type: string
+          title: url_changes
+          format: int64
+          description: |-
+            url_changes counts the changes of the port and the visibility of machine URLs
+             (hopbox_audit_entries_total, actions machine.set_url_port and machine.set_url_visibility), as the
+             alert HopboxURLChurn counts them.
+      title: EventCounts
+      additionalProperties: false
+      description: EventCounts counts the events of a time range over every control process and node.
+    hopbox.admin.v1.GetAccountActivityRequest:
+      type: object
+      title: GetAccountActivityRequest
+      additionalProperties: false
+      description: GetAccountActivityRequest has no fields.
+    hopbox.admin.v1.GetAccountActivityResponse:
+      type: object
+      properties:
+        sampleTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: sample_time
+          description: sample_time is the time of the newest sample of the leader, or absent without one.
+        hours:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.ActivityHour'
+          title: hours
+          description: hours are the 24 hours that end at the time of the call, oldest first.
+        lastDay:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.EventCounts'
+          title: last_day
+          description: last_day counts the events of the 24 hours.
+        rateLimited:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.LimitCount'
+          title: rate_limited
+          description: |-
+            rate_limited counts the refusals of each rate limit in the 24 hours (hopbox_rate_limited_total), by
+             limit, the most first. A limit without a refusal is absent.
+        publicUrls:
+          type: string
+          title: public_urls
+          format: int64
+          description: public_urls counts the machines with a public URL now.
+        publicUrlOrgs:
+          type: integer
+          title: public_url_orgs
+          format: int32
+          description: public_url_orgs counts the orgs with a machine with a public URL now.
+        suspendedOrgs:
+          type: string
+          title: suspended_orgs
+          format: int64
+          description: suspended_orgs counts the suspended orgs now.
+        grafanaUrl:
+          type: string
+          title: grafana_url
+          description: grafana_url is grafana_url of the install config, or empty.
+      title: GetAccountActivityResponse
+      additionalProperties: false
+      description: GetAccountActivityResponse holds the account activity of the last 24 hours.
+    hopbox.admin.v1.GetCapacityRequest:
+      type: object
+      properties:
+        range:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.HistoryRange'
+          title: range
+      title: GetCapacityRequest
+      additionalProperties: false
+      description: GetCapacityRequest selects the range of the trends.
+    hopbox.admin.v1.GetCapacityResponse:
+      type: object
+      properties:
+        sampleTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: sample_time
+          description: sample_time is the time of the newest sample of the leader, or absent without one.
+        step:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: step
+          description: step is the time between two points of each trend.
+        servers:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.ServerCapacity'
+          title: servers
+          description: servers are the servers with the node role that are not decommissioned, by ID.
+        grafanaUrl:
+          type: string
+          title: grafana_url
+          description: grafana_url is grafana_url of the install config, or empty.
+      title: GetCapacityResponse
+      additionalProperties: false
+      description: GetCapacityResponse holds the capacity of each node.
     hopbox.admin.v1.GetCertificateRequest:
       type: object
       title: GetCertificateRequest
@@ -4427,6 +4772,125 @@ components:
       title: GetOAuthConfigResponse
       additionalProperties: false
       description: GetOAuthConfigResponse holds one client for each provider, GitHub first.
+    hopbox.admin.v1.GetOverviewRequest:
+      type: object
+      title: GetOverviewRequest
+      additionalProperties: false
+      description: GetOverviewRequest has no fields.
+    hopbox.admin.v1.GetOverviewResponse:
+      type: object
+      properties:
+        sampleTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: sample_time
+          description: |-
+            sample_time is the time of the newest sample of the leader. It is absent while the history has
+             none, such as in the first minute after the start of the control role. The counts of the leader
+             are 0 then.
+        nodes:
+          type: integer
+          title: nodes
+          format: int32
+          description: nodes counts the servers with the node role that are not decommissioned (hopbox_server_vcpus).
+        vcpus:
+          type: string
+          title: vcpus
+          format: int64
+          description: vcpus is the vCPU capacity of every node, with the overcommit of placement.
+        vcpusAllocated:
+          type: string
+          title: vcpus_allocated
+          format: int64
+          description: vcpus_allocated is the vCPUs of the machines that hold compute on the nodes.
+        memoryBytes:
+          type: string
+          title: memory_bytes
+          format: int64
+          description: memory_bytes is the RAM of every node.
+        memoryAllocatedBytes:
+          type: string
+          title: memory_allocated_bytes
+          format: int64
+          description: memory_allocated_bytes is the RAM of the machines that hold compute on the nodes.
+        machines:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.MachineStateCount'
+          title: machines
+          description: machines counts the machines by current state (hopbox_machines). A state without a machine is absent.
+        pendingAccounts:
+          type: string
+          title: pending_accounts
+          format: int64
+          description: pending_accounts counts the accounts that wait for the approval of an instance admin.
+        oldestPending:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: oldest_pending
+          description: oldest_pending is the age of the oldest pending account, or 0 without one.
+        publicUrls:
+          type: string
+          title: public_urls
+          format: int64
+          description: public_urls counts the machines with a public URL.
+        suspendedOrgs:
+          type: string
+          title: suspended_orgs
+          format: int64
+          description: suspended_orgs counts the suspended orgs, personal and team.
+        lastDay:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.EventCounts'
+          title: last_day
+          description: last_day counts the events of the last 24 hours.
+        health:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.HealthLine'
+          title: health
+          description: health holds one line for each HealthArea, in the order of the enum.
+        busyMachines:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.MachineUse'
+          title: busy_machines
+          description: |-
+            busy_machines are the running machines that used 90% or more of their vCPUs over the last 30
+             minutes, the busiest first. The alert HopboxMachineCPUSustained fires when this lasts 2 hours.
+        grafanaUrl:
+          type: string
+          title: grafana_url
+          description: grafana_url is grafana_url of the install config, for the links to the dashboards, or empty.
+        servers:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.ServerHealth'
+          title: servers
+          description: |-
+            servers are the servers of the install that are not decommissioned, from the control store, oldest
+             enrollment first.
+        pendingEmails:
+          type: array
+          items:
+            type: string
+          title: pending_emails
+          description: pending_emails are the first emails of the 5 oldest pending accounts, oldest first.
+        openNotices:
+          type: integer
+          title: open_notices
+          format: int32
+          description: |-
+            open_notices counts the open notices of the caller. A caller without an account, such as an admin
+             API key, has none.
+        publicUrlOrgs:
+          type: integer
+          title: public_url_orgs
+          format: int32
+          description: public_url_orgs counts the orgs with a machine with a public URL, from the control store.
+      title: GetOverviewResponse
+      additionalProperties: false
+      description: GetOverviewResponse is the state of the install, from the newest samples of the history.
     hopbox.admin.v1.GetPoolRequest:
       type: object
       properties:
@@ -4545,6 +5009,58 @@ components:
       title: GrantInstanceAdminResponse
       additionalProperties: false
       description: GrantInstanceAdminResponse names the account.
+    hopbox.admin.v1.HealthArea:
+      type: string
+      title: HealthArea
+      enum:
+        - HEALTH_AREA_UNSPECIFIED
+        - HEALTH_AREA_CONTROL_PLANE
+        - HEALTH_AREA_NODES
+        - HEALTH_AREA_EDGE
+        - HEALTH_AREA_NETWORK
+      description: HealthArea is a part of hopbox with a health line on the Overview page.
+    hopbox.admin.v1.HealthLine:
+      type: object
+      properties:
+        area:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.HealthArea'
+          title: area
+        state:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.HealthState'
+          title: state
+        problems:
+          type: array
+          items:
+            type: string
+          title: problems
+          description: |-
+            problems name each problem that a check found, one line each, the worst first. It is empty when
+             the state is HEALTH_STATE_OK.
+      title: HealthLine
+      additionalProperties: false
+      description: |-
+        HealthLine is the health of one part of hopbox, from the checks of the alerts of the monitoring
+         bundle that the history can run.
+    hopbox.admin.v1.HealthState:
+      type: string
+      title: HealthState
+      enum:
+        - HEALTH_STATE_UNSPECIFIED
+        - HEALTH_STATE_OK
+        - HEALTH_STATE_WARNING
+        - HEALTH_STATE_CRITICAL
+        - HEALTH_STATE_UNKNOWN
+      description: HealthState is the state of a health line.
+    hopbox.admin.v1.HistoryRange:
+      type: string
+      title: HistoryRange
+      enum:
+        - HISTORY_RANGE_UNSPECIFIED
+        - HISTORY_RANGE_DAY
+        - HISTORY_RANGE_HOUR
+      description: HistoryRange is the time range of a trend.
     hopbox.admin.v1.Image:
       type: object
       properties:
@@ -4652,6 +5168,12 @@ components:
             - $ref: '#/components/schemas/hopbox.admin.v1.SignUpMode'
           title: sign_up_mode
           description: sign_up_mode is how a new person gets an account. The default is SIGN_UP_MODE_APPROVAL.
+        grafanaUrl:
+          type: string
+          title: grafana_url
+          description: |-
+            grafana_url is the Grafana of the monitoring bundle, for the links of the console to its dashboards.
+             It is empty until an instance admin sets it, and the console then shows no link.
       title: InstallConfig
       additionalProperties: false
       description: InstallConfig holds the settings of the install.
@@ -4723,6 +5245,20 @@ components:
       title: KEK
       additionalProperties: false
       description: KEK is one key-encryption key.
+    hopbox.admin.v1.LimitCount:
+      type: object
+      properties:
+        limit:
+          type: string
+          title: limit
+          description: limit is the name of the limit, such as account_creations.
+        count:
+          type: string
+          title: count
+          format: int64
+      title: LimitCount
+      additionalProperties: false
+      description: LimitCount is the count of one rate limit.
     hopbox.admin.v1.ListAccountSignInMethodsRequest:
       type: object
       anyOf:
@@ -5104,6 +5640,46 @@ components:
       title: ListSizesResponse
       additionalProperties: false
       description: ListSizesResponse holds the sizes.
+    hopbox.admin.v1.ListTopMachinesRequest:
+      type: object
+      properties:
+        orderBy:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.MachineUseOrder'
+          title: order_by
+        limit:
+          type: integer
+          title: limit
+          format: int32
+          description: limit is the most machines in the response, 1 to 100. 0 means 20.
+      title: ListTopMachinesRequest
+      additionalProperties: false
+      description: ListTopMachinesRequest selects the order and the number of machines.
+    hopbox.admin.v1.ListTopMachinesResponse:
+      type: object
+      properties:
+        sampleTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: sample_time
+          description: sample_time is the time of the newest sample of a machine, or absent without one.
+        machines:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.MachineUse'
+          title: machines
+        total:
+          type: integer
+          title: total
+          format: int32
+          description: total counts the running machines of the history, also those past limit.
+        grafanaUrl:
+          type: string
+          title: grafana_url
+          description: grafana_url is grafana_url of the install config, or empty.
+      title: ListTopMachinesResponse
+      additionalProperties: false
+      description: ListTopMachinesResponse holds the running machines of the history, the most first.
     hopbox.admin.v1.Machine:
       type: object
       properties:
@@ -5125,6 +5701,141 @@ components:
       title: Machine
       additionalProperties: false
       description: Machine is a machine with the facts that only instance admins see.
+    hopbox.admin.v1.MachineStateCount:
+      type: object
+      properties:
+        state:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.MachineState'
+          title: state
+        count:
+          type: string
+          title: count
+          format: int64
+      title: MachineStateCount
+      additionalProperties: false
+      description: MachineStateCount is the number of machines in one state.
+    hopbox.admin.v1.MachineUse:
+      type: object
+      properties:
+        machineId:
+          type: string
+          title: machine_id
+          description: machine_id is the ID of the machine.
+        name:
+          type: string
+          title: name
+          description: name is the name of the machine.
+        orgId:
+          type: string
+          title: org_id
+          description: org_id is the ID of the org of the machine.
+        orgName:
+          type: string
+          title: org_name
+          description: org_name is the name of the org. It is empty when the org is gone.
+        ownerEmail:
+          type: string
+          title: owner_email
+          description: owner_email is the first email of the first owner of the org, to tell the person.
+        size:
+          type: string
+          title: size
+          description: size is the name of the size of the machine.
+        vcpus:
+          type: integer
+          title: vcpus
+          format: int32
+          description: vcpus is the vCPUs of the size.
+        memoryBytes:
+          type: string
+          title: memory_bytes
+          format: int64
+          description: memory_bytes is the RAM of the size.
+        diskBytes:
+          type: string
+          title: disk_bytes
+          format: int64
+          description: disk_bytes is the disk of the size.
+        serverId:
+          type: string
+          title: server_id
+          description: |-
+            server_id is the ID of the node of the machine. It is empty when the node took the sample before
+             its enrollment.
+        urlVisibility:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.URLVisibility'
+          title: url_visibility
+          description: |-
+            url_visibility is the visibility of the URL of the machine. It is unspecified when the machine is
+             gone from the control store.
+        cpuShare5m:
+          type: number
+          title: cpu_share_5m
+          format: double
+          description: |-
+            cpu_share_5m is the share of its vCPUs that the machine used in the last 5 minutes. 1 is every vCPU
+             all the time.
+        cpuShare30m:
+          type:
+            - number
+            - "null"
+          title: cpu_share_30m
+          format: double
+          description: |-
+            cpu_share_30m is the same share over the last 30 minutes. It is absent until the samples of the
+             machine cover the 30 minutes, such as for a machine that started 10 minutes ago.
+        cpuShare1h:
+          type:
+            - number
+            - "null"
+          title: cpu_share_1h
+          format: double
+          description: cpu_share_1h is the same share over the last hour, absent until the samples cover the hour.
+        cpuHistory:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.SamplePoint'
+          title: cpu_history
+          description: |-
+            cpu_history is the share of its vCPUs that the machine used in each 30 minutes of the last 24
+             hours. ListTopMachines fills it. A step in which the machine did not run has no point.
+        memoryUsedBytes:
+          type: string
+          title: memory_used_bytes
+          format: int64
+          description: memory_used_bytes is the host RAM that the machine holds now (hopbox_machine_memory_bytes).
+        diskUsedBytes:
+          type: string
+          title: disk_used_bytes
+          format: int64
+          description: |-
+            disk_used_bytes is the bytes that the sparse disk file of the machine holds now
+             (hopbox_machine_disk_bytes).
+        egressBytes:
+          type: string
+          title: egress_bytes
+          format: int64
+          description: egress_bytes is the bytes that the machine sent out in the last 24 hours.
+        egressConnections:
+          type: string
+          title: egress_connections
+          format: int64
+          description: egress_connections counts the outbound connections that the machine opened in the last 24 hours.
+      title: MachineUse
+      additionalProperties: false
+      description: MachineUse is what a running machine uses, from the series of its node.
+    hopbox.admin.v1.MachineUseOrder:
+      type: string
+      title: MachineUseOrder
+      enum:
+        - MACHINE_USE_ORDER_UNSPECIFIED
+        - MACHINE_USE_ORDER_CPU
+        - MACHINE_USE_ORDER_MEMORY
+        - MACHINE_USE_ORDER_DISK
+        - MACHINE_USE_ORDER_EGRESS
+      description: MachineUseOrder says how ListTopMachines orders the machines.
     hopbox.admin.v1.MailFile:
       type: object
       properties:
@@ -5934,6 +6645,21 @@ components:
         - SMTP_SECURITY_TLS
         - SMTP_SECURITY_NONE
       description: SMTPSecurity says how the connection to the SMTP server is encrypted.
+    hopbox.admin.v1.SamplePoint:
+      type: object
+      properties:
+        time:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: time
+          description: time is the end of the step of the value.
+        value:
+          type: number
+          title: value
+          format: double
+      title: SamplePoint
+      additionalProperties: false
+      description: SamplePoint is a value of a trend at one time.
     hopbox.admin.v1.Server:
       type: object
       properties:
@@ -6096,6 +6822,126 @@ components:
       title: Server
       additionalProperties: false
       description: Server is one enrolled server, with the facts of its last heartbeat.
+    hopbox.admin.v1.ServerCapacity:
+      type: object
+      properties:
+        serverId:
+          type: string
+          title: server_id
+          description: server_id is the ID of the server.
+        vcpus:
+          type: string
+          title: vcpus
+          format: int64
+          description: vcpus is the vCPU capacity of the node, with the overcommit of placement.
+        vcpusAllocated:
+          type: string
+          title: vcpus_allocated
+          format: int64
+          description: vcpus_allocated is the vCPUs of the machines that hold compute on the node.
+        memoryBytes:
+          type: string
+          title: memory_bytes
+          format: int64
+          description: memory_bytes is the RAM of the node.
+        memoryAllocatedBytes:
+          type: string
+          title: memory_allocated_bytes
+          format: int64
+          description: memory_allocated_bytes is the RAM of the machines that hold compute on the node.
+        diskBytes:
+          type: string
+          title: disk_bytes
+          format: int64
+          description: disk_bytes is the size of the file system of the data dir of the node.
+        diskFreeBytes:
+          type: string
+          title: disk_free_bytes
+          format: int64
+          description: disk_free_bytes is the free space of that file system.
+        diskAllocatedBytes:
+          type: string
+          title: disk_allocated_bytes
+          format: int64
+          description: disk_allocated_bytes is the disk sizes of the machines on the node.
+        cpuUsed:
+          type:
+            - number
+            - "null"
+          title: cpu_used
+          format: double
+          description: |-
+            cpu_used is the CPU threads that the machines of the node used in the last 5 minutes
+             (hopbox_machines_cpu_seconds_total). It is absent when the history has no recent sample of the
+             node, such as for a node without the control role.
+        memoryUsedBytes:
+          type:
+            - string
+            - "null"
+          title: memory_used_bytes
+          format: int64
+          description: |-
+            memory_used_bytes is the host RAM that the machines of the node hold now
+             (hopbox_machines_memory_bytes). It is absent as cpu_used is.
+        cpuUsedHistory:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.SamplePoint'
+          title: cpu_used_history
+          description: cpu_used_history is cpu_used in each step of the range.
+        memoryUsedHistory:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.SamplePoint'
+          title: memory_used_history
+          description: memory_used_history is memory_used_bytes at the end of each step of the range.
+        vcpusAllocatedHistory:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.SamplePoint'
+          title: vcpus_allocated_history
+          description: vcpus_allocated_history is vcpus_allocated at the end of each step of the range.
+        memoryAllocatedHistory:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.SamplePoint'
+          title: memory_allocated_history
+          description: memory_allocated_history is memory_allocated_bytes at the end of each step of the range.
+        diskFreeHistory:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.SamplePoint'
+          title: disk_free_history
+          description: disk_free_history is disk_free_bytes at the end of each step of the range.
+        hostname:
+          type: string
+          title: hostname
+          description: hostname is the host name of the server, or empty when the control store no longer has the server.
+        pool:
+          type: string
+          title: pool
+          description: pool is the name of the pool of the server, or empty as hostname.
+        roles:
+          type: array
+          items:
+            type: string
+          title: roles
+          description: roles are the roles of the server.
+        state:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.ServerState'
+          title: state
+          description: state is the state of the server, or unspecified as hostname.
+        cpuThreads:
+          type: integer
+          title: cpu_threads
+          format: int32
+          description: |-
+            cpu_threads is the count of CPU threads of the node. vcpus is cpu_threads times the vCPU overcommit
+             of placement, so cpu_used compares with it.
+      title: ServerCapacity
+      additionalProperties: false
+      description: ServerCapacity is the capacity of one node, what its machines hold, and what they use.
     hopbox.admin.v1.ServerDrain:
       type: object
       properties:
@@ -6148,6 +6994,29 @@ components:
       title: ServerDrain
       additionalProperties: false
       description: ServerDrain is the drain of a server.
+    hopbox.admin.v1.ServerHealth:
+      type: object
+      properties:
+        serverId:
+          type: string
+          title: server_id
+          description: server_id is the ID of the server.
+        hostname:
+          type: string
+          title: hostname
+          description: hostname is the host name that the server reported at its enrollment.
+        state:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.ServerState'
+          title: state
+        status:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.ServerStatus'
+          title: status
+          description: status is the status of the last heartbeat. It is unspecified before the first one.
+      title: ServerHealth
+      additionalProperties: false
+      description: ServerHealth is the state of one server.
     hopbox.admin.v1.ServerMesh:
       type: object
       properties:
@@ -6977,6 +7846,15 @@ components:
           description: |-
             sign_up_mode is the new sign-up mode. SIGN_UP_MODE_UNSPECIFIED fails with INVALID_ARGUMENT. A change
              gives each other instance admin a notice and an email. Leave it out to keep the mode.
+        grafanaUrl:
+          type:
+            - string
+            - "null"
+          title: grafana_url
+          description: |-
+            grafana_url is the new URL of Grafana: an http or https URL of at most 2048 characters, without user
+             info, a query, or a fragment, such as http://127.0.0.1:3000 behind an SSH tunnel. An empty string
+             removes it. Leave it out to keep the URL.
       title: UpdateInstallConfigRequest
       additionalProperties: false
       description: UpdateInstallConfigRequest holds the settings to change.
@@ -7213,6 +8091,14 @@ tags:
       MailService reads the mail files that the file mail transport wrote on this control server
        (MAIL_TRANSPORT_FILE). The files hold sign-in links and invitation links, so the policy allows only
        root on the server, through the admin socket. Each control server has its own files.
+  - name: hopbox.admin.v1.ServerService
+    description: ServerService enrolls servers and manages the servers of the install.
+  - name: hopbox.admin.v1.MonitorService
+    description: |-
+      MonitorService reads the history of samples for the pages Overview, Capacity, Machines, and Accounts
+       of the Admin area of the console. Each call reads the same metric families as the matching dashboard
+       of the monitoring bundle, so the numbers match. The history holds 24 hours at 1-minute steps. The
+       calls write no audit entry, because the console reads them again every minute.
   - name: hopbox.admin.v1.OrgService
     description: |-
       OrgService lets instance admins see the metadata of every org, suspend an org, and set usage limits.
@@ -7222,8 +8108,6 @@ tags:
       PoolService manages the pools: the named groups of servers. Each enrollment token enrolls a
        server into one pool, and all servers of a pool have identical hardware. An operator size can
        keep its machines in one pool.
-  - name: hopbox.admin.v1.ServerService
-    description: ServerService enrolls servers and manages the servers of the install.
   - name: hopbox.admin.v1.SizeService
     description: |-
       SizeService manages the sizes of machines. A user picks a size for a new machine, and the size

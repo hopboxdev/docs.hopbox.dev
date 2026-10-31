@@ -2,7 +2,7 @@
 
 > How an instance admin uses the Admin area of the console, signs in again after 10 minutes, handles an abuse report, approves or rejects new accounts, and sets the sign-up mode. Also the work that stays with root.
 
-The Admin area is the part of the console for instance admins. An instance admin is an account that operates the whole install. In the Admin area, you see the servers, the pools, the sizes, the images, the accounts, the orgs, and the machines of the install. You cordon and drain nodes. You also manage the instance admins, the admin API keys, and the config of the install, and you read the audit log of the install. [Console](/reference/console/index.html.md#admin-area) lists each page and its calls.
+The Admin area is the part of the console for instance admins. An instance admin is an account that operates the whole install. In the Admin area, you see the state of the install, its capacity, the machines that use the most, the servers, the pools, the sizes, the images, the accounts, and the orgs. You cordon and drain nodes. You also manage the instance admins, the admin API keys, and the config of the install, and you read the audit log of the install. [Console](/reference/console/index.html.md#admin-area) lists each page and its calls.
 
 This guide uses the install `https://example.com`, an org `org1`, a machine `box1`, and an account `user1@example.org`.
 
@@ -15,7 +15,7 @@ This guide uses the install `https://example.com`, an org `org1`, a machine `box
 
 1. Sign in at `https://example.com/` ([Use the console](/guide/console/index.html.md#sign-in)).
 2. Click "Admin" at the top right. Only an instance admin sees this link.
-3. The Admin area opens on the page "Servers". The tabs lead to the other pages.
+3. The Admin area opens on the page "Overview". The tabs lead to the other pages.
 
 A person who is not an instance admin sees no "Admin" link. The address `https://example.com/admin` shows "Page not found" to such a person. The admin API also refuses each call of such a session with `permission_denied` ([the admin API](/reference/admin-api/index.html.md#admin-sessions)).
 
@@ -30,6 +30,33 @@ After 10 minutes, a page or an action of the Admin area shows "This step needs a
 3. The console opens the page of the Admin area again. Do the action again.
 
 The new sign-in replaces the session of this browser. The sessions of your account in other browsers stay.
+
+## Overview, Capacity, and Machines
+
+The pages "Overview", "Capacity", and "Machines" are the main view of the state of the install. They need no Prometheus. `hopboxd` keeps a history of samples: once a minute, each control process writes the values of its metrics to the control store, and keeps them for 24 hours ([Metrics](/reference/metrics/index.html.md#history-of-samples)). The pages read the same metrics as the dashboards of the monitoring bundle, so the numbers match Grafana. Each page reads the history again every minute while it is open in the front tab of the browser. These reads write no entry in the audit log, so the reads every minute do not flood it. After 10 minutes, a page keeps its last numbers and shows "Sign in again to refresh" ([Sign in again after 10 minutes](#sign-in-again-after-10-minutes)).
+
+The page "Overview" has these parts:
+
+- Six tiles: the servers, the running machines, the allocated vCPUs, the pending accounts, your open notices, and the public URLs with the count of their orgs.
+- "Needs your attention": the machines that used 90% or more of their vCPUs over the last 30 minutes, the pending accounts, the servers that are not ready or that are degraded, and your open notices. A machine shows here only once it has 30 minutes of samples. A restart of `hopboxd` does not end its samples. Each line has a link to the page that acts on it, such as "Open machine" for the machines of the org of a busy machine.
+- "Last 24 h": the sign-ups, the new orgs and API keys, the changes of machine URLs and the URLs made public, the refusals of the rate limits and of the org limits, the failed API calls, and the failed actions of the executors.
+- "Health": one line for the control plane, the nodes, the edge, and the network. DNS and SSH get their checks with milestone O6. Each line is ok, warning, critical, or unknown, and names each problem. The checks use the thresholds of the alerts of the monitoring bundle ([the admin API](/reference/admin-api/index.html.md#getoverview)).
+
+The page "Capacity" shows each node, with its pool, its roles, and its state: the vCPUs, the RAM, and the disk that the machines reserve, against the capacity of the node. Under each one, a chart shows the use over the last 24 hours or the last hour. hopbox places at most 2 vCPUs for each CPU thread, and never overcommits RAM.
+
+The page "Machines" starts with the running machines that use the most CPU, RAM, disk, or egress. Pick the order in "Sort by". Each row names the org and the email of its first owner, so you know whom to contact. The name of a machine opens the list of the machines of its org, where you stop or delete it ([Handle an abuse report](#handle-an-abuse-report)). The list of every machine follows.
+
+The page "Accounts" starts with "Activity, last 24 h": the sign-ups, the new orgs and API keys, the changes of machine URLs, and the refusals of the rate limits, hour by hour. A chart turns to the warning color in an hour that reaches the threshold of its alert, such as 5 sign-ups in an hour. Below the charts are the public URLs, the URLs made public in the 24 hours, the suspended orgs, and the refusals of each rate limit.
+
+A server with the node role and without the control role sends no sample, so its machines do not show on these pages yet. The Prometheus of the monitoring bundle does not see them either.
+
+The pages link to the dashboards of Grafana when the install config has the URL of Grafana. Set it on a control server, for example for the SSH tunnel of the monitoring bundle:
+
+```sh
+sudo hopboxd admin config set --grafana-url http://127.0.0.1:3000
+```
+
+Set `--grafana-url ""` to remove the links ([hopboxd](/reference/hopboxd/index.html.md#admin-config-set)).
 
 ## Cordon a server
 
@@ -63,7 +90,7 @@ To keep the server, click "Cancel drain" during the drain. No new move starts, a
 
 An abuse report names the machine `box1` in the org `org1`. You stop the machine, and you suspend the org until its owners answer:
 
-1. Open the page "Machines". Each row shows the org, the state, the node, and the address of a machine, such as `10.240.0.2`.
+1. Open the page "Machines". Under "Every machine", each row shows the org, the state, the node, and the address of a machine, such as `10.240.0.2`. A machine that uses much CPU or egress shows at the top, under "Top machines".
 2. Click "Stop" in the row of `box1`. The state changes to `stopped`.
 3. Open the page "Orgs". The row of `org1` shows its tags. The tag "port 25 open" says that the machines of the org can send email to other mail servers. Click "Suspend" in the row of `org1`.
 4. Type a reason, such as `abuse report 1`, and click "Suspend". The members of `org1` see the reason. The org stops its machines, and creates and starts no machine until the end of the suspension.

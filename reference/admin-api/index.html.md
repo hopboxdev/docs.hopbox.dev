@@ -76,7 +76,7 @@ The internal listener does not serve the admin API ([the internal listener](/ref
 
 In maintenance mode, the admin API takes only `SetMaintenance` ([the API server](/reference/api/index.html.md#maintenance-mode)). Each other call, also each `Get` and `List` call of this page, writes an audit entry, so maintenance mode refuses it with `unavailable` before it changes anything. The reads keep the option `(hopbox.v1.read_only)` all the same, because a retry of them does no harm ([API definitions](/reference/api-definitions/index.html.md#hopboxv1read_only)).
 
-Every call of the admin API writes an audit entry in the transaction of the call, also a call that only reads. The entry has the action of the call, the actor kind of the caller, and the request ID. An entry of `local_root` also has the details `peer_uid` and `peer_pid`: the user and the process that called through the socket. A refused call writes no entry.
+Every call of the admin API writes an audit entry in the transaction of the call, also a call that only reads. The calls of [MonitorService](#monitorservice) are the one exception: they write no entry (decided by the owner on 2026-10-31). The entry has the action of the call, the actor kind of the caller, and the request ID. An entry of `local_root` also has the details `peer_uid` and `peer_pid`: the user and the process that called through the socket. A refused call writes no entry.
 
 ## The admin socket
 
@@ -151,6 +151,7 @@ The message `InstallConfig` holds the general config:
 | `mail_transport` | `MailTransport` | How the install delivers its mail ([Mail](/reference/mail/index.html.md#mail-transports)). The default is `MAIL_TRANSPORT_SMTP`. |
 | `maintenance` | bool | `true` while the install is in maintenance mode ([the API server](/reference/api/index.html.md#maintenance-mode)). Only [SetMaintenance](#setmaintenance) changes it. The default is `false`. |
 | `sign_up_mode` | `SignUpMode` | How a new person gets an account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). The default is `SIGN_UP_MODE_APPROVAL`, for a new install and for an install that migration `0062` upgrades. |
+| `grafana_url` | string | The URL of the Grafana of the monitoring bundle. The console links to its dashboards only when it is set ([Console](/reference/console/index.html.md#admin-area)). It is empty until an instance admin sets it. |
 
 The enum `SignUpMode` has these values:
 
@@ -190,7 +191,7 @@ Changes the fields that the request sets, and keeps the others. It returns the c
 | Procedure | `/hopbox.admin.v1.InstallConfigService/UpdateInstallConfig` |
 | Policy action | `install_config.update`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call with the same request sets the same values again. |
-| Audit entry | action `install_config.update`, no target, details `domain` (the new domain), `old_domain`, `public_addresses` (the new addresses, joined by commas), and `old_public_addresses`. Also `acme_directory_url`, `acme_email`, `acme_terms_agreed` (`true` or `false`), and `mail_transport` (`smtp` or `file`). Also `sign_up_mode` (`open` or `approval`). Each of these has its `old_` detail. Some changes tell the instance admins: the domain, an ACME setting, the mail transport, and the sign-up mode ([Notices to instance admins](#notices-to-instance-admins)). |
+| Audit entry | action `install_config.update`, no target, details `domain` (the new domain), `old_domain`, `public_addresses` (the new addresses, joined by commas), and `old_public_addresses`. Also `acme_directory_url`, `acme_email`, `acme_terms_agreed` (`true` or `false`), and `mail_transport` (`smtp` or `file`). Also `sign_up_mode` (`open` or `approval`), and `grafana_url`. Each of these has its `old_` detail. Some changes tell the instance admins: the domain, an ACME setting, the mail transport, and the sign-up mode ([Notices to instance admins](#notices-to-instance-admins)). |
 
 The request `UpdateInstallConfigRequest` has these fields:
 
@@ -203,13 +204,14 @@ The request `UpdateInstallConfigRequest` has these fields:
 | `acme_terms_agreed` | optional bool | `true` records that the caller agrees to the terms of the CA of the directory. A new agreement covers the terms that the next attempt reads from the directory. `false` stops new certificates. Leave the field out to keep it. |
 | `mail_transport` | optional `MailTransport` | The new mail transport. The SMTP config stays, so a switch back to `MAIL_TRANSPORT_SMTP` needs no new config. Leave the field out to keep the transport. |
 | `sign_up_mode` | optional `SignUpMode` | The new sign-up mode. A change gives each other instance admin a notice and an email. Leave the field out to keep the mode. |
+| `grafana_url` | optional string | The new URL of Grafana: an `http` or `https` URL of a host, with at most 2048 characters, and without user info, a query, or a fragment. It holds no whitespace and no control character. `http` is allowed for a tunnel, such as `http://127.0.0.1:3000`. An empty string removes the URL. Leave the field out to keep it. |
 | `expected_version` | optional int64 | The `version` of the install config that the caller read. If the config has another version now, the call fails with `aborted` and changes nothing. Leave the field out to change the config at any version. |
 
 The message `PublicAddresses` has one field, `addresses`, a repeated string. Each address must follow the rules in [Domain rules](/reference/domain-rules/index.html.md#public-addresses): at most 16 IPv4 or IPv6 addresses, none twice. The install keeps them in the text form of Go `netip`, in their order. So `2001:DB8::10` becomes `2001:db8::10`, and an IPv4 address in IPv6 form, such as `::ffff:203.0.113.10`, becomes `203.0.113.10`.
 
 With `expected_version`, two admins that change the config at the same time cannot overwrite each other: the second one gets `aborted` with the message `conflict: the install config is at version <n>, not <m>. Read it again`. The call locks the row until it commits, so the version check and the change happen as one step.
 
-A request that sets no field gets `invalid_argument` with the message `invalid argument: the update sets no setting`. `expected_version` alone sets no field. A bad domain gets `invalid_argument` with the rule that it breaks, for example `invalid argument: invalid name: the install domain "localhost" must have at least two labels, such as hop.example.org`. A bad address gets `invalid_argument` with the rule that it breaks, for example `invalid argument: invalid public address: "0.0.0.0" is not an address that a client on another host can reach`. A bad ACME setting gets `invalid_argument` too, for example `invalid argument: invalid ACME setting: "http://acme.example.org/directory" is not an https URL of a host without user info or a fragment, such as https://acme-v02.api.letsencrypt.org/directory`. Whitespace or a control character gets, for example, `invalid argument: invalid ACME setting: the directory URL holds the character ' '. It can hold no whitespace and no control character`. `MAIL_TRANSPORT_UNSPECIFIED` or an unknown transport gets `invalid_argument` with the message `invalid argument: the mail transport <n> is not smtp or file`. `SIGN_UP_MODE_UNSPECIFIED` or an unknown mode gets `invalid_argument` with the message `invalid argument: the sign-up mode <n> is not open or approval`.
+A request that sets no field gets `invalid_argument` with the message `invalid argument: the update sets no setting`. `expected_version` alone sets no field. A bad domain gets `invalid_argument` with the rule that it breaks, for example `invalid argument: invalid name: the install domain "localhost" must have at least two labels, such as hop.example.org`. A bad address gets `invalid_argument` with the rule that it breaks, for example `invalid argument: invalid public address: "0.0.0.0" is not an address that a client on another host can reach`. A bad ACME setting gets `invalid_argument` too, for example `invalid argument: invalid ACME setting: "http://acme.example.org/directory" is not an https URL of a host without user info or a fragment, such as https://acme-v02.api.letsencrypt.org/directory`. Whitespace or a control character gets, for example, `invalid argument: invalid ACME setting: the directory URL holds the character ' '. It can hold no whitespace and no control character`. `MAIL_TRANSPORT_UNSPECIFIED` or an unknown transport gets `invalid_argument` with the message `invalid argument: the mail transport <n> is not smtp or file`. `SIGN_UP_MODE_UNSPECIFIED` or an unknown mode gets `invalid_argument` with the message `invalid argument: the sign-up mode <n> is not open or approval`. A bad Grafana URL gets `invalid_argument`, for example `invalid argument: invalid Grafana URL: "ftp://example.org" is not an http or https URL of a host without user info, a query, or a fragment, such as http://127.0.0.1:3000`.
 
 While the transport is `MAIL_TRANSPORT_FILE`, each update logs `mail goes to files, not to recipients` at level warn ([Mail](/reference/mail/index.html.md#logs)).
 
@@ -1829,6 +1831,213 @@ sudo curl -s --unix-socket /run/hopbox/admin.sock \
   -H 'Content-Type: application/json' -d '{}' \
   http://hopboxd/hopbox.admin.v1.ServerService/ListServers
 ```
+
+## MonitorService
+
+`hopbox.admin.v1.MonitorService` reads the history of samples for the pages Overview, Capacity, Machines, and Accounts of the Admin area ([Console](/reference/console/index.html.md#admin-area)). The history holds the values of the metric families that the pages draw, 24 hours at 1-minute steps, in the table `metric_samples` ([Metrics](/reference/metrics/index.html.md#history-of-samples)). Each call reads the same metric families as the matching dashboard of the monitoring bundle, so the numbers match Grafana (Q139). The facts that no metric holds, such as the state of a server or the name of an org, come from the control store.
+
+The calls write no audit entry, unlike every other call of the admin API. The console reads each page again every minute while the page is visible, and an entry for each read fills the append-only audit log with noise (decided by the owner on 2026-10-31). The policy still refuses every caller that is not an instance operator or an [admin session](#admin-sessions).
+
+The message `SamplePoint` is one value of a trend:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `time` | `google.protobuf.Timestamp` | The end of the step of the value. |
+| `value` | double | The value. |
+
+The message `MachineUse` is what one running machine uses. A machine runs when its node served `hopbox_machine_info` for it in the last 3 minutes.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `machine_id` | string | The ID of the machine. |
+| `name` | string | The name of the machine. |
+| `org_id` | string | The ID of the org of the machine. |
+| `org_name` | string | The name of the org, or empty when the org is gone. |
+| `owner_email` | string | The first email of the first owner of the org, so the admin knows the person. |
+| `size` | string | The name of the size of the machine. |
+| `vcpus` | int32 | The vCPUs of the size. |
+| `memory_bytes` | int64 | The RAM of the size. |
+| `disk_bytes` | int64 | The disk of the size. |
+| `server_id` | string | The ID of the node of the machine. It is empty when the node took the sample before its enrollment. |
+| `url_visibility` | `hopbox.v1.URLVisibility` | The visibility of the URL of the machine. It is unspecified when the machine is gone from the control store. |
+| `cpu_share_5m` | double | The share of its vCPUs that the machine used in the last 5 minutes, from `hopbox_machine_cpu_seconds_total`. 1 is every vCPU all the time. |
+| `cpu_share_30m` | optional double | The same share over the last 30 minutes. It is absent until the samples of the machine cover the 30 minutes, such as for a machine that started 10 minutes ago. The samples of a machine go on across a restart of `hopboxd` and a move to another node ([Metrics](/reference/metrics/index.html.md#history-of-samples)). |
+| `cpu_share_1h` | optional double | The same share over the last hour, absent until the samples cover the hour. |
+| `cpu_history` | repeated `SamplePoint` | The share in each 30 minutes of the last 24 hours. Only `ListTopMachines` fills it. A step in which the machine did not run has no point. |
+| `memory_used_bytes` | int64 | The host RAM that the machine holds now, from `hopbox_machine_memory_bytes`. |
+| `disk_used_bytes` | int64 | The bytes that the sparse disk file holds now, from `hopbox_machine_disk_bytes`. |
+| `egress_bytes` | int64 | The bytes that the machine sent out in the last 24 hours, from `hopbox_machine_egress_bytes_total`. A stop and a start of the machine give it a new cgroup and connect its tap device again, so its CPU time and its egress counters start again from 0, and a reader counts the value after the start whole. |
+| `egress_connections` | int64 | The outbound connections that the machine opened in the last 24 hours, from `hopbox_machine_egress_connections_total`. |
+
+### GetOverview
+
+Returns the state of the whole install, the dashboard D1 of the monitoring bundle.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.MonitorService/GetOverview` |
+| Policy action | `monitor.get_overview`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no |
+| Audit entry | none |
+
+The request `GetOverviewRequest` has no fields. The response `GetOverviewResponse` has these fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `sample_time` | `google.protobuf.Timestamp` | The time of the newest sample of the leader. It is absent while the history has none, such as in the first minute after the start of the control role. The counts of the leader are 0 then. |
+| `nodes` | int32 | The servers with the node role that are not decommissioned, from `hopbox_server_vcpus`. |
+| `vcpus` | int64 | The vCPU capacity of every node, with the overcommit of placement. |
+| `vcpus_allocated` | int64 | The vCPUs of the machines that hold compute on the nodes. |
+| `memory_bytes` | int64 | The RAM of every node. |
+| `memory_allocated_bytes` | int64 | The RAM of the machines that hold compute on the nodes. |
+| `machines` | repeated `MachineStateCount` | The machines by current state, from `hopbox_machines`. A state without a machine is absent. `MachineStateCount` has the fields `state`, a `hopbox.v1.MachineState`, and `count`, an int64. |
+| `pending_accounts` | int64 | The accounts that wait for an instance admin, from `hopbox_accounts`. |
+| `oldest_pending` | `google.protobuf.Duration` | The age of the oldest pending account, or 0. |
+| `public_urls` | int64 | The machines with a public URL. |
+| `suspended_orgs` | int64 | The suspended orgs, personal and team, from `hopbox_orgs`. |
+| `last_day` | `EventCounts` | The events of the last 24 hours. |
+| `health` | repeated `HealthLine` | One line for each `HealthArea`, in the order of the enum. |
+| `busy_machines` | repeated `MachineUse` | The running machines that used 90% or more of their vCPUs over the last 30 minutes, the busiest first. The alert `HopboxMachineCPUSustained` fires when this lasts 2 hours. `cpu_history` is empty. |
+| `grafana_url` | string | `grafana_url` of the install config, or empty. |
+| `servers` | repeated `ServerHealth` | The servers that are not decommissioned, from the control store, oldest enrollment first. |
+| `pending_emails` | repeated string | The first emails of the 5 oldest pending accounts, oldest first. |
+| `open_notices` | int32 | The open notices of the caller ([ListAdminNotices](#listadminnotices)). A caller without an account, such as an admin API key, has none. |
+| `public_url_orgs` | int32 | The orgs with a machine with a public URL, from the control store. |
+
+The message `ServerHealth` has the fields `server_id`, `hostname`, `state` (a `ServerState`), and `status` (a `ServerStatus`, unspecified before the first heartbeat) of one server ([Server](#server)).
+
+The message `EventCounts` counts the events of the range over every control process and node. A counter that restarts counts from 0 again, as the recording rules of the monitoring bundle count it ([Metrics](/reference/metrics/index.html.md#history-of-samples)).
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `sign_ups` | int64 | The new accounts that were not refused, from `hopbox_account_creations_total`. |
+| `org_creations` | int64 | The new orgs, from `hopbox_audit_entries_total` with the action `org.create`. |
+| `api_key_creations` | int64 | The new API keys of every kind, from `hopbox_api_key_creations_total`. |
+| `urls_made_public` | int64 | The changes of the visibility of a machine URL from private to public, from the audit entries `machine.set_url_visibility` of the control store. No metric names the visibility. |
+| `rate_limited` | int64 | The requests that a rate limit refused, from `hopbox_rate_limited_total`. |
+| `limit_refusals` | int64 | The calls that an org limit refused, from `hopbox_limit_refusals_total`. |
+| `api_errors` | int64 | The API calls that ended with the code `internal`, `unavailable`, `unknown`, or `data_loss`, from `hopbox_api_calls_total`. |
+| `executor_failures` | int64 | The failed actions of the executors, from `hopbox_executor_actions_total` with the result `failed`. |
+| `url_changes` | int64 | The changes of the port and the visibility of machine URLs, from `hopbox_audit_entries_total` with the actions `machine.set_url_port` and `machine.set_url_visibility`, as the alert `HopboxURLChurn` counts them. `urls_made_public` is a part of them. |
+
+The message `HealthLine` has the fields `area`, a `HealthArea`, `state`, a `HealthState`, and `problems`, a repeated string with one line for each problem, the worst first. Each check uses the threshold of the alert of the monitoring bundle that names the same problem.
+
+| `HealthArea` | Number | Checks |
+| --- | --- | --- |
+| `HEALTH_AREA_UNSPECIFIED` | 0 | Never in a response. |
+| `HEALTH_AREA_CONTROL_PLANE` | 1 | The leader took a sample in the last 3 minutes. More than 5% of the API calls of the last 10 minutes failed, as `HopboxAPIErrors` counts them (warning). |
+| `HEALTH_AREA_NODES` | 2 | A server is unresponsive (critical) or degraded (warning). A node has 90% or more of its vCPUs or of its RAM allocated (warning). The data dir of a node has less than 15% free (warning) or less than 5% free (critical). An action of an executor failed in the last 15 minutes (warning). |
+| `HEALTH_AREA_EDGE` | 3 | The edge: it has no certificate (critical), or its certificate ends within 3 days (critical) or 14 days (warning). DNS and the SSH front door get their checks with milestone O6. |
+| `HEALTH_AREA_NETWORK` | 4 | The host firewall of a server is down (critical). `hopboxd` repaired the node network in the last hour (warning). |
+
+| `HealthState` | Number | Meaning |
+| --- | --- | --- |
+| `HEALTH_STATE_UNSPECIFIED` | 0 | Never in a response. |
+| `HEALTH_STATE_OK` | 1 | No check of the area found a problem. |
+| `HEALTH_STATE_WARNING` | 2 | A check found a problem that a warning alert names. |
+| `HEALTH_STATE_CRITICAL` | 3 | A check found a problem that a critical alert names. |
+| `HEALTH_STATE_UNKNOWN` | 4 | The history has no recent sample of the area, such as an edge on a server without the control role, or no sample of the leader yet. |
+
+### GetCapacity
+
+Returns the capacity of each node, what its machines hold and use, and the trends, the dashboard D2 of the monitoring bundle.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.MonitorService/GetCapacity` |
+| Policy action | `monitor.get_capacity`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no |
+| Audit entry | none |
+
+The request `GetCapacityRequest` has the field `range`, a `HistoryRange`:
+
+| `HistoryRange` | Number | Meaning |
+| --- | --- | --- |
+| `HISTORY_RANGE_UNSPECIFIED` | 0 | The same as `HISTORY_RANGE_DAY`. |
+| `HISTORY_RANGE_DAY` | 1 | The last 24 hours, in steps of 5 minutes. |
+| `HISTORY_RANGE_HOUR` | 2 | The last hour, in steps of 1 minute. |
+
+The response `GetCapacityResponse` has the fields `sample_time` (the newest sample of the leader, or absent), `step` (a `google.protobuf.Duration`, the time between two points of each trend), `servers` (a list of `ServerCapacity`, by ID), and `grafana_url`. The servers are the servers with the node role that are not decommissioned.
+
+The message `ServerCapacity` holds one node:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `server_id` | string | The ID of the server. |
+| `hostname` | string | The host name of the server, or empty when the control store no longer has the server. |
+| `pool` | string | The pool of the server, or empty as `hostname`. |
+| `roles` | repeated string | The roles of the server. |
+| `state` | `ServerState` | The state of the server, or unspecified as `hostname`. |
+| `cpu_threads` | int32 | The CPU threads of the node. `vcpus` is `cpu_threads` times the vCPU overcommit of placement, so a page compares `cpu_used` with it. |
+| `vcpus` | int64 | The vCPU capacity, with the overcommit of placement: 2 vCPUs for each CPU thread. |
+| `vcpus_allocated` | int64 | The vCPUs of the machines that hold compute on the node. |
+| `memory_bytes` | int64 | The RAM of the node. |
+| `memory_allocated_bytes` | int64 | The RAM of the machines that hold compute on the node. |
+| `disk_bytes` | int64 | The size of the file system of the data dir. |
+| `disk_free_bytes` | int64 | The free space of that file system. |
+| `disk_allocated_bytes` | int64 | The disk sizes of the machines on the node. |
+| `cpu_used` | optional double | The CPU threads that the machines of the node used between the two newest samples of the range, 1 minute or 5 minutes apart, from `hopbox_machines_cpu_seconds_total`. It is absent when the history has no recent sample of the node, such as for a node without the control role. |
+| `memory_used_bytes` | optional int64 | The host RAM that the machines of the node hold now, from `hopbox_machines_memory_bytes`. It is absent as `cpu_used` is. |
+| `cpu_used_history` | repeated `SamplePoint` | `cpu_used`, the average of each step of the range. |
+| `memory_used_history` | repeated `SamplePoint` | `memory_used_bytes` at the end of each step. |
+| `vcpus_allocated_history` | repeated `SamplePoint` | `vcpus_allocated` at the end of each step. |
+| `memory_allocated_history` | repeated `SamplePoint` | `memory_allocated_bytes` at the end of each step. |
+| `disk_free_history` | repeated `SamplePoint` | `disk_free_bytes` at the end of each step. |
+
+The call reads one sample of each step of the range, the newest of the step, and not every sample. A step without a sample has no point. An unknown range gets `invalid_argument` with the message `invalid argument: the range <range> is not day or hour`.
+
+### ListTopMachines
+
+Returns the running machines that use the most, the dashboard D3 of the monitoring bundle.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.MonitorService/ListTopMachines` |
+| Policy action | `monitor.list_top_machines`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no |
+| Audit entry | none |
+
+The request `ListTopMachinesRequest` has the fields `order_by`, a `MachineUseOrder`, and `limit`, an int32: the most machines in the response, 1 to 100. 0 means 20. Machines with the same value come in the order of their names.
+
+| `MachineUseOrder` | Number | Order |
+| --- | --- | --- |
+| `MACHINE_USE_ORDER_UNSPECIFIED` | 0 | The same as `MACHINE_USE_ORDER_CPU`. |
+| `MACHINE_USE_ORDER_CPU` | 1 | The share of its vCPUs that a machine used in the last hour, the most first. |
+| `MACHINE_USE_ORDER_MEMORY` | 2 | The host RAM that a machine holds now. |
+| `MACHINE_USE_ORDER_DISK` | 3 | The bytes that the disk file of a machine holds now. |
+| `MACHINE_USE_ORDER_EGRESS` | 4 | The bytes that a machine sent out in the last 24 hours. |
+
+The response `ListTopMachinesResponse` has the fields `sample_time` (the newest sample of a machine, or absent), `machines` (a list of `MachineUse`, with `cpu_history`), `total` (the running machines of the history, also those past `limit`), and `grafana_url`.
+
+The per-machine families are most of the rows of the history. So the call reads the newest values of `hopbox_machine_info`, `hopbox_machine_memory_bytes`, and `hopbox_machine_disk_bytes`, and the last hour of `hopbox_machine_cpu_seconds_total`. For the CPU trend and the egress of 24 hours, it reads one sample of each 30 minutes of each process, the newest of the 30 minutes, in steps from the start of the 24 hours, and one step before it. A restart of the network of a node within 30 minutes thus loses the egress of that machine between the sample before and the restart. At 1,000 running machines on one control process, a call takes about 0.25 s ([Control store tables](/reference/control-store/index.html.md#metric_samples)).
+
+A `limit` below 0 or above 100 gets `invalid_argument` with the message `invalid argument: the limit <n> is not 1 to 100`. An unknown order gets `invalid_argument` with the message `invalid argument: the order <order> is not cpu, memory, disk, or egress`.
+
+### GetAccountActivity
+
+Returns the account activity of the last 24 hours, hour by hour, the dashboard D4 of the monitoring bundle. The Accounts page shows it.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.MonitorService/GetAccountActivity` |
+| Policy action | `monitor.get_account_activity`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no |
+| Audit entry | none |
+
+The request `GetAccountActivityRequest` has no fields. The response `GetAccountActivityResponse` has these fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `sample_time` | `google.protobuf.Timestamp` | The time of the newest sample of the leader, or absent without one. |
+| `hours` | repeated `ActivityHour` | The 24 hours that end at the time of the call, oldest first. An increase between two samples counts in the hour of the second sample. |
+| `last_day` | `EventCounts` | The events of the 24 hours. |
+| `rate_limited` | repeated `LimitCount` | The refusals of each rate limit in the 24 hours, from `hopbox_rate_limited_total`, the most first. A limit without a refusal is absent. `LimitCount` has the fields `limit`, a string such as `account_creations`, and `count`, an int64. |
+| `public_urls` | int64 | The machines with a public URL now. |
+| `public_url_orgs` | int32 | The orgs with a machine with a public URL now, from the control store. |
+| `suspended_orgs` | int64 | The suspended orgs now. |
+| `grafana_url` | string | `grafana_url` of the install config, or empty. |
+
+The message `ActivityHour` has the field `start_time`, the start of the hour, and the counts `sign_ups`, `org_creations`, `api_key_creations`, `urls_made_public`, `rate_limited`, and `url_changes` of the hour, as in `EventCounts`. The URLs made public of each hour come from the audit log in one count per hour.
 
 ## PoolService
 
