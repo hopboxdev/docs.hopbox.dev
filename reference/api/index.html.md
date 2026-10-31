@@ -133,6 +133,9 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `admin_account.list_sign_in_methods` | admin `AccountService.ListAccountSignInMethods` | the install | `local_root`, `admin_key` |
 | `admin_account.remove_sign_in_method` | admin `AccountService.RemoveAccountSignInMethod` | the install | `local_root`, `admin_key` |
 | `admin_account.delete` | admin `AccountService.DeleteAccount` | the install | `local_root`, `admin_key` |
+| `admin_account.list` | admin `AccountService.ListAccounts` | the install | `local_root`, `admin_key`, an admin `session` |
+| `admin_account.suspend` | admin `AccountService.SuspendAccount` | the install | `local_root`, `admin_key`, an admin `session` |
+| `admin_account.unsuspend` | admin `AccountService.UnsuspendAccount` | the install | `local_root`, `admin_key`, an admin `session` |
 | `admin_key.create` | `AdminKeyService.CreateAdminKey` | the install | `local_root`, an admin `session` |
 | `admin_key.register` | `AdminKeyService.RegisterAdminKey` | the install | `local_root` only |
 | `admin_key.list` | `AdminKeyService.ListAdminKeys` | the install | `local_root`, an admin `session` |

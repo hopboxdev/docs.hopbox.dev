@@ -185,6 +185,14 @@ A sign-in also does these steps:
 - A sign-in from a browser that has a session ends that session. The new one replaces it.
 - It starts a session and records the sign-in in the audit log ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#audit-entries)). A link of a method to an account by its verified email gets its own entry.
 
+A sign-in that reaches an account that exists reads the state of the account first. An instance admin can suspend an account ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). The sign-in of a suspended account fails, and no session starts. A login link of a suspended account fails too. The error is `permission_denied` from `VerifyMagicLink` and `VerifyLoginLink`, or `403` at the callback of [Sign-in with GitHub and Google](/reference/oauth/index.html.md#errors), with this message:
+
+```text
+permission denied: an instance admin suspended this account, so it cannot sign in. The reason: abuse report 1
+```
+
+The transaction of the sign-in rolls back, so a magic link or a login link stays unused. The console page of the link shows the message, with its first letter in upper case and the request ID, and a link back to the sign-in page ([Console](/reference/console/index.html.md#pages)). It opens no console. The log record is `sign-in refused` at level info, with `component=service`, `kind`, `account`, and `reason` (`the account is suspended`). The suspend deletes every session of the account. While the account is suspended, its session cookie names no live session, so the request gate treats the cookie as no credential ([the API server](/reference/api/index.html.md#the-contract-of-a-resolver)).
+
 A refused link writes the log record `sign-in link refused` at level info, with `component=service` and `kind`, never the token. A refusal for a reason other than the token has the field `reason` too: `another session asked for the link`, or `the account needs a link for a new sign-in method`.
 
 Two first sign-ins with one email at the same time make one account: each sign-in takes a transaction lock (`LockKeySignIn`).

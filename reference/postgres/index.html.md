@@ -450,7 +450,16 @@ A transaction that takes two advisory locks takes them in this order, so two tra
 1. `LockKeySignIn`
 2. `LockKeyAdminNotices`
 
-Today only these two meet in one transaction: a link of a sign-in method, the sign-in of a login link, and a sign-in that joins an account through a verified email. A sign-in learns that it joins an instance admin only under `LockKeySignIn`, so that lock comes first. Each other key is the only advisory lock of its transaction:
+Today only these four transactions take both:
+
+- a link of a sign-in method
+- the sign-in of a login link
+- a sign-in that joins an account through a verified email
+- `SuspendAccount` ([the admin API](/reference/admin-api/index.html.md#suspendaccount))
+
+A sign-in learns that it joins an instance admin only under `LockKeySignIn`, so that lock comes first. Each sign-in takes `LockKeySignIn`, and so does `SuspendAccount`. So a sign-in of the account runs before the suspend, which then deletes its session, or after it, and then reads the state `suspended`. After the two locks, `SuspendAccount` takes the row of the account and the rows of its orgs. Then it takes the rows of `instance_admins`, and last the rows of the machines that it stops ([Control store tables](/reference/control-store/index.html.md#orgs)). A change in an org reads the state of the account of its caller after the lock of the org row, without a lock of its own, so the suspend adds no row lock to the order of [Control store tables](/reference/control-store/index.html.md#orgs).
+
+Each other key is the only advisory lock of its transaction:
 
 - `LockKeyServerRegistry` comes before the row of the server, in an enrollment, the retry and the resync of an enrollment, a change of the roles, the start and the cancel of a removal, `SetServerPeerAddress`, `DecommissionServer`, and each empty check of a drain.
 - `LockKeyMagicLinks`, `LockKeyInvitations`, `LockKeyDeviceAuthorizations`, `LockKeyDeviceApprovals`, `LockKeyOAuthFlows`, `LockKeyNodeSubnets`, `LockKeyReleaseImages`, and `LockKeyMeshAddresses` each guard one count or one claim.

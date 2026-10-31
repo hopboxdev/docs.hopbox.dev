@@ -234,7 +234,7 @@ Every record has `component=firecracker`.
 
 `hopboxd stop-guest` logs to the journal of the unit of the machine, at level info ([hopboxd](/reference/hopboxd/index.html.md#stop-guest)). For a stop of a running guest, it logs `asking the guest to shut down` and then `the guest shut down`. On a failure, it prints the error and exits with status 1, for example `firecracker: the guest did not shut down within 30s`.
 
-The driver has no metrics of its own. The executor counts each boot, stop, and delete ([the node executor](/reference/executor/index.html.md#metrics)).
+The driver has no metrics of its own. The executor counts each boot, stop, and delete ([the node executor](/reference/executor/index.html.md#metrics)). The driver is a `vmm.UsageReader`: it reads what each microVM uses from the cgroup of its unit, and the node serves these values as the [metrics of the machines](/reference/metrics/index.html.md#metrics-of-the-machines).
 
 ## Go API
 
@@ -257,12 +257,16 @@ The driver has no metrics of its own. The executor counts each boot, stop, and d
 | `StartTimeout` | 10 s | The wait for the API socket of a new Firecracker. |
 | `MemoryOverhead` | 256 MiB | The memory of a unit beyond the RAM of the guest. |
 | `HTTPClient` | a client with the proxy of the environment | The client of image downloads. |
+| `CgroupRoot` | `/sys/fs/cgroup` | The mount point of the cgroup v2 hierarchy, from which the driver reads what the machines use. |
 | `Logger` | `slog.Default()` | The logger. |
 
 | Method | Description |
 | --- | --- |
 | `AddKernel(ctx, path)` | Adds the kernel at `path` to the kernel cache, and returns its sha256. |
 | `DiskPath(id)` | The path of `disk.raw` of a machine, for a cold move. |
+| `Usage(id)` | The CPU time and the RAM of the unit of a running machine: `usage_usec` of `cpu.stat` and `memory.current` of its cgroup, such as `/sys/fs/cgroup/hopbox.slice/hopbox-machines.slice/hopbox-machine-<id>.service`. It fails for a machine without a cgroup. |
+| `TotalUsage()` | The same values from the cgroup of the slice, for every machine together. |
+| `DiskUsage(id)` | The bytes of the blocks of `disk.raw` of a machine: `st_blocks` times 512. |
 | `SnapshotFormat(ctx)` | The snapshot format version of Firecracker. |
 | `Close()` | Closes the connection to systemd. A later call makes a new one. `hopboxd run` calls it after the stop of the unit `machines`. |
 

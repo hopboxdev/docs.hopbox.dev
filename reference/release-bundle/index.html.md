@@ -32,6 +32,7 @@ A bundle is about 600 MB. The compressed disk of the default image is about 560 
 | `image/disk.raw.zst` | 0644 | The compressed disk of the default image, under the name that `artifact.json` gives it. |
 | `systemd/hopboxd.service` | 0644 | The unit of `hopboxd` ([Server layout](/reference/server-layout/index.html.md#systemd-units)). |
 | `systemd/hopbox-machines.slice` | 0644 | The slice of the machines. |
+| `monitoring/` | 0644 | The files of the monitoring bundle, from `monitoring/` of the checkout. The release does not run them. Today it holds `monitoring/node-exporter/prometheus-node-exporter`, the arguments of node_exporter ([Metrics](/reference/metrics/index.html.md#node_exporter)). |
 
 Every dir has mode 0755. A bundle holds only dirs, regular files, and symlinks.
 

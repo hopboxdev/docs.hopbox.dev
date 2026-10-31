@@ -184,6 +184,7 @@ These operations publish `edge.access_changed` in their transaction:
 | `DeleteAccount`, and the admin `DeleteAccount` | The account loses every machine. The members of each org that the admin call deletes lose the org. |
 | `RemoveOrgMember` and `LeaveOrg` | The account loses the shared machines of the org. |
 | `SuspendOrg` | The machine URLs of the org stop. |
+| `SuspendAccount` of the admin API ([the admin API](/reference/admin-api/index.html.md#suspendaccount)) | The delete of the sessions of the account deletes the tokens of their machine URLs. The open SSH connections of the keys of the account end. |
 | `RemoveSSHKey` | The open SSH connections of the key end ([the SSH front door](/reference/ssh-front-door/index.html.md#checks-of-an-open-connection)). |
 
 Each control process then tells its edge servers to check each private machine URL and each SSH connection again ([the control channel](/reference/control-channel/index.html.md#edge-pushes)). Each machine event does the same, so a share, an unshare, a delete, and a change of the URL reach the edges too.
@@ -421,7 +422,7 @@ Migration `0011_smtp_config.sql` adds the `smtp_` columns, `0017_org_limits_and_
 
 ## accounts
 
-Migration `0007_accounts.sql`. One row per account: the record of one person in the install. The first sign-in creates it ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)).
+Migrations `0007_accounts.sql` and `0061_account_state_tier.sql`. One row per account: the record of one person in the install. The first sign-in creates it ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)).
 
 | Column | Type | Description |
 | --- | --- | --- |
@@ -430,6 +431,14 @@ Migration `0007_accounts.sql`. One row per account: the record of one person in 
 | `version` | `bigint` | The row version. |
 | `created_at` | `timestamptz` | The first sign-in. |
 | `updated_at` | `timestamptz` | The last change. |
+| `state` | `text`, default `active` | The account state: `pending`, `active`, or `suspended`. A check constraint allows only these values. Today no release writes `pending`. `SuspendAccount` sets `suspended`, and `UnsuspendAccount` sets `active` ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). |
+| `tier` | `text`, default `full` | The account tier: `limited` or `full`. A check constraint allows only these values. A suspension keeps it. Today every account has the tier `full`, and no limit depends on it yet. |
+| `suspended_at` | `timestamptz`, can be null | The start of the suspension of the account. Null for an account that is not suspended. |
+| `suspend_reason` | `text`, default empty | The reason of the suspension, or empty. The account sees it at its sign-in. |
+
+The check constraint `accounts_suspension` keeps two facts equal: the state `suspended`, and a value in `suspended_at`.
+
+Migration `0061_account_state_tier.sql` has the line `-- oldest_schema_version: 57`. Each account that exists gets the state `active` and the tier `full`, from the defaults. A `hopboxd` of the schema version 57 to 60 never reads the new columns. Its first sign-in of a new person makes an account that is active and full, from the defaults. But it does not refuse a suspended account. So while a live control process has a schema version below 61 (`service.AccountStateSchema`), `SuspendAccount` fails with `failed_precondition` ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). This check covers only the processes that run at the time of the suspend. A `hopboxd` of the schema version 57 to 60 that starts later, after a rollback or as an old release on a new server, does not refuse the account either. Its sign-ins, credentials, and calls let a suspended account act again while it runs. Its `UnsuspendOrg` also leaves `suspended_with_account`, which the next `SuspendOrg` clears. So do not roll back below schema version 61 while an account is suspended, or delete such accounts first.
 
 An account can go only after its personal org and its row in `instance_admins` are gone. The foreign keys of those two tables have no cascade, so the delete of an account must remove them on purpose. `DeleteAccount` does so ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#deleteaccount)). The other tables of an account cascade.
 
@@ -465,7 +474,7 @@ Migration `0007_accounts.sql`. One row per sign-in method of an account.
 
 ## orgs
 
-Migrations `0008_orgs.sql` and `0017_org_limits_and_suspension.sql`. One row per org.
+Migrations `0008_orgs.sql`, `0017_org_limits_and_suspension.sql`, and `0061_account_state_tier.sql`. One row per org.
 
 | Column | Type | Description |
 | --- | --- | --- |
@@ -481,6 +490,7 @@ Migrations `0008_orgs.sql` and `0017_org_limits_and_suspension.sql`. One row per
 | `max_disk_bytes` | `bigint`, can be null | The disk limit of this org, in bytes, or null for the default. |
 | `suspended_at` | `timestamptz`, can be null | The start of the suspension of the org. Null for an org that is not suspended ([the org API](/reference/org-api/index.html.md#suspension)). |
 | `suspend_reason` | `text` | The reason of the suspension, or empty. |
+| `suspended_with_account` | `uuid`, can be null | The account whose suspend suspended the org ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). Null for each other org. `UnsuspendAccount` of that account ends the suspension of this org, and of no other. `SuspendOrg` and `UnsuspendOrg` set it back to null, also on an org that is suspended already. So an instance admin who suspends such an org takes over its suspension, and the unsuspend of the account leaves it. It has no foreign key, so the delete of an account takes no lock on the orgs that the delete keeps. The ID of a deleted account matches no unsuspend. The partial index `orgs_suspended_with_account` holds the rows where it is not null. |
 
 A change can take the last owner from an org. Such a change first locks the org rows with `FOR NO KEY UPDATE`. Then it counts the owners in a new statement, which sees the changes that committed during the wait. `FOR NO KEY UPDATE` leaves the key of the org row free, so another transaction can still write a row that names the org, such as a machine. `DeleteOrg` takes `FOR UPDATE`, because it deletes the row. The delete of an account deletes its personal org under `FOR NO KEY UPDATE`, and the `DELETE` then takes the full lock of the row. The admin delete of an account deletes the orgs that the account owns alone in the same way ([the admin API](/reference/admin-api/index.html.md#deleteaccount)). A write that names such an org waits for the delete, then fails with `not_found`, because the org is gone.
 
@@ -489,6 +499,10 @@ The lock order is the account row, then the org row, then the rows of the resour
 - Before any of these, each transaction that writes a notice to the instance admins ([admin_notices](#admin_notices)) or deletes an account takes the transaction lock `LockKeyAdminNotices`. The foreign key of a notice takes the key lock of the account of each instance admin. A delete, a grant of the instance admin role, and a link of a sign-in method hold an account row with `FOR UPDATE`, and a revoke holds the rows of `instance_admins`. So without this lock, two deletes of instance admins, or a delete beside a revoke, a grant, or a link, can wait for each other in a deadlock. A transaction that takes `LockKeySignIn` too takes it first ([the bundled Postgres](/reference/postgres/index.html.md#order-of-the-advisory-locks)). The cost: a delete of any account, and a link of a method to any account, wait for each other and for the admin actions that write notices. These transactions are short, and their emails go after the commit.
 - A sign-in with a method of an account takes the key lock of the account before it writes the row of the method. The delete of an account, `RemoveSignInMethod`, and `RemoveAccountSignInMethod` delete a method row after they lock the account row with `FOR UPDATE`. So a sign-in beside one of them waits for it, and a sign-in beside a delete of its account then fails with `not_found`.
 - The delete of an account locks the row of the account first, after `LockKeyAdminNotices`. That lock holds back every new membership of the account. Then it locks every org in which the account has a role, in the order of their IDs. It locks the orgs where the account is not an owner too, because a promotion during the delete can make it one.
+- `SuspendAccount` takes `LockKeySignIn` and `LockKeyAdminNotices` first ([the bundled Postgres](/reference/postgres/index.html.md#order-of-the-advisory-locks)). Then it locks the row of the account, and every org in which the account has a role, in the order of their IDs. Then it locks the rows of `instance_admins`, and then the machine rows that it stops. `UnsuspendAccount` takes `LockKeyAdminNotices`, then the row of the account. Then it locks the orgs that the suspend of the account suspended, in the order of their IDs, with `FOR NO KEY UPDATE`.
+- A sign-in of an account that exists reads the state of the account with the key lock (`FOR KEY SHARE`), under `LockKeySignIn`. The poll of an approved device sign-in reads it with the key lock too. A suspend holds the row of the account until its commit, so such a read waits for the suspend and sees the new state.
+- A change in an org reads the role of the account of its caller after the lock of the org row, and a suspended account has no role (`GetActingRole`). The suspend locks every org of the account, so a change in such an org runs before the suspend or after it. Before, the suspend stops what the change started. After, the change reads the state `suspended` and fails. The read takes no lock of its own, so the order account row, org row, machine rows stays.
+- A change of the account of its caller, such as `CreateOrg`, `AcceptInvitation`, `AddSSHKey`, or `CreateAPIKey`, takes the lock of the account row first, before any org row, and reads the state with it. Most take the key lock (`FOR KEY SHARE`, `LockAccountState`). `CreateOrg`, `AddSSHKey`, `UpdateAccount`, and `RemoveSignInMethod` take the full row lock that they took before. The suspend holds the account row until its commit, so such a change runs before the suspend or after it, and then fails.
 - `RemoveOrgMember` and `LeaveOrg` take the key lock (`FOR KEY SHARE`) of the account that leaves, then the row of their one org. A resource that they delete can name that account.
 - `SetOrgMemberRole`, `RemoveOrgMember`, and `LeaveOrg` read the role of the caller again after the org lock ([the org API](/reference/org-api/index.html.md#every-org-keeps-an-owner)).
 - `DeleteOrg`, `UpdateOrg`, `CreateInvitation`, `RevokeInvitation`, and `AcceptInvitation` lock the row of the org too, so they wait for such a change. `AcceptInvitation` locks the org row before the invitation row, as `CreateInvitation` does.
@@ -661,7 +675,7 @@ Migration `0010_instance_admins.sql`. One row per instance admin. A row never ch
 | `account_id` | `uuid`, primary key | The account. The foreign key has no cascade. |
 | `created_at` | `timestamptz` | The grant. |
 
-A grant, a revoke, and the delete of an account lock every row of the table first. So two revokes at the same time cannot both pass the check that keeps one instance admin.
+A grant, a revoke, the delete of an account, and the suspend of an account lock every row of the table first. So two revokes at the same time cannot both pass the check that keeps one instance admin. A revoke, a delete, and a suspend also keep one instance admin whose account is `active`, so it can sign in ([the admin API](/reference/admin-api/index.html.md#revokeinstanceadmin)).
 
 ## admin_notices
 

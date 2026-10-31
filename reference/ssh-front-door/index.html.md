@@ -93,6 +93,7 @@ The control role refuses a user name that looks like a credential, such as `hbx_
 The control role finds the account of the key by its fingerprint ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#ssh-keys)), and the machine by the port. If all of these are true, the key opens the machine:
 
 - The account uses the machine, as for an exec: it created the machine, or the machine is shared and the account is a member of its org. An org admin or an org owner cannot open a private machine of another member. The rule is the policy action `machine.ssh`, with the caller kind `ssh_key` ([the API server](/reference/api/index.html.md#callers-and-policy)).
+- An instance admin did not suspend the account of the key. A suspend keeps the key, so the key works again after the unsuspend ([the admin API](/reference/admin-api/index.html.md#suspendaccount)).
 - An instance admin did not suspend the org of the machine.
 - The machine holds the port, and its target is not `deleted`.
 
@@ -163,7 +164,7 @@ An open connection keeps its access only while the control role allows it. The f
 
 An answer of `permission_denied`, `unauthenticated`, `failed_precondition`, `not_found`, or `invalid_argument`, or an answer for another machine, ends the connection. Any other error, such as a control role that does not answer, keeps the connection until the next check. Each allowed check also records a use of the machine for its auto-delete timeout. These checks set `recheck`, so they write no audit entry.
 
-Each change of a machine pushes an access change, such as a share, an unshare, or a delete. So do a removed SSH key, a member that leaves an org or that an admin removes, a deleted account, and a suspended org ([Control store tables](/reference/control-store/index.html.md#the-event-edgeaccess_changed)). A sign-out does too, but it does not end SSH connections, because an SSH key is not a sign-in.
+Each change of a machine pushes an access change, such as a share, an unshare, or a delete. So do a removed SSH key, a member that leaves an org or that an admin removes, and a deleted account. A suspended account and a suspended org push one too ([Control store tables](/reference/control-store/index.html.md#the-event-edgeaccess_changed)). A sign-out does too, but it does not end SSH connections, because an SSH key is not a sign-in.
 
 New routes end an open connection at once in four cases. The port has no machine. Another machine holds the port. The org of the machine is suspended. The machine runs in another execution, with another lease.
 

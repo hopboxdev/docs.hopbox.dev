@@ -1,6 +1,6 @@
 # The admin API
 
-> The admin API hopbox.admin.v1, its calls and their audit entries, including enrollment tokens, the server calls, the calls on orgs and their limits, and admin API keys, and the admin socket.
+> The admin API hopbox.admin.v1, its calls and their audit entries, including enrollment tokens, the server calls, the list and the suspend of accounts, the calls on orgs and their limits, and admin API keys, and the admin socket.
 
 The admin API is the API service `hopbox.admin.v1`. Instance admins and root on a control server use it to operate the whole install. The hopbox CLI and the SDKs never include it. This page lists its calls and the admin socket. [The API server](/reference/api/index.html.md) covers the parts that every call shares: the request gate, the policy check, the idempotency keys, and the error codes. The generated reference is [Admin API](/api/hopbox.admin.v1.openapi.yaml).
 
@@ -21,7 +21,7 @@ The admin API has these services:
 | `hopbox.admin.v1.MailService` | `ListMailFiles`, `GetMailFile` |
 | `hopbox.admin.v1.LoginLinkService` | `CreateLoginLink` |
 | `hopbox.admin.v1.InstanceAdminService` | `ListInstanceAdmins`, `GrantInstanceAdmin`, `RevokeInstanceAdmin`, `ListAdminNotices`, `DismissAdminNotices` |
-| `hopbox.admin.v1.AccountService` | `ListAccountSignInMethods`, `RemoveAccountSignInMethod`, `DeleteAccount` |
+| `hopbox.admin.v1.AccountService` | `ListAccountSignInMethods`, `RemoveAccountSignInMethod`, `DeleteAccount`, `ListAccounts`, `SuspendAccount`, `UnsuspendAccount` |
 | `hopbox.admin.v1.ServerService` | `CreateEnrollmentToken`, `ListServers`, `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DecommissionServer`, `DrainServer`, `CancelDrain`, `ListControlProcesses` |
 | `hopbox.admin.v1.PoolService` | `CreatePool`, `GetPool`, `ListPools`, `DeletePool` |
 | `hopbox.admin.v1.SizeService` | `CreateSize`, `GetSize`, `ListSizes`, `RetireSize` |
@@ -44,6 +44,7 @@ An admin session can make these calls, and no other call of the admin API:
 | `hopbox.admin.v1.ServerService` | `ListServers`, `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DrainServer` (only of a server that hosts no control process), `CancelDrain` |
 | `hopbox.admin.v1.PoolService` | `CreatePool`, `GetPool`, `ListPools`, `DeletePool` |
 | `hopbox.admin.v1.SizeService` | `CreateSize`, `GetSize`, `ListSizes`, `RetireSize` |
+| `hopbox.admin.v1.AccountService` | `ListAccounts`, `SuspendAccount`, `UnsuspendAccount` |
 | `hopbox.admin.v1.OrgService` | `ListOrgs`, `SuspendOrg`, `UnsuspendOrg`, `SetOrgLimits`, `GetDefaultOrgLimits`, `SetDefaultOrgLimits` |
 | `hopbox.admin.v1.MachineService` | `ListMachines`, `StopMachine`, `DeleteMachine` |
 | `hopbox.admin.v1.ImageService` | `ListImages` |
@@ -56,7 +57,7 @@ The other calls hand out a secret, or change what only root on a control server 
 | --- | --- |
 | `SetMaintenance`, `CreateLoginLink`, `RegisterAdminKey`, and the calls of `KeyringService` and `MailService` | Only root on a control server makes them ([The admin socket](#the-admin-socket)). |
 | `CreateEnrollmentToken` and `DecommissionServer` | The hopbox Terraform provider adds and removes servers. An enrollment token is a secret. |
-| `RegisterImage`, `GetCertificate`, `ListControlProcesses`, and the calls of `AccountService` | No page of the Admin area uses them. They stay with root on a control server and with admin API keys. |
+| `RegisterImage`, `GetCertificate`, `ListControlProcesses`, `ListAccountSignInMethods`, `RemoveAccountSignInMethod`, and `DeleteAccount` | No page of the Admin area uses them. They stay with root on a control server and with admin API keys. |
 
 The policy check of the service layer decides each call, the reads too ([the API server](/reference/api/index.html.md#callers-and-policy)). The console only hides the pages of the Admin area from other accounts. It is not the check.
 
@@ -749,6 +750,7 @@ The request `RevokeInstanceAdminRequest` has the field `account_id`. The respons
 | The ID is not a UUID | `invalid_argument` |
 | The account is not an instance admin | `not_found` |
 | The account is the last instance admin: `failed precondition: the account <id> is the last instance admin, and an install keeps at least one. Grant the role to another account first` | `failed_precondition` |
+| No other instance admin is active, for example because each other one is suspended ([SuspendAccount](#suspendaccount)): `failed precondition: no other instance admin is active, and an install keeps at least one active instance admin, which can sign in. Unsuspend another instance admin first` | `failed_precondition` |
 
 ### Notices to instance admins
 
@@ -763,6 +765,7 @@ Some calls leave something that lasts after the session that made them. For exam
 | A new sign-in method of an account: a link from a session ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#link-a-new-sign-in-method)), or a sign-in that joins the account through a verified email | When the account is an instance admin (plan question Q106). A stolen session can link the email or the GitHub user of an attacker, and so keep the role after the session ends. The audit entry `account.link_sign_in_method` then has the detail `instance_admin` set to `true`. The method of a login link never joins an existing account, because it proves no email. |
 | `RevokeInstanceAdmin` | Always. Otherwise a stolen session can revoke the other admins first, so that nobody hears of its later actions. The notice comes before the revoke, so the revoked account gets the email and a notice too. Its notice shows only if it gets the role again. |
 | The admin `DeleteAccount` ([DeleteAccount](#deleteaccount)) | When the account is an instance admin, as for the self-delete in the next row. The audit entry `admin_account.delete` then has the detail `instance_admin` set to `true`. The actor is root or an admin API key, so no account gets the copy of the actor. Each email of the deleted account gets the notice as an instance admin. |
+| `SuspendAccount` and `UnsuspendAccount` ([SuspendAccount](#suspendaccount)) | When the account is an instance admin, and the call changes its state. Otherwise a stolen session can suspend the other admins first, so that nobody hears of its later actions, as with a revoke. The audit entry then has the detail `instance_admin` set to `true`. A call with `already` set to `true` tells nobody. |
 | `DeleteAccount` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#deleteaccount)) | When the account is an instance admin (Q106). Otherwise a stolen session can remove an admin in silence, as with a revoke. The notice comes before the delete, so each email of the deleted account gets the copy of the actor. The audit entry `account.delete` then has the detail `instance_admin` set to `true`. |
 | `SetSMTPConfig` and `ClearSMTPConfig` | Always. |
 | `SetOAuthClient` and `ClearOAuthClient` | Always. |
@@ -777,7 +780,7 @@ The email has these parts:
 - What changed, with the facts of the audit entry, such as the name, the ID, and the end of a new key.
 - Who did it: the session and its account, the CLI token and its account, the admin API key, or root on a control server with its user and process.
 - The time and the ID of the audit entry.
-- How to undo it: the page of the Admin area and the `hopboxd admin` command. For an action of a session, also how to revoke the role of its account, which closes the admin API to each session of the account at once. For a new sign-in method, the command `hopboxd admin account sign-in-method remove` with the IDs of the account and of the method. A method that joined at a sign-in through a verified email had no session before, so its advice says to revoke the role first, because the holder of that email can sign in again. Each value in a command of the advice is in POSIX single quotes, and each `'` in it is written as `'\''`. So a POSIX shell, such as sh, bash, or zsh, reads each value as one word, also a value with shell code in it, such as an ACME directory URL with `$(...)` in its query. In another shell, such as tcsh, these quotes are not safe, so run the command in sh, bash, or zsh. A delete is final, so its advice says to read the audit log for the other actions of the deleted account. The advice of an admin delete by an admin API key gives the command that revokes the key.
+- How to undo it: the page of the Admin area and the `hopboxd admin` command. For an action of a session, also how to revoke the role of its account, which closes the admin API to each session of the account at once. For a new sign-in method, the command `hopboxd admin account sign-in-method remove` with the IDs of the account and of the method. A method that joined at a sign-in through a verified email had no session before, so its advice says to revoke the role first, because the holder of that email can sign in again. Each value in a command of the advice is in POSIX single quotes, and each `'` in it is written as `'\''`. So a POSIX shell, such as sh, bash, or zsh, reads each value as one word, also a value with shell code in it, such as an ACME directory URL with `$(...)` in its query. In another shell, such as tcsh, these quotes are not safe, so run the command in sh, bash, or zsh. A delete is final, so its advice says to read the audit log for the other actions of the deleted account. The advice of an admin delete by an admin API key gives the command that revokes the key. The advice of a suspend gives the page Accounts of the Admin area and `hopboxd admin account unsuspend`. The advice of an unsuspend gives the same page and `hopboxd admin account suspend`.
 - The link to `/admin/notices`, or for the copy of the actor, a line that says why the actor gets it. A change of the domain names both domains in place of the link.
 
 The email and the notice never hold a secret: no admin key, no client secret, and no SMTP password. They hold only the facts of the audit entry, which never holds a secret value either.
@@ -842,7 +845,7 @@ The request `DismissAdminNoticesRequest` has the field `ids`, 1 to 100 UUIDs of 
 
 `hopbox.admin.v1.AccountService` lets an operator recover the sign-in of an account. A person can lose the only sign-in method of the account, for example the GitHub user. A new GitHub user with the same verified email then fails, because the account has an identity of a provider ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#recover-a-lost-identity)). The operator removes the old method. The account then has no identity of a provider, so a magic link or the new GitHub user links through the verified email.
 
-The service also deletes an account, for example an account of the open sign-up that abused the install ([DeleteAccount](#deleteaccount)).
+The service also lists the accounts of the install ([ListAccounts](#listaccounts)). It suspends an account and ends the suspension ([SuspendAccount](#suspendaccount), [UnsuspendAccount](#unsuspendaccount)). It deletes an account, for example an account of the open sign-up that abused the install ([DeleteAccount](#deleteaccount)). An admin session makes only `ListAccounts`, `SuspendAccount`, and `UnsuspendAccount` ([Admin sessions](#admin-sessions)).
 
 ### ListAccountSignInMethods
 
@@ -908,7 +911,7 @@ Deletes an account for an operator, for example an account of the open sign-up t
 | Procedure | `/hopbox.admin.v1.AccountService/DeleteAccount` |
 | Policy action | `admin_account.delete`: `local_root` and `admin_key` |
 | Idempotent option | no. A second call gets `not_found`. |
-| Audit entries | action `admin_account.delete`, target kind `account`, in no org. The details are `personal_org`, `reason`, `deleted_orgs`, and `instance_admin` set to `true` for an instance admin. `deleted_orgs` holds the IDs of the deleted orgs, joined by commas, with the personal org first. The entry comes before the entries of the delete itself. Each deleted org other than the personal org gets the action `org.delete`, with the details `name` and `reason` (`account deleted`). Each other org of the account gets `org.member_remove`, as for the self-delete. |
+| Audit entries | action `admin_account.delete`, target kind `account`, in no org. The details are `personal_org`, `reason`, `deleted_orgs`, `suspended`, and `instance_admin`. `suspended` is `true` for a suspended account, and `instance_admin` is `true` for an instance admin. Each one is absent otherwise. `deleted_orgs` holds the IDs of the deleted orgs, joined by commas, with the personal org first. The entry comes before the entries of the delete itself. Each deleted org other than the personal org gets the action `org.delete`, with the details `name` and `reason` (`account deleted`). Each other org of the account gets `org.member_remove`, as for the self-delete. |
 
 The admin delete differs from the self-delete in these rules:
 
@@ -918,8 +921,11 @@ The admin delete differs from the self-delete in these rules:
 | A suspended org of the account | The delete fails, so that the org keeps its evidence. | The call goes on. Its audit entry keeps the evidence: the actor, the reason, and the IDs of the deleted orgs. |
 | A machine that the delete removes | The delete removes it. | The call fails while such a machine is not deleted. Such a machine is in an org that the call deletes, or the account made it and did not share it. The error names each such machine, up to 20, with its `hopboxd admin machine delete` command ([hopboxd](/reference/hopboxd/index.html.md#admin-machine-delete)). Run each command, then the call again. A machine with the target `deleted` does not hold the call back. |
 | The reason | none | Required. The audit entry keeps it. |
+| A suspended account | A suspended account has no session and no CLI token, so it cannot call the self-delete. | The call needs `confirm_account_id`, the account ID a second time. The data of a suspended account is the evidence of its suspension, and the delete ends that evidence. |
 
-The rules for the last instance admin and for the notice are the same as for the self-delete. The call fails for the last instance admin. The delete of an instance admin tells the instance admins ([Notices to instance admins](#notices-to-instance-admins)).
+The rules for the last instance admin and for the notice are the same as for the self-delete. The call fails for the last instance admin, and for the last instance admin that is not suspended. The delete of an instance admin tells the instance admins ([Notices to instance admins](#notices-to-instance-admins)).
+
+The call checks the confirmation after each other check. So an operator confirms only a delete that then runs. Without `confirm_account_id`, the delete of a suspended account fails with `failed_precondition` and the detail `hopbox.admin.v1.AccountIDConfirmationRequired`. `hopboxd admin account delete` reads that detail, asks for the ID, and sends the call again ([hopboxd](/reference/hopboxd/index.html.md#admin-account-delete)). The detail is an empty message.
 
 The request `DeleteAccountRequest` has these fields:
 
@@ -927,15 +933,123 @@ The request `DeleteAccountRequest` has these fields:
 | --- | --- | --- | --- |
 | `account_id` | string | none, required | The UUID of the account. |
 | `reason` | string | none, required | Why the account goes. At most 256 characters, without control characters. The server drops the spaces around it. |
+| `confirm_account_id` | string | empty | The account ID a second time. The delete of a suspended account needs it. The server drops the spaces around it. A value for an account that is not suspended must match too. |
 
 The response `DeleteAccountResponse` has the field `deleted_org_ids`, the UUIDs of the deleted orgs, with the personal org first.
 
 | Error | Code |
 | --- | --- |
 | The ID is not a UUID, or the reason is empty or breaks a rule. An empty reason gets `invalid argument: give the reason of the delete, which the audit log keeps`. | `invalid_argument` |
+| `confirm_account_id` is not empty, and is not the account ID: `invalid argument: the account ID of the confirmation, "<value>", is not <id>. Give the same account ID twice` | `invalid_argument` |
 | No account has the ID: `not found: no account has the ID <id>` | `not_found` |
 | The account is the last instance admin: `failed precondition: the account is the last instance admin, and an install keeps at least one. Make another account an instance admin first` | `failed_precondition` |
+| No other instance admin is active, for example because each other one is suspended: `failed precondition: no other instance admin is active, and an install keeps at least one active instance admin, which can sign in. Unsuspend another instance admin first` | `failed_precondition` |
+| The account is suspended, and `confirm_account_id` is empty: `failed precondition: the account is suspended, and its data is the evidence of the suspension. The delete ends that evidence, so give the account ID a second time to confirm`, with the detail `hopbox.admin.v1.AccountIDConfirmationRequired` | `failed_precondition` |
 | A machine is not deleted: `failed precondition: 2 machines are not deleted, and the delete of an account deletes no machine. Delete each one first: hopboxd admin machine delete --id=<id> ("box1" in the org <org id>), hopboxd admin machine delete --id=<id> ("box2" in the org <org id>)`. The error names the 20 oldest such machines, with the command for each. If more machines hold the call back, the error ends with `. <n> more machines are not deleted, so run the delete again after these`. For one more machine, it says `1 more machine is not deleted`. | `failed_precondition` |
+
+### Account
+
+The message `Account` is an account as an instance admin sees it:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | string | The UUID of the account. |
+| `display_name` | string | The display name of the account, or empty. |
+| `emails` | repeated `AccountEmail` | Each email of the account. `email` is the address, in lower case. `verified` is `true` for an email that a sign-in method proved. |
+| `state` | `AccountState` | `ACCOUNT_STATE_PENDING`, `ACCOUNT_STATE_ACTIVE`, or `ACCOUNT_STATE_SUSPENDED`. Today no account is pending. |
+| `tier` | `AccountTier` | `ACCOUNT_TIER_LIMITED` or `ACCOUNT_TIER_FULL`. A suspension keeps it. Today every account is full, and no limit depends on the tier yet. |
+| `instance_admin` | bool | `true` for an instance admin. |
+| `personal_org_id` | string | The UUID of the personal org of the account. |
+| `suspend_time` | `google.protobuf.Timestamp` | The start of the suspension. Unset for an account that is not suspended. |
+| `suspend_reason` | string | The reason of the suspension, or empty. |
+| `version` | int64 | The row version. It grows by 1 with each change of the account. |
+| `create_time` | `google.protobuf.Timestamp` | The creation time of the account. |
+
+### ListAccounts
+
+Lists the accounts of the install, oldest first, one page at a time.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.AccountService/ListAccounts` |
+| Policy action | `admin_account.list`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no |
+| Audit entry | action `admin_account.list`, no org, no target. The detail `state` holds the state of the filter, such as `suspended`. A request without a filter has no detail. |
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `page_size` | int32 | 100 | The most accounts in one response, 1 to 1000. 0 means 100. |
+| `page_token` | string | empty | The `next_page_token` of the response before. Leave it empty for the first page. |
+| `state` | `AccountState` | `ACCOUNT_STATE_UNSPECIFIED` | Lists only the accounts in this state. `ACCOUNT_STATE_UNSPECIFIED` lists every account. |
+
+The response `ListAccountsResponse` has the fields `accounts`, a repeated [Account](#account), and `next_page_token`. The token is empty on the last page. A page size out of range, a page token that does not decode, or an unknown state gets `invalid_argument`.
+
+### SuspendAccount
+
+Suspends an account, for example to handle abuse. The call deletes nothing. In its transaction, it does these steps:
+
+1. It sets the state of the account to `suspended`, with the reason and the time.
+2. It deletes every session and every CLI sign-in of the account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md), [CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#cli-tokens)). So the private machine URLs of those sessions stop too ([Control store tables](/reference/control-store/index.html.md#the-event-edgeaccess_changed)).
+3. It suspends the personal org of the account, and each org in which the account is the only owner, with the same reason. An org that is suspended already keeps its suspension and its reason. Each org that the call suspends stops its machines, as for [SuspendOrg](#suspendorg). The column `suspended_with_account` of the org names the account ([Control store tables](/reference/control-store/index.html.md#orgs)).
+4. In each other org of the account, it sets the target `stopped` on each private machine of the account. A shared machine keeps running, because the org uses it. A hibernated machine stays hibernated.
+
+While the account is suspended, these rules hold:
+
+| What | Result |
+| --- | --- |
+| A sign-in with a magic link, a login link, GitHub, or Google | It fails with `permission_denied` and the message `permission denied: an instance admin suspended this account, so it cannot sign in. The reason: <reason>`. No session starts ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)). |
+| The poll of a device sign-in that a person approved before the suspend | It fails with the same error, and uses up the device code ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#the-device-flow)). |
+| The member API keys and the SSH keys of the account | They stay in the store, but they do not work. They work again after the unsuspend ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#api-keys), [the SSH front door](/reference/ssh-front-door/index.html.md#who-opens-a-machine)). |
+| An open stream, such as `WatchMachines`, of a credential of the account | It ends at its next check of the credential ([the API server](/reference/api/index.html.md#streams-and-their-credential)). |
+| An open SSH connection with a key of the account | It ends at the next check ([the SSH front door](/reference/ssh-front-door/index.html.md#checks-of-an-open-connection)). |
+| Any call with a credential of the account that the request gate let in before the suspend | No change lands after the commit of the suspend. In each org, the account has no role from that commit, so a call in an org, also a read, fails as for an account that is not a member ([Control store tables](/reference/control-store/index.html.md#orgs)). For a machine, that is `not_found`. A change of the account itself takes the key lock of the account first, and then fails with `permission_denied` and the message `permission denied: an instance admin suspended this account. The reason: <reason>`. These changes are `CreateOrg`, `AcceptInvitation`, `AddSSHKey`, `RemoveSSHKey`, `UpdateAccount`, the self `DeleteAccount`, `RemoveSignInMethod`, the link of a new sign-in method, `CreateAPIKey`, `RevokeAPIKey`, `EndCLISignIn`, and `ApproveDevice`. `SignOut` still works. |
+
+A second call on a suspended account changes nothing. It keeps the first reason, and returns the account.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.AccountService/SuspendAccount` |
+| Policy action | `admin_account.suspend`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no. A second call changes nothing. |
+| Audit entries | action `admin_account.suspend`, org the personal org of the account, so the account reads it later. Target kind `account`. The details are `reason`, `already`, `suspended_orgs`, `sessions`, `cli_sign_ins`, and `instance_admin` set to `true` for an instance admin. `suspended_orgs` holds the IDs of the orgs that the call suspended, joined by commas. `sessions` and `cli_sign_ins` are the counts of the deleted rows. For an account that was suspended already, `already` is `true`, `reason` is the first reason, and the entry has no other details. Each org that the call suspends gets `org.suspend`, with the details `reason`, `already` (`false`), and `account`. The detail `account` is the ID of the account. Each machine that the call stops gets `machine.stop`, with the details `old_target` and `reason`. The reason is `org suspended` in an org that the call suspends, and `account suspended` in another org. |
+
+The request `SuspendAccountRequest` has these fields:
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `account_id` | string | none, required | The UUID of the account. |
+| `reason` | string | none, required | Why the account is suspended. At most 256 characters, without control characters. The server drops the spaces around it. The account sees the reason at its sign-in, and the members of its suspended orgs see it. |
+
+The response `SuspendAccountResponse` has the field `account`, the [Account](#account) after the change.
+
+The suspend of an instance admin tells the other instance admins ([Notices to instance admins](#notices-to-instance-admins)). An install keeps at least one instance admin that can sign in. So the call fails for the last instance admin, and for the last instance admin that is not suspended.
+
+| Error | Code |
+| --- | --- |
+| The ID is not a UUID, or the reason breaks a rule. An empty reason gets `invalid argument: give the reason of the suspension, which the account sees at its sign-in`. | `invalid_argument` |
+| No account has the ID: `not found: no account has the ID <id>` | `not_found` |
+| A live control process runs a release of the schema version below 61: `failed precondition: the control process <process> knows the migrations up to <n>, and only a hopboxd that knows migration 61 suspends accounts. Upgrade it first`. Such a release lets a suspended account sign in. The check covers only the processes that run at the time of the call: such a release that starts later, for example after a rollback, lets the suspended account act again ([Control store tables](/reference/control-store/index.html.md#accounts)). | `failed_precondition` |
+| The account is pending: `failed precondition: the account waits for approval. Approve or reject it instead` | `failed_precondition` |
+| The account is the last instance admin: `failed precondition: the account is the last instance admin, and an install keeps at least one. Make another account an instance admin first` | `failed_precondition` |
+| No other instance admin is active, for example because each other one is suspended: `failed precondition: no other instance admin is active, and an install keeps at least one active instance admin, which can sign in. Unsuspend another instance admin first` | `failed_precondition` |
+
+### UnsuspendAccount
+
+Ends the suspension of an account. The account signs in again, and its member API keys and SSH keys work again. The call also ends the suspension of each org that the suspend of the account suspended, and of no other org. An org that an instance admin suspended with `SuspendOrg` stays suspended. So does an org that was suspended before the suspend of the account. The machines stay stopped until their users start them. An account that is not suspended stays as it is, and the call succeeds.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.AccountService/UnsuspendAccount` |
+| Policy action | `admin_account.unsuspend`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no |
+| Audit entries | action `admin_account.unsuspend`, org the personal org of the account, target kind `account`. The details are `old_reason`, `already` (`true` for an account that was not suspended), and `instance_admin` set to `true` for an instance admin. A call that ends a suspension also has `unsuspended_orgs`, the IDs of the orgs that it unsuspended, joined by commas. Each such org gets `org.unsuspend`, with the details `old_reason`, `already` (`false`), and `account`. |
+
+The request `UnsuspendAccountRequest` has the field `account_id`. The response `UnsuspendAccountResponse` has the field `account`, the [Account](#account) after the change. The unsuspend of an instance admin tells the other instance admins ([Notices to instance admins](#notices-to-instance-admins)).
+
+| Error | Code |
+| --- | --- |
+| The ID is not a UUID | `invalid_argument` |
+| No account has the ID: `not found: no account has the ID <id>` | `not_found` |
 
 ## AdminKeyService
 
@@ -1745,14 +1859,14 @@ The response `ListOrgsResponse` has the fields `orgs`, a repeated `Org`, and `ne
 
 ### SuspendOrg
 
-Suspends an org, for example to handle abuse ([the org API](/reference/org-api/index.html.md#suspension)). A suspended org stays as it is, with its first reason, and the call succeeds again without a change.
+Suspends an org, for example to handle abuse ([the org API](/reference/org-api/index.html.md#suspension)). A suspended org stays as it is, with its first reason, and the call succeeds again without a change. One exception: on an org that the suspend of an account suspended ([SuspendAccount](#suspendaccount)), the call takes over that suspension. It keeps the reason of the account, and clears `suspended_with_account`. So `UnsuspendAccount` of that account then leaves the org suspended.
 
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.OrgService/SuspendOrg` |
 | Policy action | `org.suspend`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call changes nothing. |
-| Audit entry | action `org.suspend`, org the org, target kind `org`, details `reason` and `already`. The reason is that of the suspension. `already` is `true` for an org that was suspended already. |
+| Audit entry | action `org.suspend`, org the org, target kind `org`, details `reason` and `already`. The reason is that of the suspension. `already` is `true` for an org that was suspended already. A take-over of the suspension of an account adds the details `taken_from_account`, the ID of that account, and `requested_reason`, the reason of the request, which the org does not take. |
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -1768,7 +1882,7 @@ The call stops the resources of the org in its transaction, through `OrgSuspendi
 
 ### UnsuspendOrg
 
-Ends the suspension of an org. Its machines stay stopped until their users start them. An org that is not suspended stays as it is, and the call succeeds.
+Ends the suspension of an org. Its machines stay stopped until their users start them. An org that is not suspended stays as it is, and the call succeeds. The call also works on an org that the suspend of an account suspended. It then clears `suspended_with_account` ([Control store tables](/reference/control-store/index.html.md#orgs)). So a later suspend of the org stays after `UnsuspendAccount` of that account.
 
 | Item | Value |
 | --- | --- |

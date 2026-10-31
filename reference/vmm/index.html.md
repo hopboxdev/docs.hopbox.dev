@@ -84,6 +84,16 @@ A driver that keeps the disk of each machine in one file is a `vmm.Mover`. A col
 | --- | --- | --- |
 | `vmm.Mover` | `DiskPath(id)` | The path of the disk file of a machine. The file exists from the first boot of the machine until `Delete`. A boot keeps a disk that it finds there, such as a pulled one. `Delete` also removes the partial copy of a pull beside the file. |
 
+## UsageReader
+
+A driver that reads what its microVMs use on the host is a `vmm.UsageReader`. The node serves these values as the [metrics of the machines](/reference/metrics/index.html.md#metrics-of-the-machines). A node whose driver is not a `UsageReader` serves none of them. The test driver is not one.
+
+| Interface | Method | Description |
+| --- | --- | --- |
+| `vmm.UsageReader` | `Usage(id)` | The CPU time and the host RAM of the microVM of a running machine and of its VMM, as a `vmm.Usage`. It fails for a machine that does not run. |
+| | `TotalUsage()` | The same values for every microVM of the node together. |
+| | `DiskUsage(id)` | The bytes of the blocks that the disk of a machine holds on the node. |
+
 ## The test driver
 
 `vmmtest.New(dir, logger, capabilities...)` returns a driver for tests. Its microVM is the real guest agent of `internal/guest`, run in the test process. It connects to the guest link socket over a unix socket. So an executor goes through the same steps as on a real node, without KVM. Its microVMs live as long as the driver, so they outlive the `Manager` that booted them. This is how a microVM outlives `hopboxd`.

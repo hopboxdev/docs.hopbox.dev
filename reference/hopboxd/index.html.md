@@ -1,6 +1,6 @@
 # hopboxd
 
-> The commands, flags, logs, and exit status of hopboxd, with the start and stop order of hopboxd run, the leader jobs, install, upgrade and its rollback, enroll, preflight, and the admin commands for tokens, servers, admin API keys, orgs, machines, and images.
+> The commands, flags, logs, and exit status of hopboxd, with the start and stop order of hopboxd run, the leader jobs, install, upgrade and its rollback, enroll, preflight, and the admin commands for tokens, servers, admin API keys, accounts, orgs, machines, and images.
 
 `hopboxd` is the server binary of hopbox. It runs on every server of an install.
 
@@ -57,6 +57,9 @@ hopboxd --log-level=debug version
 | `admin account sign-in-method list` | Lists the sign-in methods of an account. |
 | `admin account sign-in-method remove` | Removes a sign-in method of an account, to recover its sign-in. |
 | `admin account delete` | Deletes an account with its personal org and the orgs that it owns alone, for example after abuse. |
+| `admin account list` | Lists the accounts of the install, oldest first, with their state and tier. |
+| `admin account suspend` | Suspends an account. It then cannot sign in, and its keys stop working, until the unsuspend. Its data stays. |
+| `admin account unsuspend` | Ends the suspension of an account, and of the orgs that its suspend suspended. |
 | `admin enrollment-token create` | Makes an enrollment token for a new server through the admin socket. |
 | `admin server list` | Lists the enrolled servers through the admin socket. |
 | `admin server get` | Prints one server through the admin socket. |
@@ -199,6 +202,7 @@ The leader of the control role runs these jobs. In maintenance mode, the leader 
 | Prune of change events | 10 min | Deletes the change events that are older than 24 hours. Every reader of the events starts from the head, so an older event serves nobody ([Control store tables](/reference/control-store/index.html.md#events)). |
 | Certificate of the install | when due | Gets the wildcard certificate of the install from the ACME CA, and renews it after two thirds of its lifetime. It starts at the start of each term, and plans again after each change of an input of the ACME job ([the certificate of the install](/reference/acme/index.html.md#the-acme-job)). Every write checks the leader lease. |
 | Auto-delete of idle machines | 1 min | Deletes each machine whose last recorded use is older than its auto-delete timeout plus 1 minute. A use is recorded at most once a minute ([the machine API](/reference/machine-api/index.html.md#auto-delete)). It takes at most 100 machines per run, the oldest last use first. The next run takes the rest. It skips the machines of a suspended org. Each machine goes in a transaction of its own, which checks the leader lease, so a leader that lost its lease deletes nothing. The delete reserves the name and the SSH port, as `DeleteMachine` does. Each delete gets an audit entry `machine.delete` with the actor `system` and the detail `reason` (`auto-delete`), and the log record `deleted an idle machine`. A machine whose delete fails gets the log record `deleting an idle machine failed`, and the job goes on with the next one. Only a lost leader lease stops the run. |
+| Read of the leader metrics | 1 min | Reads the counts of accounts, orgs, keys, and machines, and the capacity of each node, from the control store in one snapshot. The leader serves them on its metrics listener until the end of its jobs ([Metrics](/reference/metrics/index.html.md#metrics-of-the-leader)). It runs at the start of the jobs too. A read takes at most 30 s, so a control store that hangs gives a failed read. A read that fails logs `reading the leader metrics failed` at level warn, with `component=leader`, `failures`, and `err`, and the metrics keep the values of the read before. After 3 failed reads in a row, the leader serves none of them until a read works, and logs `the leader serves no leader metrics until a read of them works` at level warn. |
 | Return of SSH host keys | 1 min | Gives each SSH host key that a route record claims, and that no record lists, to the oldest record that claims it. A report that lets a key go gives it at once, but it skips a record that another transaction locks, and a `hopboxd` of v0.1.0 gives no key. It takes at most 100 keys per run, and each key goes in a transaction of its own. The write needs no leader lease, because a report makes the same write. Each key gets the log record `a machine got an SSH host key that no other machine holds` at level info, with `machine` ([Control store tables](/reference/control-store/index.html.md#route_host_keys)). |
 
 ### Example
@@ -1061,7 +1065,23 @@ hopboxd admin account delete --account-id=ID --reason=TEXT [--json]
 
 Deletes an account, for example an account of the open sign-up that abused the install. It calls the admin `DeleteAccount` ([the admin API](/reference/admin-api/index.html.md#deleteaccount)). The command deletes the account, its personal org, and each org in which the account is the only owner. The other members of such an org lose it. A suspended org does not hold the command back, because the audit entry `admin_account.delete` keeps the reason and the IDs of the deleted orgs. The command takes the account out of each other org, as the self-delete does. It prints the ID of each deleted org on its own line, with the personal org first.
 
-The command deletes no machine. While a machine that the delete removes is not deleted, the command fails with `failed_precondition`. Such a machine is in an org that the command deletes, or the account made it and did not share it. The error names each such machine, up to the 20 oldest, with the `admin machine delete` command for it. A shared machine of the account in an org that stays does not hold the command back, and it stays. The command also fails for the last instance admin. The delete of an instance admin tells the other instance admins ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)).
+The command deletes no machine. While a machine that the delete removes is not deleted, the command fails with `failed_precondition`. Such a machine is in an org that the command deletes, or the account made it and did not share it. The error names each such machine, up to the 20 oldest, with the `admin machine delete` command for it. A shared machine of the account in an org that stays does not hold the command back, and it stays. The command also fails for the last instance admin, and for the last instance admin that is not suspended. The delete of an instance admin tells the other instance admins ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)).
+
+The data of a suspended account is the evidence of its suspension ([admin account suspend](#admin-account-suspend)). So the server refuses its delete with the detail `hopbox.admin.v1.AccountIDConfirmationRequired`. The command then prints this prompt on standard error, and reads one line from standard input:
+
+```text
+The account 01a15c02-7d1e-7a4c-9b51-2b1c5e8f0a7d is suspended. Its delete also deletes the evidence of the suspension.
+Type the account ID again to delete it:
+```
+
+The command sends the delete again with that line as `confirm_account_id`, without the spaces around it. Another ID fails with `invalid_argument`, and nothing changes. An empty line or the end of the input fails with `the delete of a suspended account needs its account ID a second time, and none came. Nothing changed`. A script gives the ID on standard input:
+
+```sh
+ID=01a15c02-7d1e-7a4c-9b51-2b1c5e8f0a7d
+echo "$ID" | sudo hopboxd admin account delete --account-id "$ID" --reason 'abuse report 1'
+```
+
+The audit entry of such a delete has the detail `suspended` set to `true`.
 
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -1086,6 +1106,85 @@ After `sudo hopboxd admin machine delete --id=01a15c02-a1b2-7c3d-8e4f-5a6b7c8d9e
 $ sudo hopboxd admin account delete --account-id 01a15c02-7d1e-7a4c-9b51-2b1c5e8f0a7d --reason 'abuse report 1'
 01a15c02-7d1f-7b20-8a3e-4c1d2e3f4a5b
 01a15c02-9e41-7c08-9d12-5f6a7b8c9d0e
+```
+
+### admin account list
+
+```sh
+hopboxd admin account list [--state=STATE] [--json]
+```
+
+Lists the accounts of the install, oldest first, with their state and tier. It calls `ListAccounts` of the admin API, page by page, until the last page ([the admin API](/reference/admin-api/index.html.md#listaccounts)). The text output has one line per account, with a tab between the fields: the ID, the state, the tier, `instance_admin=true` or `instance_admin=false`, and the emails, joined by commas.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--state` | string | none | Lists only the accounts in this state: `pending`, `active`, or `suspended`. Without it, the command lists every account. Another value fails before the call. |
+| `--json` | bool | `false` | Prints one JSON object, `{"accounts":[...]}`. Each account has `id`, `display_name`, `emails`, `state`, `tier`, and `instance_admin`. It also has `personal_org_id`, `suspend_time`, `suspend_reason`, `version`, and `create_time`. Each email has `email` and `verified`. `suspend_time` is `null` for an account that is not suspended. |
+
+Example:
+
+```text
+$ sudo hopboxd admin account list --state suspended
+01a15c02-7d1e-7a4c-9b51-2b1c5e8f0a7d	suspended	full	instance_admin=false	user1@example.org
+```
+
+### admin account suspend
+
+```sh
+hopboxd admin account suspend --account-id=ID --reason=TEXT [--json]
+```
+
+Suspends an account, for example to handle abuse, and prints it. It calls `SuspendAccount` ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). The command deletes nothing. It ends the sessions and the CLI sign-ins of the account. The member API keys and the SSH keys of the account stop working until the unsuspend. The command suspends the personal org and each org in which the account is the only owner, with the same reason, and stops their machines. In the other orgs of the account, it stops the private machines of the account. A suspended account stays as it is, with its first reason, and the command prints it again.
+
+The command prints the account as lines of a name, a tab, and a value: `id`, `display_name`, `emails`, `state`, `tier`, `instance_admin`, `personal_org_id`, `suspend_time`, `suspend_reason`, and `version`. The line `emails` joins the emails with commas. An account without a display name has no line `display_name`. An account that is not suspended has no lines `suspend_time` and `suspend_reason`.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--account-id` | string | none, required | The UUID of the account, as `admin account list` prints it. |
+| `--reason` | string | none, required | The reason, at most 256 characters. The account sees it at its sign-in, and the members of its suspended orgs see it. |
+| `--json` | bool | `false` | Prints the account as one JSON object, with the fields of `admin account list --json`. |
+
+The command fails with `failed_precondition` for a pending account, for the last instance admin, and for the last instance admin that is not suspended. A live control process can run a `hopboxd` of the schema version below 61. Such a release lets a suspended account sign in, so the command fails with `failed_precondition` then too. The suspend of an instance admin tells the other instance admins ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)).
+
+Example:
+
+```text
+$ sudo hopboxd admin account suspend --account-id 01a15c02-7d1e-7a4c-9b51-2b1c5e8f0a7d --reason 'abuse report 1'
+id	01a15c02-7d1e-7a4c-9b51-2b1c5e8f0a7d
+emails	user1@example.org
+state	suspended
+tier	full
+instance_admin	false
+personal_org_id	01a15c02-7d1f-7b20-8a3e-4c1d2e3f4a5b
+suspend_time	2026-10-30T14:02:11Z
+suspend_reason	abuse report 1
+version	2
+```
+
+### admin account unsuspend
+
+```sh
+hopboxd admin account unsuspend --account-id=ID [--json]
+```
+
+Ends the suspension of an account, and prints it as `admin account suspend` does. It calls `UnsuspendAccount` ([the admin API](/reference/admin-api/index.html.md#unsuspendaccount)). The account signs in again, and its member API keys and SSH keys work again. The command also ends the suspension of each org that the suspend of the account suspended, and of no other org. The machines stay stopped until their users start them. An account that is not suspended stays as it is.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--account-id` | string | none, required | The UUID of the account. |
+| `--json` | bool | `false` | Prints the account as one JSON object, with the fields of `admin account list --json`. |
+
+Example:
+
+```text
+$ sudo hopboxd admin account unsuspend --account-id 01a15c02-7d1e-7a4c-9b51-2b1c5e8f0a7d
+id	01a15c02-7d1e-7a4c-9b51-2b1c5e8f0a7d
+emails	user1@example.org
+state	active
+tier	full
+instance_admin	false
+personal_org_id	01a15c02-7d1f-7b20-8a3e-4c1d2e3f4a5b
+version	3
 ```
 
 ### admin enrollment-token create

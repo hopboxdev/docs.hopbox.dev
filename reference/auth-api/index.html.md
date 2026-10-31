@@ -208,6 +208,7 @@ The request `VerifyMagicLinkRequest` has the field `token`, a string: the value 
 | --- | --- |
 | The call does not carry the `Origin` of the install and the Connect protocol header. The link stays unused. | `permission_denied` |
 | The token is unknown, used, or expired: `the sign-in link is not valid: it is unknown, used, or expired. Ask for a new link` | `unauthenticated` |
+| An instance admin suspended the account of the sign-in ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). No session starts: `permission denied: an instance admin suspended this account, so it cannot sign in. The reason: <reason>` | `permission_denied` |
 | The account of the email has GitHub or Google, and no email method for this email ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)): `the sign-in conflicts with a sign-in method of the account: the account of ann@example.org signs in with GitHub or Google, so a new sign-in method joins it only through a link. ...` | `failed_precondition` |
 | A link, and the caller is not the session that asked for it. The link stays unused: `permission denied: this link adds an email to the account of the session that asked for it. Open it in the browser where you asked for it, while you are signed in there` | `permission_denied` |
 | A link, and another account signs in with the email: `the sign-in conflicts with a sign-in method of the account: this email ann.work@example.org signs in to another account. Remove it from that account first` | `failed_precondition` |
@@ -367,6 +368,7 @@ The response `ApproveDeviceResponse` has these fields:
 | No device sign-in waits for the code: it is wrong, approved already, or expired, also between the lookup and the approval. `not found: no device sign-in waits for this code. Check the code in the terminal, or start the sign-in again`. The wrong code counts against the limit of the account. | `not_found` |
 | The `create_time` does not match the device sign-in of the code: `failed precondition: the start time does not match the device sign-in of this code. Look the code up again, check the client, then approve it`. It counts as a wrong code. | `failed_precondition` |
 | The account entered 10 wrong codes in the last hour ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#limits-of-the-device-flow)) | `resource_exhausted` |
+| An instance admin suspended the account after the request gate let the call in ([the admin API](/reference/admin-api/index.html.md#suspendaccount)): `permission denied: an instance admin suspended this account. The reason: <reason>`. The call changes nothing. | `permission_denied` |
 
 ```sh
 browser -d '{"userCode":"QJTL-PHNV","createTime":"2026-10-16T17:14:56.701147Z"}' $API/hopbox.v1.AuthService/ApproveDevice
@@ -405,6 +407,7 @@ The request `PollDeviceAuthorizationRequest` has the field `device_code`, a stri
 | --- | --- |
 | The device code is unknown or malformed, or a poll took its tokens already: `the device code is not valid: it is unknown or used. Start the sign-in again` | `unauthenticated` |
 | The device code expired: `failed precondition: the device code expired before its approval. Start the sign-in again` | `failed_precondition` |
+| An instance admin suspended the account after the approval ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). The poll uses up the device code, and starts no CLI sign-in: `permission denied: an instance admin suspended this account, so it cannot sign in. The reason: <reason>` | `permission_denied` |
 
 Two polls at the same time run one after the other, so only one of them gets the tokens.
 
@@ -484,7 +487,7 @@ Changes the fields that the request sets, and keeps the others. It returns the a
 | `display_name` | optional string | The new display name ([Domain rules](/reference/domain-rules/index.html.md#display-names)). Leave it out to keep the name. |
 | `expected_version` | optional int64 | The `version` of the account that the caller read. If the account has another version now, the call fails with `aborted` and changes nothing. |
 
-A request that sets no field gets `invalid_argument` with the message `invalid argument: the update sets no field`. The response `UpdateAccountResponse` has the field `account`.
+A request that sets no field gets `invalid_argument` with the message `invalid argument: the update sets no field`. The response `UpdateAccountResponse` has the field `account`. If an instance admin suspended the account after the request gate let the call in, the call fails with `permission_denied` and the message `permission denied: an instance admin suspended this account. The reason: <reason>`, and changes nothing ([the admin API](/reference/admin-api/index.html.md#suspendaccount)).
 
 ```sh
 browser -d '{"displayName":"Ann Root","expectedVersion":"1"}' $API/hopbox.v1.AccountService/UpdateAccount
@@ -507,11 +510,13 @@ The request `DeleteAccountRequest` and the response `DeleteAccountResponse` have
 | --- | --- |
 | The account is the only owner of an org other than its personal org: `failed precondition: the account is the only owner of the org "<name>" (<id>). Make another member an owner, or delete the org, first` | `failed_precondition` |
 | The account is the last instance admin: `failed precondition: the account is the last instance admin, and an install keeps at least one. Make another account an instance admin first` | `failed_precondition` |
+| No other instance admin is active, for example because each other one is suspended ([the admin API](/reference/admin-api/index.html.md#suspendaccount)): `failed precondition: no other instance admin is active, and an install keeps at least one active instance admin, which can sign in. Unsuspend another instance admin first` | `failed_precondition` |
 | The personal org of the account, or another org of the account, is suspended: `failed precondition: org suspended: an instance admin suspended an org of the account, and nothing deletes its data until the suspension ends. Ask for the end of the suspension first` ([the org API](/reference/org-api/index.html.md#suspension)) | `failed_precondition` |
+| An instance admin suspended the account after the request gate let the call in ([the admin API](/reference/admin-api/index.html.md#suspendaccount)): `permission denied: an instance admin suspended this account. The reason: <reason>`. The call changes nothing. | `permission_denied` |
 
 An instance admin that is not the last one loses the role with the delete. The delete of an instance admin tells the other instance admins, in the console and by email ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). A stolen session can otherwise remove an admin in silence. The notice comes before the delete, so each email of the deleted account gets a copy too. The delete takes the transaction lock of the notices to the instance admins, then locks the account, then each org of the account, before the check ([Control store tables](/reference/control-store/index.html.md#orgs)). So two owners of one org that delete their accounts at the same time leave one owner.
 
-An operator deletes another account with the admin `DeleteAccount` ([the admin API](/reference/admin-api/index.html.md#deleteaccount)). That call also deletes the orgs that the account owns alone, and a suspended org does not hold it back.
+An operator deletes another account with the admin `DeleteAccount` ([the admin API](/reference/admin-api/index.html.md#deleteaccount)). That call also deletes the orgs that the account owns alone, and a suspended org does not hold it back. A suspended account has no session and no working CLI token, so it cannot call `DeleteAccount` itself. Only the admin delete removes it.
 
 A call that runs at the same time as the delete, with a session or a CLI token of the account, can pass the check of its credential before the delete ends. When such a call then reads the account or its personal org, it fails with `not_found`, because the account no longer exists. A `GetAccount` or a second `DeleteAccount` of the deleted account gets `not_found` too.
 
@@ -554,6 +559,7 @@ The request `RemoveSignInMethodRequest` has the field `id`, the UUID of the meth
 | The ID is not a UUID | `invalid_argument` |
 | The account has no method with the ID | `not_found` |
 | It is the last method: `failed precondition: an account keeps at least one sign-in method. Add another one first` | `failed_precondition` |
+| An instance admin suspended the account after the request gate let the call in ([the admin API](/reference/admin-api/index.html.md#suspendaccount)): `permission denied: an instance admin suspended this account. The reason: <reason>`. The call changes nothing. | `permission_denied` |
 
 ### ListCLISignIns
 
@@ -598,6 +604,7 @@ The request `EndCLISignInRequest` has the field `id`, the UUID of the CLI sign-i
 | --- | --- |
 | The ID is not a UUID | `invalid_argument` |
 | The account has no CLI sign-in with the ID | `not_found` |
+| An instance admin suspended the account after the request gate let the call in ([the admin API](/reference/admin-api/index.html.md#suspendaccount)): `permission denied: an instance admin suspended this account. The reason: <reason>`. The call changes nothing. | `permission_denied` |
 
 ## AuditService
 
@@ -693,6 +700,7 @@ The response `CreateAPIKeyResponse` has the fields `key`, an `APIKey`, and `secr
 | The org holds 100 API keys, expired ones included: `usage limit exceeded: an org holds at most 100 API keys. Revoke one first` | `resource_exhausted` |
 | A delete of the org ended while the call waited for the lock of the org: `not found: the org <id> was deleted` | `not_found` |
 | A retry with an idempotency key that made a key already | `already_exists` |
+| An instance admin suspended the account after the request gate let the call in ([the admin API](/reference/admin-api/index.html.md#suspendaccount)): `permission denied: an instance admin suspended this account. The reason: <reason>`. The call changes nothing. | `permission_denied` |
 
 ```sh
 cli -H 'Idempotency-Key: 0b2c5e1a-key-ci' -d '{"name":"ci","lifetime":"API_KEY_LIFETIME_30_DAYS"}' \
@@ -738,6 +746,7 @@ The request `RevokeAPIKeyRequest` has the field `id`, the UUID of the key. The r
 | The ID is not a UUID | `invalid_argument` |
 | No key has the ID, or the key is in an org in which the caller has no role | `not_found` |
 | A member and a key of another account, or an org key | `permission_denied` |
+| An instance admin suspended the account after the request gate let the call in ([the admin API](/reference/admin-api/index.html.md#suspendaccount)): `permission denied: an instance admin suspended this account. The reason: <reason>`. The call changes nothing. | `permission_denied` |
 
 ```sh
 cli -d '{"id":"01a145b6-1aaf-7620-989d-f244cbd2aba6"}' $API/hopbox.v1.APIKeyService/RevokeAPIKey
@@ -773,6 +782,7 @@ The response `AddSSHKeyResponse` has the field `key`, an `SSHKey`.
 | A bad name | `invalid_argument` |
 | An account holds the key already, this one or another: `already exists: the install holds the key <fingerprint> already. Add another key` | `already_exists` |
 | The account holds 50 SSH keys: `usage limit exceeded: an account holds at most 50 SSH keys. Remove one first` | `resource_exhausted` |
+| An instance admin suspended the account after the request gate let the call in ([the admin API](/reference/admin-api/index.html.md#suspendaccount)): `permission denied: an instance admin suspended this account. The reason: <reason>`. The call changes nothing. | `permission_denied` |
 
 ```sh
 cli -H 'Idempotency-Key: ssh-1' -d "{\"publicKey\":\"$(cat ~/.ssh/id_ed25519.pub)\"}" \
@@ -813,6 +823,7 @@ The request `RemoveSSHKeyRequest` has the field `id`, the UUID of the key. The r
 | --- | --- |
 | The ID is not a UUID | `invalid_argument` |
 | The account has no key with the ID | `not_found` |
+| An instance admin suspended the account after the request gate let the call in ([the admin API](/reference/admin-api/index.html.md#suspendaccount)): `permission denied: an instance admin suspended this account. The reason: <reason>`. The call changes nothing. | `permission_denied` |
 
 ## Audit entries
 

@@ -107,7 +107,7 @@ The Firecracker driver makes the tap device of each machine at each boot ([the F
 | Addresses | `169.254.0.1/32`, scope link, and `fe80::1/64` without duplicate address detection. The node never uses them as the source address toward another device. |
 | State | up |
 | Routes | `<machine address>/32 dev <tap> scope link proto static`, and `<IPv6 address of the machine>/128 dev <tap> proto static`. |
-| Sets of the table | `machines` takes the device and the IPv4 address. `machines6` takes the device and the IPv6 address. `inbound` takes the device. See [The table](#the-table-inet-hopbox_node). |
+| Sets of the table | `machines` takes the device and the IPv4 address. `machines6` takes the device and the IPv6 address. `inbound` and `connections` take the device. See [The table](#the-table-inet-hopbox_node). |
 
 The node writes the four IPv6 sysctls in the order of the table. On a host without IPv6, the device gets none of the IPv6 parts.
 
@@ -136,6 +136,11 @@ table inet hopbox_node {
 	}
 
 	set inbound {
+		type ifname
+		counter
+	}
+
+	set connections {
 		type ifname
 		counter
 	}
@@ -178,6 +183,7 @@ table inet hopbox_node {
 		meta nfproto ipv6 ip6 daddr != 2000::/3 drop
 		oifname != "hbe*" meta l4proto tcp reject with tcp reset
 		oifname != "hbe*" reject with icmpx admin-prohibited
+		ct state new iifname @connections
 		meta nfproto ipv4 iifname . ip saddr @machines accept
 		meta nfproto ipv6 iifname . ip6 saddr @machines6 accept
 		drop
@@ -369,12 +375,13 @@ The first rule lets out the packets of the machines. The second one lets in the 
 
 ## Counters
 
-Each element of the sets `machines`, `machines6`, and `inbound` has a counter. A rule that finds a packet in the set adds the packet to the counter of its element. The egress of a machine adds the counters of its elements of `machines` and `machines6`.
+Each element of the sets `machines`, `machines6`, `inbound`, and `connections` has a counter. A rule that finds a packet in the set adds the packet to the counter of its element. The egress of a machine adds the counters of its elements of `machines` and `machines6`.
 
 | Counter | What it counts |
 | --- | --- |
 | Inbound | The packets to the machine of connections that the node opened, such as a request through the machine URL or an SSH session: the connections with the mark of the node. The replies to the egress of the machine do not count. The connections of the edge servers over the mesh count too, because they carry the mark. This is the inbound traffic that counts as a use of the machine ([Inbound traffic as a use](#inbound-traffic-as-a-use)). |
 | Egress | The packets of the machine that the node lets out, over IPv4 and IPv6: its egress to the internet and to its resolvers, and its replies to the connections that the node opened. The node counts them before the egress tunnel. The replies to the connections of the edge servers over the mesh count too. These replies stay in the install, so the counter is more than the meter "egress out of the install" (plan question Q53). Traffic between machines is dropped in phase 1, so its meter is zero. |
+| Connections | The packets that open an outbound connection of the machine, in the conntrack state `new`, that the node lets out. A retry of a TCP SYN without an answer counts again. The rule runs after every drop and reject of the chain `from_machine`, so a blocked destination does not count. A query to a resolver of the node and a reply to an edge server do not count, because their rules accept them first. Many new connections in a short time are a sign of a scan. |
 
 ### Metrics
 
@@ -386,6 +393,7 @@ The metrics listener serves the counters of each connected machine ([Metrics](/r
 | `hopbox_machine_inbound_packets_total` | counter | Packets to the machine of connections that the node opened. |
 | `hopbox_machine_egress_bytes_total` | counter | Bytes from the machine that the node let out. |
 | `hopbox_machine_egress_packets_total` | counter | Packets from the machine that the node let out. |
+| `hopbox_machine_egress_connections_total` | counter | Packets that opened an outbound connection of the machine that the node let out, retries included. |
 | `hopbox_node_network_repairs_total` | counter | The installs of the table after it lost a part outside `hopboxd`, or after a check that got no answer within 10 s. It has no label. See [The table must stay](#the-table-must-stay). |
 
 ### Inbound traffic as a use
@@ -437,7 +445,7 @@ The node network logs with `component=netcfg`.
 | Test | Where it runs | What it checks |
 | --- | --- | --- |
 | `TestRulesetGolden` of `internal/node/netcfg` | `make test`, also on a Mac | The rules, against `testdata/ruleset.nft`. Run `go test ./internal/node/netcfg -run TestRulesetGolden -update` to write the file after a change. |
-| `TestNodeNetwork` of `internal/node/netcfg` | `make test-linux`, as root in a privileged container | A node, two machines, another interface, and the internet in network namespaces, with veth pairs in place of tap devices and of an egress tunnel. A machine leaves through the tunnel with its own address, over IPv4 and IPv6. Without the tunnel, a connect fails at once, and it works again once the tunnel is back. It checks each blocked destination, also over IPv6, the private resolver, a TCP segment with SYN and FIN or without flags to that resolver, which never leaves with the address of the machine, a spoofed source, the MSS, and the inbound counter. It checks the IPv6 sysctls and the one IPv6 address of a tap device. It checks that a second connect of a device starts its counters again from zero. It checks the forward guard, the repair after a flush of the ruleset, and a new `hopboxd` that takes over the devices. |
+| `TestNodeNetwork` of `internal/node/netcfg` | `make test-linux`, as root in a privileged container | A node, two machines, another interface, and the internet in network namespaces, with veth pairs in place of tap devices and of an egress tunnel. A machine leaves through the tunnel with its own address, over IPv4 and IPv6. Without the tunnel, a connect fails at once, and it works again once the tunnel is back. It checks each blocked destination, also over IPv6, the private resolver, a TCP segment with SYN and FIN or without flags to that resolver, which never leaves with the address of the machine, a spoofed source, the MSS, the inbound counter, and the counter of new connections. It checks the IPv6 sysctls and the one IPv6 address of a tap device. It checks that a second connect of a device starts its counters again from zero. It checks the forward guard, the repair after a flush of the ruleset, and a new `hopboxd` that takes over the devices. |
 | `TestEdgeOverTheMesh` of `internal/node/netcfg` | `make test-linux`, as root in a privileged container | A node, a machine, and an edge server in network namespaces, with a veth pair named `hbm0` in place of the mesh device. An edge in the set `edges` reaches the machine, and its connection counts as inbound. Another mesh address and the machine itself open nothing. A repair and a new `hopboxd` keep the set. |
 | `TestLocalExit` of `internal/node/netcfg` | `make test-linux` | A node with the edge role, a machine, and the internet in network namespaces. The machine leaves with the address of the node over IPv4, or with the floating address of `edge.public_ipv4`. `TestLocalExitIPv6` of `internal/hostfw` checks the IPv6 egress ([the host firewall](/reference/host-firewall/index.html.md#tests)). |
 | `TestKVMEndToEnd` of `internal/control` | `make test-kvm`, in the network namespace `KVM_NETNS` | Two Firecracker machines on one install, whose one server is a local exit. It checks their addresses, the egress with masquerade, and the blocked destinations. It opens a machine URL through the edge role, and a shell through the SSH front door. A probe in a guest sends UDP from forged sources, ARP requests and claims, and IPv6 from forged sources. Only the real packet must leave the node, and no forged IPv6 packet gets an answer. The guest has its IPv6 address `/128` alone. The test deletes the table, and the next heartbeat must bring the isolation back. It checks inbound traffic as a use, the metrics, the network after a restart of `hopboxd`, and the release at a delete. |

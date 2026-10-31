@@ -1,6 +1,6 @@
 # Domain rules
 
-> The rules of machine states and actions, restart policies, names and their suggestions and reservation, SSH ports, machine URLs, start commands, auto-delete timeouts, sizes, emails, orgs, usage limits, API key kinds, credential names, SSH keys, and scopes.
+> The rules of machine states and actions, restart policies, names and their suggestions and reservation, SSH ports, machine URLs, start commands, auto-delete timeouts, sizes, emails, account states and tiers, orgs, usage limits, API key kinds, credential names, SSH keys, and scopes.
 
 This page lists the rules of the domain types of hopbox. It covers machine states and actions, restart policies, machine names and their reservation, SSH ports, and the settings of a machine. It also covers the install domain, the public addresses, the TXT records of the zone, sizes, emails, and display names. It also covers org names, org roles, usage limits, the org suspension, and API key kinds. Then it covers credential names, SSH keys, and the scopes of env vars and secrets, and the names and values of env vars. The Go package `internal/domain` holds these rules. It has no I/O, so every role of `hopboxd` and the guest agent can use it.
 
@@ -85,6 +85,8 @@ Other paths follow the same rule:
 ### Org suspension
 
 An instance admin can suspend an org ([the org API](/reference/org-api/index.html.md#suspension)). A suspension stops the machines of the org, and blocks the actions that make a machine run or make a new one. It leaves a hibernated machine hibernated. It blocks the wake of the machine until the org is active again. It never stops the machine, because a stop is not allowed for a hibernated machine.
+
+The suspend of an account suspends its personal org and each org that it owns alone, by the same rules ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). In its other orgs, it stops the private machines of the account, and leaves a hibernated one hibernated.
 
 `Action.CheckSuspended()` gives the rule for each lifecycle action. A blocked action gets the error `org suspended: an instance admin suspended the org, so it cannot <action> a machine`.
 
@@ -328,6 +330,16 @@ The display name of an account is the name that its person chose. `ValidateDispl
 - It has no control characters, such as a newline.
 - It does not start or end with a space.
 - It can be empty.
+
+## Account states and tiers
+
+Each account has a state and a tier. The type `AccountState` has the values `pending`, `active`, and `suspended`. `ParseAccountState` refuses any other text with `ErrUnknownAccountState`: `unknown account state: "<text>"`. The type `AccountTier` has the values `limited` and `full`.
+
+| State | Meaning |
+| --- | --- |
+| `pending` | The account waits for approval by an instance admin. No release makes such an account yet. |
+| `active` | The account acts as its credentials allow. |
+| `suspended` | An instance admin suspended the account. It has no session and no working credential until the unsuspend. Its data stays ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). |
 
 ## Credential names
 

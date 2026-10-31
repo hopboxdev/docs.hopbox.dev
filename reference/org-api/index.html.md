@@ -124,6 +124,7 @@ An account owns at most 10 orgs besides its personal org. Every new org brings i
 | --- | --- |
 | A bad name, for example `invalid argument: invalid org name: it must not start or end with a space` | `invalid_argument` |
 | The account owns the most orgs: `usage limit exceeded: the account owns 10 orgs besides its personal org, the most that the install allows. Delete one, or ask an instance admin to raise the limit` | `resource_exhausted` |
+| An instance admin suspended the account after the request gate let the call in ([the admin API](/reference/admin-api/index.html.md#suspendaccount)): `permission denied: an instance admin suspended this account. The reason: <reason>`. The call changes nothing. | `permission_denied` |
 
 ```sh
 browser -H 'Idempotency-Key: 6f1c2f0e-team' -d '{"name":"Team"}' $API/hopbox.v1.OrgService/CreateOrg
@@ -328,7 +329,8 @@ A leave, a removal, and the delete of an account take the account out of the org
 | --- | --- |
 | `MemberLeaving(org, account)` | `LeaveOrg`, `RemoveOrgMember`, and `DeleteAccount`, once for each org other than the personal org. The admin `DeleteAccount` calls it once for each org that it does not delete. |
 | `OrgDeleting(org)` | `DeleteOrg`, and `DeleteAccount` for the personal org. The admin `DeleteAccount` calls it for the personal org and for each org that the account owns alone ([the admin API](/reference/admin-api/index.html.md#deleteaccount)). |
-| `OrgSuspending(org)` | `SuspendOrg` of the admin API ([the admin API](/reference/admin-api/index.html.md#suspendorg)) |
+| `OrgSuspending(org)` | `SuspendOrg` of the admin API ([the admin API](/reference/admin-api/index.html.md#suspendorg)). `SuspendAccount` of the admin API calls it for each org that it suspends ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). |
+| `MemberSuspending(org, account)` | `SuspendAccount` of the admin API, once for each org of the account that it does not suspend. These are the orgs other than the personal org, in which another account is an owner too. |
 
 Each call holds the row lock of the org while the method runs. A leave, a removal, and an account delete also hold the lock of the account, which they take first. The lock order is the account row, then the org row, then the rows of the resource, such as machines ([Control store tables](/reference/control-store/index.html.md#orgs)). A change of a resource outside these calls takes the locks in the same order.
 
@@ -341,8 +343,9 @@ The machines do this in each method. Each method locks the machine rows in the o
 | `MemberLeaving(org, account)` | Sets the target `deleted` on each machine that the account made in the org and did not share. A shared machine stays in the org. | `machine.delete`, with the detail `reason` (`member left`) |
 | `OrgDeleting(org)` | Sets the target `deleted` on every machine of the org. | `machine.delete`, with the detail `reason` (`org deleted`) |
 | `OrgSuspending(org)` | Sets the target `stopped` on every machine of the org, except a machine whose target is `hibernated`. A hibernated machine stays hibernated, because only a delete drops its memory file ([Domain rules](/reference/domain-rules/index.html.md#org-suspension)). | `machine.stop`, with the details `old_target` and `reason` (`org suspended`) |
+| `MemberSuspending(org, account)` | Sets the target `stopped` on each machine that the account made in the org and did not share. A machine whose target is `hibernated` stays hibernated. A shared machine keeps running, because the org uses it. | `machine.stop`, with the details `old_target` and `reason` (`account suspended`) |
 
-A delete reserves the name and the SSH port of the machine for 7 days, as `DeleteMachine` does ([the machine API](/reference/machine-api/index.html.md#deletemachine)). The actor of each entry is the caller of the change, and each change publishes the event `machine.updated` ([the machine API](/reference/machine-api/index.html.md#change-events)). A delete of an org sets `org_id` of its machines to null once their target is `deleted`. The machines then wait for their executor ([Control store tables](/reference/control-store/index.html.md#machines)).
+`MemberSuspending` of the env vars and secrets does nothing, because a value runs nothing. A delete reserves the name and the SSH port of the machine for 7 days, as `DeleteMachine` does ([the machine API](/reference/machine-api/index.html.md#deletemachine)). The actor of each entry is the caller of the change, and each change publishes the event `machine.updated` ([the machine API](/reference/machine-api/index.html.md#change-events)). A delete of an org sets `org_id` of its machines to null once their target is `deleted`. The machines then wait for their executor ([Control store tables](/reference/control-store/index.html.md#machines)).
 
 ## Invitations
 
@@ -474,6 +477,7 @@ The call locks the row of the org, then the row of the invitation, in the order 
 | The account has no verified email of the invitation: `failed precondition: the invitation is for bob@example.org, and the account has no verified email bob@example.org. Sign in with that email, then open the link again` | `failed_precondition` |
 | The account is a member already: `failed precondition: the account is a member of the org already, as <role>` | `failed_precondition` |
 | A suspended org: `failed precondition: org suspended: an instance admin suspended the org, so it takes no new members` | `failed_precondition` |
+| An instance admin suspended the account after the request gate let the call in ([the admin API](/reference/admin-api/index.html.md#suspendaccount)): `permission denied: an instance admin suspended this account. The reason: <reason>`. The call changes nothing. | `permission_denied` |
 
 The server logs a refused token as `invitation refused` at level info, with `component=service`, and never the token.
 
@@ -529,6 +533,8 @@ An instance admin can suspend an org, for example to handle abuse. The calls are
 
 The end of the suspension starts no machine. The users of the org start them again.
 
+The suspend of an account also suspends orgs ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). It suspends the personal org of the account, and each org in which the account is the only owner, with the reason of the account. An org that is suspended already keeps its suspension and its reason. Each org that the suspend changes then has the effects of the table. `UnsuspendAccount` ends the suspension of these orgs, but not of an org that `SuspendOrg` suspended. A `SuspendOrg` of such an org takes over its suspension, with the reason of the account, so `UnsuspendAccount` then leaves it suspended. `UnsuspendOrg` ends the suspension of either kind.
+
 ## Audit entries
 
 The org calls write these entries in the transaction of the change. Their org is the org of the change, so its owners and admins read them with `ListAuditEntries` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#listauditentries)). The actor is the caller.
@@ -545,4 +551,4 @@ The org calls write these entries in the transaction of the change. Their org is
 | `org.invitation_revoke` | `RevokeInvitation`, `CreateInvitation` for the invitation that it replaces, and a leave, a removal, an account delete, or a role change of the inviter | the invitation | `email`, `role`, and for a revoke by another call `reason`: `replaced`, `inviter left`, or `inviter role changed` |
 | `org.invitation_accept` | `AcceptInvitation` | the invitation | `email`, `role` |
 
-The admin calls on orgs add `org.suspend`, `org.unsuspend`, and `org.set_limits` to the audit log of the org ([the admin API](/reference/admin-api/index.html.md#orgservice)). The machine calls write their own entries in the audit log of the org ([the machine API](/reference/machine-api/index.html.md#audit-entries)).
+The admin calls on orgs add `org.suspend`, `org.unsuspend`, and `org.set_limits` to the audit log of the org ([the admin API](/reference/admin-api/index.html.md#orgservice)). `SuspendAccount` and `UnsuspendAccount` add `org.suspend` and `org.unsuspend` too, with the detail `account`, the ID of the account ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). The machine calls write their own entries in the audit log of the org ([the machine API](/reference/machine-api/index.html.md#audit-entries)).

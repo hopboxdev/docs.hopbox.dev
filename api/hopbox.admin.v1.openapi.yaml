@@ -12,6 +12,7 @@ paths:
       description: |-
         DeleteAccount deletes an account with its personal org and the orgs that it owns alone, also when an org is
          suspended. It refuses while a machine in one of these orgs, or a private machine of the account, is not deleted.
+         The delete of a suspended account needs the account ID a second time.
       operationId: hopbox.admin.v1.AccountService.DeleteAccount
       parameters:
         - name: Connect-Protocol-Version
@@ -84,6 +85,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.ListAccountSignInMethodsResponse'
+  /hopbox.admin.v1.AccountService/ListAccounts:
+    post:
+      tags:
+        - hopbox.admin.v1.AccountService
+      summary: ListAccounts
+      description: ListAccounts lists the accounts of the install, oldest first, one page at a time.
+      operationId: hopbox.admin.v1.AccountService.ListAccounts
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.ListAccountsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.ListAccountsResponse'
   /hopbox.admin.v1.AccountService/RemoveAccountSignInMethod:
     post:
       tags:
@@ -125,6 +165,87 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.RemoveAccountSignInMethodResponse'
+  /hopbox.admin.v1.AccountService/SuspendAccount:
+    post:
+      tags:
+        - hopbox.admin.v1.AccountService
+      summary: SuspendAccount
+      description: |-
+        SuspendAccount suspends an account. It ends the sessions and the CLI sign-ins of the account, and
+         its member API keys and SSH keys stop working. It suspends the personal org and each org that the
+         account owns alone, and stops the private machines of the account in its other orgs. It deletes nothing.
+      operationId: hopbox.admin.v1.AccountService.SuspendAccount
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.SuspendAccountRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.SuspendAccountResponse'
+  /hopbox.admin.v1.AccountService/UnsuspendAccount:
+    post:
+      tags:
+        - hopbox.admin.v1.AccountService
+      summary: UnsuspendAccount
+      description: UnsuspendAccount ends the suspension of an account, and of each org that its suspend suspended.
+      operationId: hopbox.admin.v1.AccountService.UnsuspendAccount
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.UnsuspendAccountRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.UnsuspendAccountResponse'
   /hopbox.admin.v1.AdminKeyService/CreateAdminKey:
     post:
       tags:
@@ -2757,6 +2878,84 @@ components:
       title: ACMEStatus
       additionalProperties: false
       description: ACMEStatus is the state of the attempts of the ACME job.
+    hopbox.admin.v1.Account:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the account.
+        displayName:
+          type: string
+          title: display_name
+          description: display_name is the display name of the account.
+        emails:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.AccountEmail'
+          title: emails
+          description: emails lists the emails of the account.
+        state:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.AccountState'
+          title: state
+          description: state says whether the account can act.
+        tier:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.AccountTier'
+          title: tier
+          description: tier says which limits apply to the account. It keeps its value through a suspension.
+        instanceAdmin:
+          type: boolean
+          title: instance_admin
+          description: instance_admin is true when the account is an instance admin.
+        personalOrgId:
+          type: string
+          title: personal_org_id
+          description: personal_org_id is the UUID of the personal org of the account.
+        suspendTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: suspend_time
+          description: suspend_time is the start of the suspension. It is unset for an account that is not suspended.
+        suspendReason:
+          type: string
+          title: suspend_reason
+          description: suspend_reason is the reason of the suspension, or empty.
+        version:
+          type: string
+          title: version
+          format: int64
+          description: version grows by 1 with each change of the account.
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is the time when the account was created.
+      title: Account
+      additionalProperties: false
+      description: Account is an account as an instance admin sees it.
+    hopbox.admin.v1.AccountEmail:
+      type: object
+      properties:
+        email:
+          type: string
+          title: email
+          description: email is the address, in lower case.
+        verified:
+          type: boolean
+          title: verified
+          description: verified is true when a sign-in method proved the email.
+      title: AccountEmail
+      additionalProperties: false
+      description: AccountEmail is one email of an account.
+    hopbox.admin.v1.AccountIDConfirmationRequired:
+      type: object
+      title: AccountIDConfirmationRequired
+      additionalProperties: false
+      description: |-
+        AccountIDConfirmationRequired is the detail of the FAILED_PRECONDITION error of DeleteAccount for a
+         suspended account without confirm_account_id. The caller asks for the account ID a second time.
     hopbox.admin.v1.AccountSignInMethod:
       type: object
       properties:
@@ -2791,6 +2990,25 @@ components:
       title: AccountSignInMethod
       additionalProperties: false
       description: AccountSignInMethod is one sign-in method of an account.
+    hopbox.admin.v1.AccountState:
+      type: string
+      title: AccountState
+      enum:
+        - ACCOUNT_STATE_UNSPECIFIED
+        - ACCOUNT_STATE_PENDING
+        - ACCOUNT_STATE_ACTIVE
+        - ACCOUNT_STATE_SUSPENDED
+      description: AccountState says whether an account can act at all.
+    hopbox.admin.v1.AccountTier:
+      type: string
+      title: AccountTier
+      enum:
+        - ACCOUNT_TIER_UNSPECIFIED
+        - ACCOUNT_TIER_LIMITED
+        - ACCOUNT_TIER_FULL
+      description: |-
+        AccountTier says which limits apply to the personal org of an account, and whether the account
+         creates orgs and public URLs.
     hopbox.admin.v1.ActionInProgress:
       type: object
       properties:
@@ -3605,6 +3823,14 @@ components:
           type: string
           title: reason
           description: reason says why the account goes, at most 256 characters. The audit log keeps it.
+        confirmAccountId:
+          type: string
+          title: confirm_account_id
+          description: |-
+            confirm_account_id is the account ID a second time. The delete of a suspended account needs it,
+             because the delete ends the evidence of the suspension. Without it, the call fails with
+             FAILED_PRECONDITION and the detail AccountIDConfirmationRequired. Another value fails with
+             INVALID_ARGUMENT.
       title: DeleteAccountRequest
       additionalProperties: false
       description: DeleteAccountRequest names the account, and the reason of the delete.
@@ -4178,6 +4404,41 @@ components:
       title: ListAccountSignInMethodsResponse
       additionalProperties: false
       description: ListAccountSignInMethodsResponse lists the methods.
+    hopbox.admin.v1.ListAccountsRequest:
+      type: object
+      properties:
+        pageSize:
+          type: integer
+          title: page_size
+          format: int32
+          description: page_size is the most accounts in one response, 1 to 1000. 0 means 100.
+        pageToken:
+          type: string
+          title: page_token
+          description: page_token is the next_page_token of the response before. Leave it empty for the first page.
+        state:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.AccountState'
+          title: state
+          description: state lists only the accounts in this state. ACCOUNT_STATE_UNSPECIFIED lists every account.
+      title: ListAccountsRequest
+      additionalProperties: false
+      description: ListAccountsRequest selects a page.
+    hopbox.admin.v1.ListAccountsResponse:
+      type: object
+      properties:
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.Account'
+          title: accounts
+        nextPageToken:
+          type: string
+          title: next_page_token
+          description: next_page_token reads the next page. It is empty on the last page.
+      title: ListAccountsResponse
+      additionalProperties: false
+      description: ListAccountsResponse holds one page of accounts.
     hopbox.admin.v1.ListAdminKeysRequest:
       type: object
       title: ListAdminKeysRequest
@@ -5992,6 +6253,33 @@ components:
       description: |-
         StrandedMachine is a machine that the drain of a server, or the removal
          of its node role, cannot move.
+    hopbox.admin.v1.SuspendAccountRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          description: account_id is the UUID of the account.
+        reason:
+          type: string
+          title: reason
+          description: |-
+            reason says why, at most 256 characters, without control characters. The account sees it at its
+             sign-in, and the members of its suspended orgs see it. On a suspended account, the call keeps the
+             reason of the suspension.
+      title: SuspendAccountRequest
+      additionalProperties: false
+      description: SuspendAccountRequest names the account, and the reason of the suspension.
+    hopbox.admin.v1.SuspendAccountResponse:
+      type: object
+      properties:
+        account:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.Account'
+          title: account
+      title: SuspendAccountResponse
+      additionalProperties: false
+      description: SuspendAccountResponse holds the account after the change.
     hopbox.admin.v1.SuspendOrgRequest:
       type: object
       properties:
@@ -6038,6 +6326,26 @@ components:
       title: UncordonServerResponse
       additionalProperties: false
       description: UncordonServerResponse holds the server after the change.
+    hopbox.admin.v1.UnsuspendAccountRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          description: account_id is the UUID of the account.
+      title: UnsuspendAccountRequest
+      additionalProperties: false
+      description: UnsuspendAccountRequest names the account.
+    hopbox.admin.v1.UnsuspendAccountResponse:
+      type: object
+      properties:
+        account:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.Account'
+          title: account
+      title: UnsuspendAccountResponse
+      additionalProperties: false
+      description: UnsuspendAccountResponse holds the account after the change.
     hopbox.admin.v1.UnsuspendOrgRequest:
       type: object
       properties:
@@ -6323,8 +6631,8 @@ tags:
   - name: hopbox.admin.v1.AccountService
     description: |-
       AccountService lets an operator recover the sign-in of an account, for example after its
-       person lost the GitHub user that the account signs in with. It also deletes an account, for example
-       one that abused the install.
+       person lost the GitHub user that the account signs in with. It also lists the accounts, and
+       suspends or deletes an account, for example one that abused the install.
   - name: hopbox.admin.v1.AdminKeyService
     description: |-
       AdminKeyService manages the admin API keys. An admin API key has install scope and calls the

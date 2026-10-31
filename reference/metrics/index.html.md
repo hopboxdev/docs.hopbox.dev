@@ -2,7 +2,7 @@
 
 > The Prometheus metrics listener of hopboxd and every metric that it serves.
 
-`hopboxd` serves Prometheus metrics on a loopback listener. The code is in `internal/obs`, `internal/api`, `internal/placement`, `internal/node/executor`, `internal/node/netcfg`, `internal/mesh`, and `internal/dns`.
+`hopboxd` serves Prometheus metrics on a loopback listener. The code is in `internal/obs`, `internal/api`, `internal/audit`, `internal/service`, `internal/placement`, `internal/node/executor`, `internal/node/machines`, `internal/node/netcfg`, `internal/mesh`, and `internal/dns`.
 
 ## Listener
 
@@ -76,6 +76,78 @@ hopbox_placements_total{reason="",result="placed"} 4
 hopbox_placements_total{reason="ram",result="no_capacity"} 1
 ```
 
+## Metrics of the control role
+
+Each control process counts these events itself, so the sum over the control processes is the count of the install. A count starts from zero at each start of `hopboxd`.
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_audit_entries_total` | counter | `action`, `actor_kind` | The entries of the audit log that this control process wrote. An entry counts when its change commits. An entry of a change that rolled back does not count. |
+| `hopbox_rate_limited_total` | counter | `limit` | The requests that a rate limit refused ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#rate-limits), [Sign-in with GitHub and Google](/reference/oauth/index.html.md#rate-limits), [the org API](/reference/org-api/index.html.md)). |
+| `hopbox_limit_refusals_total` | counter | `limit` | The calls that an org limit refused ([Domain rules](/reference/domain-rules/index.html.md#usage-limits)). |
+| `hopbox_api_key_creations_total` | counter | `kind`, `lifetime` | The new API keys and admin keys ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md)). A second registration of the hash of an admin key does not count. |
+
+| Label | Values |
+| --- | --- |
+| `action` | The action of the audit entry, such as `org.create`, `api_key.create`, `machine.create`, or `machine.set_url_port` |
+| `actor_kind` | `anonymous`, `session`, `cli_token`, `member_key`, `org_key`, `admin_key`, `local_root`, `server`, `ssh_key`, `control`, or `system` |
+| `limit` of `hopbox_rate_limited_total` | `sign_in_links`: the sign-in links of an email or of a client. `device_sign_ins`: the device sign-ins of a client, and the device sign-ins that wait for an approval. `device_codes`: the wrong codes of the device approvals of an account. `oauth_starts`: the sign-ins with GitHub and Google of a client and of the install. `oauth_callbacks`: the callbacks of a client in one control process. `invitations`: the invitations of an org, of an account, and to an email. `machine_url_codes`: the machine URL codes of a browser. |
+| `limit` of `hopbox_limit_refusals_total` | `machines`, `vcpus`, `memory`, and `disk`: the usage limits of the org. `orgs`: the orgs that one account owns (`max_orgs_per_account`). |
+| `kind` | `member`, `org`, or `admin` |
+| `lifetime` | `30d`, `90d`, `365d`, or `custom` for a key with a custom expiry |
+
+Each value of `limit`, `kind`, and `lifetime` starts at 0, so the first refusal or key shows as an increase. A series of `hopbox_audit_entries_total` shows after its first entry.
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(audit_entries|rate_limited|limit_refusals|api_key_creations)_total'
+```
+
+```text
+hopbox_api_key_creations_total{kind="member",lifetime="90d"} 2
+hopbox_audit_entries_total{action="org.create",actor_kind="session"} 1
+hopbox_limit_refusals_total{limit="machines"} 1
+hopbox_rate_limited_total{limit="sign_in_links"} 3
+```
+
+## Metrics of the leader
+
+The leader of the control role reads these gauges from the control store every minute, and at the start of its jobs ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). It serves them until its jobs end, at the end of its term or in maintenance mode. A read takes at most 30 s. A read that fails keeps the values of the read before. After 3 failed reads in a row, the leader serves none of the gauges until a read works, so a dashboard shows a gap and not old values. Another control process serves none of them, so no value counts twice. The leader serves each value of the fixed label sets, so a count that falls to 0 shows as 0.
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_accounts` | gauge | `state`, `tier` | The accounts by state (`pending`, `active`, or `suspended`) and tier (`limited` or `full`). |
+| `hopbox_pending_account_oldest_seconds` | gauge | none | The age of the oldest `pending` account, or 0 without one. |
+| `hopbox_orgs` | gauge | `kind`, `suspended` | The orgs by kind (`personal` or `team`) and suspension (`true` or `false`). |
+| `hopbox_api_keys` | gauge | `kind` | The API keys that did not expire, by kind (`member`, `org`, or `admin`). |
+| `hopbox_public_machine_urls` | gauge | none | The machines with a public URL, apart from the deleted machines ([Run the edge role and open machine URLs](/guide/machine-urls/index.html.md)). |
+| `hopbox_machines` | gauge | `state` | The machines by current state ([Domain rules](/reference/domain-rules/index.html.md#machine-states)). A deleted machine counts as `deleted` until the sweep drops its row. |
+
+The registry gets the capacity of each server in its heartbeats ([the control channel](/reference/control-channel/index.html.md)). The leader serves the capacity and the allocations of each server with the node role that is not decommissioned, with the label `server`, the ID of the server. So one Prometheus on the control server sees the capacity of the whole fleet without a scrape of the nodes.
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_server_vcpus` | gauge | `server` | The vCPU capacity of the node: its CPU threads times the vCPU overcommit of 2 ([Placement](/reference/placement/index.html.md)). |
+| `hopbox_server_vcpus_allocated` | gauge | `server` | The vCPUs of the machines that use compute on the node, as placement counts them ([Placement](/reference/placement/index.html.md#what-a-node-uses)). |
+| `hopbox_server_memory_bytes` | gauge | `server` | The RAM of the node. |
+| `hopbox_server_memory_allocated_bytes` | gauge | `server` | The RAM of the machines that use compute on the node, as placement counts them. |
+| `hopbox_server_disk_bytes` | gauge | `server` | The size of the file system of the data dir of the node. |
+| `hopbox_server_disk_free_bytes` | gauge | `server` | The free space of that file system. |
+| `hopbox_server_disk_allocated_bytes` | gauge | `server` | The disk sizes of the machines on the node that are not deleted. A disk is sparse, so this sum can be larger than the disk of the node. |
+| `hopbox_server_machines` | gauge | `server`, `state` | The machines on the node by current state. |
+
+Each node has 16 series: one for each of the 7 capacity gauges, and 9 of `hopbox_server_machines`, one for each state. The leader also serves 6 series of `hopbox_accounts`, 4 of `hopbox_orgs`, 3 of `hopbox_api_keys`, and 9 of `hopbox_machines`.
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(accounts|server_vcpus)'
+```
+
+```text
+hopbox_accounts{state="active",tier="full"} 3
+hopbox_accounts{state="pending",tier="limited"} 1
+hopbox_server_vcpus{server="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b"} 24
+hopbox_server_vcpus_allocated{server="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b"} 4
+```
+
 ## Metrics of the DNS role
 
 A server with the DNS role adds these metrics to the listener of its `hopboxd run` ([the DNS role](/reference/dns/index.html.md#metrics)). A server without the DNS role does not have them.
@@ -116,6 +188,7 @@ A server with the edge role adds these metrics to the listener of its `hopboxd r
 | `hopbox_edge_connection_limit` | gauge | `listener` | The most connections that a listener of the edge role holds at once. |
 | `hopbox_edge_routes` | gauge | none | The machines that the machine URLs of the edge role name. |
 | `hopbox_edge_certificate_not_after_seconds` | gauge | none | The end of the certificate that the edge role serves, in seconds since the Unix epoch. It is 0 before the first certificate. |
+| `hopbox_edge_machine_requests_total` | counter | `visibility`, `status_class` | The HTTP requests that the edge role forwarded to a machine, by the visibility of the machine URL (`public` or `private`) and the class of the status of the answer (`1xx` to `5xx`). A forward that failed counts as `5xx`. Each of the 10 series starts at 0 ([the edge role](/reference/edge/index.html.md#metrics)). |
 | `hopbox_edge_ssh_connections_total` | counter | `result` | The TCP connections of the SSH front door, by result ([the SSH front door](/reference/ssh-front-door/index.html.md#metrics)). |
 | `hopbox_edge_ssh_auth_total` | counter | `result` | The keys that SSH clients signed with: `allowed`, `refused`, `limited`, or `error`. |
 | `hopbox_edge_ssh_unreachable_total` | counter | `reason` | The signed-in SSH connections that reached no OpenSSH server of a machine. |
@@ -151,6 +224,44 @@ The executors of a node count their actions ([the node executor](/reference/exec
 | `hopbox_executor_actions_total` | counter | `action`, `result` | The actions of the executors of the node. |
 | `hopbox_executor_action_duration_seconds` | histogram | `action` | The duration of the actions. |
 
+## Metrics of the machines
+
+A server with the node role serves what its running machines use. At each scrape, the node reads the cgroup of the unit `hopbox-machine-<id>.service` of each machine that runs ([the Firecracker driver](/reference/firecracker-driver/index.html.md)). The cgroup holds Firecracker and its threads, so the values include the VMM. The node totals come from the cgroup of the slice `hopbox-machines.slice`.
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_machine_info` | gauge | `machine`, `name`, `org`, `size`, `vcpus`, `memory_bytes`, `disk_bytes` | 1 for each machine that runs on the node. It is the only series that links a machine to its org, by org ID. A query joins it to the other series on `machine`. |
+| `hopbox_machine_cpu_seconds_total` | counter | `machine` | The CPU time of the machine since its boot, from `usage_usec` of `cpu.stat`. It starts from zero at each boot. |
+| `hopbox_machine_memory_bytes` | gauge | `machine` | The host RAM that the machine holds, from `memory.current`. |
+| `hopbox_machine_disk_bytes` | gauge | `machine` | The bytes of the blocks that the sparse disk file of the machine holds on the node. |
+| `hopbox_machines_cpu_seconds_total` | counter | none | The CPU time of every machine of the node, from `cpu.stat` of the slice. |
+| `hopbox_machines_memory_bytes` | gauge | none | The host RAM of every machine of the node, from `memory.current` of the slice. |
+
+| Label | Values |
+| --- | --- |
+| `machine` | The ID of the machine |
+| `name` | The name of the machine |
+| `org` | The ID of the org of the machine, or empty for a machine whose org is gone |
+| `size` | The name of the size of the machine, such as `default` |
+| `vcpus`, `memory_bytes`, `disk_bytes` | The vCPUs, the RAM in bytes, and the disk in bytes of the size |
+
+A machine that runs before its first spec after a restart of `hopboxd` has no `hopbox_machine_info` until the spec arrives. A read that fails leaves its series out of that scrape, and the other series stay. For example, a machine can stop between the list of the machines and the read of its cgroup. The slice has no cgroup before the first machine runs in it, so the node totals are absent then.
+
+Each running machine has 4 series in this section. A running machine with network also has 5 series in [Metrics of the node network](#metrics-of-the-node-network), and a machine without network has none of them. So a node with N running machines, each with network, serves 9 × N + 2 series of the machines. The catalog plans up to 15 series for each running machine with the metrics of later milestones.
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_machines?_(info|cpu|memory|disk_bytes)'
+```
+
+```text
+hopbox_machine_cpu_seconds_total{machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b"} 812.4
+hopbox_machine_disk_bytes{machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b"} 3.81e+09
+hopbox_machine_info{disk_bytes="100000000000",machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b",memory_bytes="8589934592",name="box1",org="0193a5b2-0000-7000-8000-000000000001",size="default",vcpus="2"} 1
+hopbox_machine_memory_bytes{machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b"} 2.15e+09
+hopbox_machines_cpu_seconds_total 812.4
+hopbox_machines_memory_bytes 2.15e+09
+```
+
 ## Metrics of the node network
 
 A server with the node role serves the traffic counters of each machine with network ([the node network](/reference/node-network/index.html.md#metrics)). The node reads them from the table `inet hopbox_node` at each scrape. They start from zero at each start of `hopboxd`.
@@ -161,6 +272,7 @@ A server with the node role serves the traffic counters of each machine with net
 | `hopbox_machine_inbound_packets_total` | counter | `machine` | Packets to the machine of connections that the node opened. |
 | `hopbox_machine_egress_bytes_total` | counter | `machine` | Bytes from the machine that the node let out. |
 | `hopbox_machine_egress_packets_total` | counter | `machine` | Packets from the machine that the node let out. |
+| `hopbox_machine_egress_connections_total` | counter | `machine` | Packets that opened an outbound connection of the machine that the node let out, retries included ([the node network](/reference/node-network/index.html.md#counters)). |
 | `hopbox_node_network_repairs_total` | counter | none | The installs of the table `inet hopbox_node` after it lost a part outside `hopboxd`, or after a check that got no answer within 10 s ([the node network](/reference/node-network/index.html.md#the-table-must-stay)). |
 
 ```sh
@@ -203,6 +315,38 @@ A node whose driver keeps its disks in files counts the bytes of the disks that 
 | Metric | Type | Labels | Description |
 | --- | --- | --- | --- |
 | `hopbox_disk_transfer_bytes_total` | counter | `direction` | The bytes of disk data of the pulls: `sent` to other nodes, and `received` from another node. |
+
+## node_exporter
+
+node_exporter serves the metrics of the host: CPU, RAM, file systems, disks, network, and pressure. hopbox does not run it. The operator installs the Debian 13 package `prometheus-node-exporter` on each server. The release bundle carries the arguments of node_exporter in `monitoring/node-exporter/prometheus-node-exporter`. They make node_exporter listen on `127.0.0.1:9100` only, as the metrics listener of `hopboxd` does. The default collectors of node_exporter give every host metric that the alerts read: `node_cpu_seconds_total`, `node_memory_MemAvailable_bytes`, `node_filesystem_avail_bytes`, `node_disk_*`, `node_network_*`, and `node_pressure_*`.
+
+To set up node_exporter on a server, run these commands as root:
+
+1. Install the package.
+
+   ```sh
+   apt-get install prometheus-node-exporter
+   ```
+
+2. Copy the arguments of the release over the file of the package.
+
+   ```sh
+   install -m 0644 /opt/hopbox/current/monitoring/node-exporter/prometheus-node-exporter /etc/default/prometheus-node-exporter
+   ```
+
+3. Restart node_exporter.
+
+   ```sh
+   systemctl restart prometheus-node-exporter
+   ```
+
+4. Make sure that node_exporter answers on loopback.
+
+   ```sh
+   curl -s http://127.0.0.1:9100/metrics | grep '^node_memory_MemAvailable_bytes'
+   ```
+
+The host firewall of hopbox blocks inbound traffic on port 9100 ([the host firewall](/reference/host-firewall/index.html.md)). An upgrade of `hopboxd` does not copy the file again, so run step 2 after an upgrade whose file is new.
 
 ## Metrics of the process
 

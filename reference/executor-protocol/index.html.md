@@ -123,6 +123,8 @@ The spec holds the env vars and the secrets of the machine. No part of hopbox lo
 | `env_unresolved` | bool | The env of the machine did not resolve. The spec then holds no env, and the executor pushes nothing to the guest with it. |
 | `move` | `MachineMove` | Set while the machine moves to this node: where the node pulls its disk ([Cold moves](#cold-moves)). Not set for any other machine. |
 | `give_back_move_id` | string | Set while an instance admin asks this node to give the machine back to the source node of a failed move ([Give-back](#give-back)). Empty otherwise. |
+| `org_id` | string | The ID of the org of the machine, or empty for a machine whose org is gone. The node puts it in the label `org` of `hopbox_machine_info` ([Metrics](/reference/metrics/index.html.md#metrics-of-the-machines)). |
+| `size` | string | The name of the size of the machine, such as `default`. The node puts it in the label `size` of `hopbox_machine_info`. |
 
 ### A machine whose env does not resolve
 

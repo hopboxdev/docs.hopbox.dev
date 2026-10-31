@@ -335,7 +335,7 @@ The stream follows the change events of the machines of the org ([Change events]
 
 Every 30 s, the stream checks two things again:
 
-- The credential of the caller. The end of the credential ends the stream with `unauthenticated` and the message `the credential of this stream ended. Sign in again: ...`. Examples are a sign-out of a session, the end of a CLI sign-in, the revoke of an API key, and an expiry. The stream also ends at the expiry of its credential, without a wait for the next check ([the API server](/reference/api/index.html.md#streams-and-their-credential)).
+- The credential of the caller. The end of the credential ends the stream with `unauthenticated` and the message `the credential of this stream ended. Sign in again: ...`. Examples are a sign-out of a session, the end of a CLI sign-in, the revoke of an API key, and an expiry. A suspend of the account ends its credentials too ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). The stream also ends at the expiry of its credential, without a wait for the next check ([the API server](/reference/api/index.html.md#streams-and-their-credential)).
 - The role of the caller in the org. A caller that left the org, or lost its access in another way, gets `permission_denied`, and the stream ends. After a change of role, the caller can lose the sight of a machine. An example is a private machine of another member, after an admin became a member. Such a machine arrives as `gone_machine_id`.
 
 The stream has no default deadline, so it runs until the client ends it, until its credential ends, or until the listener stops ([the API server](/reference/api/index.html.md#when-a-listener-stops)).
@@ -880,6 +880,8 @@ An instance admin can suspend an org ([the org API](/reference/org-api/index.htm
 
 The machine URLs of a suspended org are blocked too: the edge answers `403`, and `GET /auth/machine` gives no code ([the edge role](/reference/edge/index.html.md#routing)).
 
+The suspend of an account suspends its personal org and each org that it owns alone ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). In each other org, it sets the target `stopped` on the private machines of the account, and leaves a hibernated one hibernated. Such an org is not suspended, so the rules of the table do not apply there. A private machine stays stopped until its creator starts it again.
+
 Instance admins can stop and delete any machine of a suspended org through the admin API ([the admin API](/reference/admin-api/index.html.md#machineservice)). The auto-delete job of the leader skips the machines of a suspended org.
 
 ## Usage and limits
@@ -905,7 +907,7 @@ The machine calls write these entries in the transaction of the change. Their or
 | --- | --- | --- |
 | `machine.create` | `CreateMachine` | `size`, `image` (the digest), `shared` |
 | `machine.start` | `StartMachine` | `old_target`, `retry`, `boot_again` |
-| `machine.stop` | `StopMachine`, and `SuspendOrg` of the admin API for each machine that it stops | `old_target`, and `reason` (`org suspended`) for a stop of `SuspendOrg` |
+| `machine.stop` | `StopMachine`, and `SuspendOrg` and `SuspendAccount` of the admin API for each machine that they stop | `old_target`, and `reason` for a stop of the admin API. The reason is `org suspended` in an org that the call suspends, and `account suspended` for a private machine of the account in another org. |
 | `machine.reboot` | `RebootMachine` | none |
 | `machine.rename` | `RenameMachine` | `old_name`, `new_name` |
 | `machine.delete` | `DeleteMachine`, the calls of [What a member leaves behind](/reference/org-api/index.html.md#what-a-member-leaves-behind), and the auto-delete | `reason` for a delete by hopbox or by another call. It is `member left` (`LeaveOrg`, `RemoveOrgMember`, `DeleteAccount`), `org deleted` (`DeleteOrg`, `DeleteAccount` for the personal org), or `auto-delete`. The auto-delete adds `auto_delete_timeout` and `last_activity_at` (RFC 3339, UTC). |
