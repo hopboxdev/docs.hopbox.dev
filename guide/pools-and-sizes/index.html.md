@@ -64,8 +64,9 @@ A machine of the size `large` lands only on a node of `big` that has the label `
 
 ```text
 $ hopbox machine sizes
-NAME     VCPUS  MEMORY  DISK
-default  2      8 GiB   100 GB
+NAME     VCPUS  MEMORY  DISK    DEFAULT
+tiny     1      1 GiB   5 GB
+default  2      8 GiB   100 GB  yes
 large    8      32 GiB  200 GB
 ```
 

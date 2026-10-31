@@ -163,6 +163,7 @@ The spec carries no link key of the guest link. The node makes a new link key fo
 | `gateway` | string | The on-link gateway of the default route: `169.254.0.1`. |
 | `mtu` | uint32 | The MTU of the interface: `1420`. |
 | `nameservers` | repeated string | The DNS resolvers of the machine. The control role leaves it empty, and the executor then gives the guest the resolvers of its node ([the node network](/reference/node-network/index.html.md#the-resolvers-of-the-machines)). |
+| `outbound_smtp` | bool | `true` when the org of the machine has the override `outbound_smtp`. At each boot, the node then lets the machine reach TCP port 25, which it blocks for every other machine ([the node network](/reference/node-network/index.html.md#outbound-tcp-port-25)). A node of an older release blocks nothing and ignores the field. |
 
 Each value of `MachineState` is a state of [Domain rules](/reference/domain-rules/index.html.md#machine-states) with the prefix `MACHINE_STATE_`, such as `MACHINE_STATE_RUNNING`. `MACHINE_STATE_UNSPECIFIED` is no state.
 

@@ -213,7 +213,7 @@ An edge server without the node role and without a mesh device reaches no machin
 
 ## Private machine URLs
 
-The URL of each machine is private by default. Only an account that uses the machine opens it: its creator, and every member of its org once the creator shares it. An org admin cannot open the private URL of a private machine of another member, as with a shell. The rule is the policy action `machine.open_url` ([the API server](/reference/api/index.html.md)). The creator makes the URL public with `SetMachineURLVisibility` ([the machine API](/reference/machine-api/index.html.md)). A public URL needs no sign-in.
+The URL of each machine is private by default. Only an account that uses the machine opens it: its creator, and every member of its org once the creator shares it. An org admin cannot open the private URL of a private machine of another member, as with a shell. The rule is the policy action `machine.open_url` ([the API server](/reference/api/index.html.md)). The creator makes the URL public with `SetMachineURLVisibility` ([the machine API](/reference/machine-api/index.html.md#setmachineurlvisibility)), if the limit `public_urls` of the org allows it. The personal org of a limited account does not allow it ([the org API](/reference/org-api/index.html.md#usage-limits)). A public URL needs no sign-in.
 
 The sign-in of a private URL takes these steps. The machine is `box1`.
 

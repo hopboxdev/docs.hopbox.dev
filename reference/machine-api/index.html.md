@@ -216,7 +216,7 @@ The request `CreateMachineRequest` has these fields:
 | --- | --- | --- | --- |
 | `org_id` | optional string | the default org of the caller | The org of the machine ([The org of a request](#the-org-of-a-request)). |
 | `name` | string | a free name: `box1`, `box2`, and so on | The name of the machine ([Domain rules](/reference/domain-rules/index.html.md#machine-names)). |
-| `size` | string | `default` | The name of a size. |
+| `size` | string | `tiny` in the personal org of a limited account, else `default` | The name of a size. [ListMachineSizes](#listmachinesizes) gives the default of an org in `default_size`. |
 | `image` | string | `default` | The name of an image. The machine takes the newest image of that name ([the admin API](/reference/admin-api/index.html.md#registerimage)). |
 | `restart_policy` | `RestartPolicy` | `RESTART_POLICY_ALWAYS` | The restart policy. |
 | `start_command` | string | empty | A command that the guest agent runs after each boot ([Domain rules](/reference/domain-rules/index.html.md#start-command)). |
@@ -228,7 +228,7 @@ The call takes these steps in one transaction:
 
 1. It takes the key lock of the account of the caller, then locks the org row with `FOR NO KEY UPDATE` ([Control store tables](/reference/control-store/index.html.md#orgs)). So the creates and starts of one org run one after the other, and each limit check counts the one before it.
 2. It checks the policy again under the lock, then the suspension of the org.
-3. It reads the size with a share lock on its row, and the newest image of the name. A retired size fails. The lock makes a retirement of the size wait for the create, and the create wait for a retirement in progress ([the admin API](/reference/admin-api/index.html.md#retiresize)).
+3. A request without a size takes the default size of the org: `tiny` in the personal org of a limited account, else `default`. It reads the size with a share lock on its row, and the newest image of the name. A retired size fails. The lock makes a retirement of the size wait for the create, and the create wait for a retirement in progress ([the admin API](/reference/admin-api/index.html.md#retiresize)).
 4. It checks the usage limits of the org with the new machine: `limits.Check(usage.AfterCreate(size))` ([Domain rules](/reference/domain-rules/index.html.md#usage-limits)).
 5. It claims the name. A request without a name gets the first free name of a list: `box1` to `box9`, then 3 names with a random suffix, such as `box-k3x9q` ([Domain rules](/reference/domain-rules/index.html.md#machine-name-suggestions)). A free name has no machine and no reservation of another org.
 6. It claims a random free SSH port from 10000 to 30000. A free port has no machine and no reservation ([Domain rules](/reference/domain-rules/index.html.md#ssh-ports)).
@@ -248,7 +248,7 @@ A create that fails at any step leaves nothing behind: no machine, no name, no p
 | The org was deleted after the policy check: `not found: the org <id> was deleted` | `not_found` |
 | A suspended org: `failed precondition: org suspended: an instance admin suspended the org, so it cannot create a machine` | `failed_precondition` |
 | No image has the name: `failed precondition: the install has no image "<image>". An instance admin registers one with hopboxd admin image register` | `failed_precondition` |
-| The org is at a limit, for example `usage limit exceeded: the org would have 4 machines, and its limit is 3` | `resource_exhausted` |
+| The org is at a limit, for example `usage limit exceeded: the org would have 4 machines, and its limit is 3`. The refusal counts in `hopbox_limit_refusals_total` with the first limit that it breaks ([Metrics](/reference/metrics/index.html.md#metrics-of-the-accounts)). | `resource_exhausted` |
 | The name is taken, by a live machine or by a reservation of another org: `already exists: the machine name "box1" is taken. A free name is "box2"`. Without a free suggestion, the message ends with `Pick another name`. | `already_exists` |
 | No name of the list is free for a create without a name: `already exists: hopbox found no free name for the machine. Give it a name` | `already_exists` |
 | No node has room ([Placement](/reference/placement/index.html.md#when-no-node-has-room)), for example `no capacity: no node has room for a machine of size default (2 vCPUs, 8 GiB of RAM). The install has no node yet` | `unavailable` |
@@ -359,14 +359,21 @@ Lists the sizes that a machine can have, smallest first: by vCPUs, then RAM, the
 | Idempotent option | no |
 | Audit entry | none |
 
-The request `ListMachineSizesRequest` has no fields. The response `ListMachineSizesResponse` has the field `sizes`, a repeated `MachineSize`. An instance admin adds and retires sizes with the admin API ([the admin API](/reference/admin-api/index.html.md#sizeservice)). A user picks a size, never a pool: the pool and the labels of an operator size stay with the instance admin.
+The request `ListMachineSizesRequest` has the field `org_id`, an optional string: the org whose default size the response gives ([The org of a request](#the-org-of-a-request)). The caller needs a role in that org, as for `GetOrg`. The response `ListMachineSizesResponse` has these fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `sizes` | repeated `MachineSize` | The sizes of the install. |
+| `default_size` | string | The name of the size of a create without a size in the org: `tiny` in the personal org of a limited account, else `default` ([CreateMachine](#createmachine)). |
+
+An instance admin adds and retires sizes with the admin API ([the admin API](/reference/admin-api/index.html.md#sizeservice)). A user picks a size, never a pool: the pool and the labels of an operator size stay with the instance admin.
 
 ```sh
 browser -d '{}' $API/hopbox.v1.MachineService/ListMachineSizes
 ```
 
 ```json
-{"sizes":[{"name":"default","vcpus":2,"memoryBytes":"8589934592","diskBytes":"100000000000"}]}
+{"sizes":[{"name":"tiny","vcpus":1,"memoryBytes":"1073741824","diskBytes":"5000000000"},{"name":"default","vcpus":2,"memoryBytes":"8589934592","diskBytes":"100000000000"}],"defaultSize":"default"}
 ```
 
 ## Lifecycle
@@ -866,6 +873,8 @@ A public URL needs no sign-in at the edge. A private URL sends a browser without
 
 The response `SetMachineURLVisibilityResponse` has the field `machine`. `URL_VISIBILITY_UNSPECIFIED` or an unknown value gets `invalid_argument` with the message `invalid argument: the URL visibility must be private or public`. On a machine whose target is `deleted`, the error is the one of `SetMachineURLPort`.
 
+A change to public needs the limit `public_urls` of the org ([the org API](/reference/org-api/index.html.md#usage-limits)). The personal org of a limited account has `public_urls` `false`, unless an instance admin set an override. Such a change fails with `permission_denied` and the message `permission denied: the org cannot make a machine URL public. Ask an instance admin to allow public URLs for the org`, and counts in `hopbox_limit_refusals_total` with the limit `public_urls`. A URL that is public already stays public, and a change to private always works.
+
 ## Suspension
 
 An instance admin can suspend an org ([the org API](/reference/org-api/index.html.md#suspension)). The suspension stops the machines of the org, and leaves a hibernated machine hibernated. The rule of each lifecycle action comes from `Action.CheckSuspended()` ([Domain rules](/reference/domain-rules/index.html.md#org-suspension)):
@@ -893,7 +902,7 @@ A machine counts in the usage of its org ([the org API](/reference/org-api/index
 | Machines and disk | every machine whose target is not `deleted` |
 | vCPUs and RAM | the machines whose target is `running` or `standby` |
 
-`CreateMachine` and the start of a stopped machine check the limits under the lock of the org row. The other calls do not add to the usage, so they take only a shared lock of the org row ([Control store tables](/reference/control-store/index.html.md#orgs)).
+`CreateMachine` and the start of a stopped machine check the limits under the lock of the org row. The other calls do not add to the usage, so they take only a shared lock of the org row ([Control store tables](/reference/control-store/index.html.md#orgs)). The limits that apply follow the tier of the org: the personal org of a limited account takes the limited defaults, and every other org the first defaults ([the org API](/reference/org-api/index.html.md#usage-limits)).
 
 ## Auto-delete
 

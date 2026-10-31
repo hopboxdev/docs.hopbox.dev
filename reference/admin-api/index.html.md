@@ -21,7 +21,7 @@ The admin API has these services:
 | `hopbox.admin.v1.MailService` | `ListMailFiles`, `GetMailFile` |
 | `hopbox.admin.v1.LoginLinkService` | `CreateLoginLink` |
 | `hopbox.admin.v1.InstanceAdminService` | `ListInstanceAdmins`, `GrantInstanceAdmin`, `RevokeInstanceAdmin`, `ListAdminNotices`, `DismissAdminNotices` |
-| `hopbox.admin.v1.AccountService` | `ListAccountSignInMethods`, `RemoveAccountSignInMethod`, `DeleteAccount`, `ListAccounts`, `SuspendAccount`, `UnsuspendAccount`, `ApproveAccount`, `RejectAccount`, `ListSignUpBlocks`, `BlockSignUp`, `UnblockSignUp` |
+| `hopbox.admin.v1.AccountService` | `ListAccountSignInMethods`, `RemoveAccountSignInMethod`, `DeleteAccount`, `ListAccounts`, `SuspendAccount`, `UnsuspendAccount`, `ApproveAccount`, `RejectAccount`, `SetAccountTier`, `ListSignUpBlocks`, `BlockSignUp`, `UnblockSignUp` |
 | `hopbox.admin.v1.ServerService` | `CreateEnrollmentToken`, `ListServers`, `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DecommissionServer`, `DrainServer`, `CancelDrain`, `ListControlProcesses` |
 | `hopbox.admin.v1.PoolService` | `CreatePool`, `GetPool`, `ListPools`, `DeletePool` |
 | `hopbox.admin.v1.SizeService` | `CreateSize`, `GetSize`, `ListSizes`, `RetireSize` |
@@ -44,7 +44,7 @@ An admin session can make these calls, and no other call of the admin API:
 | `hopbox.admin.v1.ServerService` | `ListServers`, `GetServer`, `CordonServer`, `UncordonServer`, `SetServerLabels`, `DrainServer` (only of a server that hosts no control process), `CancelDrain` |
 | `hopbox.admin.v1.PoolService` | `CreatePool`, `GetPool`, `ListPools`, `DeletePool` |
 | `hopbox.admin.v1.SizeService` | `CreateSize`, `GetSize`, `ListSizes`, `RetireSize` |
-| `hopbox.admin.v1.AccountService` | `ListAccounts`, `SuspendAccount`, `UnsuspendAccount`, `ApproveAccount`, `RejectAccount`, `ListSignUpBlocks`, `BlockSignUp`, `UnblockSignUp` |
+| `hopbox.admin.v1.AccountService` | `ListAccounts`, `SuspendAccount`, `UnsuspendAccount`, `ApproveAccount`, `RejectAccount`, `SetAccountTier`, `ListSignUpBlocks`, `BlockSignUp`, `UnblockSignUp` |
 | `hopbox.admin.v1.OrgService` | `ListOrgs`, `SuspendOrg`, `UnsuspendOrg`, `SetOrgLimits`, `GetDefaultOrgLimits`, `SetDefaultOrgLimits` |
 | `hopbox.admin.v1.MachineService` | `ListMachines`, `StopMachine`, `DeleteMachine` |
 | `hopbox.admin.v1.ImageService` | `ListImages` |
@@ -157,7 +157,7 @@ The enum `SignUpMode` has these values:
 | Value | Number | Meaning |
 | --- | --- | --- |
 | `SIGN_UP_MODE_UNSPECIFIED` | 0 | Never in a response. A request must not use it. |
-| `SIGN_UP_MODE_OPEN` | 1 | The first sign-in of a new person makes an active account of the tier `limited`. |
+| `SIGN_UP_MODE_OPEN` | 1 | The first sign-in of a new person makes an active account of the tier `limited` ([the org API](/reference/org-api/index.html.md#usage-limits)). |
 | `SIGN_UP_MODE_APPROVAL` | 2 | The first sign-in of a new person makes a pending account, which an instance admin approves or rejects ([ApproveAccount](#approveaccount), [RejectAccount](#rejectaccount)). |
 
 The enum `MailTransport` has these values:
@@ -1014,7 +1014,7 @@ The message `Account` is an account as an instance admin sees it:
 | `display_name` | string | The display name of the account, or empty. |
 | `emails` | repeated `AccountEmail` | Each email of the account. `email` is the address, in lower case. `verified` is `true` for an email that a sign-in method proved. |
 | `state` | `AccountState` | `ACCOUNT_STATE_PENDING`, `ACCOUNT_STATE_ACTIVE`, or `ACCOUNT_STATE_SUSPENDED`. |
-| `tier` | `AccountTier` | `ACCOUNT_TIER_LIMITED` or `ACCOUNT_TIER_FULL`. A suspension keeps it. A pending account is limited until the approve. No limit depends on the tier yet. |
+| `tier` | `AccountTier` | `ACCOUNT_TIER_LIMITED` or `ACCOUNT_TIER_FULL`. A suspension keeps it. A pending account is limited until the approve. The tier sets the default limits of the personal org of the account, and whether the account creates orgs ([the org API](/reference/org-api/index.html.md#usage-limits)). [SetAccountTier](#setaccounttier) changes it. |
 | `instance_admin` | bool | `true` for an instance admin. |
 | `personal_org_id` | string | The UUID of the personal org of the account. |
 | `suspend_time` | `google.protobuf.Timestamp` | The start of the suspension. Unset for an account that is not suspended. |
@@ -1172,6 +1172,36 @@ You get this email because you signed up on example.com.
 | The ID is not a UUID, or the tier is unknown | `invalid_argument` |
 | No account has the ID: `not found: no account has the ID <id>` | `not_found` |
 | The account is not pending: `failed precondition: the account is active, not pending` | `failed_precondition` |
+| The tier is `ACCOUNT_TIER_LIMITED`, and a control process of an older release is live: `failed precondition: the control process <id> knows the migrations up to <n>, and only a hopboxd that knows migration 63 applies the limits of the tier limited. Upgrade it first` | `failed_precondition` |
+
+### SetAccountTier
+
+Moves an active or a suspended account to the tier `limited` or `full`. The tier sets the default limits of the personal org of the account, and whether the account creates orgs ([the org API](/reference/org-api/index.html.md#usage-limits)). A move keeps what the account has: its machines, its orgs, and its public URLs. The limits refuse only what comes after it. A pending account takes its tier from [ApproveAccount](#approveaccount). `hopboxd admin account set-tier` calls it ([hopboxd](/reference/hopboxd/index.html.md#admin-account-set-tier)).
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.AccountService/SetAccountTier` |
+| Policy action | `admin_account.set_tier`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no. A second call with the same tier changes nothing, and the row version stays. |
+| Audit entry | action `admin_account.set_tier`, org the personal org of the account, target kind `account`, details `tier`, `old_tier`, and `already` (`true` when the account had the tier already) |
+
+The request `SetAccountTierRequest` has these fields:
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `account_id` | string | none, required | The UUID of the account. |
+| `tier` | `AccountTier` | none, required | `ACCOUNT_TIER_LIMITED` or `ACCOUNT_TIER_FULL`. |
+| `expected_version` | optional int64 | none | The `version` of the account that the caller read. If the account has another version now, the call fails with `aborted` and changes nothing. |
+
+The response `SetAccountTierResponse` has the field `account`, the [Account](#account) after the change. The call locks the row of the account, then the row of its personal org. A create or a start of a machine in that org holds the lock of the org while it checks the limits, so it sees the tier before or after the move, never a mix.
+
+| Error | Code |
+| --- | --- |
+| The ID is not a UUID, or the tier is unspecified or unknown | `invalid_argument` |
+| No account has the ID: `not found: no account has the ID <id>` | `not_found` |
+| The account is pending: `failed precondition: the account waits for approval. Approve it with a tier instead` | `failed_precondition` |
+| The tier is `ACCOUNT_TIER_LIMITED`, and a control process of an older release is live: `failed precondition: the control process <id> knows the migrations up to <n>, and only a hopboxd that knows migration 63 applies the limits of the tier limited. Upgrade it first` | `failed_precondition` |
+| `expected_version` differs from the version of the account | `aborted` |
 
 ### RejectAccount
 
@@ -1919,11 +1949,11 @@ sudo curl -s --unix-socket /run/hopbox/admin.sock \
 
 ## SizeService
 
-`hopbox.admin.v1.SizeService` manages the sizes of machines. A fresh install has only the size `default` ([Domain rules](/reference/domain-rules/index.html.md#sizes)). An instance admin adds bigger sizes with this service. A user picks a size at the create of a machine, and never a pool ([the machine API](/reference/machine-api/index.html.md#createmachine)). The sizes live in the table `sizes` ([Control store tables](/reference/control-store/index.html.md#sizes)).
+`hopbox.admin.v1.SizeService` manages the sizes of machines. A fresh install has the sizes `default` and `tiny` ([Domain rules](/reference/domain-rules/index.html.md#sizes)). `tiny` is the size of a create without a size in the personal org of a limited account ([the machine API](/reference/machine-api/index.html.md#createmachine)). An instance admin adds bigger sizes with this service. A user picks a size at the create of a machine, and never a pool ([the machine API](/reference/machine-api/index.html.md#createmachine)). The sizes live in the table `sizes` ([Control store tables](/reference/control-store/index.html.md#sizes)).
 
 A size can name a pool and labels. They become the placement filters 4 and 5 of each machine of the size ([Placement](/reference/placement/index.html.md#hard-filters)), so its machines land only on the nodes of that pool that have each label (plan question Q60). A size that names no pool takes any pool.
 
-A size never changes. A machine copies the vCPUs, the RAM, and the disk of its size at its create. To change a size, add a size with a new name and retire the old one. A retired size takes no new machine. Its machines keep it, and its name stays taken, because the machines name it. The size `default` cannot retire, because a create without a size takes it.
+A size never changes. A machine copies the vCPUs, the RAM, and the disk of its size at its create. To change a size, add a size with a new name and retire the old one. A retired size takes no new machine. Its machines keep it, and its name stays taken, because the machines name it. The sizes `default` and `tiny` cannot retire, because a create without a size takes them.
 
 The message `Size` holds one size:
 
@@ -2015,6 +2045,7 @@ The request `RetireSizeRequest` has the field `name`, the name of the size. The 
 | `already_exists` with `already exists: a size is named "<name>" already. A retired size keeps its name, so pick a new name` | `CreateSize` with the name of a size, also of a retired one. |
 | `not_found` with `not found: no size is named "<name>"` | `GetSize` or `RetireSize` of an unknown name. |
 | `failed_precondition` with `failed precondition: the size default stays, because a create without a size takes it` | `RetireSize` of the size `default`. |
+| `failed_precondition` with `failed precondition: the size tiny stays, because a create without a size in the personal org of a limited account takes it` | `RetireSize` of the size `tiny`. |
 
 Example:
 
@@ -2036,17 +2067,23 @@ The message `Org` holds the metadata of one org:
 | `id` | string | The UUID of the org. |
 | `name` | string | The name of the org. |
 | `personal_account_id` | string | The UUID of the account of a personal org, or empty for another org. |
+| `tier` | `AccountTier` | The tier of the account of a personal org, and `ACCOUNT_TIER_FULL` for another org. The default limits of the org follow it. |
 | `member_count` | int64 | The number of members. |
 | `suspended` | bool | `true` while the org is suspended. |
 | `suspend_time` | `google.protobuf.Timestamp` | The start of the suspension. Unset for an org that is not suspended. |
 | `suspend_reason` | string | The reason of the suspension, or empty. |
-| `limits` | `OrgLimits` | The limits that apply: each override, else the default of the install. |
+| `limits` | `OrgLimits` | The limits that apply: each override, else the default of the install for the tier of the org. |
 | `limit_overrides` | `OrgLimitOverrides` | The limits of this org that replace the defaults. |
 | `usage` | `OrgUsage` | What the org uses now. |
 | `version` | int64 | The version of the org ([the org API](/reference/org-api/index.html.md#org)). |
 | `create_time` | `google.protobuf.Timestamp` | The creation time of the org. |
 
-`OrgLimits` and `OrgUsage` have the fields `machines` (int32), `vcpus` (int32), `memory_bytes` (int64), and `disk_bytes` (int64), as in [the org API](/reference/org-api/index.html.md#orglimits-and-orgusage). `OrgLimitOverrides` has the same fields, each one `optional`. A field that is not set takes the default of the install. A limit of 0 allows nothing.
+`OrgLimits` and `OrgUsage` have the fields `machines` (int32), `vcpus` (int32), `memory_bytes` (int64), and `disk_bytes` (int64), as in [the org API](/reference/org-api/index.html.md#orglimits-and-orgusage). `OrgLimits` also has the bools `public_urls` and `outbound_smtp`. `OrgLimitOverrides` has the fields of `OrgLimits`, each one `optional`. A field that is not set takes the default of the install for the tier of the org. A limit of 0 allows nothing.
+
+| `OrgLimits` field | Description |
+| --- | --- |
+| `public_urls` | `true` when a creator can make a machine URL of the org public ([the edge role](/reference/edge/index.html.md#private-machine-urls)). The default is `true` for an org, and `false` for the personal org of a limited account. |
+| `outbound_smtp` | `true` when the machines of the org reach TCP port 25 ([the node network](/reference/node-network/index.html.md#outbound-tcp-port-25)). No default opens it. Only the override of one org does. Each machine takes a change at its next start or reboot. |
 
 ### ListOrgs
 
@@ -2104,14 +2141,14 @@ The request `UnsuspendOrgRequest` has the field `org_id`. The response `Unsuspen
 
 ### SetOrgLimits
 
-Replaces the limit overrides of one org. A limit that the request leaves out takes the default of the install. So a request without overrides puts the org back on the defaults. A new limit below the usage of the org stops nothing. The org then creates and starts no more machines until its usage fits.
+Replaces the limit overrides of one org. A limit that the request leaves out takes the default of the install for the tier of the org. So a request without overrides puts the org back on the defaults. A new limit below the usage of the org stops nothing. The org then creates and starts no more machines until its usage fits. Likewise, `public_urls` set to `false` keeps each URL that is public already. It refuses only a new public URL. `outbound_smtp` takes effect at the next start or reboot of each machine of the org. A machine that runs keeps the port of its boot ([the node network](/reference/node-network/index.html.md#outbound-tcp-port-25)).
 
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.admin.v1.OrgService/SetOrgLimits` |
 | Policy action | `org.set_limits`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call sets the same overrides again. |
-| Audit entry | action `org.set_limits`, org the org, target kind `org`. The details are `machines`, `vcpus`, `memory_bytes`, and `disk_bytes`, then the same keys with the prefix `old_`. Each value is a number, or `default` for a limit without an override. |
+| Audit entry | action `org.set_limits`, org the org, target kind `org`. The details are `machines`, `vcpus`, `memory_bytes`, `disk_bytes`, `public_urls`, and `outbound_smtp`, then the same keys with the prefix `old_`. Each value is a number, `true`, `false`, or `default` for a limit without an override. |
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -2136,8 +2173,9 @@ The request `GetDefaultOrgLimitsRequest` has no fields. The response `GetDefault
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `limits` | `OrgLimits` | The default limits. A fresh install has 3 machines, 6 vCPUs, 24 GiB of RAM, and 300 GB of disk. |
-| `max_orgs_per_account` | int32 | The most orgs that one account owns besides its personal org ([the org API](/reference/org-api/index.html.md#createorg)). The default is 10. |
+| `limits` | `OrgLimits` | The default limits of each org, apart from the personal org of a limited account. A fresh install has 3 machines, 6 vCPUs, 24 GiB of RAM, 300 GB of disk, and `public_urls` `true`. |
+| `limited_limits` | `OrgLimits` | The default limits of the personal org of a limited account. A fresh install has 1 machine, 1 vCPU, 1 GiB of RAM, 5 GB of disk, and `public_urls` `false`. |
+| `max_orgs_per_account` | int32 | The most orgs that a full account owns besides its personal org ([the org API](/reference/org-api/index.html.md#createorg)). A limited account owns none. The default is 3 on a fresh install. Migration 0063 keeps the value of an install that has accounts, which is 10 from before. |
 | `version` | int64 | The version of the whole install config ([GetInstallConfig](#getinstallconfig)). |
 | `update_time` | `google.protobuf.Timestamp` | The time of the last change of the install config. |
 
@@ -2150,7 +2188,7 @@ Changes the limits of every org without an override, and returns them. A limit t
 | Procedure | `/hopbox.admin.v1.OrgService/SetDefaultOrgLimits` |
 | Policy action | `org_limits.set_defaults`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
-| Audit entry | action `org_limits.set_defaults`, no target. The details are the new limits and the old ones, as for `SetOrgLimits`, with `max_orgs_per_account` and `old_max_orgs_per_account`. |
+| Audit entry | action `org_limits.set_defaults`, no target. The details are the new limits and the old ones, as for `SetOrgLimits` without `outbound_smtp`, with `max_orgs_per_account` and `old_max_orgs_per_account`. The limits of the personal org of a limited account follow, with the prefixes `limited_` and `old_limited_`. |
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -2158,18 +2196,26 @@ Changes the limits of every org without an override, and returns them. A limit t
 | `vcpus` | optional int32 | The most vCPUs of an org, 0 or more. |
 | `memory_bytes` | optional int64 | The most RAM of an org, in bytes, 0 or more. |
 | `disk_bytes` | optional int64 | The most disk of an org, in bytes, 0 or more. |
-| `max_orgs_per_account` | optional int32 | The most orgs that one account owns besides its personal org, 0 or more. A lower value deletes no org. It only refuses new orgs above it. |
+| `max_orgs_per_account` | optional int32 | The most orgs that a full account owns besides its personal org, 0 or more. A lower value deletes no org. It only refuses new orgs above it. |
+| `public_urls` | optional bool | Whether an org can make a machine URL public. |
+| `limited` | `OrgLimitOverrides` | The limits of the personal org of a limited account to change. A field that it leaves out keeps its value. Its `outbound_smtp` must stay unset. |
 | `expected_version` | optional int64 | The `version` of the install config that the caller read. If the install config has another version now, the call fails with `aborted` and changes nothing. |
 
-A request that sets no limit gets `invalid_argument` with the message `invalid argument: the update sets no limit`. The response `SetDefaultOrgLimitsResponse` has the field `defaults`.
+A request that sets no limit gets `invalid_argument` with the message `invalid argument: the update sets no limit`. A request with `limited.outbound_smtp` gets `invalid_argument` with the message `invalid argument: no default opens outbound TCP port 25. Open it for one org with SetOrgLimits`. The response `SetDefaultOrgLimitsResponse` has the field `defaults`.
 
 ```text
-$ sudo hopboxd admin org default-limits set --machines 5
+$ sudo hopboxd admin org default-limits set --machines 5 --limited-disk-gb 10
 machines	5
 vcpus	6
 memory_bytes	25769803776
 disk_bytes	300000000000
-max_orgs_per_account	10
+public_urls	true
+limited_machines	1
+limited_vcpus	1
+limited_memory_bytes	1073741824
+limited_disk_bytes	10000000000
+limited_public_urls	false
+max_orgs_per_account	3
 version	4
 update_time	2026-10-16T15:50:02Z
 ```

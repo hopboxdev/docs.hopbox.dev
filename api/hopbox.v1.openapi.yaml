@@ -3717,9 +3717,16 @@ components:
       description: ListInvitationsResponse lists the open invitations.
     hopbox.v1.ListMachineSizesRequest:
       type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the org. Leave it out for the org of an API key, or the personal org.
       title: ListMachineSizesRequest
       additionalProperties: false
-      description: ListMachineSizesRequest has no fields.
+      description: ListMachineSizesRequest names the org whose default size the response gives.
     hopbox.v1.ListMachineSizesResponse:
       type: object
       properties:
@@ -3729,6 +3736,12 @@ components:
             $ref: '#/components/schemas/hopbox.v1.MachineSize'
           title: sizes
           description: sizes are the sizes, smallest first.
+        defaultSize:
+          type: string
+          title: default_size
+          description: |-
+            default_size is the name of the size of a create without a size in the org: tiny in the personal org of a
+             limited account, else default.
       title: ListMachineSizesResponse
       additionalProperties: false
       description: ListMachineSizesResponse holds the sizes of the install.
@@ -4139,6 +4152,18 @@ components:
           title: disk_bytes
           format: int64
           description: disk_bytes is the most disk of all machines together, in bytes.
+        publicUrls:
+          type: boolean
+          title: public_urls
+          description: |-
+            public_urls is true when a creator can make a machine URL of the org public. It is false for the personal
+             org of a limited account.
+        outboundSmtp:
+          type: boolean
+          title: outbound_smtp
+          description: |-
+            outbound_smtp is true when the machines of the org reach TCP port 25. Only an instance admin opens it, for
+             one org.
       title: OrgLimits
       additionalProperties: false
       description: OrgLimits are the usage limits of an org. A limit of 0 allows nothing.

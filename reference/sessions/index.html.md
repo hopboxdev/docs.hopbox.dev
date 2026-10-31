@@ -204,7 +204,7 @@ The install setting `sign_up_mode` gives the state and the tier of the account t
 | Mode | The new account |
 | --- | --- |
 | `approval` | The state `pending` and the tier `limited`, with its personal org. An instance admin approves or rejects it ([Pending accounts](#pending-accounts)). This is the default of a new install. Migration `0062` also sets it on an install that exists. |
-| `open` | The state `active` and the tier `limited`. No limit depends on the tier yet. |
+| `open` | The state `active` and the tier `limited`. Its personal org gets the limits of the tier: 1 machine of the size `tiny`, and no public URL. It creates no org ([the org API](/reference/org-api/index.html.md#usage-limits)). |
 
 These sign-ins ignore the mode and the limits of new accounts:
 
@@ -225,6 +225,7 @@ A first sign-in of a new person runs these checks in this order, in the transact
 | The client address made 3 accounts in the last 24 hours. | `too many requests: this client address made the most new accounts of a day. Retry tomorrow` | `resource_exhausted`, or `429` at the callback |
 | In the mode `approval` only: the install holds 50 pending accounts. | `too many requests: this install takes no new accounts now. Retry later` | `resource_exhausted`, or `429` at the callback |
 | In the mode `approval` only: a live control process has a schema version below 62 (`service.SignUpSchema`). Such a release lets a pending account act. | `unavailable: the install upgrades now, so it takes no new accounts. Retry later` | `unavailable`, or `503` with `Retry-After: 30` at the callback |
+| In the mode `open` only: a live control process has a schema version below 63 (`service.LimitedTierSchema`). Such a release gives a limited account the limits of every org. | `unavailable: the install upgrades now, so it takes no new accounts. Retry later` | `unavailable`, or `503` with `Retry-After: 30` at the callback |
 
 The limit of a client counts the rows of `account_sign_ups` of the last 24 hours. A client is one IPv4 address, or one IPv6 /64, as for the rate limits of links ([Rate limits](#rate-limits)). A loopback address and an empty address have no limit. The rows of a rejected or a deleted account still count. The leader deletes such a row one day after the sign-up ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). A login link writes no row, so it does not count.
 

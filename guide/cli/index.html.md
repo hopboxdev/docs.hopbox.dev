@@ -37,7 +37,7 @@ role     owner
 
 ## Work in an org
 
-Each command acts in one org. Until you pick one, that is your personal org. Make an org for a team, and make it the active org of the profile:
+Each command acts in one org. Until you pick one, that is your personal org. Make an org for a team, and make it the active org of the profile. A limited account creates no org: an instance admin first moves it to the tier full ([the org API](/reference/org-api/index.html.md#usage-limits)).
 
 ```sh
 hopbox org create org1 --use
@@ -65,11 +65,13 @@ hopbox org invite user2@example.org --role admin
 ```
 
 ```text
-RESOURCE  USED   LIMIT
-machines  0      3
-vcpus     0      6
-memory    0 GiB  24 GiB
-disk      0 GB   300 GB
+RESOURCE       USED   LIMIT
+machines       0      3
+vcpus          0      6
+memory         0 GiB  24 GiB
+disk           0 GB   300 GB
+public urls           yes
+outbound smtp         no
 https://example.com/invite#token=<token>
 The link invites user2@example.org as admin until 2026-10-24T15:30:51Z. It is a secret until then. The install sent no email, so pass the link on yourself.
 ```

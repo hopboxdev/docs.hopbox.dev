@@ -328,6 +328,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.RemoveAccountSignInMethodResponse'
+  /hopbox.admin.v1.AccountService/SetAccountTier:
+    post:
+      tags:
+        - hopbox.admin.v1.AccountService
+      summary: SetAccountTier
+      description: |-
+        SetAccountTier moves an active or a suspended account to the tier limited or full. The tier decides the
+         limits of its personal org, and whether it creates orgs. A move keeps what the account has. A pending
+         account fails with FAILED_PRECONDITION: approve it with a tier instead.
+      operationId: hopbox.admin.v1.AccountService.SetAccountTier
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.SetAccountTierRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.SetAccountTierResponse'
   /hopbox.admin.v1.AccountService/SuspendAccount:
     post:
       tags:
@@ -4100,6 +4142,16 @@ components:
           allOf:
             - $ref: '#/components/schemas/hopbox.admin.v1.OrgLimits'
           title: limits
+          description: |-
+            limits are the limits of each org, apart from the personal org of a limited account.
+             Their outbound_smtp is always false.
+        limitedLimits:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.OrgLimits'
+          title: limited_limits
+          description: |-
+            limited_limits are the limits of the personal org of a limited account.
+             Their outbound_smtp is always false.
         version:
           type: string
           title: version
@@ -4115,8 +4167,8 @@ components:
           title: max_orgs_per_account
           format: int32
           description: |-
-            max_orgs_per_account is the most orgs that one account owns besides its personal org.
-             CreateOrg refuses one more with RESOURCE_EXHAUSTED.
+            max_orgs_per_account is the most orgs that a full account owns besides its personal org.
+             CreateOrg refuses one more with RESOURCE_EXHAUSTED. A limited account owns none.
       title: DefaultOrgLimits
       additionalProperties: false
       description: |-
@@ -5291,6 +5343,13 @@ components:
           type: string
           title: personal_account_id
           description: personal_account_id is the UUID of the account of a personal org, or empty for another org.
+        tier:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.AccountTier'
+          title: tier
+          description: |-
+            tier is the tier of the account of a personal org, and ACCOUNT_TIER_FULL for another org.
+             The default limits of the org follow it.
         memberCount:
           type: string
           title: member_count
@@ -5313,7 +5372,7 @@ components:
           allOf:
             - $ref: '#/components/schemas/hopbox.admin.v1.OrgLimits'
           title: limits
-          description: 'limits are the limits that apply: each override, else the default of the install.'
+          description: 'limits are the limits that apply: each override, else the default of the install for the tier of the org.'
         limitOverrides:
           allOf:
             - $ref: '#/components/schemas/hopbox.admin.v1.OrgLimitOverrides'
@@ -5368,6 +5427,18 @@ components:
           title: disk_bytes
           format: int64
           description: disk_bytes is the most disk of all machines together, in bytes, 0 or more.
+        publicUrls:
+          type:
+            - boolean
+            - "null"
+          title: public_urls
+          description: public_urls says whether a creator can make a machine URL of the org public.
+        outboundSmtp:
+          type:
+            - boolean
+            - "null"
+          title: outbound_smtp
+          description: outbound_smtp opens TCP port 25 for the machines of the org. A machine takes a change at its next start or reboot.
       title: OrgLimitOverrides
       additionalProperties: false
       description: |-
@@ -5396,6 +5467,14 @@ components:
           title: disk_bytes
           format: int64
           description: disk_bytes is the most disk of all machines together, in bytes.
+        publicUrls:
+          type: boolean
+          title: public_urls
+          description: public_urls is true when a creator can make a machine URL of the org public.
+        outboundSmtp:
+          type: boolean
+          title: outbound_smtp
+          description: outbound_smtp is true when the machines of the org reach TCP port 25. No default opens it.
       title: OrgLimits
       additionalProperties: false
       description: OrgLimits are usage limits. A limit of 0 allows nothing.
@@ -6170,6 +6249,40 @@ components:
         - SERVER_STATUS_OK
         - SERVER_STATUS_DEGRADED
       description: ServerStatus is the health that a server reports in its heartbeats.
+    hopbox.admin.v1.SetAccountTierRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          description: account_id is the UUID of the account.
+        tier:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.AccountTier'
+          title: tier
+          description: tier is the new tier, ACCOUNT_TIER_LIMITED or ACCOUNT_TIER_FULL.
+        expectedVersion:
+          type:
+            - string
+            - "null"
+          title: expected_version
+          format: int64
+          description: |-
+            expected_version is the version of the account that the caller read.
+             If the account has another version now, the call fails with ABORTED and changes nothing.
+      title: SetAccountTierRequest
+      additionalProperties: false
+      description: SetAccountTierRequest names the account and its new tier.
+    hopbox.admin.v1.SetAccountTierResponse:
+      type: object
+      properties:
+        account:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.Account'
+          title: account
+      title: SetAccountTierResponse
+      additionalProperties: false
+      description: SetAccountTierResponse holds the account after the change.
     hopbox.admin.v1.SetDefaultOrgLimitsRequest:
       type: object
       properties:
@@ -6217,8 +6330,21 @@ components:
           title: max_orgs_per_account
           format: int32
           description: |-
-            max_orgs_per_account is the most orgs that one account owns besides its personal org, 0 or more.
+            max_orgs_per_account is the most orgs that a full account owns besides its personal org, 0 or more.
              Leave it out to keep the value.
+        publicUrls:
+          type:
+            - boolean
+            - "null"
+          title: public_urls
+          description: public_urls says whether an org can make a machine URL public. Leave it out to keep the value.
+        limited:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.OrgLimitOverrides'
+          title: limited
+          description: |-
+            limited holds the limits of the personal org of a limited account to change. A field that it leaves out
+             keeps its value. Its outbound_smtp must stay unset, because no default opens TCP port 25.
       title: SetDefaultOrgLimitsRequest
       additionalProperties: false
       description: SetDefaultOrgLimitsRequest holds the defaults to change.

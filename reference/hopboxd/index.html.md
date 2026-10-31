@@ -62,6 +62,7 @@ hopboxd --log-level=debug version
 | `admin account unsuspend` | Ends the suspension of an account, and of the orgs that its suspend suspended. |
 | `admin account approve` | Approves a pending account, so it acts. |
 | `admin account reject` | Rejects a pending account: deletes it and its personal org, and with `--block` keeps its identity from a new sign-up. |
+| `admin account set-tier` | Moves an active or a suspended account to the tier `full` or `limited`. |
 | `admin account block` | Adds an email, an email domain, a GitHub user, or a Google account to the block list of sign-ups. |
 | `admin account unblock` | Removes an entry from the block list of sign-ups. |
 | `admin account blocks` | Lists the block list of sign-ups, oldest first. |
@@ -1215,7 +1216,7 @@ Approves a pending account, so it acts, and prints it as `admin account suspend`
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
 | `--account-id` | string | none, required | The UUID of the pending account, as `admin account list --state pending` prints it. |
-| `--tier` | `full` or `limited` | `full` | The tier of the account after the approve. No limit depends on the tier yet. |
+| `--tier` | `full` or `limited` | `full` | The tier of the account after the approve. A limited account gets the limited defaults in its personal org, and creates no org ([the org API](/reference/org-api/index.html.md#usage-limits)). |
 | `--json` | bool | `false` | Prints the account as one JSON object, with the fields of `admin account list --json`. |
 
 Example:
@@ -1230,6 +1231,25 @@ instance_admin	false
 personal_org_id	01a15c02-7d1f-7b20-8a3e-4c1d2e3f4a5b
 sign_in_methods	github
 version	2
+```
+
+### admin account set-tier
+
+```sh
+hopboxd admin account set-tier --account-id=ID --tier=full|limited [--expected-version=N] [--json]
+```
+
+Moves an active or a suspended account to another tier, and prints it as `admin account suspend` does. It calls `SetAccountTier` ([the admin API](/reference/admin-api/index.html.md#setaccounttier)). A move keeps what the account has, such as its machines, its orgs, and its public URLs. The limits of the new tier refuse only what comes after. A pending account fails with `failed_precondition`: approve it with `--tier` instead.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--account-id` | string | none, required | The UUID of the account, as `admin account list` prints it. |
+| `--tier` | `full` or `limited` | none, required | The new tier of the account. |
+| `--expected-version` | int64 | none | The version that the account must have now. With another version, the command changes nothing and fails with `aborted`. |
+| `--json` | bool | `false` | Prints the account as one JSON object, with the fields of `admin account list --json`. |
+
+```sh
+sudo hopboxd admin account set-tier --account-id 01a15c02-7d1e-7a4c-9b51-2b1c5e8f0a7d --tier full
 ```
 
 ### admin account reject
@@ -1953,7 +1973,7 @@ Stops new machines of the size `<name>` ([the admin API](/reference/admin-api/in
 hopboxd admin org list [--json]
 ```
 
-Lists every org of the install, oldest first, with metadata only. It calls `ListOrgs` of the admin API, page by page, until the last page ([the admin API](/reference/admin-api/index.html.md#listorgs)). Each line has six parts, with a tab between them. They are the org ID, the name, and `personal` or `org`. Then come `members=` and the member count, `active` or `suspended`, and `machines=` with the machines in use, a slash, and their limit.
+Lists every org of the install, oldest first, with metadata only. The limit of each org follows its tier: the personal org of a limited account takes the limited defaults. It calls `ListOrgs` of the admin API, page by page, until the last page ([the admin API](/reference/admin-api/index.html.md#listorgs)). Each line has six parts, with a tab between them. They are the org ID, the name, and `personal` or `org`. Then come `members=` and the member count, `active` or `suspended`, and `machines=` with the machines in use, a slash, and their limit.
 
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -1979,7 +1999,7 @@ Suspends an org, and prints it. It calls `SuspendOrg` ([the admin API](/referenc
 | `--reason` | string | empty | The reason, which the members of the org see. At most 256 characters. |
 | `--json` | bool | `false` | Prints the org as one JSON object, with the keys of `admin org list`. |
 
-Without `--json`, the command prints one line per fact: a name, a tab, and a value. Each limit line holds the usage, a slash, and the limit, in bytes for RAM and disk.
+Without `--json`, the command prints one line per fact: a name, a tab, and a value. Each line of the machines, the vCPUs, the RAM, and the disk holds the usage, a slash, and the limit, in bytes for RAM and disk. The lines `public_urls` and `outbound_smtp` hold `true` or `false`.
 
 ```text
 $ sudo hopboxd admin org suspend --org-id 01a14565-a2df-75a1-9401-ed28dfa37fc4 --reason 'spam reports'
@@ -1993,10 +2013,12 @@ machines	0/10
 vcpus	0/6
 memory_bytes	0/68719476736
 disk_bytes	0/300000000000
+public_urls	true
+outbound_smtp	false
 version	3
 ```
 
-A personal org also prints the line `personal_account_id`.
+A personal org also prints the lines `personal_account_id` and `tier`, the tier of its account.
 
 ### admin org unsuspend
 
@@ -2014,10 +2036,10 @@ Ends the suspension of an org, and prints it as `admin org suspend` does. It cal
 ### admin org set-limits
 
 ```sh
-hopboxd admin org set-limits --org-id=ID [--machines=N] [--vcpus=N] [--memory-gib=N] [--disk-gb=N] [--expected-version=N] [--json]
+hopboxd admin org set-limits --org-id=ID [--machines=N] [--vcpus=N] [--memory-gib=N] [--disk-gb=N] [--[no-]public-urls] [--[no-]outbound-smtp] [--expected-version=N] [--json]
 ```
 
-Replaces the usage limits of one org, and prints the org as `admin org suspend` does. It calls `SetOrgLimits` ([the admin API](/reference/admin-api/index.html.md#setorglimits)). A limit that you leave out takes the default of the install. So `set-limits` with only `--org-id` puts the org back on the defaults.
+Replaces the usage limits of one org, and prints the org as `admin org suspend` does. It calls `SetOrgLimits` ([the admin API](/reference/admin-api/index.html.md#setorglimits)). A limit that you leave out takes the default of the install for the tier of the org. So `set-limits` with only `--org-id` puts the org back on the defaults.
 
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -2026,6 +2048,8 @@ Replaces the usage limits of one org, and prints the org as `admin org suspend` 
 | `--vcpus` | int32 | the default | The most vCPUs of all machines together. |
 | `--memory-gib` | int64 | the default | The most RAM of all machines together, in GiB (2^30 bytes). |
 | `--disk-gb` | int64 | the default | The most disk of all machines together, in GB (10^9 bytes). |
+| `--public-urls`, `--no-public-urls` | bool | the default | Lets a creator make a machine URL of the org public, or refuses it. A URL that is public already stays public. |
+| `--outbound-smtp`, `--no-outbound-smtp` | bool | the default, blocked | Opens TCP port 25 for the machines of the org, or blocks it ([the node network](/reference/node-network/index.html.md#outbound-tcp-port-25)). Each machine takes the change at its next start or reboot. |
 | `--expected-version` | int64 | none | The version that the org must have now. With another version, the command changes nothing and fails with `aborted`. |
 | `--json` | bool | `false` | Prints the org as one JSON object. |
 
@@ -2035,17 +2059,23 @@ Each limit is 0 or more. The command refuses a negative `--memory-gib` or `--dis
 sudo hopboxd admin org set-limits --org-id 01a14565-a2df-75a1-9401-ed28dfa37fc4 --machines 10 --memory-gib 64
 ```
 
+To open port 25 for one org, and keep its other limits, give each override again:
+
+```sh
+sudo hopboxd admin org set-limits --org-id 01a14565-a2df-75a1-9401-ed28dfa37fc4 --machines 10 --memory-gib 64 --outbound-smtp
+```
+
 ### admin org default-limits get
 
 ```sh
 hopboxd admin org default-limits get [--json]
 ```
 
-Prints the limits of every org without its own limits. It calls `GetDefaultOrgLimits` ([the admin API](/reference/admin-api/index.html.md#getdefaultorglimits)).
+Prints the limits of every org without its own limits. It calls `GetDefaultOrgLimits` ([the admin API](/reference/admin-api/index.html.md#getdefaultorglimits)). The lines with the prefix `limited_` are the defaults of the personal org of a limited account.
 
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
-| `--json` | bool | `false` | Prints one JSON object with the keys `limits`, `max_orgs_per_account`, `version`, and `update_time`. |
+| `--json` | bool | `false` | Prints one JSON object with the keys `limits`, `limited_limits`, `max_orgs_per_account`, `version`, and `update_time`. |
 
 ```text
 $ sudo hopboxd admin org default-limits get
@@ -2053,7 +2083,13 @@ machines	3
 vcpus	6
 memory_bytes	25769803776
 disk_bytes	300000000000
-max_orgs_per_account	10
+public_urls	true
+limited_machines	1
+limited_vcpus	1
+limited_memory_bytes	1073741824
+limited_disk_bytes	5000000000
+limited_public_urls	false
+max_orgs_per_account	3
 version	3
 update_time	2026-10-16T15:47:06Z
 ```
@@ -2063,15 +2099,18 @@ The version is that of the whole install config.
 ### admin org default-limits set
 
 ```sh
-hopboxd admin org default-limits set [--machines=N] [--vcpus=N] [--memory-gib=N] [--disk-gb=N] [--expected-version=N] [--json]
+hopboxd admin org default-limits set [--machines=N] [--vcpus=N] [--memory-gib=N] [--disk-gb=N] [--[no-]public-urls]
+    [--limited-machines=N] [--limited-vcpus=N] [--limited-memory-gib=N] [--limited-disk-gb=N] [--[no-]limited-public-urls]
+    [--max-orgs-per-account=N] [--expected-version=N] [--json]
 ```
 
 Changes the default limits of every org, and prints them as `default-limits get` does. It calls `SetDefaultOrgLimits` ([the admin API](/reference/admin-api/index.html.md#setdefaultorglimits)). A limit that you leave out keeps its value. The command needs at least one limit.
 
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
-| `--machines`, `--vcpus`, `--memory-gib`, `--disk-gb` | as for `set-limits` | the value now | The new defaults. |
-| `--max-orgs-per-account` | int32 | the value now | The most orgs that one account owns besides its personal org. |
+| `--machines`, `--vcpus`, `--memory-gib`, `--disk-gb`, `--public-urls` | as for `set-limits` | the value now | The new defaults of each org, apart from the personal org of a limited account. |
+| `--limited-machines`, `--limited-vcpus`, `--limited-memory-gib`, `--limited-disk-gb`, `--limited-public-urls` | as for `set-limits` | the value now | The new defaults of the personal org of a limited account. |
+| `--max-orgs-per-account` | int32 | the value now | The most orgs that a full account owns besides its personal org. A limited account owns none. |
 | `--expected-version` | int64 | none | The version that the install config must have now. With another version, the command changes nothing and fails with `aborted`. |
 | `--json` | bool | `false` | Prints one JSON object. |
 

@@ -65,7 +65,7 @@ An abuse report names the machine `box1` in the org `org1`. You stop the machine
 
 1. Open the page "Machines". Each row shows the org, the state, the node, and the address of a machine, such as `10.240.0.2`.
 2. Click "Stop" in the row of `box1`. The state changes to `stopped`.
-3. Open the page "Orgs". Click "Suspend" in the row of `org1`.
+3. Open the page "Orgs". The row of `org1` shows its tags. The tag "port 25 open" says that the machines of the org can send email to other mail servers. Click "Suspend" in the row of `org1`.
 4. Type a reason, such as `abuse report 1`, and click "Suspend". The members of `org1` see the reason. The org stops its machines, and creates and starts no machine until the end of the suspension.
 5. When the report is settled, click "Unsuspend".
 
@@ -76,6 +76,10 @@ The account `user1@example.org` made `box1`. If that account caused the abuse, s
 3. Type a reason, such as `abuse report 1`, and click "Suspend". The state changes to `suspended`, and the row shows the reason.
 
 The suspend deletes nothing ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). The account cannot sign in, and its sign-in page shows the reason. Its sessions and its CLI sign-ins end. Its API keys and its SSH keys stop working. The suspend also suspends the personal org of the account, and each org that the account owns alone. Their machines stop. In the other orgs of the account, its private machines stop, and its shared machines keep running.
+
+For a smaller step than a suspend, click "Make limited" in the row of the account ([Move an account to another tier](#move-an-account-to-another-tier)). The account keeps its access, but it creates no new org, and its personal org gets the small limits of the tier. The move keeps what the account has, so stop or delete its machines yourself.
+
+If the report is about spam from `org1`, click "Limits" in the row of `org1`, and choose "blocked" for "Outbound TCP port 25". Each machine of the org takes the change at its next start or reboot, so stop and start the machines that run.
 
 Then read what the account did:
 
@@ -114,7 +118,12 @@ sudo hopboxd admin account block --email-domain=example.net --reason='abuse repo
 
 The Admin area has no shell and no file access for a machine. It never shows a secret or an env var of an org. An instance admin sees the metadata of an org, not its contents. The audit log of `org1` shows each of these actions to the owners of the org.
 
-To change the limits of one org, click "Limits" in its row. A field that you leave empty takes the default of the install. The section "Default limits" sets those defaults.
+To change the limits of one org, click "Limits" in its row. A field that you leave empty takes the default of the install. For the personal org of a limited account, that is the default of the tier `limited`. The row of such an org has the tag "limited". The dialog shows the limits that apply now, and it has two more choices:
+
+- "Public URLs": "yes" lets the creator of a machine make its URL public, to anyone. "no" refuses a new public URL, and keeps each URL that is public already. The row then has the tag "no public URLs".
+- "Outbound TCP port 25": "open" lets the machines of the org send email to other mail servers. The default is "blocked". Open it only for an org that you trust. A machine takes a change of port 25 at its next start or reboot. The row of an org with port 25 open has the tag "port 25 open".
+
+The section "Default limits" sets those defaults, in two groups. "Team orgs and personal orgs of full accounts" holds the defaults of each org, apart from the personal org of a limited account. Its field "Orgs of one full account, besides its personal org" is the most orgs that a full account owns. A limited account owns no org. "Personal org of a limited account" holds the defaults of the tier `limited`: machines, vCPUs, RAM, disk, and public URLs. No default opens port 25. [The org API](/reference/org-api/index.html.md#usage-limits) gives the defaults of a fresh install.
 
 ## Approve or reject new accounts
 
@@ -126,7 +135,7 @@ In the Admin area:
 
 1. Open "Notices", and click "See the pending accounts" under "New accounts". Or open "Accounts", and choose the filter "Pending".
 2. Read the row of each account: its emails, its sign-in methods, its note, its client address, and the time of its sign-up. For a GitHub sign-up, the row also shows the GitHub login. A GitHub user made less than 24 hours before the sign-up gets the tag "new GitHub user", which is a hint of a bot.
-3. Click "Approve" for an account that you trust, or "Approve as limited" to give it the tier `limited`. If the install sends mail, the person gets an email.
+3. Click "Approve" for an account that you trust, or "Approve as limited" to give it the tier `limited`. A limited account creates no org. Its personal org gets the limits of the tier, and no public URL. In that org, a new machine without a size gets the size `tiny`. If the install sends mail, the person gets an email.
 4. Click "Reject" for an account that you do not want. In the dialog, check "Also block this email or identity" to keep its email and its GitHub or Google identity from a new sign-up. Then click "Reject".
 
 The section "Block list of sign-ups" of the same page lists the block list. It blocks a whole email domain with "Block the domain", and removes an entry with "Remove". The page "Config" sets the sign-up mode in its section "Sign-ups".
@@ -164,6 +173,17 @@ sudo hopboxd admin config set --sign-up-mode=open
 ```
 
 Each change of the mode gives each other instance admin a notice and an email, with the command that sets the old mode back. Set `--sign-up-mode=approval` to go back.
+
+## Move an account to another tier
+
+The tier of an account sets the default limits of its personal org, and whether the account creates orgs ([the org API](/reference/org-api/index.html.md#usage-limits)). To change the tier of an active or a suspended account:
+
+1. Open the page "Accounts". The row of each account shows its tier.
+2. Click "Make full" in the row of a limited account, or "Make limited" in the row of a full account. The tier changes at once, without a dialog.
+
+The move keeps what the account has: its machines, its orgs, and its public URLs. The limits of the new tier refuse only what comes after. For example, a full account with 2 orgs and 2 machines in its personal org moves to `limited`. It keeps the orgs and the machines, but it creates no new org. Its personal org creates and starts no more machines until its usage fits the limit of 1 machine. To give one org other limits, click "Limits" in its row on the page "Orgs".
+
+A pending account has no such button. It gets its tier from "Approve" or "Approve as limited". [The admin API](/reference/admin-api/index.html.md#setaccounttier) gives the call.
 
 ## Make an admin API key
 

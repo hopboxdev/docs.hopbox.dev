@@ -82,7 +82,7 @@ Each such change first locks the row of the org in `orgs`. Then it reads the rol
 
 ### OrgLimits and OrgUsage
 
-`OrgLimits` holds the usage limits of an org, and `OrgUsage` holds what the org uses ([Usage limits](#usage-limits)). Both have the same fields.
+`OrgLimits` holds the usage limits of an org, and `OrgUsage` holds what the org uses ([Usage limits](#usage-limits)). Both have these fields:
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -90,6 +90,13 @@ Each such change first locks the row of the org in `orgs`. Then it reads the rol
 | `vcpus` | int32 | The vCPUs of all machines together. |
 | `memory_bytes` | int64 | The RAM of all machines together, in bytes. |
 | `disk_bytes` | int64 | The disk of all machines together, in bytes. |
+
+`OrgLimits` also has two limits of yes or no:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `public_urls` | bool | `true` when a creator can make a machine URL of the org public ([the edge role](/reference/edge/index.html.md#private-machine-urls)). |
+| `outbound_smtp` | bool | `true` when the machines of the org reach TCP port 25 ([the node network](/reference/node-network/index.html.md#outbound-tcp-port-25)). |
 
 ### Invitation
 
@@ -118,12 +125,13 @@ Makes an org with the caller as its owner.
 
 The request `CreateOrgRequest` has the field `name`, a string ([Domain rules](/reference/domain-rules/index.html.md#org-names)). The response `CreateOrgResponse` has the field `org`, an `Org`.
 
-An account owns at most 10 orgs besides its personal org. Every new org brings its own usage limits, so this cap keeps one account from many limits. An instance admin changes the cap with `SetDefaultOrgLimits` ([the admin API](/reference/admin-api/index.html.md#setdefaultorglimits)). The cap counts each org in which the account is an owner. The call takes the row lock of the account, so two creates at the same time cannot pass the cap together.
+A limited account creates no org ([Usage limits](#usage-limits)). A full account owns at most 3 orgs besides its personal org on a fresh install. Every new org brings its own usage limits, so this cap keeps one account from many limits. An instance admin changes the cap with `SetDefaultOrgLimits` ([the admin API](/reference/admin-api/index.html.md#setdefaultorglimits)). The cap counts each org in which the account is an owner. The call takes the row lock of the account, so two creates at the same time cannot pass the cap together, and a move of the tier waits for the create. Each refusal counts in `hopbox_limit_refusals_total` with the limit `orgs` ([Metrics](/reference/metrics/index.html.md#metrics-of-the-accounts)).
 
 | Error | Code |
 | --- | --- |
 | A bad name, for example `invalid argument: invalid org name: it must not start or end with a space` | `invalid_argument` |
-| The account owns the most orgs: `usage limit exceeded: the account owns 10 orgs besides its personal org, the most that the install allows. Delete one, or ask an instance admin to raise the limit` | `resource_exhausted` |
+| The account is limited: `permission denied: a limited account creates no org. Ask an instance admin to move the account to the tier full` | `permission_denied` |
+| The account owns the most orgs: `usage limit exceeded: the account owns 3 orgs besides its personal org, the most that the install allows. Delete one, or ask an instance admin to raise the limit` | `resource_exhausted` |
 | An instance admin suspended the account after the request gate let the call in ([the admin API](/reference/admin-api/index.html.md#suspendaccount)): `permission denied: an instance admin suspended this account. The reason: <reason>`. The call changes nothing. | `permission_denied` |
 
 ```sh
@@ -235,7 +243,7 @@ browser -d '{"orgId":"01a14565-a2df-75a1-9401-ed28dfa37fc4"}' $API/hopbox.v1.Org
 ```
 
 ```json
-{"usage":{},"limits":{"machines":3,"vcpus":6,"memoryBytes":"25769803776","diskBytes":"300000000000"}}
+{"usage":{},"limits":{"machines":3,"vcpus":6,"memoryBytes":"25769803776","diskBytes":"300000000000","publicUrls":true}}
 ```
 
 In the JSON codec, a field with its default value is left out, so a usage of 0 is `{}`.
@@ -491,16 +499,18 @@ browser -d '{"token":"vH_2434xeosR22NllAU0tHE8LoqC08ZYHX1JhHZK4UA"}' $API/hopbox
 
 ## Usage limits
 
-Each org has usage limits on machines, vCPUs, RAM, and disk. The install has default limits for every org. An instance admin can change the defaults, and set limits for one org that replace the defaults ([the admin API](/reference/admin-api/index.html.md#setorglimits)).
+Each org has usage limits on machines, vCPUs, RAM, and disk, and the limits `public_urls` and `outbound_smtp` of yes or no. The install has two sets of default limits. The personal org of a limited account takes the limited set, and every other org takes the first set. An instance admin can change the defaults, and set limits for one org that replace the defaults ([the admin API](/reference/admin-api/index.html.md#setorglimits)).
 
-| Limit | Default |
-| --- | --- |
-| Machines | 3 |
-| vCPUs | 6 |
-| RAM | 24 GiB (25769803776 bytes) |
-| Disk | 300 GB (300000000000 bytes) |
+| Limit | Default | Default of the personal org of a limited account |
+| --- | --- | --- |
+| Machines | 3 | 1 |
+| vCPUs | 6 | 1 |
+| RAM | 24 GiB (25769803776 bytes) | 1 GiB (1073741824 bytes) |
+| Disk | 300 GB (300000000000 bytes) | 5 GB (5000000000 bytes) |
+| `public_urls` | yes | no |
+| `outbound_smtp` | no | no |
 
-The defaults fit three machines of the default size ([Domain rules](/reference/domain-rules/index.html.md#sizes)). A limit of 0 allows nothing. [Domain rules](/reference/domain-rules/index.html.md#usage-limits) gives the rules of the check.
+The first defaults fit three machines of the size `default`. The limited defaults fit one machine of the size `tiny`, which is the size of a create without a size in such an org ([Domain rules](/reference/domain-rules/index.html.md#sizes)). In an org of another account, a limited account has the limits of that org. Only the override of one org opens `outbound_smtp`. A limit of 0 allows nothing. [Domain rules](/reference/domain-rules/index.html.md#usage-limits) gives the rules of the check.
 
 | Usage | The machines that count |
 | --- | --- |
@@ -508,6 +518,8 @@ The defaults fit three machines of the default size ([Domain rules](/reference/d
 | vCPUs and RAM | the machines whose target state is `running` or `standby` |
 
 So a stopped machine keeps its disk and its place in the machine count, but frees its vCPUs and its RAM. A machine whose target is `deleted` counts no more, also while its executor still deletes it. `CreateMachine` and `StartMachine` check the limits ([the machine API](/reference/machine-api/index.html.md#usage-and-limits)). A start adds only the vCPUs and the RAM of a machine that does not count already, so a start never counts a machine twice. A new limit below the usage stops nothing: the org then creates and starts no more machines until its usage fits.
+
+`SetMachineURLVisibility` checks `public_urls` when it makes a URL public ([the machine API](/reference/machine-api/index.html.md#setmachineurlvisibility)). A URL that is public already stays public after a change of the limit or of the tier. Each machine reads `outbound_smtp` at its next boot.
 
 ## Suspension
 

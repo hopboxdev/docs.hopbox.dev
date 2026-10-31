@@ -566,7 +566,7 @@ Makes a machine in the org of the command with `CreateMachine` ([the machine API
 | Flag | Default | Description |
 | --- | --- | --- |
 | `NAME` | a free name, such as `box1` | The name: a lowercase DNS label of 1 to 63 characters that starts with a letter. |
-| `--size=SIZE` | `default` | A size from [machine sizes](#machine-sizes). |
+| `--size=SIZE` | `tiny` in the personal org of a limited account, else `default` | A size from [machine sizes](#machine-sizes), which marks the default of the org. |
 | `--image=IMAGE` | `default` | The image. |
 | `--restart=POLICY` | `always` | The restart policy: `always` or `never`. |
 | `--start-command=CMD` | none | A command that the machine runs as `user` after each boot. |
@@ -823,14 +823,15 @@ Changes the config of a machine with `UpdateMachine`, and prints the machine. A 
 hopbox machine sizes
 ```
 
-Lists the sizes that a machine can have, smallest first, with `ListMachineSizes` ([the machine API](/reference/machine-api/index.html.md#listmachinesizes)). The list leaves out the retired sizes. An instance admin adds and retires sizes ([the admin API](/reference/admin-api/index.html.md#sizeservice)).
+Lists the sizes that a machine can have, smallest first, with `ListMachineSizes` ([the machine API](/reference/machine-api/index.html.md#listmachinesizes)). The list leaves out the retired sizes. An instance admin adds and retires sizes ([the admin API](/reference/admin-api/index.html.md#sizeservice)). The column `DEFAULT` marks with `yes` the size of `hopbox new` without `--size` in the org of the command: `tiny` in the personal org of a limited account, else `default`.
 
 ```text
-NAME     VCPUS  MEMORY  DISK
-default  2      8 GiB   100 GB
+NAME     VCPUS  MEMORY  DISK    DEFAULT
+tiny     1      1 GiB   5 GB
+default  2      8 GiB   100 GB  yes
 ```
 
-JSON: an array of objects with `name`, `vcpus`, `memory_bytes`, and `disk_bytes`.
+JSON: an array of objects with `name`, `vcpus`, `memory_bytes`, `disk_bytes`, and `default`, which is `true` for the default size of the org.
 
 ### url port
 
@@ -1134,14 +1135,18 @@ hopbox org usage [ORG]
 Prints what the org uses, and its limits ([the org API](/reference/org-api/index.html.md#getorgusage)). The org is `ORG`, else the org of the command. RAM is in GiB, and disk is in GB, as the sizes of machines are.
 
 ```text
-RESOURCE  USED   LIMIT
-machines  0      3
-vcpus     0      6
-memory    0 GiB  24 GiB
-disk      0 GB   300 GB
+RESOURCE       USED   LIMIT
+machines       0      3
+vcpus          0      6
+memory         0 GiB  24 GiB
+disk           0 GB   300 GB
+public urls           yes
+outbound smtp         no
 ```
 
-JSON fields: `usage` and `limits`. Each has `machines`, `vcpus`, `memory_bytes`, and `disk_bytes`.
+The row `public urls` says whether the creator of a machine can make its URL public. The personal org of a limited account says `no` ([the org API](/reference/org-api/index.html.md#usage-limits)). The row `outbound smtp` says whether the machines reach TCP port 25. Only an instance admin opens it, for one org.
+
+JSON fields: `usage` and `limits`. Each has `machines`, `vcpus`, `memory_bytes`, and `disk_bytes`. `limits` also has `public_urls` and `outbound_smtp`.
 
 ### org member list
 

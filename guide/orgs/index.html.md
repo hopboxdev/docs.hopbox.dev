@@ -131,10 +131,10 @@ as user2 -d "{\"orgId\":\"$ORG\"}" $API/hopbox.v1.OrgService/GetOrgUsage
 ```
 
 ```json
-{"usage":{},"limits":{"machines":3,"vcpus":6,"memoryBytes":"25769803776","diskBytes":"300000000000"}}
+{"usage":{},"limits":{"machines":3,"vcpus":6,"memoryBytes":"25769803776","diskBytes":"300000000000","publicUrls":true}}
 ```
 
-The org has no machines yet, so it uses nothing. The limits are the defaults of the install: 3 machines, 6 vCPUs, 24 GiB of RAM, and 300 GB of disk.
+The org has no machines yet, so it uses nothing. The limits are the defaults of the install: 3 machines, 6 vCPUs, 24 GiB of RAM, 300 GB of disk, and public URLs. Outbound TCP port 25 stays closed, so `outboundSmtp` is left out. The personal org of a limited account has other defaults: 1 machine, 1 vCPU, 1 GiB of RAM, 5 GB of disk, and no public URL ([the org API](/reference/org-api/index.html.md#usage-limits)).
 
 ## Manage the orgs as the operator
 
@@ -165,10 +165,24 @@ machines	0/10
 vcpus	0/6
 memory_bytes	0/68719476736
 disk_bytes	0/300000000000
+public_urls	true
+outbound_smtp	false
 version	2
 ```
 
-Change the defaults of every other org with `admin org default-limits set`, for example `--machines 5`. Each new org brings its own limits, so an account owns at most 10 orgs besides its personal org. Change that cap with `admin org default-limits set --max-orgs-per-account N`.
+The org needs to send mail to other mail servers, for example from a mail server of its own. Open outbound TCP port 25 for its machines, and give the other overrides again. Each machine of the org takes the change at its next start or reboot:
+
+```sh
+admin org set-limits --org-id $ORG --machines 10 --memory-gib 64 --outbound-smtp
+```
+
+Change the defaults of every other org with `admin org default-limits set`, for example `--machines 5`. The flags with the prefix `--limited-` change the defaults of the personal org of a limited account, for example `--limited-disk-gb 10`. Each new org brings its own limits, so a full account owns at most 3 orgs besides its personal org on a fresh install, and a limited account owns none. Change that cap with `admin org default-limits set --max-orgs-per-account N`.
+
+Move an account between the tiers with `admin account set-tier`, with the ID that `admin account list` prints. A move keeps what the account has:
+
+```sh
+admin account set-tier --account-id 01a15c02-7d1e-7a4c-9b51-2b1c5e8f0a7d --tier full
+```
 
 To handle abuse, suspend the org:
 

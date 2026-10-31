@@ -285,11 +285,14 @@ The zone holds at most 64 TXT records. An ACME order for the domain and its wild
 
 A size sets the vCPUs, the RAM, and the disk of a machine. RAM uses binary units (1 GiB is 2^30 bytes). Disk uses decimal units (1 GB is 10^9 bytes).
 
-A fresh install has one size:
+A fresh install has two sizes:
 
-| Name | vCPUs | RAM | Disk |
-| --- | --- | --- | --- |
-| `default` | 2 | 8 GiB | 100 GB, sparse |
+| Name | vCPUs | RAM | Disk | Use |
+| --- | --- | --- | --- | --- |
+| `default` | 2 | 8 GiB | 100 GB, sparse | `DefaultSize`: a create without a size, apart from the personal org of a limited account |
+| `tiny` | 1 | 1 GiB | 5 GB, sparse | `TinySize`: a create without a size in the personal org of a limited account. It fits `LimitedOrgLimits`. |
+
+`DefaultSizeFor(tier)` returns the name of the size of a create without a size in an org of the tier. Migration 0063 adds `tiny` only when no size has the name, so a size `tiny` that an operator made before keeps its values. Neither size retires.
 
 An instance admin adds other sizes, and retires them, with the admin API ([the admin API](/reference/admin-api/index.html.md#sizeservice)). An operator size can also name a pool and labels, which become the placement filters of its machines ([Placement](/reference/placement/index.html.md#hard-filters)).
 
@@ -401,23 +404,27 @@ The org roles are `member`, `admin`, and `owner`, from the fewest rights to the 
 
 ## Usage limits
 
-Each org has usage limits on its machines, its vCPUs, its RAM, and its disk. `OrgLimits` holds them, and `OrgUsage` holds what an org uses. RAM and disk are in bytes. A limit of 0 allows nothing.
+Each org has usage limits on its machines, its vCPUs, its RAM, and its disk. `OrgLimits` holds them, and `OrgUsage` holds what an org uses. RAM and disk are in bytes. A limit of 0 allows nothing. `OrgLimits` also holds two limits of yes or no: `PublicURLs`, whether a creator can make a machine URL public, and `OutboundSMTP`, whether the machines reach TCP port 25.
 
-| Limit | `DefaultOrgLimits` |
-| --- | --- |
-| Machines | 3 |
-| vCPUs | 6 |
-| RAM | 24 GiB |
-| Disk | 300 GB |
+| Limit | `DefaultOrgLimits` | `LimitedOrgLimits` |
+| --- | --- | --- |
+| Machines | 3 | 1 |
+| vCPUs | 6 | 1 |
+| RAM | 24 GiB | 1 GiB |
+| Disk | 300 GB | 5 GB |
+| `PublicURLs` | true | false |
+| `OutboundSMTP` | false | false |
 
-The defaults fit three machines of the default size. The rules of the limits:
+`DefaultLimits` holds the two sets of an install, `Full` and `Limited`. `For(tier)` returns `Limited` for the tier `limited`, and `Full` otherwise. The tier of an org is the tier of the account of a personal org, and `full` for every other org. `DefaultMaxOrgsPerAccount` is 3: the most orgs that a full account owns besides its personal org on a fresh install.
+
+The first defaults fit three machines of the size `default`, and the limited defaults fit one machine of the size `tiny`. The rules of the limits:
 
 - Each limit is 0 or more. `Validate` refuses a limit below 0 with `invalid limit`.
-- An org can have its own limits, `LimitOverrides`. Each limit that it does not set takes the default of the install. `Apply(defaults)` returns the limits of the org.
+- An org can have its own limits, `LimitOverrides`. Each limit that it does not set takes the default of the install for the tier of the org. `Apply(defaults)` returns the limits of the org.
 - Every machine that is not deleted counts in the machines and the disk. Only a machine whose target is `running` or `standby` counts in the vCPUs and the RAM. `HoldsCompute()` of a target state reports this case. The placement uses the same rule for the room of a node ([Placement](/reference/placement/index.html.md#what-a-node-uses)).
 - `AfterCreate(size)` adds a new machine to a usage. A new machine has the target `running`, so it counts in all four limits.
 - `AfterStart(size, counted)` adds the vCPUs and the RAM of a machine that exists. If its target counts it already, `counted` is true and the usage stays as it is. So a start never counts a machine twice.
-- `Check(usage)` refuses a usage above a limit with `usage limit exceeded`. It names the first such limit, in the order machines, vCPUs, RAM, and disk. A create checks `limits.Check(usage.AfterCreate(size))`, and a start checks `limits.Check(usage.AfterStart(size, counted))`.
+- `Check(usage)` refuses a usage above a limit with `usage limit exceeded`. It names the first such limit, in the order machines, vCPUs, RAM, and disk. `Check` does not read the limits of yes or no: the service checks `PublicURLs` and `OutboundSMTP` where they apply. A create checks `limits.Check(usage.AfterCreate(size))`, and a start checks `limits.Check(usage.AfterStart(size, counted))`.
 
 | Limits | Usage | Result |
 | --- | --- | --- |

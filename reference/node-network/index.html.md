@@ -107,11 +107,11 @@ The Firecracker driver makes the tap device of each machine at each boot ([the F
 | Addresses | `169.254.0.1/32`, scope link, and `fe80::1/64` without duplicate address detection. The node never uses them as the source address toward another device. |
 | State | up |
 | Routes | `<machine address>/32 dev <tap> scope link proto static`, and `<IPv6 address of the machine>/128 dev <tap> proto static`. |
-| Sets of the table | `machines` takes the device and the IPv4 address. `machines6` takes the device and the IPv6 address. `inbound` and `connections` take the device. See [The table](#the-table-inet-hopbox_node). |
+| Sets of the table | `machines` takes the device and the IPv4 address. `machines6` takes the device and the IPv6 address. `inbound` and `connections` take the device. `smtp` takes the device only when the org of the machine opened outbound TCP port 25 ([Outbound TCP port 25](#outbound-tcp-port-25)). See [The table](#the-table-inet-hopbox_node). |
 
 The node writes the four IPv6 sysctls in the order of the table. On a host without IPv6, the device gets none of the IPv6 parts.
 
-A second connect of one device replaces the first one. Its elements in the sets start again with counters at zero. So a boot that reuses a tap device that a crash left behind reports no traffic of the boot before.
+A second connect of one device replaces the first one. Its elements in the sets start again with counters at zero, and the set `smtp` takes the value of the second connect. So a boot that reuses a tap device that a crash left behind reports no traffic of the boot before.
 
 The driver takes the device out of the sets and then removes the device, wherever it removes the device: after the end of the microVM, after a failed boot, and at the delete of the machine. The removal of the device also removes its addresses and its routes.
 
@@ -149,6 +149,10 @@ table inet hopbox_node {
 		type ipv4_addr
 	}
 
+	set smtp {
+		type ifname
+	}
+
 	chain egress {
 		type filter hook prerouting priority mangle; policy accept;
 		iifname "hbt*" meta nfproto ipv4 ip daddr 10.239.0.0/16 return
@@ -181,6 +185,7 @@ table inet hopbox_node {
 		meta nfproto ipv4 ip daddr 198.18.0.0/15 drop
 		meta nfproto ipv4 ip daddr 224.0.0.0/3 drop
 		meta nfproto ipv6 ip6 daddr != 2000::/3 drop
+		meta l4proto tcp th dport 25 iifname != @smtp meta l4proto tcp reject with tcp reset
 		oifname != "hbe*" meta l4proto tcp reject with tcp reset
 		oifname != "hbe*" reject with icmpx admin-prohibited
 		ct state new iifname @connections
@@ -226,7 +231,7 @@ The chains do these things:
 | --- | --- |
 | `egress` | Marks each packet of a machine with the mark of the egress tunnel that the hash of its address picks ([the egress of the machines](/reference/egress/index.html.md#the-hash-of-a-machine)). It leaves out two kinds of packets: the replies to the edge servers in the mesh range, and the packets to a resolver in a private range. Without a tunnel, it holds only these two kinds of rules. A change of the count of tunnels replaces the rules of this chain alone, so the counters of the sets stay. |
 | `forward` | Clamps the MSS, marks the connections of the edge servers, and sends the traffic of the tap devices to the next two chains. It drops each forwarded IPv6 packet that touches no tap device. |
-| `from_machine` | Takes what a machine sends ([What a machine can reach](#what-a-machine-can-reach)). A machine sends only from its own two addresses. A packet to a resolver that conntrack marks invalid is dropped before the accept of port 53. Without an egress tunnel as its output interface, a packet gets a reset or a refusal: the egress fails closed ([the egress of the machines](/reference/egress/index.html.md#fail-closed)). |
+| `from_machine` | Takes what a machine sends ([What a machine can reach](#what-a-machine-can-reach)). A machine sends only from its own two addresses. A packet to a resolver that conntrack marks invalid is dropped before the accept of port 53. A TCP packet to port 25 from a device outside the set `smtp` gets a reset ([Outbound TCP port 25](#outbound-tcp-port-25)). Without an egress tunnel as its output interface, a packet gets a reset or a refusal: the egress fails closed ([the egress of the machines](/reference/egress/index.html.md#fail-closed)). |
 | `to_machine` | Takes what reaches a machine through the forward hook ([What can reach a machine](#what-can-reach-a-machine)). IPv6 comes only from an egress tunnel. |
 | `output`, `input`, `postrouting` | The connections that the node opens to a machine, and the inbound counter. The chain `input` also takes the neighbor discovery of IPv6 from a tap device, so a machine finds its gateway `fe80::1`. |
 | `nat` | The masquerade of the queries to a resolver in a private range. With the public resolver of this example, the chain is empty. |
@@ -234,7 +239,7 @@ The chains do these things:
 On a node with the edge role, the local exit, these parts differ ([the egress of the machines](/reference/egress/index.html.md#the-local-exit)):
 
 - The chain `egress` has no rule of a tunnel.
-- The chain `from_machine` takes each resolver on port 53, and has no rule of the tunnels. It refuses nothing. The host firewall of the edge role refuses the IPv6 egress that its NAT66 cannot take ([the host firewall](/reference/host-firewall/index.html.md#the-uplink-and-the-nat66)).
+- The chain `from_machine` takes each resolver on port 53, and has no rule of the tunnels. It refuses nothing apart from TCP port 25 outside the set `smtp`. The host firewall of the edge role refuses the IPv6 egress that its NAT66 cannot take ([the host firewall](/reference/host-firewall/index.html.md#the-uplink-and-the-nat66)).
 - The chain `to_machine` has no rule of IPv6 of its own.
 - The rule of IPv6 in the chain `forward` also lets the egress tunnels pass, whose traffic the host firewall filters.
 - The chain `nat` translates the IPv4 egress of every machine. The masquerade of each resolver in a private range comes first, so such a resolver sees the address of the node, also with a floating address (plan question Q86). The first rule of the chain that matches a connection gives its source. With the resolver `172.31.0.53` and `edge.public_ipv4 = "203.0.113.101"`, it holds these rules:
@@ -281,6 +286,7 @@ sudo systemctl restart hopboxd
 | Any destination, on a node without the edge role and without an egress tunnel | Refused at once: a TCP connect gets a reset, and other packets get ICMP administratively prohibited ([the egress of the machines](/reference/egress/index.html.md#fail-closed)). The resolvers in a private range still pass. |
 | A resolver of the machines, on UDP or TCP port 53 | Passes. See [The resolvers of the machines](#the-resolvers-of-the-machines). |
 | A private, shared, loopback, link-local, or reserved IPv4 range, multicast, or broadcast | Dropped. The list is `BlockedRanges` of `internal/node/netcfg`, as in the table above. |
+| TCP port 25 of any address, over IPv4 or IPv6 | Refused at once with a TCP reset, unless the org of the machine opened the port ([Outbound TCP port 25](#outbound-tcp-port-25)). |
 | An IPv6 address outside `2000::/3` | Dropped. This holds the unique local addresses, such as those of the other machines, and the link-local, multicast, and reserved addresses. |
 | Another machine | Dropped, over IPv4 and over IPv6, because every machine address is in `10.0.0.0/8` and in `fd65:1c74:e769::/48`. Org networks and tag networks come in phase 4. |
 | A server of the mesh, at its mesh address | Dropped, because the mesh range `10.239.0.0/16` is in `10.0.0.0/8`. Only the replies to the connections of an edge server pass. |
@@ -291,6 +297,14 @@ sudo systemctl restart hopboxd
 The edge server drops the same private ranges and the mesh range again, in its host firewall, with the peer addresses of the install ([the host firewall](/reference/host-firewall/index.html.md#the-egress-of-the-machines)).
 
 No egress allowlist exists in phase 1, so a machine reaches every public host. Allowlists and the egress proxy come in phase 4.
+
+### Outbound TCP port 25
+
+Every node refuses TCP to port 25 from a machine, over IPv4 and IPv6. Port 25 carries mail between mail servers. Mail spam from a machine gets the addresses of the install on block lists. Other ports stay open, such as 587 and 465, on which a mail client sends through its own mail provider with a sign-in.
+
+An instance admin opens the port for the machines of one org with the limit override `outbound_smtp` ([the admin API](/reference/admin-api/index.html.md#setorglimits)). The spec of each machine of that org then carries `outbound_smtp` in its `MachineNetwork`. At each boot, the node puts the tap device of such a machine in the set `smtp`. So a change takes effect at the next start or reboot of each machine, which takes a new spec. A machine that runs keeps the port of its boot. A restart after a crash, by the restart policy, can boot with the spec that the node holds already, and so keep the port of the boot before.
+
+The rule rejects with a TCP reset, so a connect fails at once, as it does on a host without a route. A new `hopboxd` reads the set `smtp` of the table before it, so a restart keeps the port of each machine that runs. Without that table, such as after a reboot of the server, the port stays closed for a machine until its next boot.
 
 ### What can reach a machine
 
@@ -328,7 +342,7 @@ The machine unit of `hopboxd run` sets up the network before it starts the execu
 
 1. It finds the resolvers of the machines. See [The resolvers of the machines](#the-resolvers-of-the-machines).
 2. It reads `net.ipv4.ip_forward`. When forwarding is off, or the file of the [forward guard](#the-forward-guard) exists, the table gets the guard.
-3. It finds the tap devices that an earlier `hopboxd` connected: up, with the alias `hopbox machine <id>`, and with a `/32` route to an address of the install range. The kernel interrupts a list of devices or routes when they change during the list, for example while a machine starts. Then `hopboxd` lists again, 10 ms later, and lists up to 8 times in all. Each list of devices, addresses, routes, rules, flows, or sockets of the node network, of the mesh, of the egress tunnels, and of the IPv6 egress does the same. Only the lists of this step, of the tap devices and their routes, stop the start after 8 interrupted lists. The start then fails with `netcfg: find the tap devices of the machines: the kernel interrupted 8 dumps in a row: results may be incomplete or inconsistent`. The other lists, such as those of the connection cut of step 7, of the egress tunnels, and of the IPv6 egress, log the error and do not stop the start. The lists of nftables and of WireGuard go through another netlink library, which does not report an interrupted list. Such a list can come back incomplete without an error.
+3. It finds the tap devices that an earlier `hopboxd` connected: up, with the alias `hopbox machine <id>`, and with a `/32` route to an address of the install range. A device in the set `smtp` of the table that an earlier `hopboxd` installed keeps outbound TCP port 25. Without that table or that set, or after a failed read of it, the port stays closed for each machine until its next start or reboot. A failed read logs `cannot read the machines with outbound TCP port 25 of the table before this start, so the port stays closed for them until their next boot` at level warn, and the start goes on. The kernel interrupts a list of devices or routes when they change during the list, for example while a machine starts. Then `hopboxd` lists again, 10 ms later, and lists up to 8 times in all. Each list of devices, addresses, routes, rules, flows, or sockets of the node network, of the mesh, of the egress tunnels, and of the IPv6 egress does the same. Only the lists of this step, of the tap devices and their routes, stop the start after 8 interrupted lists. The start then fails with `netcfg: find the tap devices of the machines: the kernel interrupted 8 dumps in a row: results may be incomplete or inconsistent`. The other lists, such as those of the connection cut of step 7, of the egress tunnels, and of the IPv6 egress, log the error and do not stop the start. The lists of nftables and of WireGuard go through another netlink library, which does not report an interrupted list. Such a list can come back incomplete without an error.
 4. On a node without the edge role, it counts the egress tunnels that an earlier `hopboxd` made: `hbe0`, `hbe1`, and so on, up, until the first gap ([the egress of the machines](/reference/egress/index.html.md#checks-a-restart-and-a-reboot)). The egress tunnels can give it their count first. Then it takes that count instead.
 5. It reads the set `edges` of the table that an earlier `hopboxd` installed. Without such a table, the set starts empty. A failed read starts the set empty too, and logs `cannot read the edge servers of the table before this start, so the edge servers reach no machine until the first mesh` at level warn.
 6. It replaces the table `inet hopbox_node` in one netlink batch. The new table holds the rules above, these devices, these edge servers, and the marks of these tunnels. No packet sees a table that is half made.
@@ -411,7 +425,7 @@ The node network logs with `component=netcfg`.
 | `turned on IPv4 forwarding for the machines, and drops the forwarded traffic of other interfaces` | info | `guard_file` | At the start, IPv4 forwarding was off. The node turned it on, with the forward guard in place ([The forward guard](#the-forward-guard)). |
 | `turned on IPv6 forwarding for the machines, and keeps the router advertisements of the interfaces` | info | `accept_ra_2` | At the start, IPv6 forwarding was off, or an interface had `accept_ra` 1. `accept_ra_2` lists the interfaces that now have `accept_ra` 2 ([the egress of the machines](/reference/egress/index.html.md#ipv6-forwarding)). |
 | `the node network is ready` | info | `table`, `machines`, `nameservers`, `edges` | The start installed the table. `machines` is the count of the tap devices that the node took over. `edges` is the count of the edge servers of the table before it. |
-| `connected a machine` | info | `machine`, `tap`, `address` | A boot connected the tap device of a machine. |
+| `connected a machine` | info | `machine`, `tap`, `address`, `outbound_smtp` | A boot connected the tap device of a machine. `outbound_smtp` is `true` when the machine reaches TCP port 25. |
 | `disconnected a machine` | info | `machine`, `tap` | The node removed the tap device of a machine. |
 | `the nftables table inet hopbox_node lost a part outside hopboxd, so the node network installs it again. Do not flush the nftables ruleset of a node` | error | `err`, `machines` | A check found the table broken, or got no answer within 10 s (`i/o timeout` in `err`) ([The table must stay](#the-table-must-stay)). |
 | `cannot repair the node network` | error | `err` | A check found the table broken, and the install of the table failed. The next check tries again. |
@@ -421,6 +435,7 @@ The node network logs with `component=netcfg`.
 | `the watch of nftables ended, so the node network checks its table only every <interval>` | warn | | The watch of nftables stopped. The interval is 2 s. |
 | `cannot read the inbound traffic of the machines` | warn | `err` | A heartbeat did not read the counters. It reports no inbound traffic ([Inbound traffic as a use](#inbound-traffic-as-a-use)). |
 | `cannot read the edge servers of the table before this start, so the edge servers reach no machine until the first mesh` | warn | `err` | The read of the set `edges` of the old table failed at the start. The set starts empty. |
+| `cannot read the machines with outbound TCP port 25 of the table before this start, so the port stays closed for them until their next boot` | warn | `err` | The read of the set `smtp` of the old table failed at the start. The set starts empty ([Outbound TCP port 25](#outbound-tcp-port-25)). |
 | `the machines take the connections of the edge servers over the mesh` | info | `edges` | The set `edges` changed. `edges` is the count of edge servers. |
 | `the node network cannot take the edge servers of the mesh. The next change of the mesh tries again` | error | `err` | The change of the set `edges` failed. |
 | `the machines send their egress through the egress tunnels` | info | `tunnels` | The chain `egress` took a new count of egress tunnels ([the egress of the machines](/reference/egress/index.html.md#a-change-of-the-egress-edges)). |
@@ -445,7 +460,7 @@ The node network logs with `component=netcfg`.
 | Test | Where it runs | What it checks |
 | --- | --- | --- |
 | `TestRulesetGolden` of `internal/node/netcfg` | `make test`, also on a Mac | The rules, against `testdata/ruleset.nft`. Run `go test ./internal/node/netcfg -run TestRulesetGolden -update` to write the file after a change. |
-| `TestNodeNetwork` of `internal/node/netcfg` | `make test-linux`, as root in a privileged container | A node, two machines, another interface, and the internet in network namespaces, with veth pairs in place of tap devices and of an egress tunnel. A machine leaves through the tunnel with its own address, over IPv4 and IPv6. Without the tunnel, a connect fails at once, and it works again once the tunnel is back. It checks each blocked destination, also over IPv6, the private resolver, a TCP segment with SYN and FIN or without flags to that resolver, which never leaves with the address of the machine, a spoofed source, the MSS, the inbound counter, and the counter of new connections. It checks the IPv6 sysctls and the one IPv6 address of a tap device. It checks that a second connect of a device starts its counters again from zero. It checks the forward guard, the repair after a flush of the ruleset, and a new `hopboxd` that takes over the devices. |
+| `TestNodeNetwork` of `internal/node/netcfg` | `make test-linux`, as root in a privileged container | A node, two machines, another interface, and the internet in network namespaces, with veth pairs in place of tap devices and of an egress tunnel. A machine leaves through the tunnel with its own address, over IPv4 and IPv6. Without the tunnel, a connect fails at once, and it works again once the tunnel is back. A connect to TCP port 25 fails at once over IPv4 and IPv6, passes after a connect of the device with outbound SMTP, and fails again after a connect without it. An open port 25 stays open after the repair of a flush and after the start of a new `hopboxd`. It checks each blocked destination, also over IPv6, the private resolver, a TCP segment with SYN and FIN or without flags to that resolver, which never leaves with the address of the machine, a spoofed source, the MSS, the inbound counter, and the counter of new connections. It checks the IPv6 sysctls and the one IPv6 address of a tap device. It checks that a second connect of a device starts its counters again from zero. It checks the forward guard, the repair after a flush of the ruleset, and a new `hopboxd` that takes over the devices. |
 | `TestEdgeOverTheMesh` of `internal/node/netcfg` | `make test-linux`, as root in a privileged container | A node, a machine, and an edge server in network namespaces, with a veth pair named `hbm0` in place of the mesh device. An edge in the set `edges` reaches the machine, and its connection counts as inbound. Another mesh address and the machine itself open nothing. A repair and a new `hopboxd` keep the set. |
 | `TestLocalExit` of `internal/node/netcfg` | `make test-linux` | A node with the edge role, a machine, and the internet in network namespaces. The machine leaves with the address of the node over IPv4, or with the floating address of `edge.public_ipv4`. `TestLocalExitIPv6` of `internal/hostfw` checks the IPv6 egress ([the host firewall](/reference/host-firewall/index.html.md#tests)). |
 | `TestKVMEndToEnd` of `internal/control` | `make test-kvm`, in the network namespace `KVM_NETNS` | Two Firecracker machines on one install, whose one server is a local exit. It checks their addresses, the egress with masquerade, and the blocked destinations. It opens a machine URL through the edge role, and a shell through the SSH front door. A probe in a guest sends UDP from forged sources, ARP requests and claims, and IPv6 from forged sources. Only the real packet must leave the node, and no forged IPv6 packet gets an answer. The guest has its IPv6 address `/128` alone. The test deletes the table, and the next heartbeat must bring the isolation back. It checks inbound traffic as a use, the metrics, the network after a restart of `hopboxd`, and the release at a delete. |
