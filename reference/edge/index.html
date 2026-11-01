@@ -846,6 +846,18 @@
 <td><code dir="auto">visibility</code>: <code dir="auto">public</code> or <code dir="auto">private</code>. <code dir="auto">status_class</code>: <code dir="auto">1xx</code>, <code dir="auto">2xx</code>, <code dir="auto">3xx</code>, <code dir="auto">4xx</code>, or <code dir="auto">5xx</code></td>
 <td>The HTTP requests that the edge role forwarded to a machine, by the visibility of the machine URL and the class of the status of the answer. A forward that failed counts as <code dir="auto">5xx</code>, because the edge answers it with 502. A request whose client left before the answer does not count. A request that the edge answers itself, such as a stopped machine, counts only in <code dir="auto">hopbox_edge_requests_total</code>. Each of the 10 series starts at 0.</td>
 </tr>
+<tr>
+<td><code dir="auto">hopbox_edge_upstream_errors_total</code></td>
+<td>counter</td>
+<td><code dir="auto">reason</code>: <code dir="auto">not_running</code>, <code dir="auto">no_address</code>, <code dir="auto">no_answer</code>, or <code dir="auto">expired_lease</code></td>
+<td>The 502 and 503 answers to the requests of a machine URL, by cause. <code dir="auto">not_running</code>: the route has no target, because the machine does not run, or the control role holds no live route record of it. <code dir="auto">no_address</code>: the machine runs without an address on its node. <code dir="auto">no_answer</code>: the machine did not answer on its URL port, a 502. <code dir="auto">expired_lease</code>: the lease of the target ended at the edge, because its node did not confirm the machine lately. A request whose client left before the answer does not count. Each of the 4 series starts at 0.</td>
+</tr>
+<tr>
+<td><code dir="auto">hopbox_edge_expired_targets</code></td>
+<td>gauge</td>
+<td>none</td>
+<td>The targets of the routes whose lease ended at the edge, read at each scrape. A node that stopped its heartbeats leaves its targets here until the control role pushes new routes.</td>
+</tr>
 </tbody>
 </table>
 <p>The metrics of the SSH front door start with <code dir="auto">hopbox_edge_ssh_</code> (<a href="/reference/ssh-front-door/#metrics">the SSH front door</a>).</p>

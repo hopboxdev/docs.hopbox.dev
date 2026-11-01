@@ -901,8 +901,21 @@
 <td><code dir="auto">direction</code></td>
 <td>The bytes of disk data of the pulls. <code dir="auto">sent</code> counts what the node sent to other nodes. <code dir="auto">received</code> counts what it pulled from another node.</td>
 </tr>
+<tr>
+<td><code dir="auto">hopbox_disk_transfers</code></td>
+<td>gauge</td>
+<td><code dir="auto">direction</code></td>
+<td>The pulls that run now. <code dir="auto">sent</code> counts the pulls that the node serves, from the start of the stream to its end. <code dir="auto">received</code> counts the pulls that the node makes, from the answer of the source that serves the disk to the end of the pull.</td>
+</tr>
+<tr>
+<td><code dir="auto">hopbox_disk_transfer_restarts_total</code></td>
+<td>counter</td>
+<td><code dir="auto">reason</code></td>
+<td>The pulls that dropped their partial copy, so the next pull starts again from zero. <code dir="auto">digest_mismatch</code>: the copy had another digest than the disk of the source. <code dir="auto">source_changed</code>: the disk of the source changed since the pull that left the copy. <code dir="auto">bad_progress</code>: the node cannot read the saved state of the digest of the copy.</td>
+</tr>
 </tbody>
 </table>
+<p>Each series of the gauge and of the restarts starts at 0. A pull of another move drops the partial copy of the old move, but it is a new pull, and it does not count as a restart. A refused pull does not count in the gauge.</p>
 <p>The pulls count in <code dir="auto">hopbox_executor_actions_total</code> with the action <code dir="auto">pull</code> (<a href="/reference/executor/#metrics">the node executor</a>).</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="logs">Logs</h2><a class="sl-anchor-link" href="#logs"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Logs”</span></a></div>
 <p>The control role logs with <code dir="auto">component=service</code>:</p>

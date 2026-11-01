@@ -413,6 +413,10 @@ The removal of a role needs migration 0056 (`service.RemovalsSchema`, [Control s
 | Metric | Type | Labels | Description |
 | --- | --- | --- | --- |
 | `hopbox_disk_transfer_bytes_total` | counter | `direction` | The bytes of disk data of the pulls. `sent` counts what the node sent to other nodes. `received` counts what it pulled from another node. |
+| `hopbox_disk_transfers` | gauge | `direction` | The pulls that run now. `sent` counts the pulls that the node serves, from the start of the stream to its end. `received` counts the pulls that the node makes, from the answer of the source that serves the disk to the end of the pull. |
+| `hopbox_disk_transfer_restarts_total` | counter | `reason` | The pulls that dropped their partial copy, so the next pull starts again from zero. `digest_mismatch`: the copy had another digest than the disk of the source. `source_changed`: the disk of the source changed since the pull that left the copy. `bad_progress`: the node cannot read the saved state of the digest of the copy. |
+
+Each series of the gauge and of the restarts starts at 0. A pull of another move drops the partial copy of the old move, but it is a new pull, and it does not count as a restart. A refused pull does not count in the gauge.
 
 The pulls count in `hopbox_executor_actions_total` with the action `pull` ([the node executor](/reference/executor/index.html.md#metrics)).
 

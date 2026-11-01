@@ -188,13 +188,37 @@ After a restart, the executor asks the driver for each machine of the state dir.
 | --- | --- | --- | --- |
 | `hopbox_executor_actions_total` | counter | `action`, `result` | The actions of the executors of the node. |
 | `hopbox_executor_action_duration_seconds` | histogram | `action` | The duration of the actions. |
+| `hopbox_executor_lease_losses_total` | counter | none | The machine leases that the node lost. |
+| `hopbox_executor_boot_phase_seconds` | histogram | `phase` | The duration of each phase of a boot. |
+| `hopbox_machine_restarts_total` | counter | `machine`, `reason` | The restarts of each machine by its restart policy. |
+| `hopbox_guest_link_handshakes_total` | counter | `result` | The handshakes of the guest links of the node. |
+| `hopbox_guest_links_down` | gauge | none | The machines whose microVM runs on the node without an authenticated guest link. |
 
 | Label | Values |
 | --- | --- |
 | `action` | `boot`, `wake`, `reboot`, `stop`, `delete`, `hibernate`, `link`, `report`, `config`, `start_command`, `pull` |
-| `result` | `ok`, `failed`, or `canceled` for an action that ended with the loss of its lease |
+| `result` of the actions | `ok`, `failed`, or `canceled` for an action that ended with the loss of its lease |
+| `phase` | `unit_start`, `vmm_ready`, `guest_link`, or `start_command` |
+| `machine` | The ID of the machine |
+| `reason` | `crash`, `guest_shutdown`, or `start_command_exit` |
+| `result` of the handshakes | `ok`. `bad_proof` for a guest agent whose proof does not match the link key. `no_version` for a guest agent without a common version of the guest link. `error` for any other failure, such as a broken message, a timeout, or a guest agent that ends the call before its proof. |
 
-The histogram has the buckets 0.01, 0.05, 0.1, 0.5, 1, 2.5, 5, 10, 30, 60, 120, and 300 seconds.
+The histogram of the actions has the buckets 0.01, 0.05, 0.1, 0.5, 1, 2.5, 5, 10, 30, 60, 120, and 300 seconds. The histogram of the phases has the buckets 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, and 300 seconds.
+
+A lease is lost when the control role does not renew it, when the control role refuses a report with it as stale, or when it expires on the node. Each grant counts once, 10 s after its end (`executor.DefaultLossWait`). A cold move ends a grant on purpose: the hand-off ends the grant of the source node, and a failed move or a give-back ends the grant of the target ([Cold move](/reference/cold-move/index.html.md)). So the end of a grant does not count when the disk transfers of the node name the machine, to serve or to remove, from 1 min before the end to 10 s after it (`executor.DefaultMoveWindow`, [the control channel](/reference/control-channel/index.html.md#disktransfers-and-diskexport)). For a grant, only the disk transfers after the start of that grant count. So after a failed move gives the machine back with a new grant, a loss of the new grant counts, and the old grant keeps its move, also when the new grant comes within the 10 s. The executor forgets the disk transfers that name a machine once they are older than the window and the wait, at each heartbeat and at each change of the disk transfers. The end of a grant does not count either when the executor of the machine ended within the 10 s, as after a delete.
+
+A boot and a reboot have four phases, one after the other. The driver times the first two ([the VMM driver interface](/reference/vmm/index.html.md#driver)).
+
+1. `unit_start`: from the start of the boot of the driver until the process of the VMM runs. It holds the image, the disk, the network device, and the start of the unit, so a first boot that unpacks or downloads its image takes long.
+2. `vmm_ready`: until the VMM, Firecracker, answers and started the microVM.
+3. `guest_link`: until the guest agent applied its configuration on an authenticated link.
+4. `start_command`: until the guest agent reports the first run of the start command. The guest agent starts it after the boot of the guest. A machine without a start command has no such phase.
+
+A wake from a memory file times no phase. A boot that fails ends its phases where it failed.
+
+A restart counts when the restart policy `always` starts the machine again after a crash (`crash`) or after a shutdown from inside the machine (`guest_shutdown`). It also counts when the start command exited and runs again (`start_command_exit`). A boot that failed counts in `hopbox_executor_actions_total`, not here. The series of a machine go away when its executor ends: after its delete, or after it left the node in a cold move.
+
+`hopbox_guest_links_down` counts a machine from the start of its microVM until its guest agent connects, so a boot counts for a few seconds. After a restart of `hopboxd`, a running machine does not count before its first spec, because only the spec lets the executor give its guest agent a new link key. From its first spec, it counts until its guest agent connects again.
 
 ## Go API
 
@@ -214,6 +238,8 @@ The histogram has the buckets 0.01, 0.05, 0.1, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 
 | `Nameservers` | none | A func that returns the resolvers of the machines of the node, such as `Nameservers` of a `netcfg.Network`. Nil gives a machine no resolver. |
 | `IPv6` | none | A func that reports whether the node gives the machines IPv6, such as `IPv6` of a `netcfg.Network`. Then the guest of a machine with an address gets `address6` and `gateway6` ([Guest link](/reference/guest-link/index.html.md)). Nil gives a machine no IPv6. |
 | `Puller` | none | Pulls the disk of a machine that moves to the node, such as a `transfer.Client` ([Cold move](/reference/cold-move/index.html.md)). Nil, or a driver that is no `vmm.Mover`, pulls none, and a moving machine waits. |
+| `LossWait` | 10 s | The wait before the end of a grant counts in `hopbox_executor_lease_losses_total`, for the disk transfers of a cold move ([Metrics](#metrics)). |
+| `MoveWindow` | 1 min | How long before the end of a grant the disk transfers that named its machine still make the end a move, and no loss ([Metrics](#metrics)). |
 
 The `Manager` is the `Machines` of the agent of the node, `node.Agent.Machines`. The agent calls these methods:
 
@@ -232,3 +258,4 @@ For the cold moves, the node role calls these methods ([Cold move](/reference/co
 | `Busy(id)` | Reports whether the executor of the machine holds a valid lease, runs an action, or runs the microVM. A microVM that the executor attached to after a restart, before a spec arrived, counts too. The disk listener serves no disk of such a machine. |
 | `Forget(ids)` | Removes the files of the machines that left the node, once their executor holds no valid lease and their microVM does not run. A machine that a later call names no more keeps its files. |
 | `Removed()` | Returns the machines whose files `Forget` removed, for the heartbeats. |
+| `Moving(ids)` | Records that the disk transfers of the node name the machines, to serve or to remove. The end of the grant of such a machine does not count as a lost lease ([Metrics](#metrics)). |

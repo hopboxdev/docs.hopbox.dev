@@ -45,6 +45,7 @@ Each microVM runs in the unit `hopbox-machine-<id>.service`, in the slice `hopbo
 | `ExecStart` | the jailer, with the arguments below |
 | `MemoryMax` | the RAM of the machine plus 256 MiB. The extra memory is for Firecracker and for the page cache of the disk. |
 | `TasksMax` | 256. Firecracker runs one thread for each vCPU and a few of its own. |
+| `IOAccounting` | `yes`. The cgroup of the unit gets the file `io.stat`, from which the node reads the disk IO of the machine ([Metrics](/reference/metrics/index.html.md#metrics-of-the-machines)). |
 | `LogRateLimitIntervalUSec`, `LogRateLimitBurst` | 30 s and 1000. The journal takes at most 1000 lines of the unit in 30 s, a tenth of the default of journald. A guest can write to its serial console without end, and journald drops the lines above the limit. |
 | `ExecStop` | `hopboxd stop-guest --api-socket <API socket> --timeout <StopTimeout>`, with the path of the `hopboxd` that booted the machine, such as `/opt/hopbox/current/hopboxd`. systemd ignores a failure of the command, as the prefix `-` of a unit file says. See [A stop through systemd](#a-stop-through-systemd). A driver without `StopHelper` sets no `ExecStop`. |
 | `TimeoutStopUSec` | `StopTimeout` plus 10 s, 40 s by default. systemd waits this long for `ExecStop`, and then this long again for the end of Firecracker after `SIGTERM`. If Firecracker still runs, systemd sends `SIGKILL` and can wait a third time. So a stop takes at most 2 min. |
@@ -131,6 +132,8 @@ The disk of a machine is a reflink copy of the disk of its image, made with the 
 5. Otherwise the boot fails with `firecracker: the image cache has no image <digest>, and the image has no URL`.
 
 One job of the process prepares each image. It runs apart from the boot that started it, with a deadline of 2 hours. So a download can take longer than the timeout of one boot. The next boot of the machine then waits for the same job. Two boots of one image at the same time wait for one job. A boot whose wait ends first fails with `firecracker: the image <digest> is not ready yet, and the node goes on with it`, and the restart policy boots the machine again later.
+
+Step 3 counts as a fetch with the source `bundle`, and step 4 as one with the source `url`, in `hopbox_image_fetches_total` ([Metrics](/reference/metrics/index.html.md#metrics-of-the-image-cache)). The checks of steps 1 and 2 are no fetch.
 
 Each unpack and download writes a temp file `.<name>.tmp-<random>` in the dir of the image, and renames it only after the checks. At the first use of an image in a process, the job removes each such file that an earlier process left. It also removes a compressed copy that stayed beside a checked disk. The cache never removes an image.
 
@@ -234,7 +237,7 @@ Every record has `component=firecracker`.
 
 `hopboxd stop-guest` logs to the journal of the unit of the machine, at level info ([hopboxd](/reference/hopboxd/index.html.md#stop-guest)). For a stop of a running guest, it logs `asking the guest to shut down` and then `the guest shut down`. On a failure, it prints the error and exits with status 1, for example `firecracker: the guest did not shut down within 30s`.
 
-The driver has no metrics of its own. The executor counts each boot, stop, and delete ([the node executor](/reference/executor/index.html.md#metrics)). The driver is a `vmm.UsageReader`: it reads what each microVM uses from the cgroup of its unit, and the node serves these values as the [metrics of the machines](/reference/metrics/index.html.md#metrics-of-the-machines).
+The driver serves the metrics of its image cache ([Metrics](/reference/metrics/index.html.md#metrics-of-the-image-cache)). The executor counts each boot, stop, and delete ([the node executor](/reference/executor/index.html.md#metrics)). The driver times the phases `unit_start` and `vmm_ready` of each boot, and the executor serves them ([the VMM driver interface](/reference/vmm/index.html.md#driver)). The driver is a `vmm.UsageReader`: it reads what each microVM uses from the cgroup of its unit, and the node serves these values as the [metrics of the machines](/reference/metrics/index.html.md#metrics-of-the-machines). It reads `cpu.stat` and `memory.current`, and also `cpu.pressure`, `memory.events`, and `io.stat` when the cgroup has them. From `io.stat`, it reads only the device of the file system of `MachinesDir`.
 
 ## Go API
 
@@ -258,6 +261,7 @@ The driver has no metrics of its own. The executor counts each boot, stop, and d
 | `MemoryOverhead` | 256 MiB | The memory of a unit beyond the RAM of the guest. |
 | `HTTPClient` | a client with the proxy of the environment | The client of image downloads. |
 | `CgroupRoot` | `/sys/fs/cgroup` | The mount point of the cgroup v2 hierarchy, from which the driver reads what the machines use. |
+| `Registerer` | none | Gets the metrics of the image cache. Nil registers none. |
 | `Logger` | `slog.Default()` | The logger. |
 
 | Method | Description |

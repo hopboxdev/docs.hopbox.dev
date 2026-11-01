@@ -654,6 +654,36 @@
 <td><code dir="auto">action</code></td>
 <td>The duration of the actions.</td>
 </tr>
+<tr>
+<td><code dir="auto">hopbox_executor_lease_losses_total</code></td>
+<td>counter</td>
+<td>none</td>
+<td>The machine leases that the node lost.</td>
+</tr>
+<tr>
+<td><code dir="auto">hopbox_executor_boot_phase_seconds</code></td>
+<td>histogram</td>
+<td><code dir="auto">phase</code></td>
+<td>The duration of each phase of a boot.</td>
+</tr>
+<tr>
+<td><code dir="auto">hopbox_machine_restarts_total</code></td>
+<td>counter</td>
+<td><code dir="auto">machine</code>, <code dir="auto">reason</code></td>
+<td>The restarts of each machine by its restart policy.</td>
+</tr>
+<tr>
+<td><code dir="auto">hopbox_guest_link_handshakes_total</code></td>
+<td>counter</td>
+<td><code dir="auto">result</code></td>
+<td>The handshakes of the guest links of the node.</td>
+</tr>
+<tr>
+<td><code dir="auto">hopbox_guest_links_down</code></td>
+<td>gauge</td>
+<td>none</td>
+<td>The machines whose microVM runs on the node without an authenticated guest link.</td>
+</tr>
 </tbody>
 </table>
 <table>
@@ -669,12 +699,39 @@
 <td><code dir="auto">boot</code>, <code dir="auto">wake</code>, <code dir="auto">reboot</code>, <code dir="auto">stop</code>, <code dir="auto">delete</code>, <code dir="auto">hibernate</code>, <code dir="auto">link</code>, <code dir="auto">report</code>, <code dir="auto">config</code>, <code dir="auto">start_command</code>, <code dir="auto">pull</code></td>
 </tr>
 <tr>
-<td><code dir="auto">result</code></td>
+<td><code dir="auto">result</code> of the actions</td>
 <td><code dir="auto">ok</code>, <code dir="auto">failed</code>, or <code dir="auto">canceled</code> for an action that ended with the loss of its lease</td>
+</tr>
+<tr>
+<td><code dir="auto">phase</code></td>
+<td><code dir="auto">unit_start</code>, <code dir="auto">vmm_ready</code>, <code dir="auto">guest_link</code>, or <code dir="auto">start_command</code></td>
+</tr>
+<tr>
+<td><code dir="auto">machine</code></td>
+<td>The ID of the machine</td>
+</tr>
+<tr>
+<td><code dir="auto">reason</code></td>
+<td><code dir="auto">crash</code>, <code dir="auto">guest_shutdown</code>, or <code dir="auto">start_command_exit</code></td>
+</tr>
+<tr>
+<td><code dir="auto">result</code> of the handshakes</td>
+<td><code dir="auto">ok</code>. <code dir="auto">bad_proof</code> for a guest agent whose proof does not match the link key. <code dir="auto">no_version</code> for a guest agent without a common version of the guest link. <code dir="auto">error</code> for any other failure, such as a broken message, a timeout, or a guest agent that ends the call before its proof.</td>
 </tr>
 </tbody>
 </table>
-<p>The histogram has the buckets 0.01, 0.05, 0.1, 0.5, 1, 2.5, 5, 10, 30, 60, 120, and 300 seconds.</p>
+<p>The histogram of the actions has the buckets 0.01, 0.05, 0.1, 0.5, 1, 2.5, 5, 10, 30, 60, 120, and 300 seconds. The histogram of the phases has the buckets 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, and 300 seconds.</p>
+<p>A lease is lost when the control role does not renew it, when the control role refuses a report with it as stale, or when it expires on the node. Each grant counts once, 10 s after its end (<code dir="auto">executor.DefaultLossWait</code>). A cold move ends a grant on purpose: the hand-off ends the grant of the source node, and a failed move or a give-back ends the grant of the target (<a href="/reference/cold-move/">Cold move</a>). So the end of a grant does not count when the disk transfers of the node name the machine, to serve or to remove, from 1 min before the end to 10 s after it (<code dir="auto">executor.DefaultMoveWindow</code>, <a href="/reference/control-channel/#disktransfers-and-diskexport">the control channel</a>). For a grant, only the disk transfers after the start of that grant count. So after a failed move gives the machine back with a new grant, a loss of the new grant counts, and the old grant keeps its move, also when the new grant comes within the 10 s. The executor forgets the disk transfers that name a machine once they are older than the window and the wait, at each heartbeat and at each change of the disk transfers. The end of a grant does not count either when the executor of the machine ended within the 10 s, as after a delete.</p>
+<p>A boot and a reboot have four phases, one after the other. The driver times the first two (<a href="/reference/vmm/#driver">the VMM driver interface</a>).</p>
+<ol>
+<li><code dir="auto">unit_start</code>: from the start of the boot of the driver until the process of the VMM runs. It holds the image, the disk, the network device, and the start of the unit, so a first boot that unpacks or downloads its image takes long.</li>
+<li><code dir="auto">vmm_ready</code>: until the VMM, Firecracker, answers and started the microVM.</li>
+<li><code dir="auto">guest_link</code>: until the guest agent applied its configuration on an authenticated link.</li>
+<li><code dir="auto">start_command</code>: until the guest agent reports the first run of the start command. The guest agent starts it after the boot of the guest. A machine without a start command has no such phase.</li>
+</ol>
+<p>A wake from a memory file times no phase. A boot that fails ends its phases where it failed.</p>
+<p>A restart counts when the restart policy <code dir="auto">always</code> starts the machine again after a crash (<code dir="auto">crash</code>) or after a shutdown from inside the machine (<code dir="auto">guest_shutdown</code>). It also counts when the start command exited and runs again (<code dir="auto">start_command_exit</code>). A boot that failed counts in <code dir="auto">hopbox_executor_actions_total</code>, not here. The series of a machine go away when its executor ends: after its delete, or after it left the node in a cold move.</p>
+<p><code dir="auto">hopbox_guest_links_down</code> counts a machine from the start of its microVM until its guest agent connects, so a boot counts for a few seconds. After a restart of <code dir="auto">hopboxd</code>, a running machine does not count before its first spec, because only the spec lets the executor give its guest agent a new link key. From its first spec, it counts until its guest agent connects again.</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="go-api">Go API</h2><a class="sl-anchor-link" href="#go-api"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Go API”</span></a></div>
 <p><code dir="auto">executor.New(Config)</code> returns a <code dir="auto">Manager</code>. <code dir="auto">Manager.Run(ctx)</code> reads the node-local state and runs the executors until <code dir="auto">ctx</code> ends. The microVMs keep running after it returns.</p>
 <table>
@@ -746,6 +803,16 @@
 <td>none</td>
 <td>Pulls the disk of a machine that moves to the node, such as a <code dir="auto">transfer.Client</code> (<a href="/reference/cold-move/">Cold move</a>). Nil, or a driver that is no <code dir="auto">vmm.Mover</code>, pulls none, and a moving machine waits.</td>
 </tr>
+<tr>
+<td><code dir="auto">LossWait</code></td>
+<td>10 s</td>
+<td>The wait before the end of a grant counts in <code dir="auto">hopbox_executor_lease_losses_total</code>, for the disk transfers of a cold move (<a href="#metrics">Metrics</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">MoveWindow</code></td>
+<td>1 min</td>
+<td>How long before the end of a grant the disk transfers that named its machine still make the end a move, and no loss (<a href="#metrics">Metrics</a>).</td>
+</tr>
 </tbody>
 </table>
 <p>The <code dir="auto">Manager</code> is the <code dir="auto">Machines</code> of the agent of the node, <code dir="auto">node.Agent.Machines</code>. The agent calls these methods:</p>
@@ -799,6 +866,10 @@
 <tr>
 <td><code dir="auto">Removed()</code></td>
 <td>Returns the machines whose files <code dir="auto">Forget</code> removed, for the heartbeats.</td>
+</tr>
+<tr>
+<td><code dir="auto">Moving(ids)</code></td>
+<td>Records that the disk transfers of the node name the machines, to serve or to remove. The end of the grant of such a machine does not count as a lost lease (<a href="#metrics">Metrics</a>).</td>
 </tr>
 </tbody>
 </table>

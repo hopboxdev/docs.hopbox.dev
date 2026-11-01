@@ -2,7 +2,7 @@
 
 > The Prometheus metrics listener of hopboxd and every metric that it serves.
 
-`hopboxd` serves Prometheus metrics on a loopback listener. The code is in `internal/obs`, `internal/api`, `internal/audit`, `internal/service`, `internal/placement`, `internal/node/executor`, `internal/node/machines`, `internal/node/netcfg`, `internal/mesh`, and `internal/dns`.
+`hopboxd` serves Prometheus metrics on a loopback listener. The code is in `internal/obs`, `internal/api`, `internal/audit`, `internal/service`, `internal/placement`, `internal/node/executor`, `internal/node/machines`, `internal/node/vmm/firecracker`, `internal/node/netcfg`, `internal/mesh`, and `internal/dns`.
 
 The counter `hopbox_account_creations_total` came with milestone A2, the approval of new accounts (metrics catalog).
 
@@ -215,6 +215,8 @@ A server with the edge role adds these metrics to the listener of its `hopboxd r
 | `hopbox_edge_routes` | gauge | none | The machines that the machine URLs of the edge role name. |
 | `hopbox_edge_certificate_not_after_seconds` | gauge | none | The end of the certificate that the edge role serves, in seconds since the Unix epoch. It is 0 before the first certificate. |
 | `hopbox_edge_machine_requests_total` | counter | `visibility`, `status_class` | The HTTP requests that the edge role forwarded to a machine, by the visibility of the machine URL (`public` or `private`) and the class of the status of the answer (`1xx` to `5xx`). A forward that failed counts as `5xx`. Each of the 10 series starts at 0 ([the edge role](/reference/edge/index.html.md#metrics)). |
+| `hopbox_edge_upstream_errors_total` | counter | `reason` | The 502 and 503 answers to the requests of a machine URL, by cause: `not_running`, `no_address`, `no_answer`, or `expired_lease` ([the edge role](/reference/edge/index.html.md#metrics)). Each of the 4 series starts at 0. |
+| `hopbox_edge_expired_targets` | gauge | none | The targets of the machine URLs whose lease ended at the edge. |
 | `hopbox_edge_ssh_connections_total` | counter | `result` | The TCP connections of the SSH front door, by result ([the SSH front door](/reference/ssh-front-door/index.html.md#metrics)). |
 | `hopbox_edge_ssh_auth_total` | counter | `result` | The keys that SSH clients signed with: `allowed`, `refused`, `limited`, or `error`. |
 | `hopbox_edge_ssh_unreachable_total` | counter | `reason` | The signed-in SSH connections that reached no OpenSSH server of a machine. |
@@ -243,12 +245,39 @@ hopbox_edge_tls_refusals_total{reason="no_sni"} 1
 
 ## Metrics of the executors
 
-The executors of a node count their actions ([the node executor](/reference/executor/index.html.md#metrics)). `hopboxd run` registers them on a server with the node role. The Firecracker driver adds no metric of its own ([the Firecracker driver](/reference/firecracker-driver/index.html.md#logs)).
+The executors of a node count their actions, and what happens to their machines and guest links ([the node executor](/reference/executor/index.html.md#metrics)). `hopboxd run` registers them on a server with the node role.
 
 | Metric | Type | Labels | Description |
 | --- | --- | --- | --- |
 | `hopbox_executor_actions_total` | counter | `action`, `result` | The actions of the executors of the node. |
 | `hopbox_executor_action_duration_seconds` | histogram | `action` | The duration of the actions. |
+| `hopbox_executor_lease_losses_total` | counter | none | The machine leases that the node lost: the control role did not renew one or refused a report with it, or it expired. Each grant counts once, 10 s after its end. The end of a grant by a cold move, or after a delete, does not count ([the node executor](/reference/executor/index.html.md#metrics)). |
+| `hopbox_executor_boot_phase_seconds` | histogram | `phase` | The duration of each phase of a boot or a reboot: `unit_start`, `vmm_ready`, `guest_link`, and `start_command`. |
+| `hopbox_machine_restarts_total` | counter | `machine`, `reason` | The restarts of each machine by the restart policy: `crash`, `guest_shutdown`, or `start_command_exit`. The series of a machine go away when it leaves the node. |
+| `hopbox_guest_link_handshakes_total` | counter | `result` | The handshakes of the guest links: `ok`, `bad_proof`, `no_version`, or `error`. Each of the 4 series starts at 0. |
+| `hopbox_guest_links_down` | gauge | none | The machines whose microVM runs on the node without an authenticated guest link. A boot counts until its guest agent connects. A machine that runs before its first spec after a restart of `hopboxd` does not count. |
+
+The catalog names the phases and the results in words, so these label values stand for them:
+
+| Label | Values |
+| --- | --- |
+| `phase` | `unit_start`: the unit start of the catalog, from the start of the boot of the driver until systemd started the unit. `vmm_ready`: the "Firecracker ready" of the catalog, until Firecracker answers and started the microVM. The name holds no driver, because the VMM layer takes other drivers. `guest_link`: until the guest agent applied its configuration on an authenticated link. `start_command`: until the guest agent reports the first run of the start command. |
+| `reason` of the restarts | `crash`, `guest_shutdown`, and `start_command_exit`, as the catalog names them. A boot that failed is no restart, and counts only in `hopbox_executor_actions_total`. |
+| `result` of the handshakes | `ok`. `bad_proof`: the failed proofs of the catalog, a guest proof that does not match the link key. `no_version`: no common version of the guest link. `error`: any other failure, such as a broken message, a timeout, or a guest agent that ends the call before its proof. |
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(executor_lease|machine_restarts|guest_link)'
+```
+
+```text
+hopbox_executor_lease_losses_total 0
+hopbox_guest_link_handshakes_total{result="bad_proof"} 0
+hopbox_guest_link_handshakes_total{result="error"} 0
+hopbox_guest_link_handshakes_total{result="no_version"} 0
+hopbox_guest_link_handshakes_total{result="ok"} 12
+hopbox_guest_links_down 0
+hopbox_machine_restarts_total{machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b",reason="crash"} 1
+```
 
 ## Metrics of the machines
 
@@ -261,6 +290,10 @@ A server with the node role serves what its running machines use. At each scrape
 | `hopbox_machine_cpu_seconds_total` | counter | `machine` | The CPU time of the machine since its boot, from `usage_usec` of `cpu.stat`. It starts from zero at each boot. |
 | `hopbox_machine_memory_bytes` | gauge | `machine` | The host RAM that the machine holds, from `memory.current`. |
 | `hopbox_machine_disk_bytes` | gauge | `machine` | The bytes of the blocks that the sparse disk file of the machine holds on the node. |
+| `hopbox_machine_cpu_pressure_seconds_total` | counter | `machine` | The time that at least one process of the machine waited for a CPU since its boot, from the line `some` of `cpu.pressure`. |
+| `hopbox_machine_oom_kills_total` | counter | `machine` | The processes of the unit of the machine that the kernel killed for a lack of memory since its boot, from `oom_kill` of `memory.events`. A kill inside the guest does not count: the guest kernel ends its own processes. |
+| `hopbox_machine_disk_read_bytes_total` | counter | `machine` | The bytes that the machine read from the block devices of the node since its boot, from `rbytes` of `io.stat`. Only the device of the file system of `<data_dir>/machines` counts. |
+| `hopbox_machine_disk_written_bytes_total` | counter | `machine` | The bytes that the machine wrote to the block devices of the node since its boot, from `wbytes` of `io.stat`. Only the device of the file system of `<data_dir>/machines` counts. |
 | `hopbox_machines_cpu_seconds_total` | counter | none | The CPU time of every machine of the node, from `cpu.stat` of the slice. |
 | `hopbox_machines_memory_bytes` | gauge | none | The host RAM of every machine of the node, from `memory.current` of the slice. |
 
@@ -272,9 +305,11 @@ A server with the node role serves what its running machines use. At each scrape
 | `size` | The name of the size of the machine, such as `default` |
 | `vcpus`, `memory_bytes`, `disk_bytes` | The vCPUs, the RAM in bytes, and the disk in bytes of the size |
 
+The four counters of pressure, OOM kills, and disk IO start from zero at each boot, because each boot gets a new cgroup. A host can lack their files, and then the node serves none of these series. `cpu.pressure` needs a kernel with PSI on, and a kernel that boots with `psi=0` has none. `io.stat` needs the io controller, which the unit of each machine turns on with `IOAccounting` ([the Firecracker driver](/reference/firecracker-driver/index.html.md#the-unit-of-a-machine)). A machine that booted before this release has no `io.stat` until its next boot. `io.stat` lists each device that the IO of the cgroup reached. A RAID or a device mapper passes each IO on to its member disks, which list it again. So the node reads only the line of the device of the file system of `<data_dir>/machines`, such as `9:3` for `/dev/md3`. A file system without a device of its own, such as btrfs, has no such line, and its disk IO stays at 0. A file that the node cannot read leaves its series out of that scrape.
+
 A machine that runs before its first spec after a restart of `hopboxd` has no `hopbox_machine_info` and no `hopbox_machine_vcpus` until the spec arrives. A read that fails leaves its series out of that scrape, and the other series stay. For example, a machine can stop between the list of the machines and the read of its cgroup. The slice has no cgroup before the first machine runs in it, so the node totals are absent then.
 
-Each running machine has 5 series in this section. A running machine with network also has 5 series in [Metrics of the node network](#metrics-of-the-node-network), and a machine without network has none of them. So a node with N running machines, each with network, serves 10 × N + 2 series of the machines. The catalog plans up to 15 series for each running machine with the metrics of later milestones.
+Each running machine has up to 9 series in this section. A running machine with network also has 8 series in [Metrics of the node network](#metrics-of-the-node-network), and a machine without network has none of them. A machine that restarted also has a series of `hopbox_machine_restarts_total` for each reason ([Metrics of the executors](#metrics-of-the-executors)). So a node with N running machines, each with network, serves about 17 × N + 2 series of the machines. The owner accepted about 17 series for each running machine on 2026-11-01: 1,000 machines give about 17,000 series, which take about 57 MB of RAM in Prometheus (Q129).
 
 ```sh
 curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_machines?_(info|vcpus|cpu|memory|disk_bytes)'
@@ -290,6 +325,29 @@ hopbox_machines_cpu_seconds_total 812.4
 hopbox_machines_memory_bytes 2.15e+09
 ```
 
+## Metrics of the image cache
+
+A server with the node role serves these metrics of its image cache `<data_dir>/images` ([the Firecracker driver](/reference/firecracker-driver/index.html.md#the-image-cache)). The Firecracker driver adds them, so a node with another driver has none.
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_image_cache_bytes` | gauge | none | The bytes of the blocks that the files of the image cache hold, read at each scrape. An unpacked disk is sparse, so it takes less than its size. 0 before the first image. |
+| `hopbox_image_fetches_total` | counter | `source`, `result` | The images that the node prepared for a boot: `bundle` for an unpack of the compressed disk of the release bundle, and `url` for a download from the URL of the image. `result` is `ok` or `failed`. Each of the 4 series starts at 0. |
+
+A check of a disk that the cache holds already is no fetch. A boot that waits for the fetch of another boot counts no fetch of its own.
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_image_'
+```
+
+```text
+hopbox_image_cache_bytes 2.43e+09
+hopbox_image_fetches_total{result="failed",source="bundle"} 0
+hopbox_image_fetches_total{result="failed",source="url"} 0
+hopbox_image_fetches_total{result="ok",source="bundle"} 1
+hopbox_image_fetches_total{result="ok",source="url"} 0
+```
+
 ## Metrics of the node network
 
 A server with the node role serves the traffic counters of each machine with network ([the node network](/reference/node-network/index.html.md#metrics)). The node reads them from the table `inet hopbox_node` at each scrape. They start from zero at each start of `hopboxd`.
@@ -301,10 +359,30 @@ A server with the node role serves the traffic counters of each machine with net
 | `hopbox_machine_egress_bytes_total` | counter | `machine` | Bytes from the machine that the node let out. |
 | `hopbox_machine_egress_packets_total` | counter | `machine` | Packets from the machine that the node let out. |
 | `hopbox_machine_egress_connections_total` | counter | `machine` | Packets that opened an outbound connection of the machine that the node let out, retries included ([the node network](/reference/node-network/index.html.md#counters)). |
+| `hopbox_machine_dropped_packets_total` | counter | `machine`, `reason` | Packets of the machine that the node dropped, by reason: `forged_source` for a source that is not an address of the machine, `blocked_destination` for a blocked range or an IPv6 address outside `2000::/3`, and `port_25` for TCP port 25 while it is closed ([the node network](/reference/node-network/index.html.md#counters)). Each machine with network has the 3 series. |
 | `hopbox_node_network_repairs_total` | counter | none | The installs of the table `inet hopbox_node` after it lost a part outside `hopboxd`, or after a check that got no answer within 10 s ([the node network](/reference/node-network/index.html.md#the-table-must-stay)). |
 
 ```sh
 curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(machine|node_network)_'
+```
+
+## Metrics of the egress
+
+Each enrolled server serves the state of its egress ([the egress of the machines](/reference/egress/index.html.md#metrics)). A node without the edge role serves `hopbox_egress_exits`. An edge server serves `hopbox_egress_exit` and `hopbox_egress_uplink_up`.
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_egress_exits` | gauge | none | The egress edges whose tunnels the machines of the node use now. At 0, the egress of the machines fails closed. |
+| `hopbox_egress_exit` | gauge | none | 1 while the edge server is an egress exit: its tunnel is ready and its uplink works. |
+| `hopbox_egress_uplink_up` | gauge | none | 1 while the check of the uplink of the edge server finds that it works. |
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_egress_'
+```
+
+```text
+hopbox_egress_exit 1
+hopbox_egress_uplink_up 1
 ```
 
 ## Metrics of the mesh
@@ -318,6 +396,7 @@ A server with the mesh device `hbm0` serves these metrics ([the mesh](/reference
 | `hopbox_mesh_peer_receive_bytes_total` | counter | `server` | The bytes that the mesh device got from the peer. |
 | `hopbox_mesh_peer_transmit_bytes_total` | counter | `server` | The bytes that the mesh device sent to the peer. |
 | `hopbox_mesh_repairs_total` | counter | none | The changes to the mesh device after it lost a part outside `hopboxd` ([the mesh](/reference/mesh/index.html.md#a-restart-a-stop-and-a-reboot)). |
+| `hopbox_mesh_expected_peers` | gauge | none | The peers that the last push of the control role named. It shows after the first push of the process. Compare it with `hopbox_mesh_peers` to find a missing peer. |
 
 ```sh
 curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_mesh_'
@@ -343,10 +422,33 @@ A node whose driver keeps its disks in files counts the bytes of the disks that 
 | Metric | Type | Labels | Description |
 | --- | --- | --- | --- |
 | `hopbox_disk_transfer_bytes_total` | counter | `direction` | The bytes of disk data of the pulls: `sent` to other nodes, and `received` from another node. |
+| `hopbox_disk_transfers` | gauge | `direction` | The pulls that run now: those that the node serves (`sent`), and those that it makes (`received`). |
+| `hopbox_disk_transfer_restarts_total` | counter | `reason` | The pulls that dropped their partial copy and start again from zero: `digest_mismatch`, `source_changed`, or `bad_progress` ([Cold move](/reference/cold-move/index.html.md#metrics)). |
+
+Each of the 2 series of `hopbox_disk_transfers` and the 3 series of `hopbox_disk_transfer_restarts_total` starts at 0.
+
+The catalog names the restarts "by digest change or error", so these values of `reason` stand for them:
+
+| Value | Meaning |
+| --- | --- |
+| `digest_mismatch` | The copy had another digest than the disk of the source. The pull drops it, and the next pull starts from zero. |
+| `source_changed` | The disk of the source changed since the pull that left the partial copy. |
+| `bad_progress` | The node cannot read the saved state of the digest of the partial copy. |
 
 ## node_exporter
 
 node_exporter serves the metrics of the host: CPU, RAM, file systems, disks, network, and pressure. hopbox does not run it. The operator installs the Debian 13 package `prometheus-node-exporter` on each server. The release bundle carries the arguments of node_exporter in `monitoring/node-exporter/prometheus-node-exporter`. They make node_exporter listen on `127.0.0.1:9100` only, as the metrics listener of `hopboxd` does. The default collectors of node_exporter give every host metric that the alerts read: `node_cpu_seconds_total`, `node_memory_MemAvailable_bytes`, `node_filesystem_avail_bytes`, `node_disk_*`, `node_network_*`, and `node_pressure_*`.
+
+The arguments also turn on the systemd collector for the unit `hopboxd.service` alone. It serves the state of the unit in `node_systemd_unit_state{name="hopboxd.service"}`, one series for each state with the value 1 for the current state. It serves the restarts of the unit by systemd in `node_systemd_service_restart_total{name="hopboxd.service"}`. A restart by `systemctl restart` does not count there, because systemd counts only its own restarts after a failure. The collector reads systemd over D-Bus.
+
+```sh
+curl -s http://127.0.0.1:9100/metrics | grep -E '^node_systemd_(service_restart_total\{name="hopboxd.service"\}|unit_state\{name="hopboxd.service",state="active")'
+```
+
+```text
+node_systemd_service_restart_total{name="hopboxd.service"} 0
+node_systemd_unit_state{name="hopboxd.service",state="active",type="notify"} 1
+```
 
 To set up node_exporter on a server, run these commands as root:
 
@@ -401,6 +503,30 @@ The monitoring bundle computes these series in Prometheus, in `monitoring/rules/
 The leader serves the gauges of the servers. After a change of the leader, two control processes can serve a series of the same server for a short time. So the `server:` rules keep the largest value of each server.
 
 A counter with labels shows only after its first event, so `increase()` misses that event. Each `install:` count adds the value of each series that is new in the window. The count needs a scrape of that `hopboxd` at the start of the window. A new series has no sample in the 5 minutes before the window. So a failed scrape does not make an old series new. After the first install of Prometheus, no series counts as new. So the totals of `hopboxd` from before the first scrape count as no burst. A control process that Prometheus did not scrape at the start of the window loses its first event in that window.
+
+## Metrics of the logs
+
+Every `hopboxd run` counts the log records at level warn and error that it writes (Q133). So the count covers each part of hopbox, also a part without a metric of its own. The code is in `internal/obs`.
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_log_messages_total` | counter | `component`, `level` | The log records at level warn and error that this `hopboxd` wrote. |
+
+| Label | Values |
+| --- | --- |
+| `component` | The value of the attribute `component` of the record, such as `executor`, `netcfg`, or `control`. A record with two values counts with the last one, the one that the JSON record shows last. A `component` inside a group with an empty key counts too, because the JSON record shows it at the top level. `none` for a record without a component. |
+| `level` | `warn` or `error` |
+
+A record below the level of `--log-level` is not written, and does not count. A series shows after its first record.
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_log_messages_total'
+```
+
+```text
+hopbox_log_messages_total{component="executor",level="warn"} 2
+hopbox_log_messages_total{component="netcfg",level="error"} 1
+```
 
 ## Metrics of the process
 

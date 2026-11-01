@@ -107,7 +107,7 @@ The Firecracker driver makes the tap device of each machine at each boot ([the F
 | Addresses | `169.254.0.1/32`, scope link, and `fe80::1/64` without duplicate address detection. The node never uses them as the source address toward another device. |
 | State | up |
 | Routes | `<machine address>/32 dev <tap> scope link proto static`, and `<IPv6 address of the machine>/128 dev <tap> proto static`. |
-| Sets of the table | `machines` takes the device and the IPv4 address. `machines6` takes the device and the IPv6 address. `inbound` and `connections` take the device. `smtp` takes the device only when the org of the machine opened outbound TCP port 25 ([Outbound TCP port 25](#outbound-tcp-port-25)). See [The table](#the-table-inet-hopbox_node). |
+| Sets of the table | `machines` takes the device and the IPv4 address. `machines6` takes the device and the IPv6 address. `inbound` and `connections` take the device. `smtp` takes the device only when the org of the machine opened outbound TCP port 25 ([Outbound TCP port 25](#outbound-tcp-port-25)). `dropped_forged`, `dropped_blocked`, and `dropped_smtp` take the device. See [The table](#the-table-inet-hopbox_node). |
 
 The node writes the four IPv6 sysctls in the order of the table. On a host without IPv6, the device gets none of the IPv6 parts.
 
@@ -153,6 +153,21 @@ table inet hopbox_node {
 		type ifname
 	}
 
+	set dropped_forged {
+		type ifname
+		counter
+	}
+
+	set dropped_blocked {
+		type ifname
+		counter
+	}
+
+	set dropped_smtp {
+		type ifname
+		counter
+	}
+
 	chain egress {
 		type filter hook prerouting priority mangle; policy accept;
 		iifname "hbt*" meta nfproto ipv4 ip daddr 10.239.0.0/16 return
@@ -171,27 +186,42 @@ table inet hopbox_node {
 	}
 
 	chain from_machine {
-		meta nfproto ipv4 iifname . ip saddr != @machines drop
-		meta nfproto ipv6 iifname . ip6 saddr != @machines6 drop
+		meta nfproto ipv4 iifname . ip saddr != @machines jump drop_forged
+		meta nfproto ipv6 iifname . ip6 saddr != @machines6 jump drop_forged
 		oifname "hbm0" ct mark & 0x40000000 == 0x40000000 ct state established,related meta nfproto ipv4 iifname . ip saddr @machines accept
-		meta nfproto ipv4 ip daddr 0.0.0.0/8 drop
-		meta nfproto ipv4 ip daddr 10.0.0.0/8 drop
-		meta nfproto ipv4 ip daddr 100.64.0.0/10 drop
-		meta nfproto ipv4 ip daddr 127.0.0.0/8 drop
-		meta nfproto ipv4 ip daddr 169.254.0.0/16 drop
-		meta nfproto ipv4 ip daddr 172.16.0.0/12 drop
-		meta nfproto ipv4 ip daddr 192.0.0.0/24 drop
-		meta nfproto ipv4 ip daddr 192.168.0.0/16 drop
-		meta nfproto ipv4 ip daddr 198.18.0.0/15 drop
-		meta nfproto ipv4 ip daddr 224.0.0.0/3 drop
-		meta nfproto ipv6 ip6 daddr != 2000::/3 drop
-		meta l4proto tcp th dport 25 iifname != @smtp meta l4proto tcp reject with tcp reset
+		meta nfproto ipv4 ip daddr 0.0.0.0/8 jump drop_blocked
+		meta nfproto ipv4 ip daddr 10.0.0.0/8 jump drop_blocked
+		meta nfproto ipv4 ip daddr 100.64.0.0/10 jump drop_blocked
+		meta nfproto ipv4 ip daddr 127.0.0.0/8 jump drop_blocked
+		meta nfproto ipv4 ip daddr 169.254.0.0/16 jump drop_blocked
+		meta nfproto ipv4 ip daddr 172.16.0.0/12 jump drop_blocked
+		meta nfproto ipv4 ip daddr 192.0.0.0/24 jump drop_blocked
+		meta nfproto ipv4 ip daddr 192.168.0.0/16 jump drop_blocked
+		meta nfproto ipv4 ip daddr 198.18.0.0/15 jump drop_blocked
+		meta nfproto ipv4 ip daddr 224.0.0.0/3 jump drop_blocked
+		meta nfproto ipv6 ip6 daddr != 2000::/3 jump drop_blocked
+		meta l4proto tcp th dport 25 iifname != @smtp jump drop_smtp
 		oifname != "hbe*" meta l4proto tcp reject with tcp reset
 		oifname != "hbe*" reject with icmpx admin-prohibited
 		ct state new iifname @connections
 		meta nfproto ipv4 iifname . ip saddr @machines accept
 		meta nfproto ipv6 iifname . ip6 saddr @machines6 accept
 		drop
+	}
+
+	chain drop_forged {
+		iifname @dropped_forged
+		drop
+	}
+
+	chain drop_blocked {
+		iifname @dropped_blocked
+		drop
+	}
+
+	chain drop_smtp {
+		iifname @dropped_smtp
+		meta l4proto tcp reject with tcp reset
 	}
 
 	chain to_machine {
@@ -232,6 +262,7 @@ The chains do these things:
 | `egress` | Marks each packet of a machine with the mark of the egress tunnel that the hash of its address picks ([the egress of the machines](/reference/egress/index.html.md#the-hash-of-a-machine)). It leaves out two kinds of packets: the replies to the edge servers in the mesh range, and the packets to a resolver in a private range. Without a tunnel, it holds only these two kinds of rules. A change of the count of tunnels replaces the rules of this chain alone, so the counters of the sets stay. |
 | `forward` | Clamps the MSS, marks the connections of the edge servers, and sends the traffic of the tap devices to the next two chains. It drops each forwarded IPv6 packet that touches no tap device. |
 | `from_machine` | Takes what a machine sends ([What a machine can reach](#what-a-machine-can-reach)). A machine sends only from its own two addresses. A packet to a resolver that conntrack marks invalid is dropped before the accept of port 53. A TCP packet to port 25 from a device outside the set `smtp` gets a reset ([Outbound TCP port 25](#outbound-tcp-port-25)). Without an egress tunnel as its output interface, a packet gets a reset or a refusal: the egress fails closed ([the egress of the machines](/reference/egress/index.html.md#fail-closed)). |
+| `drop_forged`, `drop_blocked`, `drop_smtp` | The chain `from_machine` jumps to one of them for a packet from a source that is not an address of the machine, for a packet to a blocked destination, and for a TCP packet to port 25 outside the set `smtp`. The first rule counts the packet in the element of the tap device in the set `dropped_forged`, `dropped_blocked`, or `dropped_smtp`. The second rule drops the packet, or gives a reset for port 25, whatever the first rule found. So a device that is missing from a set still loses the packet. |
 | `to_machine` | Takes what reaches a machine through the forward hook ([What can reach a machine](#what-can-reach-a-machine)). IPv6 comes only from an egress tunnel. |
 | `output`, `input`, `postrouting` | The connections that the node opens to a machine, and the inbound counter. The chain `input` also takes the neighbor discovery of IPv6 from a tap device, so a machine finds its gateway `fe80::1`. |
 | `nat` | The masquerade of the queries to a resolver in a private range. With the public resolver of this example, the chain is empty. |
@@ -389,13 +420,14 @@ The first rule lets out the packets of the machines. The second one lets in the 
 
 ## Counters
 
-Each element of the sets `machines`, `machines6`, `inbound`, and `connections` has a counter. A rule that finds a packet in the set adds the packet to the counter of its element. The egress of a machine adds the counters of its elements of `machines` and `machines6`.
+Each element of the sets `machines`, `machines6`, `inbound`, `connections`, `dropped_forged`, `dropped_blocked`, and `dropped_smtp` has a counter. A rule that finds a packet in the set adds the packet to the counter of its element. The egress of a machine adds the counters of its elements of `machines` and `machines6`.
 
 | Counter | What it counts |
 | --- | --- |
 | Inbound | The packets to the machine of connections that the node opened, such as a request through the machine URL or an SSH session: the connections with the mark of the node. The replies to the egress of the machine do not count. The connections of the edge servers over the mesh count too, because they carry the mark. This is the inbound traffic that counts as a use of the machine ([Inbound traffic as a use](#inbound-traffic-as-a-use)). |
 | Egress | The packets of the machine that the node lets out, over IPv4 and IPv6: its egress to the internet and to its resolvers, and its replies to the connections that the node opened. The node counts them before the egress tunnel. The replies to the connections of the edge servers over the mesh count too. These replies stay in the install, so the counter is more than the meter "egress out of the install" (plan question Q53). Traffic between machines is dropped in phase 1, so its meter is zero. |
 | Connections | The packets that open an outbound connection of the machine, in the conntrack state `new`, that the node lets out. A retry of a TCP SYN without an answer counts again. The rule runs after every drop and reject of the chain `from_machine`, so a blocked destination does not count. A query to a resolver of the node and a reply to an edge server do not count, because their rules accept them first. Many new connections in a short time are a sign of a scan. |
+| Dropped | The packets of the machine that the node dropped, by reason. `forged_source`: a source that is not an address of the machine, over IPv4 or IPv6, from the set `dropped_forged`. `blocked_destination`: a destination in `BlockedRanges` or an IPv6 address outside `2000::/3`, from the set `dropped_blocked`. `port_25`: TCP port 25 while it is closed, from the set `dropped_smtp`. The other drops do not count: an invalid packet to a resolver, the egress that fails closed, and the packets to the node, which the chain `input` drops. |
 
 ### Metrics
 
@@ -408,6 +440,7 @@ The metrics listener serves the counters of each connected machine ([Metrics](/r
 | `hopbox_machine_egress_bytes_total` | counter | Bytes from the machine that the node let out. |
 | `hopbox_machine_egress_packets_total` | counter | Packets from the machine that the node let out. |
 | `hopbox_machine_egress_connections_total` | counter | Packets that opened an outbound connection of the machine that the node let out, retries included. |
+| `hopbox_machine_dropped_packets_total` | counter | Packets of the machine that the node dropped, with the label `reason`: `forged_source`, `blocked_destination`, or `port_25`. Each machine has the 3 series from its connect. |
 | `hopbox_node_network_repairs_total` | counter | The installs of the table after it lost a part outside `hopboxd`, or after a check that got no answer within 10 s. It has no label. See [The table must stay](#the-table-must-stay). |
 
 ### Inbound traffic as a use

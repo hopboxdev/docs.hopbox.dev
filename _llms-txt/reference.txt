@@ -6601,9 +6601,13 @@ The removal of a role needs migration 0056 (`service.RemovalsSchema`, [Control s
 
 ## Metrics
 
-| Metric                             | Type    | Labels      | Description                                                                                                                               |
-| ---------------------------------- | ------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `hopbox_disk_transfer_bytes_total` | counter | `direction` | The bytes of disk data of the pulls. `sent` counts what the node sent to other nodes. `received` counts what it pulled from another node. |
+| Metric                                | Type    | Labels      | Description                                                                                                                                                                                                                                                                                                                         |
+| ------------------------------------- | ------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hopbox_disk_transfer_bytes_total`    | counter | `direction` | The bytes of disk data of the pulls. `sent` counts what the node sent to other nodes. `received` counts what it pulled from another node.                                                                                                                                                                                           |
+| `hopbox_disk_transfers`               | gauge   | `direction` | The pulls that run now. `sent` counts the pulls that the node serves, from the start of the stream to its end. `received` counts the pulls that the node makes, from the answer of the source that serves the disk to the end of the pull.                                                                                          |
+| `hopbox_disk_transfer_restarts_total` | counter | `reason`    | The pulls that dropped their partial copy, so the next pull starts again from zero. `digest_mismatch`: the copy had another digest than the disk of the source. `source_changed`: the disk of the source changed since the pull that left the copy. `bad_progress`: the node cannot read the saved state of the digest of the copy. |
+
+Each series of the gauge and of the restarts starts at 0. A pull of another move drops the partial copy of the old move, but it is a new pull, and it does not count as a restart. A refused pull does not count in the gauge.
 
 The pulls count in `hopbox_executor_actions_total` with the action `pull` ([the node executor](/reference/executor/#metrics)).
 
@@ -11413,16 +11417,18 @@ The edge role calls each one with a timeout of 10 s.
 
 The edge role serves these metrics on the metrics listener of `hopboxd` ([Metrics](/reference/metrics/)).
 
-| Metric                                         | Type    | Labels                                                                                    | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| ---------------------------------------------- | ------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `hopbox_edge_requests_total`                   | counter | `to`: `api`, `machine`, `redirect`, or `refused`                                          | The HTTP requests of the edge role, by where they went. A redirect goes to HTTPS, to a sign-in, or back from a sign-in. A refusal got a page of the edge role, also a refusal past the bounds of open requests.                                                                                                                                                                                                                            |
-| `hopbox_edge_tls_refusals_total`               | counter | `reason`: `no_sni`, `unknown_host`, or `no_certificate`                                   | The TLS handshakes that the edge role refused.                                                                                                                                                                                                                                                                                                                                                                                             |
-| `hopbox_edge_client_connection_refusals_total` | counter | `listener`: `https` or `http`. `bound`: `client` or `network`                             | The connections that the edge role closed at once. `client`: their IPv4 address or IPv6 /64 held 256 open connections on the listener. `network`: their IPv6 /48 held 1,024.                                                                                                                                                                                                                                                               |
-| `hopbox_edge_open_connections`                 | gauge   | `listener`: `https` or `http`                                                             | The connections that the listener holds now.                                                                                                                                                                                                                                                                                                                                                                                               |
-| `hopbox_edge_connection_limit`                 | gauge   | `listener`: `https` or `http`                                                             | The most connections that the listener holds at once: 16,384 for `https`, and 65,536 for `http`. A connection past it waits in the backlog of the kernel.                                                                                                                                                                                                                                                                                  |
-| `hopbox_edge_routes`                           | gauge   | none                                                                                      | The machines that the routes name.                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `hopbox_edge_certificate_not_after_seconds`    | gauge   | none                                                                                      | The end of the certificate that the edge role serves, in seconds since the Unix epoch, or 0 before the first certificate.                                                                                                                                                                                                                                                                                                                  |
-| `hopbox_edge_machine_requests_total`           | counter | `visibility`: `public` or `private`. `status_class`: `1xx`, `2xx`, `3xx`, `4xx`, or `5xx` | The HTTP requests that the edge role forwarded to a machine, by the visibility of the machine URL and the class of the status of the answer. A forward that failed counts as `5xx`, because the edge answers it with 502. A request whose client left before the answer does not count. A request that the edge answers itself, such as a stopped machine, counts only in `hopbox_edge_requests_total`. Each of the 10 series starts at 0. |
+| Metric                                         | Type    | Labels                                                                                    | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------------------------------------------- | ------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hopbox_edge_requests_total`                   | counter | `to`: `api`, `machine`, `redirect`, or `refused`                                          | The HTTP requests of the edge role, by where they went. A redirect goes to HTTPS, to a sign-in, or back from a sign-in. A refusal got a page of the edge role, also a refusal past the bounds of open requests.                                                                                                                                                                                                                                                                                                                                     |
+| `hopbox_edge_tls_refusals_total`               | counter | `reason`: `no_sni`, `unknown_host`, or `no_certificate`                                   | The TLS handshakes that the edge role refused.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `hopbox_edge_client_connection_refusals_total` | counter | `listener`: `https` or `http`. `bound`: `client` or `network`                             | The connections that the edge role closed at once. `client`: their IPv4 address or IPv6 /64 held 256 open connections on the listener. `network`: their IPv6 /48 held 1,024.                                                                                                                                                                                                                                                                                                                                                                        |
+| `hopbox_edge_open_connections`                 | gauge   | `listener`: `https` or `http`                                                             | The connections that the listener holds now.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `hopbox_edge_connection_limit`                 | gauge   | `listener`: `https` or `http`                                                             | The most connections that the listener holds at once: 16,384 for `https`, and 65,536 for `http`. A connection past it waits in the backlog of the kernel.                                                                                                                                                                                                                                                                                                                                                                                           |
+| `hopbox_edge_routes`                           | gauge   | none                                                                                      | The machines that the routes name.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `hopbox_edge_certificate_not_after_seconds`    | gauge   | none                                                                                      | The end of the certificate that the edge role serves, in seconds since the Unix epoch, or 0 before the first certificate.                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `hopbox_edge_machine_requests_total`           | counter | `visibility`: `public` or `private`. `status_class`: `1xx`, `2xx`, `3xx`, `4xx`, or `5xx` | The HTTP requests that the edge role forwarded to a machine, by the visibility of the machine URL and the class of the status of the answer. A forward that failed counts as `5xx`, because the edge answers it with 502. A request whose client left before the answer does not count. A request that the edge answers itself, such as a stopped machine, counts only in `hopbox_edge_requests_total`. Each of the 10 series starts at 0.                                                                                                          |
+| `hopbox_edge_upstream_errors_total`            | counter | `reason`: `not_running`, `no_address`, `no_answer`, or `expired_lease`                    | The 502 and 503 answers to the requests of a machine URL, by cause. `not_running`: the route has no target, because the machine does not run, or the control role holds no live route record of it. `no_address`: the machine runs without an address on its node. `no_answer`: the machine did not answer on its URL port, a 502. `expired_lease`: the lease of the target ended at the edge, because its node did not confirm the machine lately. A request whose client left before the answer does not count. Each of the 4 series starts at 0. |
+| `hopbox_edge_expired_targets`                  | gauge   | none                                                                                      | The targets of the routes whose lease ended at the edge, read at each scrape. A node that stopped its heartbeats leaves its targets here until the control role pushes new routes.                                                                                                                                                                                                                                                                                                                                                                  |
 
 The metrics of the SSH front door start with `hopbox_edge_ssh_` ([the SSH front door](/reference/ssh-front-door/#metrics)).
 
@@ -11708,6 +11714,18 @@ sudo wg show hbe0 allowed-ips
 ```
 
 [Check the network of a machine](/guide/node-network/#check-the-egress) checks the egress from a machine.
+
+## Metrics
+
+Each enrolled server serves these metrics of its egress ([Metrics](/reference/metrics/#metrics-of-the-egress)).
+
+| Metric                    | Type  | Labels | Source                       | Meaning                                                                                                                                                                                                         |
+| ------------------------- | ----- | ------ | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hopbox_egress_exits`     | gauge | none   | a node without the edge role | The tunnels that the machines of the node use now, one for each egress edge. 0 means that the egress of the machines fails closed ([Fail closed](#fail-closed)). It shows after the first check of the tunnels. |
+| `hopbox_egress_exit`      | gauge | none   | an edge server               | 1 while the heartbeats of the edge server say `egress_exit`: its tunnel is ready and its uplink works.                                                                                                          |
+| `hopbox_egress_uplink_up` | gauge | none   | an edge server               | 1 while the check of the uplink finds that it works, after the hold-down of [The uplink of an egress edge](#the-uplink-of-an-egress-edge). It shows after the first check of the uplink.                        |
+
+A node with the edge role is its own local exit, so it serves no `hopbox_egress_exits` ([The local exit](#the-local-exit)). It serves the two metrics of an edge server.
 
 ## Upgrades
 
@@ -12470,17 +12488,41 @@ After a restart, the executor asks the driver for each machine of the state dir.
 
 ## Metrics
 
-| Metric                                    | Type      | Labels             | Description                               |
-| ----------------------------------------- | --------- | ------------------ | ----------------------------------------- |
-| `hopbox_executor_actions_total`           | counter   | `action`, `result` | The actions of the executors of the node. |
-| `hopbox_executor_action_duration_seconds` | histogram | `action`           | The duration of the actions.              |
+| Metric                                    | Type      | Labels              | Description                                                                      |
+| ----------------------------------------- | --------- | ------------------- | -------------------------------------------------------------------------------- |
+| `hopbox_executor_actions_total`           | counter   | `action`, `result`  | The actions of the executors of the node.                                        |
+| `hopbox_executor_action_duration_seconds` | histogram | `action`            | The duration of the actions.                                                     |
+| `hopbox_executor_lease_losses_total`      | counter   | none                | The machine leases that the node lost.                                           |
+| `hopbox_executor_boot_phase_seconds`      | histogram | `phase`             | The duration of each phase of a boot.                                            |
+| `hopbox_machine_restarts_total`           | counter   | `machine`, `reason` | The restarts of each machine by its restart policy.                              |
+| `hopbox_guest_link_handshakes_total`      | counter   | `result`            | The handshakes of the guest links of the node.                                   |
+| `hopbox_guest_links_down`                 | gauge     | none                | The machines whose microVM runs on the node without an authenticated guest link. |
 
-| Label    | Values                                                                                                       |
-| -------- | ------------------------------------------------------------------------------------------------------------ |
-| `action` | `boot`, `wake`, `reboot`, `stop`, `delete`, `hibernate`, `link`, `report`, `config`, `start_command`, `pull` |
-| `result` | `ok`, `failed`, or `canceled` for an action that ended with the loss of its lease                            |
+| Label                      | Values                                                                                                                                                                                                                                                                            |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `action`                   | `boot`, `wake`, `reboot`, `stop`, `delete`, `hibernate`, `link`, `report`, `config`, `start_command`, `pull`                                                                                                                                                                      |
+| `result` of the actions    | `ok`, `failed`, or `canceled` for an action that ended with the loss of its lease                                                                                                                                                                                                 |
+| `phase`                    | `unit_start`, `vmm_ready`, `guest_link`, or `start_command`                                                                                                                                                                                                                       |
+| `machine`                  | The ID of the machine                                                                                                                                                                                                                                                             |
+| `reason`                   | `crash`, `guest_shutdown`, or `start_command_exit`                                                                                                                                                                                                                                |
+| `result` of the handshakes | `ok`. `bad_proof` for a guest agent whose proof does not match the link key. `no_version` for a guest agent without a common version of the guest link. `error` for any other failure, such as a broken message, a timeout, or a guest agent that ends the call before its proof. |
 
-The histogram has the buckets 0.01, 0.05, 0.1, 0.5, 1, 2.5, 5, 10, 30, 60, 120, and 300 seconds.
+The histogram of the actions has the buckets 0.01, 0.05, 0.1, 0.5, 1, 2.5, 5, 10, 30, 60, 120, and 300 seconds. The histogram of the phases has the buckets 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, and 300 seconds.
+
+A lease is lost when the control role does not renew it, when the control role refuses a report with it as stale, or when it expires on the node. Each grant counts once, 10 s after its end (`executor.DefaultLossWait`). A cold move ends a grant on purpose: the hand-off ends the grant of the source node, and a failed move or a give-back ends the grant of the target ([Cold move](/reference/cold-move/)). So the end of a grant does not count when the disk transfers of the node name the machine, to serve or to remove, from 1 min before the end to 10 s after it (`executor.DefaultMoveWindow`, [the control channel](/reference/control-channel/#disktransfers-and-diskexport)). For a grant, only the disk transfers after the start of that grant count. So after a failed move gives the machine back with a new grant, a loss of the new grant counts, and the old grant keeps its move, also when the new grant comes within the 10 s. The executor forgets the disk transfers that name a machine once they are older than the window and the wait, at each heartbeat and at each change of the disk transfers. The end of a grant does not count either when the executor of the machine ended within the 10 s, as after a delete.
+
+A boot and a reboot have four phases, one after the other. The driver times the first two ([the VMM driver interface](/reference/vmm/#driver)).
+
+1. `unit_start`: from the start of the boot of the driver until the process of the VMM runs. It holds the image, the disk, the network device, and the start of the unit, so a first boot that unpacks or downloads its image takes long.
+2. `vmm_ready`: until the VMM, Firecracker, answers and started the microVM.
+3. `guest_link`: until the guest agent applied its configuration on an authenticated link.
+4. `start_command`: until the guest agent reports the first run of the start command. The guest agent starts it after the boot of the guest. A machine without a start command has no such phase.
+
+A wake from a memory file times no phase. A boot that fails ends its phases where it failed.
+
+A restart counts when the restart policy `always` starts the machine again after a crash (`crash`) or after a shutdown from inside the machine (`guest_shutdown`). It also counts when the start command exited and runs again (`start_command_exit`). A boot that failed counts in `hopbox_executor_actions_total`, not here. The series of a machine go away when its executor ends: after its delete, or after it left the node in a cold move.
+
+`hopbox_guest_links_down` counts a machine from the start of its microVM until its guest agent connects, so a boot counts for a few seconds. After a restart of `hopboxd`, a running machine does not count before its first spec, because only the spec lets the executor give its guest agent a new link key. From its first spec, it counts until its guest agent connects again.
 
 ## Go API
 
@@ -12500,6 +12542,8 @@ The histogram has the buckets 0.01, 0.05, 0.1, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 
 | `Nameservers`     | none                    | A func that returns the resolvers of the machines of the node, such as `Nameservers` of a `netcfg.Network`. Nil gives a machine no resolver.                                                                                                        |
 | `IPv6`            | none                    | A func that reports whether the node gives the machines IPv6, such as `IPv6` of a `netcfg.Network`. Then the guest of a machine with an address gets `address6` and `gateway6` ([Guest link](/reference/guest-link/)). Nil gives a machine no IPv6. |
 | `Puller`          | none                    | Pulls the disk of a machine that moves to the node, such as a `transfer.Client` ([Cold move](/reference/cold-move/)). Nil, or a driver that is no `vmm.Mover`, pulls none, and a moving machine waits.                                              |
+| `LossWait`        | 10 s                    | The wait before the end of a grant counts in `hopbox_executor_lease_losses_total`, for the disk transfers of a cold move ([Metrics](#metrics)).                                                                                                     |
+| `MoveWindow`      | 1 min                   | How long before the end of a grant the disk transfers that named its machine still make the end a move, and no loss ([Metrics](#metrics)).                                                                                                          |
 
 The `Manager` is the `Machines` of the agent of the node, `node.Agent.Machines`. The agent calls these methods:
 
@@ -12518,6 +12562,7 @@ For the cold moves, the node role calls these methods ([Cold move](/reference/co
 | `Busy(id)`    | Reports whether the executor of the machine holds a valid lease, runs an action, or runs the microVM. A microVM that the executor attached to after a restart, before a spec arrived, counts too. The disk listener serves no disk of such a machine. |
 | `Forget(ids)` | Removes the files of the machines that left the node, once their executor holds no valid lease and their microVM does not run. A machine that a later call names no more keeps its files.                                                             |
 | `Removed()`   | Returns the machines whose files `Forget` removed, for the heartbeats.                                                                                                                                                                                |
+| `Moving(ids)` | Records that the disk transfers of the node name the machines, to serve or to remove. The end of the grant of such a machine does not count as a lost lease ([Metrics](#metrics)).                                                                    |
 
 # The executor protocol
 
@@ -12876,6 +12921,7 @@ Each microVM runs in the unit `hopbox-machine-<id>.service`, in the slice `hopbo
 | `ExecStart`                                     | the jailer, with the arguments below                                                                                                                                                                                                                                                                                                                             |
 | `MemoryMax`                                     | the RAM of the machine plus 256 MiB. The extra memory is for Firecracker and for the page cache of the disk.                                                                                                                                                                                                                                                     |
 | `TasksMax`                                      | 256. Firecracker runs one thread for each vCPU and a few of its own.                                                                                                                                                                                                                                                                                             |
+| `IOAccounting`                                  | `yes`. The cgroup of the unit gets the file `io.stat`, from which the node reads the disk IO of the machine ([Metrics](/reference/metrics/#metrics-of-the-machines)).                                                                                                                                                                                            |
 | `LogRateLimitIntervalUSec`, `LogRateLimitBurst` | 30 s and 1000. The journal takes at most 1000 lines of the unit in 30 s, a tenth of the default of journald. A guest can write to its serial console without end, and journald drops the lines above the limit.                                                                                                                                                  |
 | `ExecStop`                                      | `hopboxd stop-guest --api-socket <API socket> --timeout <StopTimeout>`, with the path of the `hopboxd` that booted the machine, such as `/opt/hopbox/current/hopboxd`. systemd ignores a failure of the command, as the prefix `-` of a unit file says. See [A stop through systemd](#a-stop-through-systemd). A driver without `StopHelper` sets no `ExecStop`. |
 | `TimeoutStopUSec`                               | `StopTimeout` plus 10 s, 40 s by default. systemd waits this long for `ExecStop`, and then this long again for the end of Firecracker after `SIGTERM`. If Firecracker still runs, systemd sends `SIGKILL` and can wait a third time. So a stop takes at most 2 min.                                                                                              |
@@ -12962,6 +13008,8 @@ The disk of a machine is a reflink copy of the disk of its image, made with the 
 5. Otherwise the boot fails with `firecracker: the image cache has no image <digest>, and the image has no URL`.
 
 One job of the process prepares each image. It runs apart from the boot that started it, with a deadline of 2 hours. So a download can take longer than the timeout of one boot. The next boot of the machine then waits for the same job. Two boots of one image at the same time wait for one job. A boot whose wait ends first fails with `firecracker: the image <digest> is not ready yet, and the node goes on with it`, and the restart policy boots the machine again later.
+
+Step 3 counts as a fetch with the source `bundle`, and step 4 as one with the source `url`, in `hopbox_image_fetches_total` ([Metrics](/reference/metrics/#metrics-of-the-image-cache)). The checks of steps 1 and 2 are no fetch.
 
 Each unpack and download writes a temp file `.<name>.tmp-<random>` in the dir of the image, and renames it only after the checks. At the first use of an image in a process, the job removes each such file that an earlier process left. It also removes a compressed copy that stayed beside a checked disk. The cache never removes an image.
 
@@ -13065,7 +13113,7 @@ Every record has `component=firecracker`.
 
 `hopboxd stop-guest` logs to the journal of the unit of the machine, at level info ([hopboxd](/reference/hopboxd/#stop-guest)). For a stop of a running guest, it logs `asking the guest to shut down` and then `the guest shut down`. On a failure, it prints the error and exits with status 1, for example `firecracker: the guest did not shut down within 30s`.
 
-The driver has no metrics of its own. The executor counts each boot, stop, and delete ([the node executor](/reference/executor/#metrics)). The driver is a `vmm.UsageReader`: it reads what each microVM uses from the cgroup of its unit, and the node serves these values as the [metrics of the machines](/reference/metrics/#metrics-of-the-machines).
+The driver serves the metrics of its image cache ([Metrics](/reference/metrics/#metrics-of-the-image-cache)). The executor counts each boot, stop, and delete ([the node executor](/reference/executor/#metrics)). The driver times the phases `unit_start` and `vmm_ready` of each boot, and the executor serves them ([the VMM driver interface](/reference/vmm/#driver)). The driver is a `vmm.UsageReader`: it reads what each microVM uses from the cgroup of its unit, and the node serves these values as the [metrics of the machines](/reference/metrics/#metrics-of-the-machines). It reads `cpu.stat` and `memory.current`, and also `cpu.pressure`, `memory.events`, and `io.stat` when the cgroup has them. From `io.stat`, it reads only the device of the file system of `MachinesDir`.
 
 ## Go API
 
@@ -13089,6 +13137,7 @@ The driver has no metrics of its own. The executor counts each boot, stop, and d
 | `MemoryOverhead`                                    | 256 MiB                                    | The memory of a unit beyond the RAM of the guest.                                                                                                                                                                                         |
 | `HTTPClient`                                        | a client with the proxy of the environment | The client of image downloads.                                                                                                                                                                                                            |
 | `CgroupRoot`                                        | `/sys/fs/cgroup`                           | The mount point of the cgroup v2 hierarchy, from which the driver reads what the machines use.                                                                                                                                            |
+| `Registerer`                                        | none                                       | Gets the metrics of the image cache. Nil registers none.                                                                                                                                                                                  |
 | `Logger`                                            | `slog.Default()`                           | The logger.                                                                                                                                                                                                                               |
 
 | Method                 | Description                                                                                                                                                                                                                                                 |
@@ -19570,13 +19619,14 @@ The node agent then logs `the mesh device refused the mesh of the control plane,
 
 The metrics listener serves these metrics on each server with the device ([Metrics](/reference/metrics/#metrics-of-the-mesh)). The device reads the counters of WireGuard at each scrape. The label `server` is the ID of the peer.
 
-| Metric                                    | Type    | Labels   | Meaning                                                                                                                                                           |
-| ----------------------------------------- | ------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `hopbox_mesh_peers`                       | gauge   | none     | The peers of the device.                                                                                                                                          |
-| `hopbox_mesh_peer_last_handshake_seconds` | gauge   | `server` | The Unix time of the last WireGuard handshake with the peer, or 0 before the first one. WireGuard makes a handshake at least every 2 minutes while traffic flows. |
-| `hopbox_mesh_peer_receive_bytes_total`    | counter | `server` | The bytes that the device got from the peer.                                                                                                                      |
-| `hopbox_mesh_peer_transmit_bytes_total`   | counter | `server` | The bytes that the device sent to the peer.                                                                                                                       |
-| `hopbox_mesh_repairs_total`               | counter | none     | The changes to the device after it lost a part outside `hopboxd`.                                                                                                 |
+| Metric                                    | Type    | Labels   | Meaning                                                                                                                                                                                  |
+| ----------------------------------------- | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hopbox_mesh_peers`                       | gauge   | none     | The peers of the device.                                                                                                                                                                 |
+| `hopbox_mesh_peer_last_handshake_seconds` | gauge   | `server` | The Unix time of the last WireGuard handshake with the peer, or 0 before the first one. WireGuard makes a handshake at least every 2 minutes while traffic flows.                        |
+| `hopbox_mesh_peer_receive_bytes_total`    | counter | `server` | The bytes that the device got from the peer.                                                                                                                                             |
+| `hopbox_mesh_peer_transmit_bytes_total`   | counter | `server` | The bytes that the device sent to the peer.                                                                                                                                              |
+| `hopbox_mesh_repairs_total`               | counter | none     | The changes to the device after it lost a part outside `hopboxd`.                                                                                                                        |
+| `hopbox_mesh_expected_peers`              | gauge   | none     | The peers that the last push of the control role named. It shows after the first push of the process, also while the device is missing. A device with fewer peers than this lost a peer. |
 
 ## Logs
 
@@ -19636,7 +19686,7 @@ The other parts of the mesh log with their own components:
 
 > The Prometheus metrics listener of hopboxd and every metric that it serves.
 
-`hopboxd` serves Prometheus metrics on a loopback listener. The code is in `internal/obs`, `internal/api`, `internal/audit`, `internal/service`, `internal/placement`, `internal/node/executor`, `internal/node/machines`, `internal/node/netcfg`, `internal/mesh`, and `internal/dns`.
+`hopboxd` serves Prometheus metrics on a loopback listener. The code is in `internal/obs`, `internal/api`, `internal/audit`, `internal/service`, `internal/placement`, `internal/node/executor`, `internal/node/machines`, `internal/node/vmm/firecracker`, `internal/node/netcfg`, `internal/mesh`, and `internal/dns`.
 
 The counter `hopbox_account_creations_total` came with milestone A2, the approval of new accounts (metrics catalog).
 
@@ -19849,6 +19899,8 @@ A server with the edge role adds these metrics to the listener of its `hopboxd r
 | `hopbox_edge_routes`                           | gauge   | none                         | The machines that the machine URLs of the edge role name.                                                                                                                                                                                                                                                   |
 | `hopbox_edge_certificate_not_after_seconds`    | gauge   | none                         | The end of the certificate that the edge role serves, in seconds since the Unix epoch. It is 0 before the first certificate.                                                                                                                                                                                |
 | `hopbox_edge_machine_requests_total`           | counter | `visibility`, `status_class` | The HTTP requests that the edge role forwarded to a machine, by the visibility of the machine URL (`public` or `private`) and the class of the status of the answer (`1xx` to `5xx`). A forward that failed counts as `5xx`. Each of the 10 series starts at 0 ([the edge role](/reference/edge/#metrics)). |
+| `hopbox_edge_upstream_errors_total`            | counter | `reason`                     | The 502 and 503 answers to the requests of a machine URL, by cause: `not_running`, `no_address`, `no_answer`, or `expired_lease` ([the edge role](/reference/edge/#metrics)). Each of the 4 series starts at 0.                                                                                             |
+| `hopbox_edge_expired_targets`                  | gauge   | none                         | The targets of the machine URLs whose lease ended at the edge.                                                                                                                                                                                                                                              |
 | `hopbox_edge_ssh_connections_total`            | counter | `result`                     | The TCP connections of the SSH front door, by result ([the SSH front door](/reference/ssh-front-door/#metrics)).                                                                                                                                                                                            |
 | `hopbox_edge_ssh_auth_total`                   | counter | `result`                     | The keys that SSH clients signed with: `allowed`, `refused`, `limited`, or `error`.                                                                                                                                                                                                                         |
 | `hopbox_edge_ssh_unreachable_total`            | counter | `reason`                     | The signed-in SSH connections that reached no OpenSSH server of a machine.                                                                                                                                                                                                                                  |
@@ -19877,26 +19929,57 @@ hopbox_edge_tls_refusals_total{reason="no_sni"} 1
 
 ## Metrics of the executors
 
-The executors of a node count their actions ([the node executor](/reference/executor/#metrics)). `hopboxd run` registers them on a server with the node role. The Firecracker driver adds no metric of its own ([the Firecracker driver](/reference/firecracker-driver/#logs)).
+The executors of a node count their actions, and what happens to their machines and guest links ([the node executor](/reference/executor/#metrics)). `hopboxd run` registers them on a server with the node role.
 
-| Metric                                    | Type      | Labels             | Description                               |
-| ----------------------------------------- | --------- | ------------------ | ----------------------------------------- |
-| `hopbox_executor_actions_total`           | counter   | `action`, `result` | The actions of the executors of the node. |
-| `hopbox_executor_action_duration_seconds` | histogram | `action`           | The duration of the actions.              |
+| Metric                                    | Type      | Labels              | Description                                                                                                                                                                                                                                                                                 |
+| ----------------------------------------- | --------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hopbox_executor_actions_total`           | counter   | `action`, `result`  | The actions of the executors of the node.                                                                                                                                                                                                                                                   |
+| `hopbox_executor_action_duration_seconds` | histogram | `action`            | The duration of the actions.                                                                                                                                                                                                                                                                |
+| `hopbox_executor_lease_losses_total`      | counter   | none                | The machine leases that the node lost: the control role did not renew one or refused a report with it, or it expired. Each grant counts once, 10 s after its end. The end of a grant by a cold move, or after a delete, does not count ([the node executor](/reference/executor/#metrics)). |
+| `hopbox_executor_boot_phase_seconds`      | histogram | `phase`             | The duration of each phase of a boot or a reboot: `unit_start`, `vmm_ready`, `guest_link`, and `start_command`.                                                                                                                                                                             |
+| `hopbox_machine_restarts_total`           | counter   | `machine`, `reason` | The restarts of each machine by the restart policy: `crash`, `guest_shutdown`, or `start_command_exit`. The series of a machine go away when it leaves the node.                                                                                                                            |
+| `hopbox_guest_link_handshakes_total`      | counter   | `result`            | The handshakes of the guest links: `ok`, `bad_proof`, `no_version`, or `error`. Each of the 4 series starts at 0.                                                                                                                                                                           |
+| `hopbox_guest_links_down`                 | gauge     | none                | The machines whose microVM runs on the node without an authenticated guest link. A boot counts until its guest agent connects. A machine that runs before its first spec after a restart of `hopboxd` does not count.                                                                       |
+
+The catalog names the phases and the results in words, so these label values stand for them:
+
+| Label                      | Values                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `phase`                    | `unit_start`: the unit start of the catalog, from the start of the boot of the driver until systemd started the unit. `vmm_ready`: the “Firecracker ready” of the catalog, until Firecracker answers and started the microVM. The name holds no driver, because the VMM layer takes other drivers. `guest_link`: until the guest agent applied its configuration on an authenticated link. `start_command`: until the guest agent reports the first run of the start command. |
+| `reason` of the restarts   | `crash`, `guest_shutdown`, and `start_command_exit`, as the catalog names them. A boot that failed is no restart, and counts only in `hopbox_executor_actions_total`.                                                                                                                                                                                                                                                                                                         |
+| `result` of the handshakes | `ok`. `bad_proof`: the failed proofs of the catalog, a guest proof that does not match the link key. `no_version`: no common version of the guest link. `error`: any other failure, such as a broken message, a timeout, or a guest agent that ends the call before its proof.                                                                                                                                                                                                |
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(executor_lease|machine_restarts|guest_link)'
+```
+
+```text
+hopbox_executor_lease_losses_total 0
+hopbox_guest_link_handshakes_total{result="bad_proof"} 0
+hopbox_guest_link_handshakes_total{result="error"} 0
+hopbox_guest_link_handshakes_total{result="no_version"} 0
+hopbox_guest_link_handshakes_total{result="ok"} 12
+hopbox_guest_links_down 0
+hopbox_machine_restarts_total{machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b",reason="crash"} 1
+```
 
 ## Metrics of the machines
 
 A server with the node role serves what its running machines use. At each scrape, the node reads the cgroup of the unit `hopbox-machine-<id>.service` of each machine that runs ([the Firecracker driver](/reference/firecracker-driver/)). The cgroup holds Firecracker and its threads, so the values include the VMM. The node totals come from the cgroup of the slice `hopbox-machines.slice`.
 
-| Metric                              | Type    | Labels                                                                  | Description                                                                                                                                                                        |
-| ----------------------------------- | ------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `hopbox_machine_info`               | gauge   | `machine`, `name`, `org`, `size`, `vcpus`, `memory_bytes`, `disk_bytes` | 1 for each machine that runs on the node. It is the only series that links a machine to its org, by org ID. A query joins it to the other series on `machine`.                     |
-| `hopbox_machine_vcpus`              | gauge   | `machine`                                                               | The vCPUs of the size of the machine, the value of the label `vcpus` of `hopbox_machine_info`. A query divides the CPU time by it, because PromQL cannot read a label as a number. |
-| `hopbox_machine_cpu_seconds_total`  | counter | `machine`                                                               | The CPU time of the machine since its boot, from `usage_usec` of `cpu.stat`. It starts from zero at each boot.                                                                     |
-| `hopbox_machine_memory_bytes`       | gauge   | `machine`                                                               | The host RAM that the machine holds, from `memory.current`.                                                                                                                        |
-| `hopbox_machine_disk_bytes`         | gauge   | `machine`                                                               | The bytes of the blocks that the sparse disk file of the machine holds on the node.                                                                                                |
-| `hopbox_machines_cpu_seconds_total` | counter | none                                                                    | The CPU time of every machine of the node, from `cpu.stat` of the slice.                                                                                                           |
-| `hopbox_machines_memory_bytes`      | gauge   | none                                                                    | The host RAM of every machine of the node, from `memory.current` of the slice.                                                                                                     |
+| Metric                                      | Type    | Labels                                                                  | Description                                                                                                                                                                                                               |
+| ------------------------------------------- | ------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hopbox_machine_info`                       | gauge   | `machine`, `name`, `org`, `size`, `vcpus`, `memory_bytes`, `disk_bytes` | 1 for each machine that runs on the node. It is the only series that links a machine to its org, by org ID. A query joins it to the other series on `machine`.                                                            |
+| `hopbox_machine_vcpus`                      | gauge   | `machine`                                                               | The vCPUs of the size of the machine, the value of the label `vcpus` of `hopbox_machine_info`. A query divides the CPU time by it, because PromQL cannot read a label as a number.                                        |
+| `hopbox_machine_cpu_seconds_total`          | counter | `machine`                                                               | The CPU time of the machine since its boot, from `usage_usec` of `cpu.stat`. It starts from zero at each boot.                                                                                                            |
+| `hopbox_machine_memory_bytes`               | gauge   | `machine`                                                               | The host RAM that the machine holds, from `memory.current`.                                                                                                                                                               |
+| `hopbox_machine_disk_bytes`                 | gauge   | `machine`                                                               | The bytes of the blocks that the sparse disk file of the machine holds on the node.                                                                                                                                       |
+| `hopbox_machine_cpu_pressure_seconds_total` | counter | `machine`                                                               | The time that at least one process of the machine waited for a CPU since its boot, from the line `some` of `cpu.pressure`.                                                                                                |
+| `hopbox_machine_oom_kills_total`            | counter | `machine`                                                               | The processes of the unit of the machine that the kernel killed for a lack of memory since its boot, from `oom_kill` of `memory.events`. A kill inside the guest does not count: the guest kernel ends its own processes. |
+| `hopbox_machine_disk_read_bytes_total`      | counter | `machine`                                                               | The bytes that the machine read from the block devices of the node since its boot, from `rbytes` of `io.stat`. Only the device of the file system of `<data_dir>/machines` counts.                                        |
+| `hopbox_machine_disk_written_bytes_total`   | counter | `machine`                                                               | The bytes that the machine wrote to the block devices of the node since its boot, from `wbytes` of `io.stat`. Only the device of the file system of `<data_dir>/machines` counts.                                         |
+| `hopbox_machines_cpu_seconds_total`         | counter | none                                                                    | The CPU time of every machine of the node, from `cpu.stat` of the slice.                                                                                                                                                  |
+| `hopbox_machines_memory_bytes`              | gauge   | none                                                                    | The host RAM of every machine of the node, from `memory.current` of the slice.                                                                                                                                            |
 
 | Label                                 | Values                                                                     |
 | ------------------------------------- | -------------------------------------------------------------------------- |
@@ -19906,9 +19989,11 @@ A server with the node role serves what its running machines use. At each scrape
 | `size`                                | The name of the size of the machine, such as `default`                     |
 | `vcpus`, `memory_bytes`, `disk_bytes` | The vCPUs, the RAM in bytes, and the disk in bytes of the size             |
 
+The four counters of pressure, OOM kills, and disk IO start from zero at each boot, because each boot gets a new cgroup. A host can lack their files, and then the node serves none of these series. `cpu.pressure` needs a kernel with PSI on, and a kernel that boots with `psi=0` has none. `io.stat` needs the io controller, which the unit of each machine turns on with `IOAccounting` ([the Firecracker driver](/reference/firecracker-driver/#the-unit-of-a-machine)). A machine that booted before this release has no `io.stat` until its next boot. `io.stat` lists each device that the IO of the cgroup reached. A RAID or a device mapper passes each IO on to its member disks, which list it again. So the node reads only the line of the device of the file system of `<data_dir>/machines`, such as `9:3` for `/dev/md3`. A file system without a device of its own, such as btrfs, has no such line, and its disk IO stays at 0. A file that the node cannot read leaves its series out of that scrape.
+
 A machine that runs before its first spec after a restart of `hopboxd` has no `hopbox_machine_info` and no `hopbox_machine_vcpus` until the spec arrives. A read that fails leaves its series out of that scrape, and the other series stay. For example, a machine can stop between the list of the machines and the read of its cgroup. The slice has no cgroup before the first machine runs in it, so the node totals are absent then.
 
-Each running machine has 5 series in this section. A running machine with network also has 5 series in [Metrics of the node network](#metrics-of-the-node-network), and a machine without network has none of them. So a node with N running machines, each with network, serves 10 × N + 2 series of the machines. The catalog plans up to 15 series for each running machine with the metrics of later milestones.
+Each running machine has up to 9 series in this section. A running machine with network also has 8 series in [Metrics of the node network](#metrics-of-the-node-network), and a machine without network has none of them. A machine that restarted also has a series of `hopbox_machine_restarts_total` for each reason ([Metrics of the executors](#metrics-of-the-executors)). So a node with N running machines, each with network, serves about 17 × N + 2 series of the machines. The owner accepted about 17 series for each running machine on 2026-11-01: 1,000 machines give about 17,000 series, which take about 57 MB of RAM in Prometheus (Q129).
 
 ```sh
 curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_machines?_(info|vcpus|cpu|memory|disk_bytes)'
@@ -19924,34 +20009,78 @@ hopbox_machines_cpu_seconds_total 812.4
 hopbox_machines_memory_bytes 2.15e+09
 ```
 
+## Metrics of the image cache
+
+A server with the node role serves these metrics of its image cache `<data_dir>/images` ([the Firecracker driver](/reference/firecracker-driver/#the-image-cache)). The Firecracker driver adds them, so a node with another driver has none.
+
+| Metric                       | Type    | Labels             | Description                                                                                                                                                                                                                            |
+| ---------------------------- | ------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hopbox_image_cache_bytes`   | gauge   | none               | The bytes of the blocks that the files of the image cache hold, read at each scrape. An unpacked disk is sparse, so it takes less than its size. 0 before the first image.                                                             |
+| `hopbox_image_fetches_total` | counter | `source`, `result` | The images that the node prepared for a boot: `bundle` for an unpack of the compressed disk of the release bundle, and `url` for a download from the URL of the image. `result` is `ok` or `failed`. Each of the 4 series starts at 0. |
+
+A check of a disk that the cache holds already is no fetch. A boot that waits for the fetch of another boot counts no fetch of its own.
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_image_'
+```
+
+```text
+hopbox_image_cache_bytes 2.43e+09
+hopbox_image_fetches_total{result="failed",source="bundle"} 0
+hopbox_image_fetches_total{result="failed",source="url"} 0
+hopbox_image_fetches_total{result="ok",source="bundle"} 1
+hopbox_image_fetches_total{result="ok",source="url"} 0
+```
+
 ## Metrics of the node network
 
 A server with the node role serves the traffic counters of each machine with network ([the node network](/reference/node-network/#metrics)). The node reads them from the table `inet hopbox_node` at each scrape. They start from zero at each start of `hopboxd`.
 
-| Metric                                    | Type    | Labels    | Description                                                                                                                                                                                              |
-| ----------------------------------------- | ------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `hopbox_machine_inbound_bytes_total`      | counter | `machine` | Bytes to the machine of connections that the node opened.                                                                                                                                                |
-| `hopbox_machine_inbound_packets_total`    | counter | `machine` | Packets to the machine of connections that the node opened.                                                                                                                                              |
-| `hopbox_machine_egress_bytes_total`       | counter | `machine` | Bytes from the machine that the node let out.                                                                                                                                                            |
-| `hopbox_machine_egress_packets_total`     | counter | `machine` | Packets from the machine that the node let out.                                                                                                                                                          |
-| `hopbox_machine_egress_connections_total` | counter | `machine` | Packets that opened an outbound connection of the machine that the node let out, retries included ([the node network](/reference/node-network/#counters)).                                               |
-| `hopbox_node_network_repairs_total`       | counter | none      | The installs of the table `inet hopbox_node` after it lost a part outside `hopboxd`, or after a check that got no answer within 10 s ([the node network](/reference/node-network/#the-table-must-stay)). |
+| Metric                                    | Type    | Labels              | Description                                                                                                                                                                                                                                                                                                                                                         |
+| ----------------------------------------- | ------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hopbox_machine_inbound_bytes_total`      | counter | `machine`           | Bytes to the machine of connections that the node opened.                                                                                                                                                                                                                                                                                                           |
+| `hopbox_machine_inbound_packets_total`    | counter | `machine`           | Packets to the machine of connections that the node opened.                                                                                                                                                                                                                                                                                                         |
+| `hopbox_machine_egress_bytes_total`       | counter | `machine`           | Bytes from the machine that the node let out.                                                                                                                                                                                                                                                                                                                       |
+| `hopbox_machine_egress_packets_total`     | counter | `machine`           | Packets from the machine that the node let out.                                                                                                                                                                                                                                                                                                                     |
+| `hopbox_machine_egress_connections_total` | counter | `machine`           | Packets that opened an outbound connection of the machine that the node let out, retries included ([the node network](/reference/node-network/#counters)).                                                                                                                                                                                                          |
+| `hopbox_machine_dropped_packets_total`    | counter | `machine`, `reason` | Packets of the machine that the node dropped, by reason: `forged_source` for a source that is not an address of the machine, `blocked_destination` for a blocked range or an IPv6 address outside `2000::/3`, and `port_25` for TCP port 25 while it is closed ([the node network](/reference/node-network/#counters)). Each machine with network has the 3 series. |
+| `hopbox_node_network_repairs_total`       | counter | none                | The installs of the table `inet hopbox_node` after it lost a part outside `hopboxd`, or after a check that got no answer within 10 s ([the node network](/reference/node-network/#the-table-must-stay)).                                                                                                                                                            |
 
 ```sh
 curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(machine|node_network)_'
+```
+
+## Metrics of the egress
+
+Each enrolled server serves the state of its egress ([the egress of the machines](/reference/egress/#metrics)). A node without the edge role serves `hopbox_egress_exits`. An edge server serves `hopbox_egress_exit` and `hopbox_egress_uplink_up`.
+
+| Metric                    | Type  | Labels | Description                                                                                                     |
+| ------------------------- | ----- | ------ | --------------------------------------------------------------------------------------------------------------- |
+| `hopbox_egress_exits`     | gauge | none   | The egress edges whose tunnels the machines of the node use now. At 0, the egress of the machines fails closed. |
+| `hopbox_egress_exit`      | gauge | none   | 1 while the edge server is an egress exit: its tunnel is ready and its uplink works.                            |
+| `hopbox_egress_uplink_up` | gauge | none   | 1 while the check of the uplink of the edge server finds that it works.                                         |
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_egress_'
+```
+
+```text
+hopbox_egress_exit 1
+hopbox_egress_uplink_up 1
 ```
 
 ## Metrics of the mesh
 
 A server with the mesh device `hbm0` serves these metrics ([the mesh](/reference/mesh/#metrics)). The device reads the counters of WireGuard at each scrape. A server outside the mesh serves none of them. The label `server` is the ID of the peer.
 
-| Metric                                    | Type    | Labels   | Description                                                                                                                         |
-| ----------------------------------------- | ------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `hopbox_mesh_peers`                       | gauge   | none     | The peers of the mesh device.                                                                                                       |
-| `hopbox_mesh_peer_last_handshake_seconds` | gauge   | `server` | The Unix time of the last WireGuard handshake with the peer, or 0 before the first one.                                             |
-| `hopbox_mesh_peer_receive_bytes_total`    | counter | `server` | The bytes that the mesh device got from the peer.                                                                                   |
-| `hopbox_mesh_peer_transmit_bytes_total`   | counter | `server` | The bytes that the mesh device sent to the peer.                                                                                    |
-| `hopbox_mesh_repairs_total`               | counter | none     | The changes to the mesh device after it lost a part outside `hopboxd` ([the mesh](/reference/mesh/#a-restart-a-stop-and-a-reboot)). |
+| Metric                                    | Type    | Labels   | Description                                                                                                                                                       |
+| ----------------------------------------- | ------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hopbox_mesh_peers`                       | gauge   | none     | The peers of the mesh device.                                                                                                                                     |
+| `hopbox_mesh_peer_last_handshake_seconds` | gauge   | `server` | The Unix time of the last WireGuard handshake with the peer, or 0 before the first one.                                                                           |
+| `hopbox_mesh_peer_receive_bytes_total`    | counter | `server` | The bytes that the mesh device got from the peer.                                                                                                                 |
+| `hopbox_mesh_peer_transmit_bytes_total`   | counter | `server` | The bytes that the mesh device sent to the peer.                                                                                                                  |
+| `hopbox_mesh_repairs_total`               | counter | none     | The changes to the mesh device after it lost a part outside `hopboxd` ([the mesh](/reference/mesh/#a-restart-a-stop-and-a-reboot)).                               |
+| `hopbox_mesh_expected_peers`              | gauge   | none     | The peers that the last push of the control role named. It shows after the first push of the process. Compare it with `hopbox_mesh_peers` to find a missing peer. |
 
 ```sh
 curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_mesh_'
@@ -19974,13 +20103,36 @@ curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_host_firewall_'
 
 A node whose driver keeps its disks in files counts the bytes of the disks that it serves and pulls for the cold moves ([Cold move](/reference/cold-move/#metrics)). The pulls also count in `hopbox_executor_actions_total` with the action `pull`.
 
-| Metric                             | Type    | Labels      | Description                                                                                   |
-| ---------------------------------- | ------- | ----------- | --------------------------------------------------------------------------------------------- |
-| `hopbox_disk_transfer_bytes_total` | counter | `direction` | The bytes of disk data of the pulls: `sent` to other nodes, and `received` from another node. |
+| Metric                                | Type    | Labels      | Description                                                                                                                                                               |
+| ------------------------------------- | ------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hopbox_disk_transfer_bytes_total`    | counter | `direction` | The bytes of disk data of the pulls: `sent` to other nodes, and `received` from another node.                                                                             |
+| `hopbox_disk_transfers`               | gauge   | `direction` | The pulls that run now: those that the node serves (`sent`), and those that it makes (`received`).                                                                        |
+| `hopbox_disk_transfer_restarts_total` | counter | `reason`    | The pulls that dropped their partial copy and start again from zero: `digest_mismatch`, `source_changed`, or `bad_progress` ([Cold move](/reference/cold-move/#metrics)). |
+
+Each of the 2 series of `hopbox_disk_transfers` and the 3 series of `hopbox_disk_transfer_restarts_total` starts at 0.
+
+The catalog names the restarts “by digest change or error”, so these values of `reason` stand for them:
+
+| Value             | Meaning                                                                                                         |
+| ----------------- | --------------------------------------------------------------------------------------------------------------- |
+| `digest_mismatch` | The copy had another digest than the disk of the source. The pull drops it, and the next pull starts from zero. |
+| `source_changed`  | The disk of the source changed since the pull that left the partial copy.                                       |
+| `bad_progress`    | The node cannot read the saved state of the digest of the partial copy.                                         |
 
 ## node_exporter
 
 node_exporter serves the metrics of the host: CPU, RAM, file systems, disks, network, and pressure. hopbox does not run it. The operator installs the Debian 13 package `prometheus-node-exporter` on each server. The release bundle carries the arguments of node_exporter in `monitoring/node-exporter/prometheus-node-exporter`. They make node_exporter listen on `127.0.0.1:9100` only, as the metrics listener of `hopboxd` does. The default collectors of node_exporter give every host metric that the alerts read: `node_cpu_seconds_total`, `node_memory_MemAvailable_bytes`, `node_filesystem_avail_bytes`, `node_disk_*`, `node_network_*`, and `node_pressure_*`.
+
+The arguments also turn on the systemd collector for the unit `hopboxd.service` alone. It serves the state of the unit in `node_systemd_unit_state{name="hopboxd.service"}`, one series for each state with the value 1 for the current state. It serves the restarts of the unit by systemd in `node_systemd_service_restart_total{name="hopboxd.service"}`. A restart by `systemctl restart` does not count there, because systemd counts only its own restarts after a failure. The collector reads systemd over D-Bus.
+
+```sh
+curl -s http://127.0.0.1:9100/metrics | grep -E '^node_systemd_(service_restart_total\{name="hopboxd.service"\}|unit_state\{name="hopboxd.service",state="active")'
+```
+
+```text
+node_systemd_service_restart_total{name="hopboxd.service"} 0
+node_systemd_unit_state{name="hopboxd.service",state="active",type="notify"} 1
+```
 
 To set up node_exporter on a server, run these commands as root:
 
@@ -20035,6 +20187,30 @@ The monitoring bundle computes these series in Prometheus, in `monitoring/rules/
 The leader serves the gauges of the servers. After a change of the leader, two control processes can serve a series of the same server for a short time. So the `server:` rules keep the largest value of each server.
 
 A counter with labels shows only after its first event, so `increase()` misses that event. Each `install:` count adds the value of each series that is new in the window. The count needs a scrape of that `hopboxd` at the start of the window. A new series has no sample in the 5 minutes before the window. So a failed scrape does not make an old series new. After the first install of Prometheus, no series counts as new. So the totals of `hopboxd` from before the first scrape count as no burst. A control process that Prometheus did not scrape at the start of the window loses its first event in that window.
+
+## Metrics of the logs
+
+Every `hopboxd run` counts the log records at level warn and error that it writes (Q133). So the count covers each part of hopbox, also a part without a metric of its own. The code is in `internal/obs`.
+
+| Metric                      | Type    | Labels               | Description                                                        |
+| --------------------------- | ------- | -------------------- | ------------------------------------------------------------------ |
+| `hopbox_log_messages_total` | counter | `component`, `level` | The log records at level warn and error that this `hopboxd` wrote. |
+
+| Label       | Values                                                                                                                                                                                                                                                                                                                                               |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `component` | The value of the attribute `component` of the record, such as `executor`, `netcfg`, or `control`. A record with two values counts with the last one, the one that the JSON record shows last. A `component` inside a group with an empty key counts too, because the JSON record shows it at the top level. `none` for a record without a component. |
+| `level`     | `warn` or `error`                                                                                                                                                                                                                                                                                                                                    |
+
+A record below the level of `--log-level` is not written, and does not count. A series shows after its first record.
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_log_messages_total'
+```
+
+```text
+hopbox_log_messages_total{component="executor",level="warn"} 2
+hopbox_log_messages_total{component="netcfg",level="error"} 1
+```
 
 ## Metrics of the process
 
@@ -20165,19 +20341,19 @@ Internal names such as `box1.internal` come in phase 4, with the resolver of the
 
 The Firecracker driver makes the tap device of each machine at each boot ([the Firecracker driver](/reference/firecracker-driver/#the-tap-device)). Its name is `hbt` and 12 hex digits of a hash of the machine ID. When the machine has an address, the driver then connects the device to the node network, before it starts the unit of the machine. The connect makes these changes:
 
-| Change                              | Value                                                                                                                                                                                                                                                                                                                                 |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Alias                               | `hopbox machine <id>`. A new `hopboxd` finds the machine of each device from it.                                                                                                                                                                                                                                                      |
-| MTU                                 | `1420`                                                                                                                                                                                                                                                                                                                                |
-| `net.ipv6.conf.<tap>.addr_gen_mode` | `1`. The device makes no IPv6 address of its own.                                                                                                                                                                                                                                                                                     |
-| `net.ipv6.conf.<tap>.accept_dad`    | `0`. The gateway address takes traffic at once, without duplicate address detection.                                                                                                                                                                                                                                                  |
-| `net.ipv6.conf.<tap>.accept_ra`     | `0`. The device takes no router advertisement of the guest.                                                                                                                                                                                                                                                                           |
-| `net.ipv6.conf.<tap>.disable_ipv6`  | `0`, after the three above.                                                                                                                                                                                                                                                                                                           |
-| `net.ipv4.conf.<tap>.arp_ignore`    | `1`. The node answers ARP on the device only for the gateway address.                                                                                                                                                                                                                                                                 |
-| Addresses                           | `169.254.0.1/32`, scope link, and `fe80::1/64` without duplicate address detection. The node never uses them as the source address toward another device.                                                                                                                                                                             |
-| State                               | up                                                                                                                                                                                                                                                                                                                                    |
-| Routes                              | `<machine address>/32 dev <tap> scope link proto static`, and `<IPv6 address of the machine>/128 dev <tap> proto static`.                                                                                                                                                                                                             |
-| Sets of the table                   | `machines` takes the device and the IPv4 address. `machines6` takes the device and the IPv6 address. `inbound` and `connections` take the device. `smtp` takes the device only when the org of the machine opened outbound TCP port 25 ([Outbound TCP port 25](#outbound-tcp-port-25)). See [The table](#the-table-inet-hopbox_node). |
+| Change                              | Value                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Alias                               | `hopbox machine <id>`. A new `hopboxd` finds the machine of each device from it.                                                                                                                                                                                                                                                                                                                               |
+| MTU                                 | `1420`                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `net.ipv6.conf.<tap>.addr_gen_mode` | `1`. The device makes no IPv6 address of its own.                                                                                                                                                                                                                                                                                                                                                              |
+| `net.ipv6.conf.<tap>.accept_dad`    | `0`. The gateway address takes traffic at once, without duplicate address detection.                                                                                                                                                                                                                                                                                                                           |
+| `net.ipv6.conf.<tap>.accept_ra`     | `0`. The device takes no router advertisement of the guest.                                                                                                                                                                                                                                                                                                                                                    |
+| `net.ipv6.conf.<tap>.disable_ipv6`  | `0`, after the three above.                                                                                                                                                                                                                                                                                                                                                                                    |
+| `net.ipv4.conf.<tap>.arp_ignore`    | `1`. The node answers ARP on the device only for the gateway address.                                                                                                                                                                                                                                                                                                                                          |
+| Addresses                           | `169.254.0.1/32`, scope link, and `fe80::1/64` without duplicate address detection. The node never uses them as the source address toward another device.                                                                                                                                                                                                                                                      |
+| State                               | up                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Routes                              | `<machine address>/32 dev <tap> scope link proto static`, and `<IPv6 address of the machine>/128 dev <tap> proto static`.                                                                                                                                                                                                                                                                                      |
+| Sets of the table                   | `machines` takes the device and the IPv4 address. `machines6` takes the device and the IPv6 address. `inbound` and `connections` take the device. `smtp` takes the device only when the org of the machine opened outbound TCP port 25 ([Outbound TCP port 25](#outbound-tcp-port-25)). `dropped_forged`, `dropped_blocked`, and `dropped_smtp` take the device. See [The table](#the-table-inet-hopbox_node). |
 
 The node writes the four IPv6 sysctls in the order of the table. On a host without IPv6, the device gets none of the IPv6 parts.
 
@@ -20229,6 +20405,24 @@ table inet hopbox_node {
   }
 
 
+  set dropped_forged {
+    type ifname
+    counter
+  }
+
+
+  set dropped_blocked {
+    type ifname
+    counter
+  }
+
+
+  set dropped_smtp {
+    type ifname
+    counter
+  }
+
+
   chain egress {
     type filter hook prerouting priority mangle; policy accept;
     iifname "hbt*" meta nfproto ipv4 ip daddr 10.239.0.0/16 return
@@ -20249,27 +20443,45 @@ table inet hopbox_node {
 
 
   chain from_machine {
-    meta nfproto ipv4 iifname . ip saddr != @machines drop
-    meta nfproto ipv6 iifname . ip6 saddr != @machines6 drop
+    meta nfproto ipv4 iifname . ip saddr != @machines jump drop_forged
+    meta nfproto ipv6 iifname . ip6 saddr != @machines6 jump drop_forged
     oifname "hbm0" ct mark & 0x40000000 == 0x40000000 ct state established,related meta nfproto ipv4 iifname . ip saddr @machines accept
-    meta nfproto ipv4 ip daddr 0.0.0.0/8 drop
-    meta nfproto ipv4 ip daddr 10.0.0.0/8 drop
-    meta nfproto ipv4 ip daddr 100.64.0.0/10 drop
-    meta nfproto ipv4 ip daddr 127.0.0.0/8 drop
-    meta nfproto ipv4 ip daddr 169.254.0.0/16 drop
-    meta nfproto ipv4 ip daddr 172.16.0.0/12 drop
-    meta nfproto ipv4 ip daddr 192.0.0.0/24 drop
-    meta nfproto ipv4 ip daddr 192.168.0.0/16 drop
-    meta nfproto ipv4 ip daddr 198.18.0.0/15 drop
-    meta nfproto ipv4 ip daddr 224.0.0.0/3 drop
-    meta nfproto ipv6 ip6 daddr != 2000::/3 drop
-    meta l4proto tcp th dport 25 iifname != @smtp meta l4proto tcp reject with tcp reset
+    meta nfproto ipv4 ip daddr 0.0.0.0/8 jump drop_blocked
+    meta nfproto ipv4 ip daddr 10.0.0.0/8 jump drop_blocked
+    meta nfproto ipv4 ip daddr 100.64.0.0/10 jump drop_blocked
+    meta nfproto ipv4 ip daddr 127.0.0.0/8 jump drop_blocked
+    meta nfproto ipv4 ip daddr 169.254.0.0/16 jump drop_blocked
+    meta nfproto ipv4 ip daddr 172.16.0.0/12 jump drop_blocked
+    meta nfproto ipv4 ip daddr 192.0.0.0/24 jump drop_blocked
+    meta nfproto ipv4 ip daddr 192.168.0.0/16 jump drop_blocked
+    meta nfproto ipv4 ip daddr 198.18.0.0/15 jump drop_blocked
+    meta nfproto ipv4 ip daddr 224.0.0.0/3 jump drop_blocked
+    meta nfproto ipv6 ip6 daddr != 2000::/3 jump drop_blocked
+    meta l4proto tcp th dport 25 iifname != @smtp jump drop_smtp
     oifname != "hbe*" meta l4proto tcp reject with tcp reset
     oifname != "hbe*" reject with icmpx admin-prohibited
     ct state new iifname @connections
     meta nfproto ipv4 iifname . ip saddr @machines accept
     meta nfproto ipv6 iifname . ip6 saddr @machines6 accept
     drop
+  }
+
+
+  chain drop_forged {
+    iifname @dropped_forged
+    drop
+  }
+
+
+  chain drop_blocked {
+    iifname @dropped_blocked
+    drop
+  }
+
+
+  chain drop_smtp {
+    iifname @dropped_smtp
+    meta l4proto tcp reject with tcp reset
   }
 
 
@@ -20310,14 +20522,15 @@ table inet hopbox_node {
 
 The chains do these things:
 
-| Chain                            | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `egress`                         | Marks each packet of a machine with the mark of the egress tunnel that the hash of its address picks ([the egress of the machines](/reference/egress/#the-hash-of-a-machine)). It leaves out two kinds of packets: the replies to the edge servers in the mesh range, and the packets to a resolver in a private range. Without a tunnel, it holds only these two kinds of rules. A change of the count of tunnels replaces the rules of this chain alone, so the counters of the sets stay.                                               |
-| `forward`                        | Clamps the MSS, marks the connections of the edge servers, and sends the traffic of the tap devices to the next two chains. It drops each forwarded IPv6 packet that touches no tap device.                                                                                                                                                                                                                                                                                                                                                |
-| `from_machine`                   | Takes what a machine sends ([What a machine can reach](#what-a-machine-can-reach)). A machine sends only from its own two addresses. A packet to a resolver that conntrack marks invalid is dropped before the accept of port 53. A TCP packet to port 25 from a device outside the set `smtp` gets a reset ([Outbound TCP port 25](#outbound-tcp-port-25)). Without an egress tunnel as its output interface, a packet gets a reset or a refusal: the egress fails closed ([the egress of the machines](/reference/egress/#fail-closed)). |
-| `to_machine`                     | Takes what reaches a machine through the forward hook ([What can reach a machine](#what-can-reach-a-machine)). IPv6 comes only from an egress tunnel.                                                                                                                                                                                                                                                                                                                                                                                      |
-| `output`, `input`, `postrouting` | The connections that the node opens to a machine, and the inbound counter. The chain `input` also takes the neighbor discovery of IPv6 from a tap device, so a machine finds its gateway `fe80::1`.                                                                                                                                                                                                                                                                                                                                        |
-| `nat`                            | The masquerade of the queries to a resolver in a private range. With the public resolver of this example, the chain is empty.                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Chain                                      | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `egress`                                   | Marks each packet of a machine with the mark of the egress tunnel that the hash of its address picks ([the egress of the machines](/reference/egress/#the-hash-of-a-machine)). It leaves out two kinds of packets: the replies to the edge servers in the mesh range, and the packets to a resolver in a private range. Without a tunnel, it holds only these two kinds of rules. A change of the count of tunnels replaces the rules of this chain alone, so the counters of the sets stay.                                               |
+| `forward`                                  | Clamps the MSS, marks the connections of the edge servers, and sends the traffic of the tap devices to the next two chains. It drops each forwarded IPv6 packet that touches no tap device.                                                                                                                                                                                                                                                                                                                                                |
+| `from_machine`                             | Takes what a machine sends ([What a machine can reach](#what-a-machine-can-reach)). A machine sends only from its own two addresses. A packet to a resolver that conntrack marks invalid is dropped before the accept of port 53. A TCP packet to port 25 from a device outside the set `smtp` gets a reset ([Outbound TCP port 25](#outbound-tcp-port-25)). Without an egress tunnel as its output interface, a packet gets a reset or a refusal: the egress fails closed ([the egress of the machines](/reference/egress/#fail-closed)). |
+| `drop_forged`, `drop_blocked`, `drop_smtp` | The chain `from_machine` jumps to one of them for a packet from a source that is not an address of the machine, for a packet to a blocked destination, and for a TCP packet to port 25 outside the set `smtp`. The first rule counts the packet in the element of the tap device in the set `dropped_forged`, `dropped_blocked`, or `dropped_smtp`. The second rule drops the packet, or gives a reset for port 25, whatever the first rule found. So a device that is missing from a set still loses the packet.                          |
+| `to_machine`                               | Takes what reaches a machine through the forward hook ([What can reach a machine](#what-can-reach-a-machine)). IPv6 comes only from an egress tunnel.                                                                                                                                                                                                                                                                                                                                                                                      |
+| `output`, `input`, `postrouting`           | The connections that the node opens to a machine, and the inbound counter. The chain `input` also takes the neighbor discovery of IPv6 from a tap device, so a machine finds its gateway `fe80::1`.                                                                                                                                                                                                                                                                                                                                        |
+| `nat`                                      | The masquerade of the queries to a resolver in a private range. With the public resolver of this example, the chain is empty.                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 On a node with the edge role, the local exit, these parts differ ([the egress of the machines](/reference/egress/#the-local-exit)):
 
@@ -20472,13 +20685,14 @@ The first rule lets out the packets of the machines. The second one lets in the 
 
 ## Counters
 
-Each element of the sets `machines`, `machines6`, `inbound`, and `connections` has a counter. A rule that finds a packet in the set adds the packet to the counter of its element. The egress of a machine adds the counters of its elements of `machines` and `machines6`.
+Each element of the sets `machines`, `machines6`, `inbound`, `connections`, `dropped_forged`, `dropped_blocked`, and `dropped_smtp` has a counter. A rule that finds a packet in the set adds the packet to the counter of its element. The egress of a machine adds the counters of its elements of `machines` and `machines6`.
 
-| Counter     | What it counts                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Inbound     | The packets to the machine of connections that the node opened, such as a request through the machine URL or an SSH session: the connections with the mark of the node. The replies to the egress of the machine do not count. The connections of the edge servers over the mesh count too, because they carry the mark. This is the inbound traffic that counts as a use of the machine ([Inbound traffic as a use](#inbound-traffic-as-a-use)).                                                           |
-| Egress      | The packets of the machine that the node lets out, over IPv4 and IPv6: its egress to the internet and to its resolvers, and its replies to the connections that the node opened. The node counts them before the egress tunnel. The replies to the connections of the edge servers over the mesh count too. These replies stay in the install, so the counter is more than the meter “egress out of the install” (plan question Q53). Traffic between machines is dropped in phase 1, so its meter is zero. |
-| Connections | The packets that open an outbound connection of the machine, in the conntrack state `new`, that the node lets out. A retry of a TCP SYN without an answer counts again. The rule runs after every drop and reject of the chain `from_machine`, so a blocked destination does not count. A query to a resolver of the node and a reply to an edge server do not count, because their rules accept them first. Many new connections in a short time are a sign of a scan.                                     |
+| Counter     | What it counts                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Inbound     | The packets to the machine of connections that the node opened, such as a request through the machine URL or an SSH session: the connections with the mark of the node. The replies to the egress of the machine do not count. The connections of the edge servers over the mesh count too, because they carry the mark. This is the inbound traffic that counts as a use of the machine ([Inbound traffic as a use](#inbound-traffic-as-a-use)).                                                                                               |
+| Egress      | The packets of the machine that the node lets out, over IPv4 and IPv6: its egress to the internet and to its resolvers, and its replies to the connections that the node opened. The node counts them before the egress tunnel. The replies to the connections of the edge servers over the mesh count too. These replies stay in the install, so the counter is more than the meter “egress out of the install” (plan question Q53). Traffic between machines is dropped in phase 1, so its meter is zero.                                     |
+| Connections | The packets that open an outbound connection of the machine, in the conntrack state `new`, that the node lets out. A retry of a TCP SYN without an answer counts again. The rule runs after every drop and reject of the chain `from_machine`, so a blocked destination does not count. A query to a resolver of the node and a reply to an edge server do not count, because their rules accept them first. Many new connections in a short time are a sign of a scan.                                                                         |
+| Dropped     | The packets of the machine that the node dropped, by reason. `forged_source`: a source that is not an address of the machine, over IPv4 or IPv6, from the set `dropped_forged`. `blocked_destination`: a destination in `BlockedRanges` or an IPv6 address outside `2000::/3`, from the set `dropped_blocked`. `port_25`: TCP port 25 while it is closed, from the set `dropped_smtp`. The other drops do not count: an invalid packet to a resolver, the egress that fails closed, and the packets to the node, which the chain `input` drops. |
 
 ### Metrics
 
@@ -20491,6 +20705,7 @@ The metrics listener serves the counters of each connected machine ([Metrics](/r
 | `hopbox_machine_egress_bytes_total`       | counter | Bytes from the machine that the node let out.                                                                                                                                        |
 | `hopbox_machine_egress_packets_total`     | counter | Packets from the machine that the node let out.                                                                                                                                      |
 | `hopbox_machine_egress_connections_total` | counter | Packets that opened an outbound connection of the machine that the node let out, retries included.                                                                                   |
+| `hopbox_machine_dropped_packets_total`    | counter | Packets of the machine that the node dropped, with the label `reason`: `forged_source`, `blocked_destination`, or `port_25`. Each machine has the 3 series from its connect.         |
 | `hopbox_node_network_repairs_total`       | counter | The installs of the table after it lost a part outside `hopboxd`, or after a check that got no answer within 10 s. It has no label. See [The table must stay](#the-table-must-stay). |
 
 ### Inbound traffic as a use
@@ -25303,13 +25518,14 @@ A driver runs the microVMs of one node. Its microVMs run apart from `hopboxd`, s
 
 `Boot` holds the `Machine` and the link key of the boot:
 
-| Field                               | Description                                                                                                                                                                                                                                                                    |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ID`                                | The ID of the machine.                                                                                                                                                                                                                                                         |
-| `VCPUs`, `MemoryBytes`, `DiskBytes` | The size of the machine.                                                                                                                                                                                                                                                       |
-| `Image`                             | The image: its digest, its URL, and the SHA-256 of its kernel and of its disk ([the executor protocol](/reference/executor-protocol/#machinespec)).                                                                                                                            |
-| `Address`                           | The IPv4 address of the machine on its node, from the network of the spec, or the zero `netip.Addr` for a machine without one. A driver with a network device for each machine connects the device to the node network with it ([the node network](/reference/node-network/)). |
-| `LinkKey`                           | The link key of this boot, 32 random bytes. The driver puts it in the metadata service of the microVM, never on the kernel command line.                                                                                                                                       |
+| Field                               | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ID`                                | The ID of the machine.                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `VCPUs`, `MemoryBytes`, `DiskBytes` | The size of the machine.                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `Image`                             | The image: its digest, its URL, and the SHA-256 of its kernel and of its disk ([the executor protocol](/reference/executor-protocol/#machinespec)).                                                                                                                                                                                                                                                                                                                                          |
+| `Address`                           | The IPv4 address of the machine on its node, from the network of the spec, or the zero `netip.Addr` for a machine without one. A driver with a network device for each machine connects the device to the node network with it ([the node network](/reference/node-network/)).                                                                                                                                                                                                               |
+| `LinkKey`                           | The link key of this boot, 32 random bytes. The driver puts it in the metadata service of the microVM, never on the kernel command line.                                                                                                                                                                                                                                                                                                                                                     |
+| `OnPhase`                           | A func that gets the duration of each phase of the boot that the driver times, or nil. A driver calls `Boot.Phase(phase, took)` once for each phase: `vmm.PhaseUnitStart` (`unit_start`) from the start of the boot until the process of the VMM runs, then `vmm.PhaseVMMReady` (`vmm_ready`) until the VMM answers and started the microVM. The executor serves them in `hopbox_executor_boot_phase_seconds` ([the node executor](/reference/executor/#metrics)). `Restore` times no phase. |
 
 ## Instance
 
@@ -25348,11 +25564,11 @@ A driver that keeps the disk of each machine in one file is a `vmm.Mover`. A col
 
 A driver that reads what its microVMs use on the host is a `vmm.UsageReader`. The node serves these values as the [metrics of the machines](/reference/metrics/#metrics-of-the-machines). A node whose driver is not a `UsageReader` serves none of them. The test driver is not one.
 
-| Interface         | Method          | Description                                                                                                                                   |
-| ----------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `vmm.UsageReader` | `Usage(id)`     | The CPU time and the host RAM of the microVM of a running machine and of its VMM, as a `vmm.Usage`. It fails for a machine that does not run. |
-|                   | `TotalUsage()`  | The same values for every microVM of the node together.                                                                                       |
-|                   | `DiskUsage(id)` | The bytes of the blocks that the disk of a machine holds on the node.                                                                         |
+| Interface         | Method          | Description                                                                                                                                                                                                                                                                        |
+| ----------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vmm.UsageReader` | `Usage(id)`     | The CPU time and the host RAM of the microVM of a running machine and of its VMM, as a `vmm.Usage`. It fails for a machine that does not run. A `vmm.Usage` also holds the CPU pressure, the OOM kills, and the bytes of disk IO, each valid only when its field `Has...` is true. |
+|                   | `TotalUsage()`  | The same values for every microVM of the node together.                                                                                                                                                                                                                            |
+|                   | `DiskUsage(id)` | The bytes of the blocks that the disk of a machine holds on the node.                                                                                                                                                                                                              |
 
 ## The test driver
 

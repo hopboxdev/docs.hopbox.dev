@@ -251,6 +251,18 @@ sudo wg show hbe0 allowed-ips
 
 [Check the network of a machine](/guide/node-network/index.html.md#check-the-egress) checks the egress from a machine.
 
+## Metrics
+
+Each enrolled server serves these metrics of its egress ([Metrics](/reference/metrics/index.html.md#metrics-of-the-egress)).
+
+| Metric | Type | Labels | Source | Meaning |
+| --- | --- | --- | --- | --- |
+| `hopbox_egress_exits` | gauge | none | a node without the edge role | The tunnels that the machines of the node use now, one for each egress edge. 0 means that the egress of the machines fails closed ([Fail closed](#fail-closed)). It shows after the first check of the tunnels. |
+| `hopbox_egress_exit` | gauge | none | an edge server | 1 while the heartbeats of the edge server say `egress_exit`: its tunnel is ready and its uplink works. |
+| `hopbox_egress_uplink_up` | gauge | none | an edge server | 1 while the check of the uplink finds that it works, after the hold-down of [The uplink of an egress edge](#the-uplink-of-an-egress-edge). It shows after the first check of the uplink. |
+
+A node with the edge role is its own local exit, so it serves no `hopbox_egress_exits` ([The local exit](#the-local-exit)). It serves the two metrics of an edge server.
+
 ## Upgrades
 
 A rolling upgrade moves the edge servers before the nodes ([hopbox Terraform provider](/reference/terraform-provider/index.html.md#rolling-upgrade)). The egress of the machines depends on that order:

@@ -165,6 +165,7 @@ The metrics listener serves these metrics on each server with the device ([Metri
 | `hopbox_mesh_peer_receive_bytes_total` | counter | `server` | The bytes that the device got from the peer. |
 | `hopbox_mesh_peer_transmit_bytes_total` | counter | `server` | The bytes that the device sent to the peer. |
 | `hopbox_mesh_repairs_total` | counter | none | The changes to the device after it lost a part outside `hopboxd`. |
+| `hopbox_mesh_expected_peers` | gauge | none | The peers that the last push of the control role named. It shows after the first push of the process, also while the device is missing. A device with fewer peers than this lost a peer. |
 
 ## Logs
 

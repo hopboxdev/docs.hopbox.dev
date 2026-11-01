@@ -227,6 +227,10 @@
 <td><code dir="auto">LinkKey</code></td>
 <td>The link key of this boot, 32 random bytes. The driver puts it in the metadata service of the microVM, never on the kernel command line.</td>
 </tr>
+<tr>
+<td><code dir="auto">OnPhase</code></td>
+<td>A func that gets the duration of each phase of the boot that the driver times, or nil. A driver calls <code dir="auto">Boot.Phase(phase, took)</code> once for each phase: <code dir="auto">vmm.PhaseUnitStart</code> (<code dir="auto">unit_start</code>) from the start of the boot until the process of the VMM runs, then <code dir="auto">vmm.PhaseVMMReady</code> (<code dir="auto">vmm_ready</code>) until the VMM answers and started the microVM. The executor serves them in <code dir="auto">hopbox_executor_boot_phase_seconds</code> (<a href="/reference/executor/#metrics">the node executor</a>). <code dir="auto">Restore</code> times no phase.</td>
+</tr>
 </tbody>
 </table>
 <div class="sl-heading-wrapper level-h2"><h2 id="instance">Instance</h2><a class="sl-anchor-link" href="#instance"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Instance”</span></a></div>
@@ -342,7 +346,7 @@
 <tr>
 <td><code dir="auto">vmm.UsageReader</code></td>
 <td><code dir="auto">Usage(id)</code></td>
-<td>The CPU time and the host RAM of the microVM of a running machine and of its VMM, as a <code dir="auto">vmm.Usage</code>. It fails for a machine that does not run.</td>
+<td>The CPU time and the host RAM of the microVM of a running machine and of its VMM, as a <code dir="auto">vmm.Usage</code>. It fails for a machine that does not run. A <code dir="auto">vmm.Usage</code> also holds the CPU pressure, the OOM kills, and the bytes of disk IO, each valid only when its field <code dir="auto">Has...</code> is true.</td>
 </tr>
 <tr>
 <td></td>

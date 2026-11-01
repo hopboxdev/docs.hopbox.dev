@@ -50,6 +50,7 @@ A driver runs the microVMs of one node. Its microVMs run apart from `hopboxd`, s
 | `Image` | The image: its digest, its URL, and the SHA-256 of its kernel and of its disk ([the executor protocol](/reference/executor-protocol/index.html.md#machinespec)). |
 | `Address` | The IPv4 address of the machine on its node, from the network of the spec, or the zero `netip.Addr` for a machine without one. A driver with a network device for each machine connects the device to the node network with it ([the node network](/reference/node-network/index.html.md)). |
 | `LinkKey` | The link key of this boot, 32 random bytes. The driver puts it in the metadata service of the microVM, never on the kernel command line. |
+| `OnPhase` | A func that gets the duration of each phase of the boot that the driver times, or nil. A driver calls `Boot.Phase(phase, took)` once for each phase: `vmm.PhaseUnitStart` (`unit_start`) from the start of the boot until the process of the VMM runs, then `vmm.PhaseVMMReady` (`vmm_ready`) until the VMM answers and started the microVM. The executor serves them in `hopbox_executor_boot_phase_seconds` ([the node executor](/reference/executor/index.html.md#metrics)). `Restore` times no phase. |
 
 ## Instance
 
@@ -90,7 +91,7 @@ A driver that reads what its microVMs use on the host is a `vmm.UsageReader`. Th
 
 | Interface | Method | Description |
 | --- | --- | --- |
-| `vmm.UsageReader` | `Usage(id)` | The CPU time and the host RAM of the microVM of a running machine and of its VMM, as a `vmm.Usage`. It fails for a machine that does not run. |
+| `vmm.UsageReader` | `Usage(id)` | The CPU time and the host RAM of the microVM of a running machine and of its VMM, as a `vmm.Usage`. It fails for a machine that does not run. A `vmm.Usage` also holds the CPU pressure, the OOM kills, and the bytes of disk IO, each valid only when its field `Has...` is true. |
 | | `TotalUsage()` | The same values for every microVM of the node together. |
 | | `DiskUsage(id)` | The bytes of the blocks that the disk of a machine holds on the node. |
 
