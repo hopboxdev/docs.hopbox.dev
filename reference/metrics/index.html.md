@@ -2,7 +2,7 @@
 
 > The Prometheus metrics listener of hopboxd and every metric that it serves.
 
-`hopboxd` serves Prometheus metrics on a loopback listener. The code is in `internal/obs`, `internal/api`, `internal/audit`, `internal/service`, `internal/placement`, `internal/node/executor`, `internal/node/machines`, `internal/node/vmm/firecracker`, `internal/node/netcfg`, `internal/mesh`, and `internal/dns`.
+`hopboxd` serves Prometheus metrics on a loopback listener. The code is in `internal/obs`, `internal/api`, `internal/audit`, `internal/service`, `internal/control`, `internal/control/channel`, `internal/acme`, `internal/store`, `internal/placement`, `internal/node`, `internal/node/executor`, `internal/node/machines`, `internal/node/vmm/firecracker`, `internal/node/netcfg`, `internal/mesh`, and `internal/dns`.
 
 The counter `hopbox_account_creations_total` came with milestone A2, the approval of new accounts (metrics catalog).
 
@@ -37,6 +37,7 @@ At its end, each API call adds to these metrics ([the API server](/reference/api
 | --- | --- | --- | --- |
 | `hopbox_api_calls_total` | counter | `listener`, `procedure`, `code` | The API calls that ended. |
 | `hopbox_api_call_duration_seconds` | histogram | `listener`, `procedure`, `code` | The duration of the API calls that ended. A stream counts from its start to its end. |
+| `hopbox_api_in_flight` | gauge | `listener` | The API calls that run now. A stream counts from its start to its end, such as each control channel of a server on the `internal` listener. Each listener starts at 0. |
 
 | Label | Values |
 | --- | --- |
@@ -112,6 +113,11 @@ Each control process counts these events itself, so the sum over the control pro
 | `hopbox_rate_limited_total` | counter | `limit` | The requests that a rate limit refused ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#rate-limits), [Sign-in with GitHub and Google](/reference/oauth/index.html.md#rate-limits), [the org API](/reference/org-api/index.html.md)). |
 | `hopbox_limit_refusals_total` | counter | `limit` | The calls that an org limit refused ([Domain rules](/reference/domain-rules/index.html.md#usage-limits)). |
 | `hopbox_api_key_creations_total` | counter | `kind`, `lifetime` | The new API keys and admin keys ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md)). A second registration of the hash of an admin key does not count. |
+| `hopbox_mail_sends_total` | counter | `kind`, `transport`, `result` | The emails that this control process sent ([SMTP config](/reference/smtp/index.html.md)). An email to each instance admin counts once for each admin. |
+| `hopbox_sign_ins_total` | counter | `method`, `result` | The sign-ins that ended, also the refused ones ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#what-a-sign-in-does)). A link of a new sign-in method to an account does not count. An OAuth callback that names an unknown provider does not count. |
+| `hopbox_enrollments_total` | counter | `kind`, `result` | The calls of `Enroll` that ended ([Enrollment and the install PKI](/reference/enrollment/index.html.md#enroll)). A call that fails before `hopboxd` knows its kind, such as one with a token of a bad form, counts as `first`, or as `add_roles` or `remove_roles` for a server that calls with its certificate. |
+| `hopbox_moves_total` | counter | `result`, `cause` | The cold moves that ended ([Cold move](/reference/cold-move/index.html.md)). A move counts once, when the change that ends it commits, in the control process that ends it. A later give-back of a move that ended does not count again. Each series starts at 0. |
+| `hopbox_invitations_total` | counter | `kind`, `result` | The invitations to orgs ([the org API](/reference/org-api/index.html.md#invitations)) and to the install ([the admin API](/reference/admin-api/index.html.md#invitationservice)). An invitation counts when its change commits. An expired invitation counts when the sweep deletes it, 24 hours after its expiry. |
 
 | Label | Values |
 | --- | --- |
@@ -119,19 +125,31 @@ Each control process counts these events itself, so the sum over the control pro
 | `actor_kind` | `anonymous`, `session`, `cli_token`, `member_key`, `org_key`, `admin_key`, `local_root`, `server`, `ssh_key`, `control`, or `system` |
 | `limit` of `hopbox_rate_limited_total` | `sign_in_links`: the sign-in links of an email or of a client. `device_sign_ins`: the device sign-ins of a client, and the device sign-ins that wait for an approval. `device_codes`: the wrong codes of the device approvals of an account. `oauth_starts`: the sign-ins with GitHub and Google of a client and of the install. `oauth_callbacks`: the callbacks of a client in one control process. `invitations`: the invitations of an org, of the install, of an inviter, and to an email ([the admin API](/reference/admin-api/index.html.md#invitationservice)). `machine_url_codes`: the machine URL codes of a browser. `account_creations`: the new accounts of a client address in a day ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#limits-of-new-accounts)). `pending_cap`: the first sign-ins that the cap of 50 pending accounts refused. `sign_up_notes`: the changes of the note of a pending account in an hour ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#setsignupnote)). |
 | `limit` of `hopbox_limit_refusals_total` | `machines`, `vcpus`, `memory`, and `disk`: the usage limits of the org. `public_urls`: a change of a machine URL to public in an org without public URLs ([the machine API](/reference/machine-api/index.html.md#setmachineurlvisibility)). `orgs`: the orgs that one account owns (`max_orgs_per_account`), and each `CreateOrg` of a limited account. |
-| `kind` | `member`, `org`, or `admin` |
+| `kind` of `hopbox_api_key_creations_total` | `member`, `org`, or `admin` |
 | `lifetime` | `30d`, `90d`, `365d`, or `custom` for a key with a custom expiry |
+| `kind` of `hopbox_mail_sends_total` | `magic_link`: a sign-in link. `email_link`: the link that adds an email to an account. `invitation`: the link of an org invitation. `admin_notice`: an admin notice. `digest`: the digest of new pending accounts. `approval`: the email to a person whose account an instance admin approved. |
+| `transport` | `smtp`: through the SMTP server of the install. `file`: to a file in the mail folder of the control server ([SMTP config](/reference/smtp/index.html.md)). |
+| `result` of `hopbox_mail_sends_total` | `sent`, or `failed` for an email that the SMTP server refused, that timed out, or whose file write failed |
+| `method` | `email_link`, `login_link`, `github`, or `google` |
+| `result` of `hopbox_sign_ins_total` | `ok`. `refused`: a link or an OAuth flow that is unknown, used, or expired, a refusal by the provider, or an email that the provider did not verify. `conflict`: a conflict with a sign-in method of another account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#link-a-new-sign-in-method)). `suspended`: an account that an instance admin suspended. `sign_up_refused`: a new account that the block list, the sign-up mode `invite_only`, or a limit of new accounts refused, or whose invitation ended during the sign-in ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#limits-of-new-accounts)). `failed`: another error, such as a provider that did not answer. |
+| `kind` of `hopbox_enrollments_total` | `first`: a new server ([Enrollment and the install PKI](/reference/enrollment/index.html.md#hopboxd-enroll)). `add_roles` and `remove_roles`: a change of the roles of an enrolled server. `retry`: a retry after a lost answer. `resync`: a resync after the end of the token. |
+| `result` of `hopbox_enrollments_total` | `ok`. `refused`: an error of the request, such as a token that is unknown, used, expired, or for another CA, a bad field, or a server that the registry refuses. `failed`: another error, such as an error of the control store. |
+| `result` of `hopbox_moves_total` | `done`: the target has the whole disk. `canceled`: an instance admin canceled the move, its drain, or the removal of the node role, also when the machine went back to its source. `given_back`: the move failed while the target pulled, and the machine went back to its source node, stopped. `failed`: the move failed, and the machine stayed where it was. |
+| `cause` | `admin`: `MoveMachine`. `drain`: the drain of the source node. `removal`: the removal of the node role of the source node. A move that a `hopboxd` of schema version 57 to 66 started has no cause in the store ([Control store tables](/reference/control-store/index.html.md#machine_moves)). It counts as `drain` while its source node has a drain, as `removal` while the source node loses its node role, and as `admin` otherwise. |
+| `kind` of `hopbox_invitations_total` | `org`: an invitation to an org. `instance`: an instance invitation, which lets a new person in ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). |
+| `result` of `hopbox_invitations_total` | `created`, `accepted`, `revoked`, or `expired`. A new invitation to an email that has an open one revokes the old one, and counts as `revoked` too. An instance invitation counts as `accepted` with the first sign-in of its invitee, which makes the account. |
 
-Each value of `limit`, `kind`, and `lifetime` starts at 0, so the first refusal or key shows as an increase. A series of `hopbox_audit_entries_total` shows after its first entry.
+Each value of `limit`, `kind`, `lifetime`, `transport`, `method`, `result`, and `cause` starts at 0, so the first refusal, key, email, sign-in, invitation, or move shows as an increase. A series of `hopbox_audit_entries_total` shows after its first entry.
 
 ```sh
-curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(audit_entries|rate_limited|limit_refusals|api_key_creations)_total'
+curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(audit_entries|rate_limited|limit_refusals|api_key_creations|mail_sends)_total'
 ```
 
 ```text
 hopbox_api_key_creations_total{kind="member",lifetime="90d"} 2
 hopbox_audit_entries_total{action="org.create",actor_kind="session"} 1
 hopbox_limit_refusals_total{limit="machines"} 1
+hopbox_mail_sends_total{kind="magic_link",result="sent",transport="smtp"} 4
 hopbox_rate_limited_total{limit="sign_in_links"} 3
 ```
 
@@ -147,6 +165,11 @@ The leader of the control role reads these gauges from the control store every m
 | `hopbox_api_keys` | gauge | `kind` | The API keys that did not expire, by kind (`member`, `org`, or `admin`). |
 | `hopbox_public_machine_urls` | gauge | none | The machines with a public URL, apart from the deleted machines ([Run the edge role and open machine URLs](/guide/machine-urls/index.html.md)). |
 | `hopbox_machines` | gauge | `state` | The machines by current state ([Domain rules](/reference/domain-rules/index.html.md#machine-states)). A deleted machine counts as `deleted` until the sweep drops its row. |
+| `hopbox_machines_off_target` | gauge | none | The machines whose current state differs from their target state in each read of the last 5 minutes or more, such as a machine that stays `failed` with the target `running`. A machine with an open cold move, in `stopping` or `pulling`, does not count (Q147). The moves have their own gauge, deadlines, and alert. A machine that stays in `moving` without an open move counts, because nothing moves it any more. The leader counts from its own reads while its jobs run. So the 5 minutes start again after a change of the leader, and after a pause of the jobs by maintenance mode or by the fence. |
+| `hopbox_moves` | gauge | `state` | The cold moves by state: `stopping`, `pulling`, `done`, or `failed` ([Cold move](/reference/cold-move/index.html.md)). A move that ended stays as `done` or `failed` until the sweep drops its machine. |
+| `hopbox_drain_stranded_machines` | gauge | `server` | The machines that the drain or the removal of the node role of the server cannot move ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node)). Only a server whose drain or removal runs has a series, 0 when every machine can move. |
+| `hopbox_admin_notices_open` | gauge | `kind` | The open admin notices by kind, `security` or `sign_up` ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). A notice that several instance admins have counts once, until the last of them dismisses it. |
+| `hopbox_store_database_bytes` | gauge | none | The size of the database of the control store, from `pg_database_size`. |
 
 The registry gets the capacity of each server in its heartbeats ([the control channel](/reference/control-channel/index.html.md)). The leader serves the capacity and the allocations of each server with the node role that is not decommissioned, with the label `server`, the ID of the server. So one Prometheus on the control server sees the capacity of the whole fleet without a scrape of the nodes.
 
@@ -161,7 +184,16 @@ The registry gets the capacity of each server in its heartbeats ([the control ch
 | `hopbox_server_disk_allocated_bytes` | gauge | `server` | The disk sizes of the machines on the node that are not deleted. A disk is sparse, so this sum can be larger than the disk of the node. |
 | `hopbox_server_machines` | gauge | `server`, `state` | The machines on the node by current state. |
 
-Each node has 16 series: one for each of the 7 capacity gauges, and 9 of `hopbox_server_machines`, one for each state. The leader also serves 6 series of `hopbox_accounts`, 4 of `hopbox_orgs`, 3 of `hopbox_api_keys`, and 9 of `hopbox_machines`.
+The leader also serves the registry of every server, whatever its roles ([Enrollment and the install PKI](/reference/enrollment/index.html.md), [the control channel](/reference/control-channel/index.html.md)).
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_servers` | gauge | `state` | The servers by state: `ready`, `cordoned`, `unresponsive`, `draining`, `shutting_down`, or `decommissioned`. |
+| `hopbox_server_info` | gauge | `server`, `name`, `version`, `status` | 1 for each server that is not decommissioned. `name` is its host name, `version` the release of its `hopboxd`, and `status` is `ok`, `degraded`, or empty before its first heartbeat. |
+| `hopbox_server_heartbeat_age_seconds` | gauge | `server` | The age of the last heartbeat of each server that is not decommissioned, at the time of the scrape. A server without a heartbeat has no series. The leader reads the times of the heartbeats every 5 s, so the age is exact to about 5 s. |
+| `hopbox_server_dns_zone_serial` | gauge | `server` | The serial of the zones that each server with the DNS role reports in its heartbeats ([the DNS role](/reference/dns/index.html.md)). A DNS server without zones has no series. |
+
+Each node has 16 series: one for each of the 7 capacity gauges, and 9 of `hopbox_server_machines`, one for each state. Each server that is not decommissioned has 1 series of `hopbox_server_info`, and up to 1 of the heartbeat age and 1 of the zone serial. The leader also serves 6 series of `hopbox_accounts`, 4 of `hopbox_orgs`, 3 of `hopbox_api_keys`, 9 of `hopbox_machines`, 4 of `hopbox_moves`, 6 of `hopbox_servers`, and 2 of `hopbox_admin_notices_open`.
 
 ```sh
 curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(accounts|server_vcpus)'
@@ -172,6 +204,143 @@ hopbox_accounts{state="active",tier="full"} 3
 hopbox_accounts{state="pending",tier="limited"} 1
 hopbox_server_vcpus{server="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b"} 24
 hopbox_server_vcpus_allocated{server="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b"} 4
+```
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(servers|server_info|server_heartbeat)'
+```
+
+```text
+hopbox_server_heartbeat_age_seconds{server="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b"} 2.1
+hopbox_server_info{name="ks",server="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b",status="ok",version="v0.9.0"} 1
+hopbox_servers{state="ready"} 1
+```
+
+## Metrics of the leader jobs
+
+These metrics show the leader lease, the jobs of the leader, and the state of each control process ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)).
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_leader` | gauge | none | 1 on the control process that holds the leader lease, and 0 on each other control process. The sum over the control processes is 1 while the install has a leader. |
+| `hopbox_control_fenced` | gauge | none | 1 while this control process is fenced from the control store, and 0 otherwise. A fenced process takes no call and runs no leader job ([hopboxd](/reference/hopboxd/index.html.md#run)). |
+| `hopbox_maintenance` | gauge | none | 1 while the install is in maintenance mode, and 0 otherwise. Only the leader serves it, also while maintenance mode pauses its jobs ([the API server](/reference/api/index.html.md#maintenance-mode)). |
+| `hopbox_leader_job_runs_total` | counter | `job`, `result` | The runs of each leader job that ended, by `result`: `ok`, or `failed` for a run that logged a failure. A run that the end of the jobs cut does not count. Each series starts at 0. |
+| `hopbox_leader_job_last_success_seconds` | gauge | `job` | The Unix time of the last run of the job that worked. The leader serves it while its jobs run, after the first run of the job that worked. At the end of the term, and while maintenance mode or the fence pauses the jobs, the series go away. |
+
+| `job` | Runs |
+| --- | --- |
+| `sweep` | At the start of the jobs, then every 10 minutes: the sweep of idempotency keys, sign-ins, sign-ups, invitations, machine names and ports, change events, control processes, enrollment tokens and server certificates, and samples of the history. It fails when one of its parts fails. |
+| `pending_expiry` | With each sweep: the delete of the pending accounts older than 30 days ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#pending-accounts)). |
+| `unresponsive` | Every 5 s, 20 s after the start of the jobs: the mark of silent servers as unresponsive. |
+| `auto_delete` | Every minute: the delete of the machines that nobody used for their auto-delete timeout. |
+| `moves` | Every 2 s: the steps of the cold moves ([Cold move](/reference/cold-move/index.html.md)). |
+| `drains`, `removals` | Every 5 s: the steps of the drains and of the removals of the node role. |
+| `sign_up_digest` | At the start of the jobs, then every minute: the digest of new pending accounts. |
+| `host_keys` | Every minute: the return of SSH host keys that no route record holds. |
+| `acme` | Each turn of the ACME job: a read of the state of the certificate, and the attempt when one is due. A turn follows each attempt, at most 1 hour after the turn before, and 1 minute after a failed read ([the certificate of the install](/reference/acme/index.html.md#the-acme-job)). |
+
+The ACME job also serves the state of the certificate of the install. Only the leader runs the job, so only the leader serves these gauges, from the last read of its state.
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_acme_attempts_total` | counter | `result` | The attempts for the certificate of the install, by `result`: `issued`, `failed`, or `rate_limited` for a rate limit of the CA. Each series starts at 0. An attempt that the end of the term cut does not count. |
+| `hopbox_acme_failures_in_row` | gauge | none | The attempts that failed since the last certificate. |
+| `hopbox_acme_certificate_not_after_seconds` | gauge | none | The end of the certificate of the install in the control store, in seconds since the Unix epoch. The edge servers load this certificate. An install without a certificate does not serve it. |
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(leader|maintenance|control_fenced|acme_)'
+```
+
+```text
+hopbox_acme_attempts_total{result="issued"} 1
+hopbox_acme_certificate_not_after_seconds 1.7998e+09
+hopbox_acme_failures_in_row 0
+hopbox_control_fenced 0
+hopbox_leader 1
+hopbox_leader_job_last_success_seconds{job="sweep"} 1.7922494e+09
+hopbox_leader_job_runs_total{job="sweep",result="ok"} 12
+hopbox_maintenance 0
+```
+
+## Metrics of the control store
+
+Each control process serves these metrics of the control store as it sees it ([Control store tables](/reference/control-store/index.html.md)). The pool metrics cover the connection pool of the process, which runs the queries of the API, the leader jobs, and the control channels. The change events and the leader election use their own connections, outside the pool.
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_store_connections` | gauge | `state` | The connections of the pool: `in_use` by a call, `idle`, `total`, the open connections, and `max`, the most connections that the pool opens. `in_use` equal to `max` means a full pool, and calls then wait for a connection. |
+| `hopbox_store_acquire_wait_seconds_total` | counter | none | The time that calls waited for a connection of the pool. |
+| `hopbox_store_errors_total` | counter | `kind` | The queries of the pool and the waits for a connection that failed. Each value of `kind` starts at 0. |
+| `hopbox_store_renewals_total` | counter | `result` | The renewals of the row of this control process every 5 s, by `result`: `ok` or `failed` ([hopboxd](/reference/hopboxd/index.html.md#run)). A renewal that the stop of the process cut does not count. |
+| `hopbox_store_schema_version` | gauge | none | The schema version of the control store, the number of its newest migration. The process reads it after its migrations, then every 10 s ([the bundled Postgres](/reference/postgres/index.html.md#schema-migrations)). |
+| `hopbox_events_lag_seconds` | gauge | none | The age of the last change event that this control process read, at the time of its read ([Control store tables](/reference/control-store/index.html.md#events)). It is 0 before the first event. A clock of the server ahead of the clock of Postgres gives 0. The process reads up to the end of the events after each new event, and at least every 30 s. After 1 minute without such a read, for example after a lost connection, the gauge gives the time since the last one, so a stalled subscription shows as a growing lag. It shows once the events unit starts. |
+| `hopbox_postgres_up` | gauge | none | 1 while the bundled Postgres runs and takes connections, and 0 while it restarts or after its stop ([the bundled Postgres](/reference/postgres/index.html.md#start-restart-and-stop)). A control process with an external Postgres does not serve it. |
+| `hopbox_postgres_restarts_total` | counter | none | The starts of the bundled Postgres after an exit that `hopboxd` did not ask for, such as a crash. A control process with an external Postgres does not serve it. |
+
+| `kind` | Errors |
+| --- | --- |
+| `connection` | A lost or refused connection: a network error, a closed connection, an error of class 08, a shutdown of the server (57P01 to 57P03), or too many connections (53300). A failed wait for a connection of the pool with another error counts here too. |
+| `timeout` | A deadline of the call, a statement timeout or cancel (57014), a lock timeout (55P03), or an idle transaction timeout (25P03). |
+| `serialization` | A serialization failure (40001) or a deadlock (40P01). |
+| `other` | Every other error of a query, such as a missing table. |
+
+A query that finds no row, a call that its caller canceled, and a refusal of an integrity constraint (class 23) do not count. The service reads such a refusal as an answer, for example a name that another machine took.
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(store|events|postgres)_'
+```
+
+```text
+hopbox_events_lag_seconds 0.004
+hopbox_postgres_restarts_total 0
+hopbox_postgres_up 1
+hopbox_store_acquire_wait_seconds_total 0.021
+hopbox_store_connections{state="idle"} 3
+hopbox_store_connections{state="in_use"} 1
+hopbox_store_connections{state="max"} 4
+hopbox_store_connections{state="total"} 4
+hopbox_store_errors_total{kind="timeout"} 0
+hopbox_store_renewals_total{result="ok"} 720
+hopbox_store_schema_version 67
+```
+
+## Metrics of the control channels
+
+Each control process serves the control channels that it holds, and the install CA ([the control channel](/reference/control-channel/index.html.md)).
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_channels` | gauge | none | The control channels of servers that this control process holds now. It shows once the internal listener runs. |
+| `hopbox_heartbeat_writes_total` | counter | `result` | The heartbeats of the channels of this control process, by `result`: `written` to the registry, `skipped` because it came less than 2.5 s after the last write of its channel, or `failed` ([the control channel](/reference/control-channel/index.html.md#the-heartbeat)). Each value starts at 0. |
+| `hopbox_install_ca_not_after_seconds` | gauge | none | The end of the install CA, in seconds since the Unix epoch ([Enrollment and the install PKI](/reference/enrollment/index.html.md#install-ca)). It shows once the process opened the CA, at its start when its keyring has a key, or at the first call that needs the CA. |
+
+Each server that enrolls serves the metrics of its own channel and of its certificate, apart from a server with only the control role ([hopboxd](/reference/hopboxd/index.html.md#run)).
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_channel_connected` | gauge | none | 1 while this server holds its control channel, from the first `HeartbeatAck` of the channel until the channel ends, and 0 otherwise. |
+| `hopbox_channel_reconnects_total` | counter | `reason` | The control channels of this server that ended, after which it dials again. A channel that the stop of `hopboxd` ends does not count. Each value starts at 0. |
+| `hopbox_server_certificate_not_after_seconds` | gauge | none | The end of the certificate of this server, in seconds since the Unix epoch ([Enrollment and the install PKI](/reference/enrollment/index.html.md#server-certificate)). A server that is not enrolled does not serve it. |
+| `hopbox_certificate_renewals_total` | counter | `result` | The renewals of the certificate of this server over the control channel ([the control channel](/reference/control-channel/index.html.md#certificate-renewal)). Each value starts at 0. |
+
+| Label | Values |
+| --- | --- |
+| `reason` | `renewed`: the server dials again with its renewed certificate. `refused`: the control plane refused the server (`unauthenticated` or `permission_denied`). `no_ack`: the control plane answered no heartbeat for 4 intervals. `closed`: the control role closed the channel without an error. `lost`: another error, such as a lost connection, a newer channel of the server, or a stop of the control role. |
+| `result` of `hopbox_certificate_renewals_total` | `issued`: the server got and saved a new certificate. `refused`: the control plane refused the renewal, for example by its rate limit. `unanswered`: no answer within 4 heartbeats. `failed`: the save of the certificate that the server got failed. |
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(channel|channels|heartbeat_writes|server_certificate|certificate_renewals|install_ca)'
+```
+
+```text
+hopbox_certificate_renewals_total{result="issued"} 1
+hopbox_channel_connected 1
+hopbox_channel_reconnects_total{reason="renewed"} 1
+hopbox_channels 3
+hopbox_heartbeat_writes_total{result="written"} 4310
+hopbox_install_ca_not_after_seconds 2.1078e+09
+hopbox_server_certificate_not_after_seconds 1.8003e+09
 ```
 
 ## Metrics of the DNS role
