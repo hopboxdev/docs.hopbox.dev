@@ -1245,7 +1245,7 @@ You can also decide as root on a control server:
    sudo hopboxd admin account reject --account-id=01a15c05-3e4f-7a10-8b21-6c7d8e9f0a1b --block --reason='bot sign-up'
    ```
 
-A pending account that nobody approves expires after 30 days, and the leader deletes it. Each client address makes at most 3 new accounts a day, and the install holds at most 50 pending accounts ([Sessions, cookies, and sign-in links](/reference/sessions/#limits-of-new-accounts)).
+A pending account that nobody approves expires after 30 days, and the leader deletes it. Each client address makes at most 3 new accounts a day without an invitation, and the install holds at most 50 pending accounts ([Sessions, cookies, and sign-in links](/reference/sessions/#limits-of-new-accounts)).
 
 `sudo hopboxd admin account blocks` lists the block list, and `sudo hopboxd admin account unblock --id=ID` removes an entry ([hopboxd](/reference/hopboxd/#admin-account-blocks)). A block stops only new accounts. An account that exists still signs in. A block of an email also stops the same address with any +tag, such as `user4+1@example.org` for `user4@example.org`. A block of a domain also stops its subdomains.
 
@@ -1256,6 +1256,36 @@ sudo hopboxd admin config set --sign-up-mode=open
 ```
 
 Each change of the mode gives each other instance admin a notice and an email, with the command that sets the old mode back. Set `--sign-up-mode=approval` to go back.
+
+## Invite a new person
+
+An instance invitation lets one new person in with an active account of the tier `full`, in every sign-up mode ([the admin API](/reference/admin-api/#invitationservice)). The person skips the pending step. An open invitation of an org also lets a new person in, with an active account of the tier `limited` ([Sessions, cookies, and sign-in links](/reference/sessions/#invitations-as-a-way-in)).
+
+To close sign-up to everyone without an invitation, set the mode `invite_only`. The accounts that exist keep working:
+
+```sh
+sudo hopboxd admin config set --sign-up-mode=invite_only
+```
+
+A new person without an invitation then gets the error `this install takes new accounts only by invitation. Ask an admin of <domain> for one`. The audit log records each refusal as `account.sign_up_refused`, with the email and the client address.
+
+In the Admin area:
+
+1. Open “Accounts”, and find the section “Invitations”.
+2. Type the email of the person in “Email”, and click “Invite”.
+3. If the install sends mail, the person gets the link by email. Else, copy the link from “Invitation link”, and send it to the person yourself.
+
+The person opens the link, and signs in with any method that proves the email: an email link, GitHub, or Google. The link works once, for 7 days. Click “Revoke” on the row of an invitation to end it.
+
+You can also invite as root on a control server:
+
+```sh
+sudo hopboxd admin invite create --email=user1@example.org
+sudo hopboxd admin invite list
+sudo hopboxd admin invite revoke --id=01a14565-a316-74dd-968e-fac72d706827
+```
+
+`admin invite create` prints the link ([hopboxd](/reference/hopboxd/#admin-invite-create)). The block list still applies: an invitation lets no blocked email or identity in.
 
 ## Move an account to another tier
 

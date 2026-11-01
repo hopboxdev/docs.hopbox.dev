@@ -91,6 +91,7 @@ These methods of `hopbox.admin.v1` have the option:
 | `MailService` | `ListMailFiles`, `GetMailFile` |
 | `InstanceAdminService` | `ListInstanceAdmins` |
 | `AccountService` | `ListAccountSignInMethods` |
+| `InvitationService` | `ListInstanceInvitations` |
 | `ServerService` | `ListServers`, `GetServer` |
 | `OrgService` | `ListOrgs`, `GetDefaultOrgLimits` |
 | `AdminKeyService` | `ListAdminKeys` |

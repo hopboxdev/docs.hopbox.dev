@@ -66,6 +66,9 @@ hopboxd --log-level=debug version
 | `admin account block` | Adds an email, an email domain, a GitHub user, or a Google account to the block list of sign-ups. |
 | `admin account unblock` | Removes an entry from the block list of sign-ups. |
 | `admin account blocks` | Lists the block list of sign-ups, oldest first. |
+| `admin invite create` | Invites an email to make an account of the tier `full`, and prints the link. |
+| `admin invite list` | Lists the open instance invitations, oldest first. |
+| `admin invite revoke` | Revokes an open instance invitation. |
 | `admin enrollment-token create` | Makes an enrollment token for a new server through the admin socket. |
 | `admin server list` | Lists the enrolled servers through the admin socket. |
 | `admin server get` | Prints one server through the admin socket. |
@@ -205,7 +208,7 @@ The leader of the control role runs these jobs. In maintenance mode, the leader 
 | Check of silent servers | 5 s | Marks `unresponsive` each `ready`, `cordoned`, `draining`, or `shutting_down` server whose last heartbeat is 20 s old or older: 4 missed heartbeats. The write checks the leader lease, so a leader that lost its lease writes nothing. Each server that it marks gets an audit entry `server.mark_unresponsive` with the actor `system` ([Control store tables](/reference/control-store/index.html.md#servers)). The next heartbeat of the server makes it `ready` again, or `cordoned`, or `draining` when the server has a drain ([the control channel](/reference/control-channel/index.html.md)). |
 | Step of the drains | 5 s | Takes the drain of each `draining` or `shutting_down` server one step on: it starts the cold moves off the server, at most 2 at once, names the machines that cannot move, and runs the empty checks ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node)). The first empty check turns the server `shutting_down`, with the audit entry `server.mark_shutting_down`. A check that finds it not empty turns it `draining` again, with `server.mark_draining`. The third empty check in a row, one minute after the second, decommissions the server, with the audit entry `server.decommission`. Both entries have the actor `system`. Every write checks the leader lease. |
 | Step of the removals of the node role | 5 s | Takes each pending removal of the role `node` one step on, after the step of the drains. It keeps the server cordoned, and starts the cold moves off the server, at most 2 at once. It names the machines that cannot move ([Cold move](/reference/cold-move/index.html.md#removal-of-the-node-role)). It runs no empty check and no decommission. Every write checks the leader lease. |
-| Sweep of invitations | 10 min | Deletes the invitations to orgs that ended more than 24 hours ago, by a use, a revoke, or the expiry. It also deletes the records of their rate limits that are older than 24 hours ([the org API](/reference/org-api/index.html.md#invitations)). |
+| Sweep of invitations | 10 min | Deletes the invitations to orgs and the instance invitations that ended more than 24 hours ago, by a use, a revoke, or the expiry. It also deletes the records of their rate limits that are older than 24 hours ([the org API](/reference/org-api/index.html.md#invitations), [the admin API](/reference/admin-api/index.html.md#invitationservice)). |
 | Sweep of machines | 10 min | Frees the machine names and the SSH ports whose reservation of 7 days ended ([Domain rules](/reference/domain-rules/index.html.md#name-reservation)). Drops the row of each machine that its executor deleted, 7 days after its delete request. Then deletes the machine lease of each machine whose row is gone ([Control store tables](/reference/control-store/index.html.md#machines)). Last, it frees the subnet of a decommissioned node once no machine address of it is held ([Control store tables](/reference/control-store/index.html.md#node_subnets)). Each of these five steps runs in a transaction of its own that checks the leader lease. So a leader that lost its lease frees nothing more. |
 | Sweep of the history | 10 min | Deletes the samples of the history that are older than 24 hours and 25 minutes ([Control store tables](/reference/control-store/index.html.md#metric_samples)). |
 | Prune of change events | 10 min | Deletes the change events that are older than 24 hours. Every reader of the events starts from the head, so an older event serves nobody ([Control store tables](/reference/control-store/index.html.md#events)). |
@@ -553,6 +556,14 @@ A release from before N29 refuses `edge.public_ipv6` without a prefix length, th
 
 A release without the feature `floating-addresses` refuses the key `edge.floating_addresses`. So before a rollback to such a release, delete the line `floating_addresses` from the section `[edge]` of `/etc/hopbox/hopboxd.toml`.
 
+A release below the schema version 66 does not know the sign-up mode `invite_only` ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). A release of the schema version 57 to 61 gives each new person an active account of the tier `full`, and a release of 62 to 65 gives a pending account. So before a rollback of a control server to such a release, set the mode `approval` on a control server:
+
+```sh
+sudo hopboxd admin config set --sign-up-mode=approval
+```
+
+Set `invite_only` again after the upgrade back to a release that knows it.
+
 | Error | Cause |
 | --- | --- |
 | `give --bundle or --rollback` | Neither flag, or both. |
@@ -716,7 +727,7 @@ Prints the settings of the install. It calls `GetInstallConfig` ([the admin API]
 | --- | --- | --- | --- |
 | `--json` | bool | `false` | Prints one JSON object with the keys `domain`, `public_addresses`, `acme_directory_url`, `acme_email`, `acme_terms_agreed`, `mail_transport`, `maintenance`, `sign_up_mode`, `grafana_url`, `version`, and `update_time`. `public_addresses` is an array. It is `[]` for an install without public addresses. `acme_terms_agreed` and `maintenance` are JSON booleans. |
 
-The text output has one line for each setting: the name, a tab, and the value. An empty domain prints as an empty value. `public_addresses` joins the addresses by commas, in their order. An install without public addresses prints `-`. An empty `acme_email` prints `-`. `acme_terms_agreed` and `maintenance` print `true` or `false`. `mail_transport` prints `smtp` or `file` ([Mail](/reference/mail/index.html.md#mail-transports)). `maintenance` is `true` in maintenance mode ([the API server](/reference/api/index.html.md#maintenance-mode)). `sign_up_mode` prints `open` or `approval` ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). An empty `grafana_url` prints `-`.
+The text output has one line for each setting: the name, a tab, and the value. An empty domain prints as an empty value. `public_addresses` joins the addresses by commas, in their order. An install without public addresses prints `-`. An empty `acme_email` prints `-`. `acme_terms_agreed` and `maintenance` print `true` or `false`. `mail_transport` prints `smtp` or `file` ([Mail](/reference/mail/index.html.md#mail-transports)). `maintenance` is `true` in maintenance mode ([the API server](/reference/api/index.html.md#maintenance-mode)). `sign_up_mode` prints `open`, `approval`, or `invite_only` ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). An empty `grafana_url` prints `-`.
 
 ```text
 $ sudo hopboxd admin config get
@@ -738,7 +749,7 @@ update_time	2026-10-16T09:00:00Z
 ```sh
 hopboxd admin config set [--domain=DOMAIN] [--public-address=IP,... | --no-public-addresses]
   [--acme-directory-url=URL] [--acme-email=EMAIL] [--[no-]acme-agree-terms]
-  [--mail-transport=smtp|file] [--sign-up-mode=open|approval] [--grafana-url=URL]
+  [--mail-transport=smtp|file] [--sign-up-mode=open|approval|invite_only] [--grafana-url=URL]
   [--expected-version=N] [--json]
 ```
 
@@ -753,7 +764,7 @@ Changes the settings that the flags give, and keeps the others. It calls `Update
 | `--acme-email` | string | none | The contact email of the ACME account. An empty value, `--acme-email ""`, removes it from the install, but the CA keeps the old contact of the account. |
 | `--acme-agree-terms` | bool | none | Agrees to the terms of the CA of the ACME directory, so the install gets its certificate. `--no-acme-agree-terms` withdraws the agreement and stops new certificates. Without either flag, the agreement stays as it is. |
 | `--mail-transport` | `smtp` or `file` | none | How the install delivers its mail ([Mail](/reference/mail/index.html.md#mail-transports)). `smtp` sends it through the SMTP server. `file` writes each mail to a file on the control server, for a dev or test install only. The SMTP config stays in both cases. |
-| `--sign-up-mode` | `open` or `approval` | none | How a new person gets an account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). `approval` makes a pending account that an instance admin approves or rejects. `open` makes an active account of the tier `limited` at once. Each change tells the other instance admins ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). |
+| `--sign-up-mode` | `open`, `approval`, or `invite_only` | none | How a new person gets an account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). `approval` makes a pending account that an instance admin approves or rejects. `open` makes an active account of the tier `limited` at once. `invite_only` refuses each new person without an open invitation ([admin invite create](#admin-invite-create)). Each change tells the other instance admins ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). |
 | `--grafana-url` | URL | none | The URL of the Grafana of the monitoring bundle, such as `http://127.0.0.1:3000` behind an SSH tunnel. The console links to its dashboards. An empty value, `--grafana-url ""`, removes it. |
 | `--expected-version` | int | none | The version `N` of the settings, as `admin config get` printed it. If the version is no longer `N`, the command fails with `aborted` and changes nothing. |
 | `--json` | bool | `false` | Prints one JSON object, as `admin config get --json` does. |
@@ -796,7 +807,8 @@ update_time	2026-10-16T09:06:00Z
 | `invalid_argument: invalid argument: invalid public address: ...` | An address of `--public-address` breaks a rule of [Domain rules](/reference/domain-rules/index.html.md#public-addresses), such as an address twice. The message names the address and the rule. |
 | `invalid_argument: invalid argument: invalid ACME setting: ...` | `--acme-directory-url` is not an `https` URL of a host, or `--acme-email` is not one plain email address. |
 | `--mail-transport "<value>" is not smtp or file` | `--mail-transport` has another value. |
-| `--sign-up-mode "<value>" is not open or approval` | `--sign-up-mode` has another value. |
+| `--sign-up-mode "<value>" is not open, approval, or invite_only` | `--sign-up-mode` has another value. |
+| `failed_precondition: failed precondition: the control process <id> knows the migrations up to <n>, and only a hopboxd that knows migration 66 refuses a sign-up without an invitation. Upgrade it first` | `--sign-up-mode invite_only` while a control process of an older release is live. |
 | `invalid_argument: invalid argument: invalid Grafana URL: ...` | `--grafana-url` is not an `http` or `https` URL of a host without user info, a query, or a fragment. |
 | `aborted: ...` | `--expected-version` is not the version of the settings now. |
 
@@ -1339,6 +1351,64 @@ $ sudo hopboxd admin account blocks
 01a15c03-2b4d-7e10-8a21-3c4d5e6f7a8b	email	user1@example.org	bot sign-up
 01a15c04-5c6d-7f20-8b31-5e6f7a8b9c0d	email_domain	example.net	bot domain
 ```
+
+### admin invite create
+
+```sh
+hopboxd admin invite create --email=EMAIL [--json]
+```
+
+Invites an email to make an account of the tier `full`, in every sign-up mode, and prints the link on standard output. It calls `CreateInstanceInvitation` ([the admin API](/reference/admin-api/index.html.md#createinstanceinvitation)). With an SMTP config, the install also sends the link to the email. Standard error then says whether the email went out. The person opens the link, or signs in at once, with any method that proves the email ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#invitations-as-a-way-in)). The link works once, for 7 days. A new invitation for the email revokes the open one.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--email` | string | none, required | The email of the person, such as `user1@example.org`. |
+| `--json` | bool | `false` | Prints one JSON object: `invitation` with `id`, `email`, `inviter_account_id`, `create_time`, and `expire_time`, then `url` and `email_sent`. |
+
+Example:
+
+```text
+$ sudo hopboxd admin invite create --email user1@example.org
+https://example.com/join#token=vH_2434xeosR22NllAU0tHE8LoqC08ZYHX1JhHZK4UA
+The link lets user1@example.org make one account, until 2026-10-23T15:47:31Z. The install sent the link to user1@example.org.
+```
+
+| Error | Cause |
+| --- | --- |
+| `failed_precondition: failed precondition: the account with the verified email user1@example.org exists already` | An account holds the email as a verified email. |
+| `failed_precondition: failed precondition: the install has no domain, and the invitation link needs one` | The install has no domain. Set it with `admin config set --domain` first. |
+| `resource_exhausted: too many requests: ...` | A rate limit of the invitations refused the call ([the admin API](/reference/admin-api/index.html.md#invitationservice)). |
+
+### admin invite list
+
+```sh
+hopboxd admin invite list [--json]
+```
+
+Lists the open instance invitations, oldest first. It calls `ListInstanceInvitations` ([the admin API](/reference/admin-api/index.html.md#listinstanceinvitations)). The text output has one line per invitation, with a tab between the fields: the ID, the email, the time of the invitation, and its end. The output never holds a link.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--json` | bool | `false` | Prints one JSON object, `{"invitations":[...]}`. Each invitation has `id`, `email`, `inviter_account_id`, `create_time`, and `expire_time`. |
+
+Example:
+
+```text
+$ sudo hopboxd admin invite list
+01a14565-a316-74dd-968e-fac72d706827	user1@example.org	2026-10-16T15:47:31Z	2026-10-23T15:47:31Z
+```
+
+### admin invite revoke
+
+```sh
+hopboxd admin invite revoke --id=ID
+```
+
+Revokes an open instance invitation, so its link stops working. It calls `RevokeInstanceInvitation` ([the admin API](/reference/admin-api/index.html.md#revokeinstanceinvitation)). It prints nothing. An ID without an open invitation fails with `not_found`.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--id` | string | none, required | The UUID of the invitation, as `admin invite list` prints it. |
 
 ### admin enrollment-token create
 

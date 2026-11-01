@@ -1329,6 +1329,125 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.RevokeInstanceAdminResponse'
+  /hopbox.admin.v1.InvitationService/CreateInstanceInvitation:
+    post:
+      tags:
+        - hopbox.admin.v1.InvitationService
+      summary: CreateInstanceInvitation
+      description: |-
+        CreateInstanceInvitation invites an email to make an account, and returns the link. With an SMTP
+         config, it also sends the link to the email. A new invitation for an email revokes the open one.
+      operationId: hopbox.admin.v1.InvitationService.CreateInstanceInvitation
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.CreateInstanceInvitationRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.CreateInstanceInvitationResponse'
+  /hopbox.admin.v1.InvitationService/ListInstanceInvitations:
+    post:
+      tags:
+        - hopbox.admin.v1.InvitationService
+      summary: ListInstanceInvitations
+      description: ListInstanceInvitations lists the open instance invitations, oldest first.
+      operationId: hopbox.admin.v1.InvitationService.ListInstanceInvitations
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.ListInstanceInvitationsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.ListInstanceInvitationsResponse'
+  /hopbox.admin.v1.InvitationService/RevokeInstanceInvitation:
+    post:
+      tags:
+        - hopbox.admin.v1.InvitationService
+      summary: RevokeInstanceInvitation
+      description: RevokeInstanceInvitation ends an open instance invitation, so its link stops working.
+      operationId: hopbox.admin.v1.InvitationService.RevokeInstanceInvitation
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.RevokeInstanceInvitationRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.RevokeInstanceInvitationResponse'
   /hopbox.admin.v1.KeyringService/ListKEKs:
     post:
       tags:
@@ -4202,6 +4321,38 @@ components:
       title: CreateEnrollmentTokenResponse
       additionalProperties: false
       description: CreateEnrollmentTokenResponse holds the new token.
+    hopbox.admin.v1.CreateInstanceInvitationRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          title: email
+          description: email is the email of the person, such as user1@example.org.
+      title: CreateInstanceInvitationRequest
+      additionalProperties: false
+      description: CreateInstanceInvitationRequest names the email.
+    hopbox.admin.v1.CreateInstanceInvitationResponse:
+      type: object
+      properties:
+        invitation:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.InstanceInvitation'
+          title: invitation
+        url:
+          type: string
+          title: url
+          description: |-
+            url is the link of the invitation, such as https://hop.example.org/join#token=<token>. The sign-in
+             matches the invitation by the verified email, not by the link, so the link alone lets nobody in.
+        emailSent:
+          type: boolean
+          title: email_sent
+          description: |-
+            email_sent is true when the server sent the link to the email. It is false without an SMTP config,
+             when the email failed, and with the file mail transport. Then pass the link to the person yourself.
+      title: CreateInstanceInvitationResponse
+      additionalProperties: false
+      description: CreateInstanceInvitationResponse holds the invitation and its link.
     hopbox.admin.v1.CreateLoginLinkRequest:
       type: object
       properties:
@@ -5216,6 +5367,36 @@ components:
       title: InstanceAdminEmail
       additionalProperties: false
       description: InstanceAdminEmail is one email of an instance admin.
+    hopbox.admin.v1.InstanceInvitation:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the invitation.
+        email:
+          type: string
+          title: email
+          description: email is the email that the invitation is for, in lower case.
+        inviterAccountId:
+          type: string
+          title: inviter_account_id
+          description: |-
+            inviter_account_id is the UUID of the account of the admin session that made the invitation. It is
+             empty for local root and an admin API key, and after the delete of that account.
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is the time of the invitation.
+        expireTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: expire_time
+          description: expire_time is the end of the invitation, 7 days after create_time.
+      title: InstanceInvitation
+      additionalProperties: false
+      description: InstanceInvitation is an open invitation to make an account on the install.
     hopbox.admin.v1.KEK:
       type: object
       properties:
@@ -5430,6 +5611,22 @@ components:
       title: ListInstanceAdminsResponse
       additionalProperties: false
       description: ListInstanceAdminsResponse lists the instance admins.
+    hopbox.admin.v1.ListInstanceInvitationsRequest:
+      type: object
+      title: ListInstanceInvitationsRequest
+      additionalProperties: false
+      description: ListInstanceInvitationsRequest has no fields.
+    hopbox.admin.v1.ListInstanceInvitationsResponse:
+      type: object
+      properties:
+        invitations:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.InstanceInvitation'
+          title: invitations
+      title: ListInstanceInvitationsResponse
+      additionalProperties: false
+      description: ListInstanceInvitationsResponse lists the open instance invitations.
     hopbox.admin.v1.ListKEKsRequest:
       type: object
       title: ListKEKsRequest
@@ -6548,6 +6745,21 @@ components:
       title: RevokeInstanceAdminResponse
       additionalProperties: false
       description: RevokeInstanceAdminResponse has no fields.
+    hopbox.admin.v1.RevokeInstanceInvitationRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the invitation.
+      title: RevokeInstanceInvitationRequest
+      additionalProperties: false
+      description: RevokeInstanceInvitationRequest names the invitation.
+    hopbox.admin.v1.RevokeInstanceInvitationResponse:
+      type: object
+      title: RevokeInstanceInvitationResponse
+      additionalProperties: false
+      description: RevokeInstanceInvitationResponse has no fields.
     hopbox.admin.v1.RewrapSealedValuesRequest:
       type: object
       title: RewrapSealedValuesRequest
@@ -7485,6 +7697,7 @@ components:
         - SIGN_UP_MODE_UNSPECIFIED
         - SIGN_UP_MODE_OPEN
         - SIGN_UP_MODE_APPROVAL
+        - SIGN_UP_MODE_INVITE_ONLY
       description: SignUpMode says how a new person gets an account.
     hopbox.admin.v1.Size:
       type: object
@@ -8077,6 +8290,11 @@ tags:
     description: |-
       InstanceAdminService manages the instance admins, the accounts that operate the install.
        An install keeps at least one instance admin.
+  - name: hopbox.admin.v1.InvitationService
+    description: |-
+      InvitationService makes the instance invitations. An instance invitation lets one new person in
+       with an active account of the tier full, in every sign-up mode. The person signs in with any
+       method that proves the email of the invitation.
   - name: hopbox.admin.v1.KeyringService
     description: KeyringService manages the key-encryption keys that seal secrets.
   - name: hopbox.admin.v1.LoginLinkService

@@ -45,6 +45,7 @@ An admin session can make these calls, and no other call of the admin API:
 | `hopbox.admin.v1.PoolService` | `CreatePool`, `GetPool`, `ListPools`, `DeletePool` |
 | `hopbox.admin.v1.SizeService` | `CreateSize`, `GetSize`, `ListSizes`, `RetireSize` |
 | `hopbox.admin.v1.AccountService` | `ListAccounts`, `SuspendAccount`, `UnsuspendAccount`, `ApproveAccount`, `RejectAccount`, `SetAccountTier`, `ListSignUpBlocks`, `BlockSignUp`, `UnblockSignUp` |
+| `hopbox.admin.v1.InvitationService` | `CreateInstanceInvitation`, `ListInstanceInvitations`, `RevokeInstanceInvitation` |
 | `hopbox.admin.v1.OrgService` | `ListOrgs`, `SuspendOrg`, `UnsuspendOrg`, `SetOrgLimits`, `GetDefaultOrgLimits`, `SetDefaultOrgLimits` |
 | `hopbox.admin.v1.MachineService` | `ListMachines`, `StopMachine`, `DeleteMachine` |
 | `hopbox.admin.v1.ImageService` | `ListImages` |
@@ -160,6 +161,9 @@ The enum `SignUpMode` has these values:
 | `SIGN_UP_MODE_UNSPECIFIED` | 0 | Never in a response. A request must not use it. |
 | `SIGN_UP_MODE_OPEN` | 1 | The first sign-in of a new person makes an active account of the tier `limited` ([the org API](/reference/org-api/index.html.md#usage-limits)). |
 | `SIGN_UP_MODE_APPROVAL` | 2 | The first sign-in of a new person makes a pending account, which an instance admin approves or rejects ([ApproveAccount](#approveaccount), [RejectAccount](#rejectaccount)). |
+| `SIGN_UP_MODE_INVITE_ONLY` | 3 | The first sign-in of a new person fails, unless an open invitation names the verified email of the sign-in ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#invitations-as-a-way-in)). |
+
+In every mode, an open instance invitation ([InvitationService](#invitationservice)) gives a new person an active account of the tier `full`, and an open org invitation gives an active account of the tier `limited`.
 
 The enum `MailTransport` has these values:
 
@@ -191,7 +195,7 @@ Changes the fields that the request sets, and keeps the others. It returns the c
 | Procedure | `/hopbox.admin.v1.InstallConfigService/UpdateInstallConfig` |
 | Policy action | `install_config.update`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call with the same request sets the same values again. |
-| Audit entry | action `install_config.update`, no target, details `domain` (the new domain), `old_domain`, `public_addresses` (the new addresses, joined by commas), and `old_public_addresses`. Also `acme_directory_url`, `acme_email`, `acme_terms_agreed` (`true` or `false`), and `mail_transport` (`smtp` or `file`). Also `sign_up_mode` (`open` or `approval`), and `grafana_url`. Each of these has its `old_` detail. Some changes tell the instance admins: the domain, an ACME setting, the mail transport, and the sign-up mode ([Notices to instance admins](#notices-to-instance-admins)). |
+| Audit entry | action `install_config.update`, no target, details `domain` (the new domain), `old_domain`, `public_addresses` (the new addresses, joined by commas), and `old_public_addresses`. Also `acme_directory_url`, `acme_email`, `acme_terms_agreed` (`true` or `false`), and `mail_transport` (`smtp` or `file`). Also `sign_up_mode` (`open`, `approval`, or `invite_only`), and `grafana_url`. Each of these has its `old_` detail. Some changes tell the instance admins: the domain, an ACME setting, the mail transport, and the sign-up mode ([Notices to instance admins](#notices-to-instance-admins)). |
 
 The request `UpdateInstallConfigRequest` has these fields:
 
@@ -211,7 +215,7 @@ The message `PublicAddresses` has one field, `addresses`, a repeated string. Eac
 
 With `expected_version`, two admins that change the config at the same time cannot overwrite each other: the second one gets `aborted` with the message `conflict: the install config is at version <n>, not <m>. Read it again`. The call locks the row until it commits, so the version check and the change happen as one step.
 
-A request that sets no field gets `invalid_argument` with the message `invalid argument: the update sets no setting`. `expected_version` alone sets no field. A bad domain gets `invalid_argument` with the rule that it breaks, for example `invalid argument: invalid name: the install domain "localhost" must have at least two labels, such as hop.example.org`. A bad address gets `invalid_argument` with the rule that it breaks, for example `invalid argument: invalid public address: "0.0.0.0" is not an address that a client on another host can reach`. A bad ACME setting gets `invalid_argument` too, for example `invalid argument: invalid ACME setting: "http://acme.example.org/directory" is not an https URL of a host without user info or a fragment, such as https://acme-v02.api.letsencrypt.org/directory`. Whitespace or a control character gets, for example, `invalid argument: invalid ACME setting: the directory URL holds the character ' '. It can hold no whitespace and no control character`. `MAIL_TRANSPORT_UNSPECIFIED` or an unknown transport gets `invalid_argument` with the message `invalid argument: the mail transport <n> is not smtp or file`. `SIGN_UP_MODE_UNSPECIFIED` or an unknown mode gets `invalid_argument` with the message `invalid argument: the sign-up mode <n> is not open or approval`. A bad Grafana URL gets `invalid_argument`, for example `invalid argument: invalid Grafana URL: "ftp://example.org" is not an http or https URL of a host without user info, a query, or a fragment, such as http://127.0.0.1:3000`.
+A request that sets no field gets `invalid_argument` with the message `invalid argument: the update sets no setting`. `expected_version` alone sets no field. A bad domain gets `invalid_argument` with the rule that it breaks, for example `invalid argument: invalid name: the install domain "localhost" must have at least two labels, such as hop.example.org`. A bad address gets `invalid_argument` with the rule that it breaks, for example `invalid argument: invalid public address: "0.0.0.0" is not an address that a client on another host can reach`. A bad ACME setting gets `invalid_argument` too, for example `invalid argument: invalid ACME setting: "http://acme.example.org/directory" is not an https URL of a host without user info or a fragment, such as https://acme-v02.api.letsencrypt.org/directory`. Whitespace or a control character gets, for example, `invalid argument: invalid ACME setting: the directory URL holds the character ' '. It can hold no whitespace and no control character`. `MAIL_TRANSPORT_UNSPECIFIED` or an unknown transport gets `invalid_argument` with the message `invalid argument: the mail transport <n> is not smtp or file`. `SIGN_UP_MODE_UNSPECIFIED` or an unknown mode gets `invalid_argument` with the message `invalid argument: the sign-up mode <n> is not open, approval, or invite_only`. A change to `SIGN_UP_MODE_INVITE_ONLY` while a live control process has a schema version below 66 (`service.InviteOnlySchema`) gets `failed_precondition`, and changes nothing. Such a release makes a pending account in that mode. The message is `failed precondition: the control process <id> knows the migrations up to <n>, and only a hopboxd that knows migration 66 refuses a sign-up without an invitation. Upgrade it first`. A bad Grafana URL gets `invalid_argument`, for example `invalid argument: invalid Grafana URL: "ftp://example.org" is not an http or https URL of a host without user info, a query, or a fragment, such as http://127.0.0.1:3000`.
 
 While the transport is `MAIL_TRANSPORT_FILE`, each update logs `mail goes to files, not to recipients` at level warn ([Mail](/reference/mail/index.html.md#logs)).
 
@@ -753,7 +757,7 @@ Takes the instance admin role from an account. Its sessions lose the role at the
 | Procedure | `/hopbox.admin.v1.InstanceAdminService/RevokeInstanceAdmin` |
 | Policy action | `instance_admin.revoke`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no |
-| Audit entry | action `instance_admin.revoke`, target kind `account` |
+| Audit entries | action `instance_admin.revoke`, target kind `account`. Each open instance invitation that the account made gets `instance_invitation.revoke`, with the details `email` and `reason` (`inviter no longer an instance admin`) ([InvitationService](#invitationservice)). |
 
 The request `RevokeInstanceAdminRequest` has the field `account_id`. The response `RevokeInstanceAdminResponse` has no fields.
 
@@ -970,7 +974,7 @@ Deletes an account for an operator, for example an account of the sign-up mode `
 | Procedure | `/hopbox.admin.v1.AccountService/DeleteAccount` |
 | Policy action | `admin_account.delete`: `local_root` and `admin_key` |
 | Idempotent option | no. A second call gets `not_found`. |
-| Audit entries | action `admin_account.delete`, target kind `account`, in no org. The details are `personal_org`, `reason`, `deleted_orgs`, `suspended`, and `instance_admin`. `suspended` is `true` for a suspended account, and `instance_admin` is `true` for an instance admin. Each one is absent otherwise. `deleted_orgs` holds the IDs of the deleted orgs, joined by commas, with the personal org first. The entry comes before the entries of the delete itself. Each deleted org other than the personal org gets the action `org.delete`, with the details `name` and `reason` (`account deleted`). Each other org of the account gets `org.member_remove`, as for the self-delete. |
+| Audit entries | action `admin_account.delete`, target kind `account`, in no org. The details are `personal_org`, `reason`, `deleted_orgs`, `suspended`, and `instance_admin`. `suspended` is `true` for a suspended account, and `instance_admin` is `true` for an instance admin. Each one is absent otherwise. `deleted_orgs` holds the IDs of the deleted orgs, joined by commas, with the personal org first. The entry comes before the entries of the delete itself. Each deleted org other than the personal org gets the action `org.delete`, with the details `name` and `reason` (`account deleted`). Each other org of the account gets `org.member_remove`, as for the self-delete. Each open instance invitation that the account made gets `instance_invitation.revoke`, with the reason `inviter deleted`. |
 
 The admin delete differs from the self-delete in these rules:
 
@@ -1291,6 +1295,128 @@ The request `UnblockSignUpRequest` has the field `id`, the UUID of the entry. Th
 | --- | --- |
 | The ID is not a UUID | `invalid_argument` |
 | No entry has the ID: `not found: the block list has no entry <id>` | `not_found` |
+
+## InvitationService
+
+`hopbox.admin.v1.InvitationService` makes the instance invitations. An instance invitation lets one new person in with an active account of the tier `full`, in every sign-up mode ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#invitations-as-a-way-in)). `hopboxd admin invite` calls this service ([hopboxd](/reference/hopboxd/index.html.md#admin-invite-create)), and so does the section "Invitations" of the page Accounts of the Admin area ([Console](/reference/console/index.html.md#admin-area)).
+
+An instance invitation has the shape of an org invitation ([the org API](/reference/org-api/index.html.md#invitations)):
+
+| Rule | Value |
+| --- | --- |
+| Link | `https://<domain>/join#token=<token>`. The token is 32 random bytes in base64url, as for a sign-in link ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#tokens)). It is in the fragment, so a browser never sends it to a server. The console page `/join` drops it from the address bar, and shows the sign-in methods. The verified email of the sign-in is the key, not the token, so a person who knows the link but cannot prove the email gets no account. |
+| Use | The first sign-in of a new person whose verified email is the email of the invitation uses it. The person signs in with any method that proves the email, also without the link. A login link proves no email, so it uses no invitation. |
+| Storage | The control store keeps only the SHA-256 of the token ([Control store tables](/reference/control-store/index.html.md#instance_invitations)). The audit log never holds the token. |
+| Lifetime | 7 days |
+| Use count | once |
+| Open invitations | one for each email. A new invitation for the email revokes the open one, so its link stops working. |
+| Rate limits | The install makes at most 20 instance invitations in an hour. A caller makes at most 20 invitations in an hour, its org invitations and its instance invitations together. An email gets at most 5 in an hour, from every org and the install together. The control store counts them in `org_invitation_sends`, with an empty `org_id` for an instance invitation ([Control store tables](/reference/control-store/index.html.md#org_invitation_sends)). The caller is the account of an admin session, the admin API key, or local root. Each new invitation takes the transaction lock `LockKeyInvitations` ([the bundled Postgres](/reference/postgres/index.html.md#advisory-lock-keys)). |
+| Email | With an SMTP config, the server sends the link to the email ([SMTP config](/reference/smtp/index.html.md)). Without one, only the caller gets the link. With the file mail transport, the server writes the email to a file on the server, and the caller passes the link on ([Mail](/reference/mail/index.html.md#invitations)). |
+| Block list | The block list comes first. An invitation lets no blocked email or identity in ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#limits-of-new-accounts)). |
+| Rights of the inviter | An invitation never outlives the right of its inviter, as for an org invitation ([the org API](/reference/org-api/index.html.md#invitations)). [RevokeInstanceAdmin](#revokeinstanceadmin) revokes each open instance invitation of the account, and so does the delete of the account, by itself or by an operator. The invitations of local root and of an admin API key name no account, so they stay. A call of an admin session holds the role of its account until the commit, so a revoke at the same time waits for it, and then revokes the new invitation too. |
+
+The leader deletes an instance invitation 24 hours after its end: its use, its revoke, or its expiry ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)).
+
+The message `InstanceInvitation` has these fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | string | The UUID of the invitation. |
+| `email` | string | The email that the invitation is for, in lower case. |
+| `inviter_account_id` | string | The UUID of the account of the admin session that made the invitation. It is empty for local root and an admin API key, and after the delete of that account. |
+| `create_time` | `google.protobuf.Timestamp` | The time of the invitation. |
+| `expire_time` | `google.protobuf.Timestamp` | The end of the invitation, 7 days after `create_time`. |
+
+### CreateInstanceInvitation
+
+Invites an email to make an account of the tier `full`, and returns the link. With an SMTP config, it also sends the link to the email.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.InvitationService/CreateInstanceInvitation` |
+| Policy action | `instance_invitation.create`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no. The response holds the link. A retry revokes the invitation of the first try and makes a new one. |
+| Audit entries | action `instance_invitation.create`, no org, target kind `instance_invitation`, detail `email`. A replaced invitation gets the action `instance_invitation.revoke` with the details `email` and `reason` (`replaced`). |
+
+The request `CreateInstanceInvitationRequest` has the field `email`, the email of the person, such as `user1@example.org` ([Domain rules](/reference/domain-rules/index.html.md#emails)).
+
+The response `CreateInstanceInvitationResponse` has these fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `invitation` | `InstanceInvitation` | The new invitation. |
+| `url` | string | The link. The sign-in matches the invitation by the verified email, not by the link, so the link alone lets nobody in. |
+| `email_sent` | bool | `true` after a sent email. It is `false` without an SMTP config, after a failed email, and with the file mail transport, because that email reaches nobody. |
+
+The server sends the email after the invitation commits, and waits at most 20 s for the SMTP server. A failed email does not fail the call, because the caller has the link. The server then logs `the instance invitation email failed` at level error, with `component=service`, `invitation`, and `err`.
+
+The email has this form:
+
+```text
+From: hopbox <no-reply@example.org>
+To: user1@example.org
+Subject: Your invitation to example.com
+
+An instance admin of example.com invites you to make an account there.
+
+Open this link, and sign in with the email user1@example.org to make your account:
+
+https://example.com/join#token=<token>
+
+The link works once, until Fri, 23 Oct 2026 15:47:31 UTC. If you did not expect it, you can ignore this email.
+```
+
+| Error | Code |
+| --- | --- |
+| The email breaks a rule | `invalid_argument` |
+| The install has no domain: `failed precondition: the install has no domain, and the invitation link needs one` | `failed_precondition` |
+| An account holds the email as a verified email: `failed precondition: the account with the verified email user1@example.org exists already` | `failed_precondition` |
+| An admin session whose account lost the instance admin role after the request gate let the call in: `permission denied: the account is no longer an instance admin`. The call changes nothing. | `permission_denied` |
+| The install made 20 instance invitations in the last hour: `too many requests: this install made the most instance invitations of an hour. Wait, then retry` | `resource_exhausted` |
+| The caller made 20 invitations in the last hour: `too many requests: this caller made the most invitations of an hour. Wait, then retry` | `resource_exhausted` |
+| The email got 5 invitations in the last hour: `too many requests: this email got the most invitations of an hour. Wait, then retry` | `resource_exhausted` |
+| The SMTP password does not open, for example after the loss of its key-encryption key | `internal` |
+
+```sh
+sudo curl -s --unix-socket /run/hopbox/admin.sock \
+  -H 'Content-Type: application/json' -d '{"email":"user1@example.org"}' \
+  http://hopboxd/hopbox.admin.v1.InvitationService/CreateInstanceInvitation
+```
+
+```json
+{"invitation":{"id":"01a14565-a316-74dd-968e-fac72d706827","email":"user1@example.org","createTime":"2026-10-16T15:47:31.221754Z","expireTime":"2026-10-23T15:47:31.221754Z"},"url":"https://example.com/join#token=vH_2434xeosR22NllAU0tHE8LoqC08ZYHX1JhHZK4UA","emailSent":true}
+```
+
+### ListInstanceInvitations
+
+Lists the open instance invitations, oldest first. An open invitation is not used, not revoked, and not expired.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.InvitationService/ListInstanceInvitations` |
+| Policy action | `instance_invitation.list`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no |
+| Audit entry | action `instance_invitation.list`, no target |
+
+The request `ListInstanceInvitationsRequest` has no fields. The response `ListInstanceInvitationsResponse` has the field `invitations`, a repeated `InstanceInvitation`. It never holds a link.
+
+### RevokeInstanceInvitation
+
+Ends an open instance invitation, so its link stops working.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.InvitationService/RevokeInstanceInvitation` |
+| Policy action | `instance_invitation.revoke`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no. A second call gets `not_found`. |
+| Audit entry | action `instance_invitation.revoke`, no org, target kind `instance_invitation`, detail `email` |
+
+The request `RevokeInstanceInvitationRequest` has the field `id`, the UUID of the invitation. The response `RevokeInstanceInvitationResponse` has no fields.
+
+| Error | Code |
+| --- | --- |
+| The ID is not a UUID | `invalid_argument` |
+| The install has no open instance invitation with the ID: `not found: the install has no open instance invitation <id>` | `not_found` |
 
 ## AdminKeyService
 

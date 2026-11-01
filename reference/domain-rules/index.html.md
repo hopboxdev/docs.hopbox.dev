@@ -348,7 +348,7 @@ Each account has a state and a tier. The type `AccountState` has the values `pen
 
 ## Sign-up modes
 
-The type `SignUpMode` has the values `open` and `approval` ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). `ParseSignUpMode` refuses any other text with `ErrUnknownSignUpMode`: `unknown sign-up mode: "<text>" is not one of open, approval`.
+The type `SignUpMode` has the values `open`, `approval`, and `invite_only` ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). `ParseSignUpMode` refuses any other text with `ErrUnknownSignUpMode`: `unknown sign-up mode: "<text>" is not one of open, approval, invite_only`.
 
 ## Sign-up notes
 

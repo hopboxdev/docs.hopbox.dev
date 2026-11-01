@@ -141,6 +141,9 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `sign_up_block.list` | admin `AccountService.ListSignUpBlocks` | the install | `local_root`, `admin_key`, an admin `session` |
 | `sign_up_block.add` | admin `AccountService.BlockSignUp` | the install | `local_root`, `admin_key`, an admin `session` |
 | `sign_up_block.remove` | admin `AccountService.UnblockSignUp` | the install | `local_root`, `admin_key`, an admin `session` |
+| `instance_invitation.create` | admin `InvitationService.CreateInstanceInvitation` | the install | `local_root`, `admin_key`, an admin `session` |
+| `instance_invitation.list` | admin `InvitationService.ListInstanceInvitations` | the install | `local_root`, `admin_key`, an admin `session` |
+| `instance_invitation.revoke` | admin `InvitationService.RevokeInstanceInvitation` | the install | `local_root`, `admin_key`, an admin `session` |
 | `admin_key.create` | `AdminKeyService.CreateAdminKey` | the install | `local_root`, an admin `session` |
 | `admin_key.register` | `AdminKeyService.RegisterAdminKey` | the install | `local_root` only |
 | `admin_key.list` | `AdminKeyService.ListAdminKeys` | the install | `local_root`, an admin `session` |
