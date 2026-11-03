@@ -713,7 +713,7 @@ Makes an API key. Any member makes a member key for itself. The org admins and o
 | Procedure | `/hopbox.v1.APIKeyService/CreateAPIKey` |
 | Policy action | `api_key.create`: a `session` or `cli_token` with a role in the org. A member key needs the role `member` or more. An org key needs `admin` or `owner`. |
 | Idempotent option | yes. The install keeps no copy of the secret. So a retry with the same idempotency key fails with `already_exists` and the ID of the key ([the API server](/reference/api/index.html.md#idempotency-keys)). |
-| Audit entry | action `api_key.create`, org the org of the key, target kind `api_key`, details `kind`, `name`, and `expire_time` |
+| Audit entry | action `api_key.create`, org the org of the key, target kind `api_key`, details `kind`, `name`, `expire_time`, and `lifetime`: the preset lifetime in days, such as `365d`, or `custom` for a key with `expire_time` in the request, as the label `lifetime` of `hopbox_api_key_creations_total` ([Metrics](/reference/metrics/index.html.md)) |
 
 The request `CreateAPIKeyRequest` has these fields:
 

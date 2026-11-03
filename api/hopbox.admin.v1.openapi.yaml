@@ -3484,6 +3484,158 @@ components:
       title: ACMEStatus
       additionalProperties: false
       description: ACMEStatus is the state of the attempts of the ACME job.
+    hopbox.admin.v1.AbuseThresholds:
+      type: object
+      properties:
+        cpuPercent:
+          type: integer
+          title: cpu_percent
+          format: int32
+          description: |-
+            cpu_percent is the share of its vCPUs, averaged over 30 minutes, that a machine uses for cpu_for: 1 to 100.
+             The default is 90.
+        cpuFor:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: cpu_for
+          description: 'cpu_for is how long the machine uses that share: 10 minutes to 6 hours. The default is 2 hours.'
+        egressBytesPerSecond:
+          type: string
+          title: egress_bytes_per_second
+          format: int64
+          description: |-
+            egress_bytes_per_second is the rate over 5 minutes at which a machine sends for egress_for: 1 to 100,000,000,000.
+             The default is 50,000,000.
+        egressFor:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: egress_for
+          description: 'egress_for is how long the machine sends at that rate: 5 minutes to 6 hours. The default is 30 minutes.'
+        scanConnectionsPerSecond:
+          type: integer
+          title: scan_connections_per_second
+          format: int32
+          description: |-
+            scan_connections_per_second is the rate over 5 minutes at which a machine opens new outbound connections
+             for scan_for: 1 to 1,000,000. The default is 100.
+        scanFor:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: scan_for
+          description: 'scan_for is how long the machine opens connections at that rate: 5 minutes to 6 hours. The default is 10 minutes.'
+        orgBurst:
+          type: integer
+          title: org_burst
+          format: int32
+          description: 'org_burst is the number of orgs that one account makes in 1 hour: 1 to 10,000. The default is 5.'
+        apiKeyBurst:
+          type: integer
+          title: api_key_burst
+          format: int32
+          description: 'api_key_burst is the number of API keys that one account makes in 1 hour: 1 to 10,000. The default is 5.'
+        machineBurst:
+          type: integer
+          title: machine_burst
+          format: int32
+          description: 'machine_burst is the number of machines that one account makes in 1 hour: 1 to 10,000. The default is 10.'
+        urlChurn:
+          type: integer
+          title: url_churn
+          format: int32
+          description: |-
+            url_churn is the number of changes of the port or the visibility of machine URLs that one account makes in
+             1 hour: 1 to 10,000. The default is 20.
+        newAccountAge:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: new_account_age
+          description: |-
+            new_account_age is the age below which an account that makes a machine URL public is new: 1 hour to 90 days.
+             The default is 7 days.
+        longApiKeyBurst:
+          type: integer
+          title: long_api_key_burst
+          format: int32
+          description: |-
+            long_api_key_burst is the number of API keys with the preset lifetime of 365 days that one account makes in
+             1 hour: 1 to 10,000. The default is 2.
+      title: AbuseThresholds
+      additionalProperties: false
+      description: |-
+        AbuseThresholds are the thresholds of the detection of abuse inside hopboxd. The defaults are the numbers of
+         the alert rules of the monitoring bundle. Each duration is whole minutes.
+    hopbox.admin.v1.AbuseThresholdsUpdate:
+      type: object
+      properties:
+        cpuPercent:
+          type:
+            - integer
+            - "null"
+          title: cpu_percent
+          format: int32
+        cpuFor:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: cpu_for
+        egressBytesPerSecond:
+          type:
+            - string
+            - "null"
+          title: egress_bytes_per_second
+          format: int64
+        egressFor:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: egress_for
+        scanConnectionsPerSecond:
+          type:
+            - integer
+            - "null"
+          title: scan_connections_per_second
+          format: int32
+        scanFor:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: scan_for
+        orgBurst:
+          type:
+            - integer
+            - "null"
+          title: org_burst
+          format: int32
+        apiKeyBurst:
+          type:
+            - integer
+            - "null"
+          title: api_key_burst
+          format: int32
+        machineBurst:
+          type:
+            - integer
+            - "null"
+          title: machine_burst
+          format: int32
+        urlChurn:
+          type:
+            - integer
+            - "null"
+          title: url_churn
+          format: int32
+        newAccountAge:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: new_account_age
+        longApiKeyBurst:
+          type:
+            - integer
+            - "null"
+          title: long_api_key_burst
+          format: int32
+      title: AbuseThresholdsUpdate
+      additionalProperties: false
+      description: |-
+        AbuseThresholdsUpdate holds the thresholds to change. Each field that the request leaves out keeps its value.
+         Each value has the bounds of the same field of AbuseThresholds.
     hopbox.admin.v1.Account:
       type: object
       properties:
@@ -3775,6 +3927,19 @@ components:
           description: |-
             resolve_cause is resolved when Alertmanager reported the end, or fired_again when the alert fired
              again with another start time after an end that hopbox missed. It is empty while the alert fires.
+        kind:
+          type: string
+          title: kind
+          description: |-
+            kind is alert for an alert of Alertmanager, or abuse for a signal of the detection of abuse inside
+             hopboxd. The name of a signal is the signal, such as cpu_sustained, its severity is warning, its
+             fingerprint is empty, and its labels can also hold account.
+        id:
+          type: string
+          title: id
+          description: |-
+            id is the ID of the audit entry that started the alert or the signal: alert.fire or abuse.detect. It
+             names one firing of an alert, or one signal, for good.
       title: AdminAlert
       additionalProperties: false
       description: AdminAlert is an alert of the monitoring bundle that fires now.
@@ -3869,15 +4034,15 @@ components:
           title: kind
           description: |-
             kind is security for an action that outlasts the session that did it, sign_up for a new pending
-             account, or alert for an alert of the monitoring bundle. The console lists each kind under its own
-             heading.
+             account, alert for an alert of the monitoring bundle, or abuse for a signal of the detection of abuse
+             inside hopboxd. The console lists each kind under its own heading.
         alert:
           allOf:
             - $ref: '#/components/schemas/hopbox.admin.v1.AdminAlert'
           title: alert
           description: |-
-            alert is the alert of a notice of the kind alert, as Alertmanager sent it last. It is absent for the
-             other kinds.
+            alert is the alert of a notice of the kind alert, as Alertmanager sent it last, or the signal of a
+             notice of the kind abuse, as the last run of the detection found it. It is absent for the other kinds.
       title: AdminNotice
       additionalProperties: false
       description: |-
@@ -4914,7 +5079,17 @@ components:
         fingerprint:
           type: string
           title: fingerprint
-          description: fingerprint is the fingerprint of the alert in Alertmanager, 16 hex characters.
+          description: fingerprint is the fingerprint of the alert in Alertmanager, 16 hex characters. It is empty for a signal.
+        kind:
+          type: string
+          title: kind
+          description: |-
+            kind is alert for an alert of Alertmanager, or abuse for a signal of the detection of abuse inside
+             hopboxd, whose name is the signal, such as cpu_sustained.
+        id:
+          type: string
+          title: id
+          description: 'id is the ID of the audit entry that started the alert or the signal: alert.fire or abuse.detect.'
       title: FiringAlert
       additionalProperties: false
       description: FiringAlert is an alert of the monitoring bundle that fires now.
@@ -5238,13 +5413,18 @@ components:
             $ref: '#/components/schemas/hopbox.admin.v1.FiringAlert'
           title: firing_alerts
           description: |-
-            firing_alerts are the alerts of the monitoring bundle that fire now, newest first, at most 20, from the
-             alert webhook of hopboxd. Each one is also a notice of the kind alert.
+            firing_alerts are the alerts of the monitoring bundle and the signals of the detection of abuse that fire
+             now, newest first, at most 20 together. Each one is also a notice of the kind alert or abuse.
         firingAlertCount:
           type: integer
           title: firing_alert_count
           format: int32
-          description: firing_alert_count counts every alert that fires now, also those after the first 20.
+          description: firing_alert_count counts every alert and every signal that fires now, also those after the first 20.
+        firingAbuseCount:
+          type: integer
+          title: firing_abuse_count
+          format: int32
+          description: firing_abuse_count counts the abuse signals of firing_alert_count.
       title: GetOverviewResponse
       additionalProperties: false
       description: GetOverviewResponse is the state of the install, from the newest samples of the history.
@@ -5531,6 +5711,11 @@ components:
           description: |-
             grafana_url is the Grafana of the monitoring bundle, for the links of the console to its dashboards.
              It is empty until an instance admin sets it, and the console then shows no link.
+        abuseThresholds:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.AbuseThresholds'
+          title: abuse_thresholds
+          description: abuse_thresholds are the thresholds of the detection of abuse inside hopboxd.
       title: InstallConfig
       additionalProperties: false
       description: InstallConfig holds the settings of the install.
@@ -8302,6 +8487,13 @@ components:
             grafana_url is the new URL of Grafana: an http or https URL of at most 2048 characters, without user
              info, a query, or a fragment, such as http://127.0.0.1:3000 behind an SSH tunnel. An empty string
              removes it. Leave it out to keep the URL.
+        abuseThresholds:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.AbuseThresholdsUpdate'
+          title: abuse_thresholds
+          description: |-
+            abuse_thresholds changes the thresholds of the detection of abuse that it sets. A value out of its bounds
+             fails with INVALID_ARGUMENT. Leave it out to keep every threshold.
       title: UpdateInstallConfigRequest
       additionalProperties: false
       description: UpdateInstallConfigRequest holds the settings to change.

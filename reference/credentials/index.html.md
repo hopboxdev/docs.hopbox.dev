@@ -319,7 +319,7 @@ These calls write audit entries in the transaction of the call ([the sign-in, ac
 | `auth.sign_in` | A poll takes the CLI tokens. | `cli_token`, with the new CLI sign-in | the personal org | `cli_sign_in` | `method` (`device`), `client_name`, `device_sign_in` (the ID of the device authorization) |
 | `auth.end_cli_sign_in` | A replaced refresh token came back, or the account ended the sign-in. | the caller of the refresh, often `anonymous`, or the `session` of the account | the personal org | `cli_sign_in` | `reason` (`refresh token reuse` or `ended by the account`) |
 | `auth.sign_out` | `SignOut` with a CLI token. | `cli_token` | the personal org | `cli_sign_in` | none |
-| `api_key.create` | `CreateAPIKey` | the `session` or `cli_token` | the org of the key | `api_key` | `kind`, `name`, `expire_time` |
+| `api_key.create` | `CreateAPIKey` | the `session` or `cli_token` | the org of the key | `api_key` | `kind`, `name`, `expire_time`, `lifetime` |
 | `api_key.revoke` | `RevokeAPIKey` | the `session` or `cli_token` | the org of the key | `api_key` | `kind`, `name` |
 | `ssh_key.add` | `AddSSHKey` | the `session` or `cli_token` | the personal org | `ssh_key` | `fingerprint`, `type`, `bits`, `name` |
 | `ssh_key.remove` | `RemoveSSHKey` | the `session` or `cli_token` | the personal org | `ssh_key` | `fingerprint`, `type`, `bits`, `name` |

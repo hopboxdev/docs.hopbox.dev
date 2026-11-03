@@ -153,6 +153,24 @@ The message `InstallConfig` holds the general config:
 | `maintenance` | bool | `true` while the install is in maintenance mode ([the API server](/reference/api/index.html.md#maintenance-mode)). Only [SetMaintenance](#setmaintenance) changes it. The default is `false`. |
 | `sign_up_mode` | `SignUpMode` | How a new person gets an account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). The default is `SIGN_UP_MODE_APPROVAL`, for a new install and for an install that migration `0062` upgrades. |
 | `grafana_url` | string | The URL of the Grafana of the monitoring bundle. The console links to its dashboards only when it is set ([Console](/reference/console/index.html.md#admin-area)). It is empty until an instance admin sets it. |
+| `abuse_thresholds` | `AbuseThresholds` | The thresholds of the detection of abuse inside `hopboxd` ([Abuse detection](/reference/abuse-detection/index.html.md#thresholds)). |
+
+The message `AbuseThresholds` has these fields. Each duration is a `google.protobuf.Duration` of whole minutes. Each default is the number of the alert of the monitoring bundle with the same signal.
+
+| Field | Type | Bounds | Default | Description |
+| --- | --- | --- | --- | --- |
+| `cpu_percent` | int32 | 1 to 100 | 90 | The share of its vCPUs, averaged over 30 minutes, that a machine uses for `cpu_for` |
+| `cpu_for` | Duration | 10 min to 6 h | 2 h | How long the machine uses that share |
+| `egress_bytes_per_second` | int64 | 1 to 100,000,000,000 | 50,000,000 | The rate over 5 minutes at which a machine sends for `egress_for` |
+| `egress_for` | Duration | 5 min to 6 h | 30 min | How long the machine sends at that rate |
+| `scan_connections_per_second` | int32 | 1 to 1,000,000 | 100 | The rate over 5 minutes at which a machine opens new outbound connections for `scan_for` |
+| `scan_for` | Duration | 5 min to 6 h | 10 min | How long the machine opens connections at that rate |
+| `org_burst` | int32 | 1 to 10,000 | 5 | The orgs that one account makes in 1 hour |
+| `api_key_burst` | int32 | 1 to 10,000 | 5 | The API keys that one account makes in 1 hour |
+| `long_api_key_burst` | int32 | 1 to 10,000 | 2 | The API keys with the preset lifetime of 365 days that one account makes in 1 hour |
+| `machine_burst` | int32 | 1 to 10,000 | 10 | The machines that one account makes in 1 hour |
+| `url_churn` | int32 | 1 to 10,000 | 20 | The changes of the port or the visibility of machine URLs that one account makes in 1 hour |
+| `new_account_age` | Duration | 1 h to 90 days | 7 days | The age below which an account that makes a machine URL public is new |
 
 The enum `SignUpMode` has these values:
 
@@ -195,7 +213,7 @@ Changes the fields that the request sets, and keeps the others. It returns the c
 | Procedure | `/hopbox.admin.v1.InstallConfigService/UpdateInstallConfig` |
 | Policy action | `install_config.update`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call with the same request sets the same values again. |
-| Audit entry | action `install_config.update`, no target, details `domain` (the new domain), `old_domain`, `public_addresses` (the new addresses, joined by commas), and `old_public_addresses`. Also `acme_directory_url`, `acme_email`, `acme_terms_agreed` (`true` or `false`), and `mail_transport` (`smtp` or `file`). Also `sign_up_mode` (`open`, `approval`, or `invite_only`), and `grafana_url`. Each of these has its `old_` detail. Some changes tell the instance admins: the domain, an ACME setting, the mail transport, and the sign-up mode ([Notices to instance admins](#notices-to-instance-admins)). |
+| Audit entry | action `install_config.update`, no target, details `domain` (the new domain), `old_domain`, `public_addresses` (the new addresses, joined by commas), and `old_public_addresses`. Also `acme_directory_url`, `acme_email`, `acme_terms_agreed` (`true` or `false`), and `mail_transport` (`smtp` or `file`). Also `sign_up_mode` (`open`, `approval`, or `invite_only`), and `grafana_url`. Each of these has its `old_` detail. Each threshold of the detection of abuse that the call changes adds its name and its `old_` detail, such as `abuse_cpu_percent` and `old_abuse_cpu_percent`, with a duration as Go writes it, such as `2h0m0s`. A threshold that the call keeps adds no detail. Some changes tell the instance admins: the domain, an ACME setting, the mail transport, and the sign-up mode ([Notices to instance admins](#notices-to-instance-admins)). |
 
 The request `UpdateInstallConfigRequest` has these fields:
 
@@ -209,6 +227,7 @@ The request `UpdateInstallConfigRequest` has these fields:
 | `mail_transport` | optional `MailTransport` | The new mail transport. The SMTP config stays, so a switch back to `MAIL_TRANSPORT_SMTP` needs no new config. Leave the field out to keep the transport. |
 | `sign_up_mode` | optional `SignUpMode` | The new sign-up mode. A change gives each other instance admin a notice and an email. Leave the field out to keep the mode. |
 | `grafana_url` | optional string | The new URL of Grafana: an `http` or `https` URL of a host, with at most 2048 characters, and without user info, a query, or a fragment. It holds no whitespace and no control character. `http` is allowed for a tunnel, such as `http://127.0.0.1:3000`. An empty string removes the URL. Leave the field out to keep it. |
+| `abuse_thresholds` | `AbuseThresholdsUpdate` | The thresholds of the detection of abuse to change. It has the fields of `AbuseThresholds`, each one optional. A field that the request leaves out keeps its value. A value out of its bounds, or a duration that is not whole minutes, fails with `invalid_argument` and the message `invalid abuse threshold: <setting> is <value>, but must be from <low> to <high>`. Leave the field out to keep every threshold. |
 | `expected_version` | optional int64 | The `version` of the install config that the caller read. If the config has another version now, the call fails with `aborted` and changes nothing. Leave the field out to change the config at any version. |
 
 The message `PublicAddresses` has one field, `addresses`, a repeated string. Each address must follow the rules in [Domain rules](/reference/domain-rules/index.html.md#public-addresses): at most 16 IPv4 or IPv6 addresses, none twice. The install keeps them in the text form of Go `netip`, in their order. So `2001:DB8::10` becomes `2001:db8::10`, and an IPv4 address in IPv6 form, such as `::ffff:203.0.113.10`, becomes `203.0.113.10`.
@@ -915,6 +934,10 @@ You get this email because you are an instance admin of example.com.
 
 With more than 20 new alerts, the line `And <n> more alerts. The page Notices lists each one.` follows the 20th block.
 
+### Notices of abuse signals
+
+A signal of the detection of abuse gives each instance admin a notice of the fourth kind, `abuse` ([Abuse detection](/reference/abuse-detection/index.html.md#notices)). Its audit entry is `abuse.detect`, with the actor `system`, and the account or the org of the signal as its target. The notice shows the facts of the signal at the last run in its `alert`, and closes by itself when the signal ends. The signals also show in `resolved_alerts` and in `firing_alerts` of `GetOverview`, next to the alerts.
+
 ### The digest of new pending accounts
 
 The leader sends the instance admins an email digest of the new pending accounts ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). It checks every minute, and sends at most one digest every 15 minutes (`service.SignUpDigestEvery`). The clock of Postgres decides, through the column `sign_up_digest_at` of `install_config`, so a change of the leader keeps the interval. A digest names the pending accounts that no digest named yet, oldest first, at most 100. The rest wait for the next digest. Without such an account, the leader sends nothing.
@@ -954,8 +977,8 @@ Each digest writes the audit entry `admin_notice.sign_up_digest`, with the actor
 | `target_kind` | string | The target kind of the audit entry, or empty. |
 | `target_id` | string | The target ID of the audit entry, or empty. |
 | `create_time` | `google.protobuf.Timestamp` | The time of the action. |
-| `kind` | string | `security` for an action that lasts after the session that did it, `sign_up` for a new pending account ([Notices of new accounts](#notices-of-new-accounts)), or `alert` for an alert of the monitoring bundle ([Notices of alerts](#notices-of-alerts)). |
-| `alert` | `AdminAlert` | The alert of a notice of the kind `alert`, as Alertmanager sent it last. Absent for the other kinds. |
+| `kind` | string | `security` for an action that lasts after the session that did it, `sign_up` for a new pending account ([Notices of new accounts](#notices-of-new-accounts)), `alert` for an alert of the monitoring bundle ([Notices of alerts](#notices-of-alerts)). `abuse` for a signal of the detection of abuse inside `hopboxd` ([Notices of abuse signals](#notices-of-abuse-signals)). |
+| `alert` | `AdminAlert` | The alert of a notice of the kind `alert`, as Alertmanager sent it last, or the signal of a notice of the kind `abuse`, as the last run of the detection found it. Absent for the other kinds. |
 
 The `summary` of a notice of the kind `alert` has the form `The alert <alertname> fires, severity <severity>. <summary>`. Its `advice` is the description, the link to the entry of the alert in the guide, and the sentence `The notice closes by itself when the alert ends.`
 
@@ -974,6 +997,10 @@ The `summary` of a notice of the kind `alert` has the form `The alert <alertname
 | `fingerprint` | string | The fingerprint of the alert in Alertmanager, 16 hex characters. |
 | `resolve_time` | `google.protobuf.Timestamp` | The end of the alert: `endsAt` of Alertmanager, or the time of the call when that is missing. Absent while the alert fires. |
 | `resolve_cause` | string | `resolved` when Alertmanager reported the end, or `fired_again` when the alert fired again with another start time after an end that hopbox missed. Empty while the alert fires. |
+| `kind` | string | `alert` for an alert of Alertmanager, or `abuse` for a signal of the detection of abuse inside `hopboxd`. |
+| `id` | string | The ID of the audit entry that started the alert or the signal: `alert.fire` or `abuse.detect`. It names one firing of an alert, or one signal, for good, so a client can key a list on it. |
+
+An `AdminAlert` of the kind `abuse` has the signal as `name`, such as `cpu_sustained`, the `severity` `warning`, and no `fingerprint`. Its `summary` and `description` are the summary and the advice of its notice ([Abuse detection](/reference/abuse-detection/index.html.md#notices)). Its `runbook_url` is `https://docs.hopbox.dev/guide/admin-area/#abuse-signals`. Its labels are `account` for a signal of an account, `machine` and `name` of the worst machine of a machine signal, and `org`. Its `update_time` is the last run that found the signal, and `resolve_cause` is `resolved` after its end.
 
 ### ListAdminNotices
 
@@ -992,7 +1019,7 @@ The request `ListAdminNoticesRequest` has no fields. The response `ListAdminNoti
 | --- | --- | --- |
 | `notices` | repeated `AdminNotice` | The open notices, newest first, at most 100. |
 | `total` | int32 | The count of all open notices of the account. It is more than the length of `notices` when the account has more than 100. |
-| `resolved_alerts` | repeated `AdminAlert` | The alerts of the monitoring bundle that ended in the last 30 days, newest end first, at most 50 ([Notices of alerts](#notices-of-alerts)). Their notices closed by themselves. The list is the same for each instance admin, and a dismiss does not change it. |
+| `resolved_alerts` | repeated `AdminAlert` | The alerts of the monitoring bundle and the abuse signals that ended in the last 30 days, newest end first, at most 50 together ([Notices of alerts](#notices-of-alerts)). The view `alert_list` of the control store joins both ([Control store tables](/reference/control-store/index.html.md#alert_list)). Their notices closed by themselves. The list is the same for each instance admin, and a dismiss does not change it. |
 
 ### DismissAdminNotices
 
@@ -2137,10 +2164,11 @@ The request `GetOverviewRequest` has no fields. The response `GetOverviewRespons
 | `pending_emails` | repeated string | The first emails of the 5 oldest pending accounts, oldest first. |
 | `open_notices` | int32 | The open notices of the caller ([ListAdminNotices](#listadminnotices)). A caller without an account, such as an admin API key, has none. |
 | `public_url_orgs` | int32 | The orgs with a machine with a public URL, from the control store. |
-| `firing_alerts` | repeated `FiringAlert` | The alerts of the monitoring bundle that fire now, newest first, at most 20, from the table `alerts` ([Notices of alerts](#notices-of-alerts)). Empty on an install whose Alertmanager does not call the alert webhook. |
-| `firing_alert_count` | int32 | The count of every alert that fires now, also those after the first 20. |
+| `firing_alerts` | repeated `FiringAlert` | The alerts of the monitoring bundle and the abuse signals that fire now, newest first, at most 20 together, from the view `alert_list` ([Notices of alerts](#notices-of-alerts), [Notices of abuse signals](#notices-of-abuse-signals)). |
+| `firing_alert_count` | int32 | The count of every alert and every abuse signal that fires now, also those after the first 20. |
+| `firing_abuse_count` | int32 | The count of the abuse signals of `firing_alert_count`. |
 
-The message `FiringAlert` has the fields `name`, `severity`, `summary`, `start_time`, and `fingerprint`, as in [AdminAlert](#adminalert).
+The message `FiringAlert` has the fields `name`, `severity`, `summary`, `start_time`, `fingerprint`, `kind`, and `id`, as in [AdminAlert](#adminalert).
 
 The message `ServerHealth` has the fields `server_id`, `hostname`, `state` (a `ServerState`), and `status` (a `ServerStatus`, unspecified before the first heartbeat) of one server ([Server](#server)).
 

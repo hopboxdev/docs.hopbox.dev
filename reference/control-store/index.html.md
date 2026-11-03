@@ -282,6 +282,8 @@ Migrations `0004_audit_log.sql` and `0012_audit_log_org_id.sql`. One row per aud
 | `ssh_key` | An account through the SSH front door, with an SSH key of the account. The audit entry `machine.ssh` has it ([the SSH front door](/reference/ssh-front-door/index.html.md#audit)). |
 | `system` | hopbox itself, for example a job of the leader. |
 
+Migration `0069_abuse_thresholds.sql` adds the partial index `audit_log_abuse` on `created_at`, for the rows with the actions `org.create`, `api_key.create`, `machine.create`, `machine.set_url_port`, and `machine.set_url_visibility`. The detection of abuse counts these actions of the last hour for each account with it ([Abuse detection](/reference/abuse-detection/index.html.md#reads-of-each-run)).
+
 ### Record an entry
 
 `audit.Record(ctx, tx, entry)` writes the entry in the transaction of the change. Thus the entry and the change commit together, or neither commits.
@@ -422,13 +424,25 @@ Migration `0006_install_config.sql`. The settings of the whole install. The tabl
 | `promoted_kek` | `text` | empty | The ID of the key-encryption key that the last `PromoteKEK` made current, such as `file:2` ([the admin API](/reference/admin-api/index.html.md#promotekek)). Empty until the first promote. `PromoteKEK` sets it in the transaction that publishes the event `keyring.kek_promoted`. Each control process reads it to promote its own staged copy of that key: at its start, at each event, and at each renewal of its row while its key dir has a staged file or while it misses the key ([Sealing](/reference/sealing/index.html.md#several-control-servers)). It stays set after the promote, and a later promote replaces it. Migration `0045_control_processes.sql` adds it. |
 | `sign_up_mode` | `text` | `approval` | How a new person gets an account: `open`, `approval`, or `invite_only` ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). The check `install_config_sign_up_mode` refuses another value. Migration `0066_instance_invitations.sql` adds `invite_only` to the check. |
 | `grafana_url` | `text` | empty | The URL of the Grafana of the monitoring bundle, for the links of the console ([the admin API](/reference/admin-api/index.html.md#updateinstallconfig)). |
+| `abuse_cpu_percent` | `integer` | `90` | The CPU share of the detection of abuse ([Abuse detection](/reference/abuse-detection/index.html.md#thresholds)). 1 to 100. |
+| `abuse_cpu_for_seconds` | `integer` | `7200` | How long a machine uses that share, in seconds. 600 to 21600. |
+| `abuse_egress_bytes_per_second` | `bigint` | `50000000` | The egress rate of the detection. 1 to 100000000000. |
+| `abuse_egress_for_seconds` | `integer` | `1800` | How long a machine sends at that rate, in seconds. 300 to 21600. |
+| `abuse_scan_connections_per_second` | `integer` | `100` | The rate of new outbound connections of the detection. 1 to 1000000. |
+| `abuse_scan_for_seconds` | `integer` | `600` | How long a machine opens connections at that rate, in seconds. 300 to 21600. |
+| `abuse_org_burst` | `integer` | `5` | The orgs of one account in 1 hour. 1 to 10000. |
+| `abuse_api_key_burst` | `integer` | `5` | The API keys of one account in 1 hour. 1 to 10000. |
+| `abuse_long_api_key_burst` | `integer` | `2` | The API keys of 365 days of one account in 1 hour. 1 to 10000. |
+| `abuse_machine_burst` | `integer` | `10` | The machines of one account in 1 hour. 1 to 10000. |
+| `abuse_url_churn` | `integer` | `20` | The changes of machine URLs of one account in 1 hour. 1 to 10000. |
+| `abuse_new_account_age_seconds` | `integer` | `604800` | The age below which an account is new, in seconds. 3600 to 7776000. |
 | `alert_token_hash` | `bytea`, can be null | null | The SHA-256 of the token of the alert webhook, `hbxam_` included ([Metrics](/reference/metrics/index.html.md#alert-webhook)). Null while the install has no token. Only `SetAlertToken` and `ClearAlertToken` change it ([the admin API](/reference/admin-api/index.html.md#setalerttoken)). Its writes keep `version` and `updated_at`, because the install config of the API does not show it. Migration `0068_alert_notices.sql` adds it. |
 | `sign_up_digest_at` | `timestamptz`, can be null | null | The time of the last email digest of new pending accounts ([the admin API](/reference/admin-api/index.html.md#the-digest-of-new-pending-accounts)). Null before the first digest. The leader sends at most one digest every 15 minutes by this time, also after a change of the leader. Its write keeps `version` and `updated_at`, because it is no setting. |
 | `version` | `bigint` | `1` | The row version. |
 | `created_at` | `timestamptz` | the time of the migration | When the migration made the row. |
 | `updated_at` | `timestamptz` | the time of the migration | The last change. |
 
-Migration `0011_smtp_config.sql` adds the `smtp_` columns, `0017_org_limits_and_suspension.sql` adds the `org_max_` columns and `max_orgs_per_account`, `0033_dns.sql` adds `public_addresses`, and `0034_acme.sql` adds the `acme_` columns. Migration `0035_oauth_sign_in.sql` adds the `github_` and `google_` columns, `0040_mail_transport.sql` adds `mail_transport`, `0044_maintenance.sql` adds `maintenance`, and `0045_control_processes.sql` adds `promoted_kek`. Migration `0062_sign_up_approval.sql` adds `sign_up_mode` and `sign_up_digest_at`. Its default gives `approval` to a new install and to an install that the migration upgrades. `hopboxd install` sets no mode. Migration `0063_limited_tier.sql` adds `org_public_urls` and the `limited_org_` columns. Migration `0065_grafana_url.sql` adds `grafana_url`, with `-- oldest_schema_version: 57`. `SetDefaultOrgLimits` changes them ([the admin API](/reference/admin-api/index.html.md#setdefaultorglimits)), and adds 1 to the version. The admin API reads and changes the row ([the admin API](/reference/admin-api/index.html.md#installconfigservice)). A rewrap of the SMTP password changes only `smtp_password`, and keeps the version ([Sealing](/reference/sealing/index.html.md#rewrap)). `GetInstallInfo` returns the domain to every caller ([the API server](/reference/api/index.html.md#installservice)). A change of `domain` or `public_addresses` raises the serial in `dns_zone` in the same transaction ([dns_zone](#dns_zone)). The inputs of the ACME job are `domain`, `public_addresses`, and the `acme_` columns. A change of one of them publishes the change event `acme.config_changed` in the same transaction ([the certificate of the install](/reference/acme/index.html.md#settings)). A change of `maintenance` adds 1 to the version, and publishes the change event `install.maintenance_changed` in the same transaction.
+Migration `0011_smtp_config.sql` adds the `smtp_` columns, `0017_org_limits_and_suspension.sql` adds the `org_max_` columns and `max_orgs_per_account`, `0033_dns.sql` adds `public_addresses`, and `0034_acme.sql` adds the `acme_` columns. Migration `0035_oauth_sign_in.sql` adds the `github_` and `google_` columns, `0040_mail_transport.sql` adds `mail_transport`, `0044_maintenance.sql` adds `maintenance`, and `0045_control_processes.sql` adds `promoted_kek`. Migration `0062_sign_up_approval.sql` adds `sign_up_mode` and `sign_up_digest_at`. Its default gives `approval` to a new install and to an install that the migration upgrades. `hopboxd install` sets no mode. Migration `0063_limited_tier.sql` adds `org_public_urls` and the `limited_org_` columns. Migration `0065_grafana_url.sql` adds `grafana_url`, with `-- oldest_schema_version: 57`. Migration `0069_abuse_thresholds.sql` adds the `abuse_` columns, with a check on the bounds of each one, and `-- oldest_schema_version: 57`. It also adds the partial index `machines_public` on `machines (creator_account_id, creator_key_id)` for the machines with a public URL that are not deleted ([Abuse detection](/reference/abuse-detection/index.html.md#reads-of-each-run)). The service checks the same bounds first, and also that each duration is whole minutes. `SetDefaultOrgLimits` changes them ([the admin API](/reference/admin-api/index.html.md#setdefaultorglimits)), and adds 1 to the version. The admin API reads and changes the row ([the admin API](/reference/admin-api/index.html.md#installconfigservice)). A rewrap of the SMTP password changes only `smtp_password`, and keeps the version ([Sealing](/reference/sealing/index.html.md#rewrap)). `GetInstallInfo` returns the domain to every caller ([the API server](/reference/api/index.html.md#installservice)). A change of `domain` or `public_addresses` raises the serial in `dns_zone` in the same transaction ([dns_zone](#dns_zone)). The inputs of the ACME job are `domain`, `public_addresses`, and the `acme_` columns. A change of one of them publishes the change event `acme.config_changed` in the same transaction ([the certificate of the install](/reference/acme/index.html.md#settings)). A change of `maintenance` adds 1 to the version, and publishes the change event `install.maintenance_changed` in the same transaction.
 
 ## accounts
 
@@ -758,11 +772,46 @@ Migration `0058_admin_notices.sql`. One row per open notice of an instance admin
 | `account_id` | `uuid` | The instance admin. A delete of the account deletes the row. |
 | `audit_entry_id` | `uuid` | The audit entry of the action, a row of `audit_log`. It has no foreign key, because `audit_log` only grows. |
 | `created_at` | `timestamptz` | The time of the row. |
-| `kind` | `text`, default `security` | `security` for an action that lasts after its session, `sign_up` for a new pending account ([the admin API](/reference/admin-api/index.html.md#notices-of-new-accounts)), or `alert` for an alert of the monitoring bundle ([the admin API](/reference/admin-api/index.html.md#notices-of-alerts)). A check refuses another value. |
-| `about_account_id` | `uuid`, can be null | The pending account of a notice of the kind `sign_up`. Null for the kind `security`. It has no foreign key. An approve, a reject, the expiry, and the delete of the account delete the rows that name it. The partial index `admin_notices_about_account` holds the rows where it is not null. |
+| `kind` | `text`, default `security` | `security` for an action that lasts after its session, `sign_up` for a new pending account ([the admin API](/reference/admin-api/index.html.md#notices-of-new-accounts)), `alert` for an alert of the monitoring bundle ([the admin API](/reference/admin-api/index.html.md#notices-of-alerts)), or `abuse` for a signal of the detection of abuse ([Abuse detection](/reference/abuse-detection/index.html.md#notices)). A check refuses another value. |
+| `about_account_id` | `uuid`, can be null | The pending account of a notice of the kind `sign_up`, or the account of a notice of the kind `abuse`. Null for the kind `security`, and for a signal of an org without an account. It has no foreign key. For the kind `sign_up`, an approve, a reject, the expiry, and the delete of the account delete the rows that name it. For the kind `abuse`, a delete of the account keeps the rows until the next run of the detection, which no longer finds the signal and closes them ([Abuse detection](/reference/abuse-detection/index.html.md#the-leader-job)). The partial index `admin_notices_about_account` holds the rows where it is not null. |
 
-The primary key is `(account_id, audit_entry_id)`. The index `admin_notices_audit_entry` lists the rows of an audit entry. The migration has the line `-- oldest_schema_version: 57`. A `hopboxd` of schema version 57 never reads the table, so it runs beside the migration, and its calls write no notice. Migration `0062_sign_up_approval.sql` adds `kind` and `about_account_id`.
+The primary key is `(account_id, audit_entry_id)`. The index `admin_notices_audit_entry` lists the rows of an audit entry. The migration has the line `-- oldest_schema_version: 57`. A `hopboxd` of schema version 57 never reads the table, so it runs beside the migration, and its calls write no notice. Migration `0062_sign_up_approval.sql` adds `kind` and `about_account_id`. Migration `0070_abuse_signals.sql` adds the kind `abuse`.
 
+## abuse_signals
+
+Migration `0070_abuse_signals.sql`. One row for each start of a signal of the detection of abuse, for one account, or for one org whose machine has no account ([Abuse detection](/reference/abuse-detection/index.html.md#notices)). The row stays after the end of the signal for 30 days, so the console lists it.
+
+| Column | Type | Description |
+| --- | --- | --- |
+| `audit_entry_id` | `uuid`, primary key | The audit entry `abuse.detect` of the start, which is also the notice of each instance admin. |
+| `signal` | `text` | The signal, such as `cpu_sustained` ([Abuse detection](/reference/abuse-detection/index.html.md#signals)). A check refuses another value. |
+| `account_id` | `uuid`, can be null | The account of the signal. It has no foreign key, so the row keeps the ID after a delete of the account, as the audit log does. |
+| `org_id` | `uuid`, can be null | The org of a signal without an account. A check keeps exactly one of `account_id` and `org_id`. |
+| `value` | `double precision` | The worst value of the last run: a share of the vCPUs, bytes per second, connections per second, or a count. |
+| `machines` | `jsonb` | The machines of the signal, the worst first, at most 20: a list of objects with `id`, `name`, `org_id`, and `value`. `[]` for a burst. |
+| `more_machines` | `integer` | The count of the other machines. |
+| `started_at` | `timestamptz` | The run that started the signal. |
+| `updated_at` | `timestamptz` | The last run that found the signal. |
+| `resolved_at` | `timestamptz`, can be null | The run that found the signal ended. Null while it is active. |
+| `notified` | `uuid[]` | The instance admins who got a notice of the signal. A run gives a notice to each other instance admin, and adds them. A dismiss does not remove an admin, so the notice stays dismissed. |
+
+Migration `0070_abuse_signals.sql` also makes the view `alert_list`.
+
+The unique partial index `abuse_signals_active` on `(signal, coalesce(account_id, org_id))` keeps one active row for each signal and account. The partial index `abuse_signals_resolved` lists the rows that ended, for their delete after 30 days. The migration has the line `-- oldest_schema_version: 57`. A `hopboxd` of schema version 57 to 69 never reads the table. It lists a notice of the kind `abuse` with the summary of an unknown action.
+
+
+## alert_list
+
+Migration `0070_abuse_signals.sql`. A view that joins the alerts of Alertmanager ([alerts](#alerts)) and the abuse signals ([abuse_signals](#abuse_signals)), so the console lists both in one order with one limit ([the admin API](/reference/admin-api/index.html.md#listadminnotices)).
+
+| Column | Type | Description |
+| --- | --- | --- |
+| `kind` | `text` | `alert` for a row of `alerts`, or `abuse` for a row of `abuse_signals`. |
+| `audit_entry_id` | `uuid` | The audit entry of the row: `alert.fire` or `abuse.detect`. |
+| `starts_at` | `timestamptz` | The start of the alert or of the signal. |
+| `resolved_at` | `timestamptz`, can be null | The end, or null while it fires. |
+
+The service reads the entries of the view, then the rows of each kind by their audit entry.
 ## alerts
 
 Migration `0068_alert_notices.sql`. One row for each firing of an alert of the monitoring bundle ([the admin API](/reference/admin-api/index.html.md#notices-of-alerts)). The alert webhook writes it ([Metrics](/reference/metrics/index.html.md#alert-webhook)). A repeat of the alert updates the row, and the end of the alert sets `resolved_at`. The row of an alert that ended stays for 30 days, so the page Notices of the console still shows it. Each end of an alert deletes the rows that ended more than 30 days before. The audit entries `alert.fire` and `alert.resolve` keep the history for good.

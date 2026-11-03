@@ -1359,6 +1359,25 @@ Alertmanager sends a firing alert again every 4 hours, or every 24 hours for an 
 
 The alert `Watchdog` never makes a notice. It always fires, for the outside check of the install.
 
+## Abuse signals
+
+`hopboxd` watches each account for the signals of abuse that the alerts of the monitoring bundle watch for the whole install: a machine at full CPU for hours, high egress, a scan of outbound connections, bursts of orgs, API keys, or machines, a churn of machine URLs, and a public URL of a new account ([Abuse detection](/reference/abuse-detection/)). It needs no Prometheus. Each signal gives each instance admin one notice under the heading “Abuse signals” of the page “Notices”. The notice names the account, and the machines or the org when the signal has them.
+
+The detection runs every minute. A repeat of the signal updates the notice. When the signal ends, the notice closes by itself, and the signal moves to the section “Resolved alerts” for 30 days. While a signal is active, the page “Overview” also lists it under “Needs your attention”. Without a token of the alert webhook, each run with new signals also sends you one email. With a token, Prometheus emails you its alerts, so the detection sends no email.
+
+hopbox stops nothing by itself. Legitimate work, such as a build or an AI agent, can use a whole CPU for hours. To act on a notice, do these steps:
+
+1. Read the notice. It names the signal, its value, the threshold, and the account, such as `org_burst` for 6 orgs in one hour.
+2. Open the page “Audit log”, and read the entries of the account ([Handle an abuse report](#handle-an-abuse-report)).
+3. For a machine signal, open the page “Machines”, and find the machines that the notice names.
+4. If it is abuse, follow [Handle an abuse report](#handle-an-abuse-report): stop the machine, suspend the org, or suspend the account. Otherwise, dismiss the notice.
+
+To change a threshold, open the section “Abuse detection” of the page “Config”, or run `sudo hopboxd admin config set` with an `--abuse-` flag ([hopboxd](/reference/hopboxd/#admin-config-set)). For example, a team that builds all day can raise the CPU time before a notice:
+
+```sh
+sudo hopboxd admin config set --abuse-cpu-for 4h
+```
+
 ## Read the audit log
 
 The page “Audit log” lists the actions of everyone on the install, newest first. Each action of the Admin area is there, with the actor kind `session`. Each read of the admin API writes an entry too. So a page of the Admin area adds entries each time that it loads.

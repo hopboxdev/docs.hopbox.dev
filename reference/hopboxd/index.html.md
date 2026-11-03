@@ -217,6 +217,7 @@ The leader of the control role runs these jobs. In maintenance mode, the leader 
 | Certificate of the install | when due | Gets the wildcard certificate of the install from the ACME CA, and renews it after two thirds of its lifetime. It starts at the start of each term, and plans again after each change of an input of the ACME job ([the certificate of the install](/reference/acme/index.html.md#the-acme-job)). Every write checks the leader lease. |
 | Auto-delete of idle machines | 1 min | Deletes each machine whose last recorded use is older than its auto-delete timeout plus 1 minute. A use is recorded at most once a minute ([the machine API](/reference/machine-api/index.html.md#auto-delete)). It takes at most 100 machines per run, the oldest last use first. The next run takes the rest. It skips the machines of a suspended org. Each machine goes in a transaction of its own, which checks the leader lease, so a leader that lost its lease deletes nothing. The delete reserves the name and the SSH port, as `DeleteMachine` does. Each delete gets an audit entry `machine.delete` with the actor `system` and the detail `reason` (`auto-delete`), and the log record `deleted an idle machine`. A machine whose delete fails gets the log record `deleting an idle machine failed`, and the job goes on with the next one. Only a lost leader lease stops the run. |
 | Sign-ups | 1 min | Sends the due email digest of new pending accounts to the instance admins ([the admin API](/reference/admin-api/index.html.md#the-digest-of-new-pending-accounts)). |
+| Detection of abuse | 1 min | Checks the signals of abuse of each account, opens a notice for each signal that starts, and closes the notice of each signal that ended ([Abuse detection](/reference/abuse-detection/index.html.md#the-leader-job)). A run takes at most 30 s. Its writes check the leader lease. A failed run logs `the detection of abuse failed` at level warn, with `component=leader` and `err`. |
 | Read of the heartbeats | 5 s | With each check of silent servers, also in its first 20 s, reads the time of the last heartbeat of each server, for the metric `hopbox_server_heartbeat_age_seconds` ([Metrics](/reference/metrics/index.html.md#metrics-of-the-leader)). A read takes at most 5 s, so a slow control store does not hold back the other jobs for long. A read that fails keeps the times of the read before, and logs `reading the heartbeats for their metric failed` at level debug, with `component=leader` and `err`. |
 | Read of the leader metrics | 1 min | Reads the counts of accounts, orgs, keys, machines, moves, servers, and admin notices, the capacity of each node, and the registry of the servers, from the control store in one snapshot. The leader serves them on its metrics listener until the end of its jobs ([Metrics](/reference/metrics/index.html.md#metrics-of-the-leader)). It runs at the start of the jobs too. A read takes at most 30 s, so a control store that hangs gives a failed read. A read that fails logs `reading the leader metrics failed` at level warn, with `component=leader`, `failures`, and `err`, and the metrics keep the values of the read before. After 3 failed reads in a row, the leader serves none of them until a read works, and logs `the leader serves no leader metrics until a read of them works` at level warn. |
 | Return of SSH host keys | 1 min | Gives each SSH host key that a route record claims, and that no record lists, to the oldest record that claims it. A report that lets a key go gives it at once, but it skips a record that another transaction locks, and a `hopboxd` of v0.1.0 gives no key. It takes at most 100 keys per run, and each key goes in a transaction of its own. The write needs no leader lease, because a report makes the same write. Each key gets the log record `a machine got an SSH host key that no other machine holds` at level info, with `machine` ([Control store tables](/reference/control-store/index.html.md#route_host_keys)). |
@@ -728,9 +729,9 @@ Prints the settings of the install. It calls `GetInstallConfig` ([the admin API]
 
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
-| `--json` | bool | `false` | Prints one JSON object with the keys `domain`, `public_addresses`, `acme_directory_url`, `acme_email`, `acme_terms_agreed`, `mail_transport`, `maintenance`, `sign_up_mode`, `grafana_url`, `version`, and `update_time`. `public_addresses` is an array. It is `[]` for an install without public addresses. `acme_terms_agreed` and `maintenance` are JSON booleans. |
+| `--json` | bool | `false` | Prints one JSON object with the keys `domain`, `public_addresses`, `acme_directory_url`, `acme_email`, `acme_terms_agreed`, `mail_transport`, `maintenance`, `sign_up_mode`, `grafana_url`, the twelve `abuse_` keys of the text output, `version`, and `update_time`. `public_addresses` is an array. It is `[]` for an install without public addresses. `acme_terms_agreed` and `maintenance` are JSON booleans. The `abuse_` counts are JSON numbers, and the `abuse_` durations are strings such as `"2h0m0s"`. |
 
-The text output has one line for each setting: the name, a tab, and the value. An empty domain prints as an empty value. `public_addresses` joins the addresses by commas, in their order. An install without public addresses prints `-`. An empty `acme_email` prints `-`. `acme_terms_agreed` and `maintenance` print `true` or `false`. `mail_transport` prints `smtp` or `file` ([Mail](/reference/mail/index.html.md#mail-transports)). `maintenance` is `true` in maintenance mode ([the API server](/reference/api/index.html.md#maintenance-mode)). `sign_up_mode` prints `open`, `approval`, or `invite_only` ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). An empty `grafana_url` prints `-`.
+The text output has one line for each setting: the name, a tab, and the value. An empty domain prints as an empty value. `public_addresses` joins the addresses by commas, in their order. An install without public addresses prints `-`. An empty `acme_email` prints `-`. `acme_terms_agreed` and `maintenance` print `true` or `false`. `mail_transport` prints `smtp` or `file` ([Mail](/reference/mail/index.html.md#mail-transports)). `maintenance` is `true` in maintenance mode ([the API server](/reference/api/index.html.md#maintenance-mode)). `sign_up_mode` prints `open`, `approval`, or `invite_only` ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). An empty `grafana_url` prints `-`. The lines `abuse_` give the thresholds of the detection of abuse ([Abuse detection](/reference/abuse-detection/index.html.md#thresholds)). A duration prints as Go writes it, such as `2h0m0s`.
 
 ```text
 $ sudo hopboxd admin config get
@@ -743,6 +744,18 @@ mail_transport	smtp
 maintenance	false
 sign_up_mode	approval
 grafana_url	-
+abuse_cpu_percent	90
+abuse_cpu_for	2h0m0s
+abuse_egress_bytes_per_second	50000000
+abuse_egress_for	30m0s
+abuse_scan_connections_per_second	100
+abuse_scan_for	10m0s
+abuse_org_burst	5
+abuse_api_key_burst	5
+abuse_long_api_key_burst	2
+abuse_machine_burst	10
+abuse_url_churn	20
+abuse_new_account_age	168h0m0s
 version	4
 update_time	2026-10-16T09:00:00Z
 ```
@@ -753,6 +766,12 @@ update_time	2026-10-16T09:00:00Z
 hopboxd admin config set [--domain=DOMAIN] [--public-address=IP,... | --no-public-addresses]
   [--acme-directory-url=URL] [--acme-email=EMAIL] [--[no-]acme-agree-terms]
   [--mail-transport=smtp|file] [--sign-up-mode=open|approval|invite_only] [--grafana-url=URL]
+  [--abuse-cpu-percent=N] [--abuse-cpu-for=DURATION]
+  [--abuse-egress-bytes-per-second=N] [--abuse-egress-for=DURATION]
+  [--abuse-scan-connections-per-second=N] [--abuse-scan-for=DURATION]
+  [--abuse-org-burst=N] [--abuse-api-key-burst=N] [--abuse-long-api-key-burst=N]
+  [--abuse-machine-burst=N]
+  [--abuse-url-churn=N] [--abuse-new-account-age=DURATION]
   [--expected-version=N] [--json]
 ```
 
@@ -769,6 +788,18 @@ Changes the settings that the flags give, and keeps the others. It calls `Update
 | `--mail-transport` | `smtp` or `file` | none | How the install delivers its mail ([Mail](/reference/mail/index.html.md#mail-transports)). `smtp` sends it through the SMTP server. `file` writes each mail to a file on the control server, for a dev or test install only. The SMTP config stays in both cases. |
 | `--sign-up-mode` | `open`, `approval`, or `invite_only` | none | How a new person gets an account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). `approval` makes a pending account that an instance admin approves or rejects. `open` makes an active account of the tier `limited` at once. `invite_only` refuses each new person without an open invitation ([admin invite create](#admin-invite-create)). Each change tells the other instance admins ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). |
 | `--grafana-url` | URL | none | The URL of the Grafana of the monitoring bundle, such as `http://127.0.0.1:3000` behind an SSH tunnel. The console links to its dashboards. An empty value, `--grafana-url ""`, removes it. |
+| `--abuse-cpu-percent` | int | none | The share of its vCPUs, from 1 to 100, that a machine uses before a detection. The default of the install is `90`. |
+| `--abuse-cpu-for` | duration | none | How long a machine uses `--abuse-cpu-percent`, averaged over 30 minutes, before a detection. Whole minutes, from `10m` to `6h`. The default of the install is `2h`. |
+| `--abuse-egress-bytes-per-second` | int | none | The rate over 5 minutes, from 1 to 100000000000 bytes per second, at which a machine sends before a detection. The default of the install is `50000000`. A negative value needs the form `--abuse-egress-bytes-per-second=-1`, and fails. |
+| `--abuse-egress-for` | duration | none | How long a machine sends at `--abuse-egress-bytes-per-second`. Whole minutes, from `5m` to `6h`. The default of the install is `30m`. |
+| `--abuse-scan-connections-per-second` | int | none | The rate over 5 minutes, from 1 to 1000000 new outbound connections per second, at which a machine opens connections before a detection. The default of the install is `100`. |
+| `--abuse-scan-for` | duration | none | How long a machine opens connections at `--abuse-scan-connections-per-second`. Whole minutes, from `5m` to `6h`. The default of the install is `10m`. |
+| `--abuse-org-burst` | int | none | The orgs, from 1 to 10000, that one account makes in 1 hour before a detection. The default of the install is `5`. |
+| `--abuse-api-key-burst` | int | none | The API keys, from 1 to 10000, that one account makes in 1 hour before a detection. The default of the install is `5`. |
+| `--abuse-long-api-key-burst` | int | none | The API keys with the preset lifetime of 365 days, from 1 to 10000, that one account makes in 1 hour before a detection. The default of the install is `2`. |
+| `--abuse-machine-burst` | int | none | The machines, from 1 to 10000, that one account makes in 1 hour before a detection. The default of the install is `10`. |
+| `--abuse-url-churn` | int | none | The changes of the port or the visibility of machine URLs, from 1 to 10000, that one account makes in 1 hour before a detection. The default of the install is `20`. |
+| `--abuse-new-account-age` | duration | none | The age below which an account that makes a machine URL public is new. Whole minutes, from `1h` to `2160h` (90 days). The default of the install is `168h` (7 days). |
 | `--expected-version` | int | none | The version `N` of the settings, as `admin config get` printed it. If the version is no longer `N`, the command fails with `aborted` and changes nothing. |
 | `--json` | bool | `false` | Prints one JSON object, as `admin config get --json` does. |
 
@@ -776,7 +807,7 @@ Example:
 
 ```text
 $ sudo hopboxd admin config set --domain example.com --json
-{"domain":"example.com","public_addresses":[],"acme_directory_url":"https://acme-v02.api.letsencrypt.org/directory","acme_email":"","acme_terms_agreed":false,"mail_transport":"smtp","maintenance":false,"sign_up_mode":"approval","grafana_url":"","version":2,"update_time":"2026-10-16T09:00:00Z"}
+{"domain":"example.com","public_addresses":[],"acme_directory_url":"https://acme-v02.api.letsencrypt.org/directory","acme_email":"","acme_terms_agreed":false,"mail_transport":"smtp","maintenance":false,"sign_up_mode":"approval","grafana_url":"","abuse_cpu_percent":90,"abuse_cpu_for":"2h0m0s","abuse_egress_bytes_per_second":50000000,"abuse_egress_for":"30m0s","abuse_scan_connections_per_second":100,"abuse_scan_for":"10m0s","abuse_org_burst":5,"abuse_api_key_burst":5,"abuse_long_api_key_burst":2,"abuse_machine_burst":10,"abuse_url_churn":20,"abuse_new_account_age":"168h0m0s","version":2,"update_time":"2026-10-16T09:00:00Z"}
 $ sudo hopboxd admin config set --public-address 203.0.113.10 --public-address 2001:db8::10
 domain	example.com
 public_addresses	203.0.113.10,2001:db8::10
@@ -787,6 +818,18 @@ mail_transport	smtp
 maintenance	false
 sign_up_mode	approval
 grafana_url	-
+abuse_cpu_percent	90
+abuse_cpu_for	2h0m0s
+abuse_egress_bytes_per_second	50000000
+abuse_egress_for	30m0s
+abuse_scan_connections_per_second	100
+abuse_scan_for	10m0s
+abuse_org_burst	5
+abuse_api_key_burst	5
+abuse_long_api_key_burst	2
+abuse_machine_burst	10
+abuse_url_churn	20
+abuse_new_account_age	168h0m0s
 version	3
 update_time	2026-10-16T09:05:00Z
 $ sudo hopboxd admin config set --acme-email ops@example.org --acme-agree-terms
@@ -799,6 +842,18 @@ mail_transport	smtp
 maintenance	false
 sign_up_mode	approval
 grafana_url	-
+abuse_cpu_percent	90
+abuse_cpu_for	2h0m0s
+abuse_egress_bytes_per_second	50000000
+abuse_egress_for	30m0s
+abuse_scan_connections_per_second	100
+abuse_scan_for	10m0s
+abuse_org_burst	5
+abuse_api_key_burst	5
+abuse_long_api_key_burst	2
+abuse_machine_burst	10
+abuse_url_churn	20
+abuse_new_account_age	168h0m0s
 version	4
 update_time	2026-10-16T09:06:00Z
 ```
@@ -813,6 +868,7 @@ update_time	2026-10-16T09:06:00Z
 | `--sign-up-mode "<value>" is not open, approval, or invite_only` | `--sign-up-mode` has another value. |
 | `failed_precondition: failed precondition: the control process <id> knows the migrations up to <n>, and only a hopboxd that knows migration 66 refuses a sign-up without an invitation. Upgrade it first` | `--sign-up-mode invite_only` while a control process of an older release is live. |
 | `invalid_argument: invalid argument: invalid Grafana URL: ...` | `--grafana-url` is not an `http` or `https` URL of a host without user info, a query, or a fragment. |
+| `invalid_argument: invalid argument: invalid abuse threshold: ...` | An `--abuse-` flag is out of its bounds, or its duration is not whole minutes. The message names the setting and its bounds. |
 | `aborted: ...` | `--expected-version` is not the version of the settings now. |
 
 ### admin config smtp get
