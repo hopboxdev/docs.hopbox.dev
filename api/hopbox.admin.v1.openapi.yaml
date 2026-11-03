@@ -772,6 +772,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.RegisterImageResponse'
+  /hopbox.admin.v1.InstallConfigService/ClearAlertToken:
+    post:
+      tags:
+        - hopbox.admin.v1.InstallConfigService
+      summary: ClearAlertToken
+      description: |-
+        ClearAlertToken removes the token of the alert webhook, so the webhook refuses each call. Only root on a
+         control server calls it, through the admin socket.
+      operationId: hopbox.admin.v1.InstallConfigService.ClearAlertToken
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.ClearAlertTokenRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.ClearAlertTokenResponse'
   /hopbox.admin.v1.InstallConfigService/ClearOAuthClient:
     post:
       tags:
@@ -969,6 +1010,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.GetSMTPConfigResponse'
+  /hopbox.admin.v1.InstallConfigService/SetAlertToken:
+    post:
+      tags:
+        - hopbox.admin.v1.InstallConfigService
+      summary: SetAlertToken
+      description: |-
+        SetAlertToken sets the token with which Alertmanager calls the alert webhook of hopboxd, from the SHA-256
+         of the token. The new token replaces the old one at once. Only root on a control server calls it, through
+         the admin socket.
+      operationId: hopbox.admin.v1.InstallConfigService.SetAlertToken
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.SetAlertTokenRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.SetAlertTokenResponse'
   /hopbox.admin.v1.InstallConfigService/SetMaintenance:
     post:
       tags:
@@ -3635,6 +3718,66 @@ components:
       title: ActivityHour
       additionalProperties: false
       description: ActivityHour counts the events of one hour.
+    hopbox.admin.v1.AdminAlert:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+          description: name is the label alertname, such as HopboxMachineCPUSustained.
+        severity:
+          type: string
+          title: severity
+          description: 'severity is the label severity: critical, warning, or info.'
+        summary:
+          type: string
+          title: summary
+          description: summary is the annotation summary, or empty.
+        description:
+          type: string
+          title: description
+          description: description is the annotation description, or empty.
+        runbookUrl:
+          type: string
+          title: runbook_url
+          description: runbook_url is the annotation runbook_url, the entry of the alert in the guide, or empty.
+        labels:
+          type: object
+          title: labels
+          additionalProperties:
+            type: string
+            title: value
+          description: |-
+            labels are the labels that name a machine or a server: machine, name, org, server, and instance. A label
+             that the alert does not have is absent.
+        startTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: start_time
+          description: start_time is the time at which the alert started to fire.
+        updateTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: update_time
+          description: update_time is the last time at which Alertmanager sent the alert.
+        fingerprint:
+          type: string
+          title: fingerprint
+          description: fingerprint is the fingerprint of the alert in Alertmanager, 16 hex characters.
+        resolveTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: resolve_time
+          description: resolve_time is the end of the alert. It is absent while the alert fires.
+        resolveCause:
+          type: string
+          title: resolve_cause
+          description: |-
+            resolve_cause is resolved when Alertmanager reported the end, or fired_again when the alert fired
+             again with another start time after an end that hopbox missed. It is empty while the alert fires.
+      title: AdminAlert
+      additionalProperties: false
+      description: AdminAlert is an alert of the monitoring bundle that fires now.
     hopbox.admin.v1.AdminKey:
       type: object
       properties:
@@ -3725,8 +3868,16 @@ components:
           type: string
           title: kind
           description: |-
-            kind is security for an action that outlasts the session that did it, or sign_up for a new pending
-             account. The console lists the two kinds under their own headings.
+            kind is security for an action that outlasts the session that did it, sign_up for a new pending
+             account, or alert for an alert of the monitoring bundle. The console lists each kind under its own
+             heading.
+        alert:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.AdminAlert'
+          title: alert
+          description: |-
+            alert is the alert of a notice of the kind alert, as Alertmanager sent it last. It is absent for the
+             other kinds.
       title: AdminNotice
       additionalProperties: false
       description: |-
@@ -4018,6 +4169,21 @@ components:
       title: Certificate
       additionalProperties: false
       description: Certificate describes the certificate of the install for its domain and the wildcard of the domain.
+    hopbox.admin.v1.ClearAlertTokenRequest:
+      type: object
+      title: ClearAlertTokenRequest
+      additionalProperties: false
+      description: ClearAlertTokenRequest has no fields.
+    hopbox.admin.v1.ClearAlertTokenResponse:
+      type: object
+      properties:
+        cleared:
+          type: boolean
+          title: cleared
+          description: cleared is false when the install had no token. Such a call changes nothing.
+      title: ClearAlertTokenResponse
+      additionalProperties: false
+      description: ClearAlertTokenResponse says whether the call removed a token.
     hopbox.admin.v1.ClearOAuthClientRequest:
       type: object
       properties:
@@ -4725,6 +4891,33 @@ components:
       title: EventCounts
       additionalProperties: false
       description: EventCounts counts the events of a time range over every control process and node.
+    hopbox.admin.v1.FiringAlert:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+          description: name is the label alertname, such as HopboxMachineCPUSustained.
+        severity:
+          type: string
+          title: severity
+          description: 'severity is the label severity: critical, warning, or info.'
+        summary:
+          type: string
+          title: summary
+          description: summary is the annotation summary, or empty.
+        startTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: start_time
+          description: start_time is the time at which the alert started to fire.
+        fingerprint:
+          type: string
+          title: fingerprint
+          description: fingerprint is the fingerprint of the alert in Alertmanager, 16 hex characters.
+      title: FiringAlert
+      additionalProperties: false
+      description: FiringAlert is an alert of the monitoring bundle that fires now.
     hopbox.admin.v1.GetAccountActivityRequest:
       type: object
       title: GetAccountActivityRequest
@@ -5039,6 +5232,19 @@ components:
           title: public_url_orgs
           format: int32
           description: public_url_orgs counts the orgs with a machine with a public URL, from the control store.
+        firingAlerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.FiringAlert'
+          title: firing_alerts
+          description: |-
+            firing_alerts are the alerts of the monitoring bundle that fire now, newest first, at most 20, from the
+             alert webhook of hopboxd. Each one is also a notice of the kind alert.
+        firingAlertCount:
+          type: integer
+          title: firing_alert_count
+          format: int32
+          description: firing_alert_count counts every alert that fires now, also those after the first 20.
       title: GetOverviewResponse
       additionalProperties: false
       description: GetOverviewResponse is the state of the install, from the newest samples of the history.
@@ -5557,6 +5763,14 @@ components:
           title: total
           format: int32
           description: total counts every open notice of the account, also those after the first 100.
+        resolvedAlerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.admin.v1.AdminAlert'
+          title: resolved_alerts
+          description: |-
+            resolved_alerts are the alerts of the monitoring bundle that ended in the last 30 days, newest end
+             first, at most 50. Their notices closed by themselves. They are the same for each instance admin.
       title: ListAdminNoticesResponse
       additionalProperties: false
       description: ListAdminNoticesResponse lists the open notices, newest first, at most 100.
@@ -7364,6 +7578,26 @@ components:
       title: SetAccountTierResponse
       additionalProperties: false
       description: SetAccountTierResponse holds the account after the change.
+    hopbox.admin.v1.SetAlertTokenRequest:
+      type: object
+      properties:
+        sha256:
+          type: string
+          title: sha256
+          description: sha256 is the SHA-256 of the whole token text, hbxam_ included, in 64 lowercase hex characters.
+      title: SetAlertTokenRequest
+      additionalProperties: false
+      description: SetAlertTokenRequest holds the hash of the new token.
+    hopbox.admin.v1.SetAlertTokenResponse:
+      type: object
+      properties:
+        replaced:
+          type: boolean
+          title: replaced
+          description: replaced is true when the install had a token before the call.
+      title: SetAlertTokenResponse
+      additionalProperties: false
+      description: SetAlertTokenResponse says whether the call replaced a token.
     hopbox.admin.v1.SetDefaultOrgLimitsRequest:
       type: object
       properties:

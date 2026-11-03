@@ -11,10 +11,10 @@ The counter `hopbox_account_creations_total` came with milestone A2, the approva
 | Item | Value |
 | --- | --- |
 | Address | `metrics.listen` of the bootstrap config, by default `127.0.0.1:9464` ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)). It must be a loopback address. |
-| Path | `/metrics`. Every other path gets HTTP status 404. |
-| Method | `GET` |
+| Path | `/metrics`. On a server with the control role, also `/alerts`, the [alert webhook](#alert-webhook). Every other path gets HTTP status 404. |
+| Method | `GET` for `/metrics`, and `POST` for `/alerts` |
 | Format | the Prometheus text format. When the scraper asks for the OpenMetrics format, the listener uses it. |
-| Auth | none. Only a process on the server can reach a loopback address. |
+| Auth | none for `/metrics`. Only a process on the server can reach a loopback address. `/alerts` needs the alert token of the install. |
 
 The metrics listener is the first unit that `hopboxd run` starts, and the last one that it stops ([hopboxd](/reference/hopboxd/index.html.md#run)). So the metrics cover the start and the stop of every other unit.
 
@@ -28,6 +28,56 @@ curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_api_calls_total'
 hopbox_api_calls_total{code="ok",listener="api",procedure="/hopbox.v1.InstallService/GetInstallInfo"} 3
 hopbox_api_calls_total{code="unauthenticated",listener="api",procedure="/hopbox.admin.v1.InstallConfigService/GetInstallConfig"} 1
 ```
+
+## Alert webhook
+
+Alertmanager of the monitoring bundle sends each alert to `POST /alerts` on the metrics listener of the control server ([Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/index.html.md)). `hopboxd` turns each alert into a notice to the instance admins, and emails them through the mail of the install ([the admin API](/reference/admin-api/index.html.md#notices-of-alerts)). The owner decided this path (Q143 to Q145, Q148, and Q149). The path listens on loopback only, as the rest of the listener does, so nothing opens to the internet.
+
+| Item | Value |
+| --- | --- |
+| Address | the metrics listener of a server with the control role, by default `http://127.0.0.1:9464/alerts`. A server without the control role answers 404. |
+| Method | `POST` |
+| Auth | the header `Authorization: Bearer hbxam_...` with the alert token of the install. `hopboxd` compares the SHA-256 of the token with the hash in the control store, in constant time. The token never goes to a log. |
+| Body | the JSON of the Alertmanager webhook, version `4`, at most 1 MiB, with at most 1,000 alerts. `hopboxd` reads `version`, and the fields `status`, `labels`, `annotations`, `startsAt`, `endsAt`, and `fingerprint` of each alert. It keeps at most 64 labels and 64 annotations of an alert, without the names longer than 128 bytes, and cuts each value to 2,000 bytes. |
+| Maintenance mode | each call gets 503, and Alertmanager tries again later. |
+
+`sudo hopboxd admin config alert-token set` makes the token, keeps its SHA-256 in the control store, and writes the token to the file that Alertmanager reads ([hopboxd](/reference/hopboxd/index.html.md#admin-config-alert-token-set)). Each control server of the install takes the same token.
+
+A call that the webhook refuses changes nothing. A call with a bad alert changes nothing for the other alerts of the call either. The answers:
+
+| HTTP status | Body | Cause |
+| --- | --- | --- |
+| 200 | empty | The webhook stored each alert of the call. The email of its new alerts goes out after the answer, in the background. |
+| 400 | `the body is not the JSON of the Alertmanager webhook: <error>` | The body is no valid JSON. |
+| 400 | `the body has the version <version>, and hopboxd reads version 4 of the Alertmanager webhook` | Another version of the webhook body. |
+| 400 | `invalid argument: ...`, such as `invalid argument: the fingerprint of an alert must be 16 lowercase hex characters, not "x"` | An alert has a status other than `firing` or `resolved`, a bad fingerprint, no label `alertname`, or no start time, or the call holds more than 1,000 alerts. |
+| 400 | `read the body: <error>` | The client closed the connection during the body. |
+| 401 | `the call needs the alert token of the install` | The header has no token, another token, or a malformed one, or the install has no token. The answer has the header `WWW-Authenticate: Bearer realm="hopbox alerts"`. |
+| 413 | `the body is larger than 1 MiB` | The body is over the limit. |
+| 500 | `hopboxd failed to store the alerts. Retry later` | A write to the control store failed. |
+| 503 | `the control store is not open yet. Retry later` | The control role starts or stops. The metrics listener starts before the control store, and stops after it. |
+| 503 | `the check of the token failed. Retry later` | The read of the hash of the token from the control store failed. |
+| 503 | `the install is in maintenance mode: this call writes to the control store, so it waits for the end of maintenance mode` | The install is in maintenance mode. |
+| 503 | `unavailable: hopboxd stops, so it takes no more alerts. Retry later` | The control role stops. It waits for the calls that run and their emails, and refuses the new ones. |
+
+Alertmanager tries a call again after a status of 500 and above, and after a network error. A status of 400 to 499 ends its tries for that call. The alert `HopboxAlertWebhookFailing` fires when the webhook answers with an error ([Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/index.html.md#hopboxalertwebhookfailing)).
+
+The webhook counts each call, also each refused one:
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_alert_webhook_requests_total` | counter | `code` | The calls of the alert webhook by HTTP status: `200`, `400`, `401`, `413`, `500`, or `503`. Each code starts at 0 on a server with the control role, so the first error shows as an increase. The alert `HopboxAlertWebhookFailing` reads the codes other than `2xx` (Q149). |
+
+The webhook writes these log records, with `component=alerts`, apart from the last one:
+
+| Message | Level | Fields |
+| --- | --- | --- |
+| `refused a call of the alert webhook` | warn | `remote`, the address of the client, and `reason`, such as `the alert webhook needs the token of the install: the token is missing or malformed` |
+| `the check of the token of the alert webhook failed` | error | `err` |
+| `the alert webhook failed` | error | `alerts`, the count of the alerts of the call, and `err` |
+| `received alerts from Alertmanager` | info | `component=service`, `alerts`, `fired`, `repeated`, and `resolved`, the counts of the call. The alert `Watchdog` counts in `alerts` only. |
+
+The email of the new alerts of a call writes the records of the emails of a notice ([the admin API](/reference/admin-api/index.html.md#notices-of-alerts)).
 
 ## Metrics of the API
 
@@ -168,7 +218,7 @@ The leader of the control role reads these gauges from the control store every m
 | `hopbox_machines_off_target` | gauge | none | The machines whose current state differs from their target state in each read of the last 5 minutes or more, such as a machine that stays `failed` with the target `running`. A machine with an open cold move, in `stopping` or `pulling`, does not count (Q147). The moves have their own gauge, deadlines, and alert. A machine that stays in `moving` without an open move counts, because nothing moves it any more. The leader counts from its own reads while its jobs run. So the 5 minutes start again after a change of the leader, and after a pause of the jobs by maintenance mode or by the fence. |
 | `hopbox_moves` | gauge | `state` | The cold moves by state: `stopping`, `pulling`, `done`, or `failed` ([Cold move](/reference/cold-move/index.html.md)). A move that ended stays as `done` or `failed` until the sweep drops its machine. |
 | `hopbox_drain_stranded_machines` | gauge | `server` | The machines that the drain or the removal of the node role of the server cannot move ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node)). Only a server whose drain or removal runs has a series, 0 when every machine can move. |
-| `hopbox_admin_notices_open` | gauge | `kind` | The open admin notices by kind, `security` or `sign_up` ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). A notice that several instance admins have counts once, until the last of them dismisses it. |
+| `hopbox_admin_notices_open` | gauge | `kind` | The open admin notices by kind, `security`, `sign_up`, or `alert` ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). The kind `alert` counts the open notices of the alerts of the monitoring bundle ([the admin API](/reference/admin-api/index.html.md#notices-of-alerts)). A notice that several instance admins have counts once, until the last of them dismisses it. |
 | `hopbox_store_database_bytes` | gauge | none | The size of the database of the control store, from `pg_database_size`. |
 
 The registry gets the capacity of each server in its heartbeats ([the control channel](/reference/control-channel/index.html.md)). The leader serves the capacity and the allocations of each server with the node role that is not decommissioned, with the label `server`, the ID of the server. So one Prometheus on the control server sees the capacity of the whole fleet without a scrape of the nodes.
@@ -193,7 +243,7 @@ The leader also serves the registry of every server, whatever its roles ([Enroll
 | `hopbox_server_heartbeat_age_seconds` | gauge | `server` | The age of the last heartbeat of each server that is not decommissioned, at the time of the scrape. A server without a heartbeat has no series. The leader reads the times of the heartbeats every 5 s, so the age is exact to about 5 s. |
 | `hopbox_server_dns_zone_serial` | gauge | `server` | The serial of the zones that each server with the DNS role reports in its heartbeats ([the DNS role](/reference/dns/index.html.md)). A DNS server without zones has no series. |
 
-Each node has 16 series: one for each of the 7 capacity gauges, and 9 of `hopbox_server_machines`, one for each state. Each server that is not decommissioned has 1 series of `hopbox_server_info`, and up to 1 of the heartbeat age and 1 of the zone serial. The leader also serves 6 series of `hopbox_accounts`, 4 of `hopbox_orgs`, 3 of `hopbox_api_keys`, 9 of `hopbox_machines`, 4 of `hopbox_moves`, 6 of `hopbox_servers`, and 2 of `hopbox_admin_notices_open`.
+Each node has 16 series: one for each of the 7 capacity gauges, and 9 of `hopbox_server_machines`, one for each state. Each server that is not decommissioned has 1 series of `hopbox_server_info`, and up to 1 of the heartbeat age and 1 of the zone serial. The leader also serves 6 series of `hopbox_accounts`, 4 of `hopbox_orgs`, 3 of `hopbox_api_keys`, 9 of `hopbox_machines`, 4 of `hopbox_moves`, 6 of `hopbox_servers`, and 3 of `hopbox_admin_notices_open`.
 
 ```sh
 curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(accounts|server_vcpus)'
@@ -302,7 +352,7 @@ hopbox_store_connections{state="max"} 4
 hopbox_store_connections{state="total"} 4
 hopbox_store_errors_total{kind="timeout"} 0
 hopbox_store_renewals_total{result="ok"} 720
-hopbox_store_schema_version 67
+hopbox_store_schema_version 68
 ```
 
 ## Metrics of the control channels

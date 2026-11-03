@@ -304,7 +304,7 @@ err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 The audit log never stores a secret value. `Record` refuses an entry in these cases:
 
 - A detail key is a secret word, or ends with `_` and a secret word, for example `old_value`. Case does not matter. The table after this list holds the secret words.
-- A detail value holds a hopbox token prefix and a letter, a digit, `-`, or `_` after it. The prefixes are `hbx_`, `hbxat_`, `hbxrt_`, `hbxadm_`, and `hbxe_`.
+- A detail value holds a hopbox token prefix and a letter, a digit, `-`, or `_` after it. The prefixes are `hbx_`, `hbxat_`, `hbxrt_`, `hbxadm_`, `hbxam_`, and `hbxe_`.
 - A detail value matches a pattern of the pre-commit secret scan in `.pre-commit-config.yaml`. The scan finds AWS access keys, GitHub tokens, JSON web tokens, Anthropic and OpenAI keys, and Slack tokens. It also finds Google API keys, Stripe live keys, and the start of a PEM block. The two lists must change together.
 
 | Group | Secret words |
@@ -422,6 +422,7 @@ Migration `0006_install_config.sql`. The settings of the whole install. The tabl
 | `promoted_kek` | `text` | empty | The ID of the key-encryption key that the last `PromoteKEK` made current, such as `file:2` ([the admin API](/reference/admin-api/index.html.md#promotekek)). Empty until the first promote. `PromoteKEK` sets it in the transaction that publishes the event `keyring.kek_promoted`. Each control process reads it to promote its own staged copy of that key: at its start, at each event, and at each renewal of its row while its key dir has a staged file or while it misses the key ([Sealing](/reference/sealing/index.html.md#several-control-servers)). It stays set after the promote, and a later promote replaces it. Migration `0045_control_processes.sql` adds it. |
 | `sign_up_mode` | `text` | `approval` | How a new person gets an account: `open`, `approval`, or `invite_only` ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#sign-up-modes)). The check `install_config_sign_up_mode` refuses another value. Migration `0066_instance_invitations.sql` adds `invite_only` to the check. |
 | `grafana_url` | `text` | empty | The URL of the Grafana of the monitoring bundle, for the links of the console ([the admin API](/reference/admin-api/index.html.md#updateinstallconfig)). |
+| `alert_token_hash` | `bytea`, can be null | null | The SHA-256 of the token of the alert webhook, `hbxam_` included ([Metrics](/reference/metrics/index.html.md#alert-webhook)). Null while the install has no token. Only `SetAlertToken` and `ClearAlertToken` change it ([the admin API](/reference/admin-api/index.html.md#setalerttoken)). Its writes keep `version` and `updated_at`, because the install config of the API does not show it. Migration `0068_alert_notices.sql` adds it. |
 | `sign_up_digest_at` | `timestamptz`, can be null | null | The time of the last email digest of new pending accounts ([the admin API](/reference/admin-api/index.html.md#the-digest-of-new-pending-accounts)). Null before the first digest. The leader sends at most one digest every 15 minutes by this time, also after a change of the leader. Its write keeps `version` and `updated_at`, because it is no setting. |
 | `version` | `bigint` | `1` | The row version. |
 | `created_at` | `timestamptz` | the time of the migration | When the migration made the row. |
@@ -757,10 +758,29 @@ Migration `0058_admin_notices.sql`. One row per open notice of an instance admin
 | `account_id` | `uuid` | The instance admin. A delete of the account deletes the row. |
 | `audit_entry_id` | `uuid` | The audit entry of the action, a row of `audit_log`. It has no foreign key, because `audit_log` only grows. |
 | `created_at` | `timestamptz` | The time of the row. |
-| `kind` | `text`, default `security` | `security` for an action that lasts after its session, or `sign_up` for a new pending account ([the admin API](/reference/admin-api/index.html.md#notices-of-new-accounts)). A check refuses another value. |
+| `kind` | `text`, default `security` | `security` for an action that lasts after its session, `sign_up` for a new pending account ([the admin API](/reference/admin-api/index.html.md#notices-of-new-accounts)), or `alert` for an alert of the monitoring bundle ([the admin API](/reference/admin-api/index.html.md#notices-of-alerts)). A check refuses another value. |
 | `about_account_id` | `uuid`, can be null | The pending account of a notice of the kind `sign_up`. Null for the kind `security`. It has no foreign key. An approve, a reject, the expiry, and the delete of the account delete the rows that name it. The partial index `admin_notices_about_account` holds the rows where it is not null. |
 
 The primary key is `(account_id, audit_entry_id)`. The index `admin_notices_audit_entry` lists the rows of an audit entry. The migration has the line `-- oldest_schema_version: 57`. A `hopboxd` of schema version 57 never reads the table, so it runs beside the migration, and its calls write no notice. Migration `0062_sign_up_approval.sql` adds `kind` and `about_account_id`.
+
+## alerts
+
+Migration `0068_alert_notices.sql`. One row for each firing of an alert of the monitoring bundle ([the admin API](/reference/admin-api/index.html.md#notices-of-alerts)). The alert webhook writes it ([Metrics](/reference/metrics/index.html.md#alert-webhook)). A repeat of the alert updates the row, and the end of the alert sets `resolved_at`. The row of an alert that ended stays for 30 days, so the page Notices of the console still shows it. Each end of an alert deletes the rows that ended more than 30 days before. The audit entries `alert.fire` and `alert.resolve` keep the history for good.
+
+| Column | Type | Description |
+| --- | --- | --- |
+| `audit_entry_id` | `uuid`, primary key | The audit entry `alert.fire` of the firing, which is also the ID of its notices in `admin_notices`. It has no foreign key, because `audit_log` only grows. |
+| `fingerprint` | `text` | The fingerprint of the alert in Alertmanager. A check allows 16 lowercase hex characters only. The unique partial index `alerts_firing` allows one row of a fingerprint where `resolved_at` is null. |
+| `alertname` | `text` | The label `alertname`. |
+| `severity` | `text` | The label `severity`, or empty. |
+| `labels` | `jsonb` | Every label of the alert, as Alertmanager sent it last, each value cut to 2,000 bytes. |
+| `annotations` | `jsonb` | Every annotation of the alert, as Alertmanager sent it last, each value cut to 2,000 bytes. |
+| `starts_at` | `timestamptz` | The start of the alert in Alertmanager. A call with another start time for the same fingerprint is a new firing of the alert. |
+| `updated_at` | `timestamptz` | The last call of Alertmanager with the alert. |
+| `resolved_at` | `timestamptz`, can be null | The end of the alert: `endsAt` of Alertmanager, or the time of the call when that is missing or before the start. Null while the alert fires. The partial index `alerts_resolved` holds the rows where it is not null. |
+| `resolve_cause` | `text`, can be null | `resolved` when Alertmanager reported the end, or `fired_again` when the fingerprint fired again with another start time after an end that hopbox missed. A check keeps it null exactly while `resolved_at` is null. |
+
+The migration has the line `-- oldest_schema_version: 57`. A `hopboxd` of schema version 57 to 67 never reads the table or the column `alert_token_hash`, and serves no alert webhook. Its `ListAdminNotices` shows a notice of the kind `alert` with the summary `The action alert.fire ran.`, and its dismiss removes the notice as any other. The migration also adds `alert` to the check of `admin_notices.kind`.
 
 ## pools
 

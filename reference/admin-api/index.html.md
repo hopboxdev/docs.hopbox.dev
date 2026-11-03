@@ -16,7 +16,7 @@ The admin API has these services:
 
 | Service | Calls |
 | --- | --- |
-| `hopbox.admin.v1.InstallConfigService` | `GetInstallConfig`, `UpdateInstallConfig`, `GetSMTPConfig`, `SetSMTPConfig`, `ClearSMTPConfig`, `GetOAuthConfig`, `SetOAuthClient`, `ClearOAuthClient`, `SetMaintenance` |
+| `hopbox.admin.v1.InstallConfigService` | `GetInstallConfig`, `UpdateInstallConfig`, `GetSMTPConfig`, `SetSMTPConfig`, `ClearSMTPConfig`, `GetOAuthConfig`, `SetOAuthClient`, `ClearOAuthClient`, `SetMaintenance`, `SetAlertToken`, `ClearAlertToken` |
 | `hopbox.admin.v1.KeyringService` | `RotateKEK`, `StageKEK`, `PromoteKEK`, `ListKEKs`, `RewrapSealedValues` |
 | `hopbox.admin.v1.MailService` | `ListMailFiles`, `GetMailFile` |
 | `hopbox.admin.v1.LoginLinkService` | `CreateLoginLink` |
@@ -56,7 +56,7 @@ The other calls hand out a secret, or change what only root on a control server 
 
 | Calls | Reason |
 | --- | --- |
-| `SetMaintenance`, `CreateLoginLink`, `RegisterAdminKey`, and the calls of `KeyringService` and `MailService` | Only root on a control server makes them ([The admin socket](#the-admin-socket)). |
+| `SetMaintenance`, `SetAlertToken`, `ClearAlertToken`, `CreateLoginLink`, `RegisterAdminKey`, and the calls of `KeyringService` and `MailService` | Only root on a control server makes them ([The admin socket](#the-admin-socket)). |
 | `CreateEnrollmentToken` and `DecommissionServer` | The hopbox Terraform provider adds and removes servers. An enrollment token is a secret. |
 | `RegisterImage`, `GetCertificate`, `ListControlProcesses`, `ListAccountSignInMethods`, `RemoveAccountSignInMethod`, and `DeleteAccount` | No page of the Admin area uses them. They stay with root on a control server and with admin API keys. |
 
@@ -259,6 +259,38 @@ If a process does not report before the deadline of the call, the call fails wit
 The control process logs `maintenance mode is on: the API takes only reads, and the control role serves no control channel` at level warn after a change to on, and `maintenance mode is off` at level info after a change to off, with `component=service`.
 
 A change of the domain or of the public addresses raises the serial of the DNS zones ([Control store tables](/reference/control-store/index.html.md#dns_zone)). The same transaction publishes the change event `dns.zone_changed`. The control role then pushes the new zones to each server with the DNS role ([the DNS role](/reference/dns/index.html.md#how-the-zones-reach-the-dns-role)). An update that sets the same domain and the same addresses again changes neither, and pushes nothing.
+
+
+### SetAlertToken
+
+Sets the token with which Alertmanager calls the alert webhook of `hopboxd`, from the SHA-256 of the token ([Metrics](/reference/metrics/index.html.md#alert-webhook)). The token never reaches the server. The new token replaces the old one at once, so the old one stops working. `hopboxd admin config alert-token set` makes the token, calls `SetAlertToken`, and writes the file that Alertmanager reads ([hopboxd](/reference/hopboxd/index.html.md#admin-config-alert-token-set)).
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.InstallConfigService/SetAlertToken` |
+| Policy action | `alert_token.set`: `local_root` only. The token works only with the file of Alertmanager, which root writes on the control server. |
+| Idempotent option | no. A second call with the same hash keeps that hash. |
+| Audit entry | action `alert_token.set`, no target, detail `replaced` (`true` when the install had a token before, else `false`) |
+
+The request `SetAlertTokenRequest` has the field `sha256`: the SHA-256 of the whole token text, `hbxam_` included, in 64 lowercase hex characters ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#forms-and-prefixes)). The response `SetAlertTokenResponse` has the field `replaced`, a bool, which is `true` when the install had a token before the call. The control store keeps the hash in the column `alert_token_hash` of `install_config` ([Control store tables](/reference/control-store/index.html.md#install_config)).
+
+| Error | Code |
+| --- | --- |
+| The hash is not 64 lowercase hex characters: `invalid argument: the hash must be the SHA-256 of the token in 64 lowercase hex characters` | `invalid_argument` |
+| The caller is not root on a control server | `permission_denied` |
+
+### ClearAlertToken
+
+Removes the token of the alert webhook. The webhook then refuses each call with HTTP status 401 ([Metrics](/reference/metrics/index.html.md#alert-webhook)). `hopboxd admin config alert-token clear` calls it ([hopboxd](/reference/hopboxd/index.html.md#admin-config-alert-token-clear)).
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.InstallConfigService/ClearAlertToken` |
+| Policy action | `alert_token.clear`: `local_root` only |
+| Idempotent option | no. A second call removes nothing, and succeeds. |
+| Audit entry | action `alert_token.clear`, no target, detail `cleared` (`true` when the install had a token, else `false`) |
+
+The request `ClearAlertTokenRequest` has no fields. The response `ClearAlertTokenResponse` has the field `cleared`, a bool, which is `false` when the install had no token. Such a call changes nothing.
 
 ### GetSMTPConfig
 
@@ -827,6 +859,62 @@ The install holds 50 pending accounts, the most that it takes, so it refused a n
 
 An approve, a reject, the expiry, and any delete of the account remove the notices of the kind `sign_up` about it, from every instance admin. The column `about_account_id` of `admin_notices` names the account ([Control store tables](/reference/control-store/index.html.md#admin_notices)).
 
+### Notices of alerts
+
+An alert of the monitoring bundle gives a notice of the third kind, `alert` (Q144). Alertmanager sends each alert to the alert webhook of `hopboxd` ([Metrics](/reference/metrics/index.html.md#alert-webhook)). The console lists these notices under their own heading.
+
+An alert has the fingerprint of Alertmanager, 16 hex characters that name its set of labels. hopbox keeps one notice for each fingerprint:
+
+| Event | What hopbox does |
+| --- | --- |
+| A new alert fires | In one transaction under `LockKeyAdminNotices`, hopbox writes the audit entry `alert.fire`, a row of `alerts`, and an open notice for each instance admin. After the commit, it answers Alertmanager, then sends the email of the call in the background. |
+| Alertmanager sends the alert again, with the same start time | hopbox updates the labels and the annotations of the row. The notice keeps its ID, and a dismissed notice stays dismissed. No email goes out. |
+| Alertmanager reports the alert as resolved | hopbox sets the end of the row, from `endsAt` of Alertmanager, deletes the open notices of the alert, and writes the audit entry `alert.resolve`. No email goes out. The row stays for 30 days, and `ListAdminNotices` returns it in `resolved_alerts`, so the page Notices still shows the alert with its start and its end. The entries `alert.fire` and `alert.resolve` stay in the audit log for good. |
+| The alert fires with a new start time while its row is open | Alertmanager sent its end, and hopbox missed it. hopbox closes the old alert as on a resolve, with the detail `cause` set to `fired_again`, then records the new alert. |
+| A resolve names an alert that hopbox does not know, or that started later | Nothing changes. A resolve that arrives before its fire, from a late call, leaves the notice of that fire open until the next resolve of the alert. |
+
+The alert `Watchdog` always fires for the outside check, so it never makes a notice ([Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/index.html.md#watchdog)).
+
+The audit entry `alert.fire` has the actor `system`, the target kind `alert`, and the fingerprint as target ID. Its details are `alertname`, `severity`, `fingerprint`, `starts_at`, the annotations `summary`, `description`, and `runbook_url` that the alert has, and one detail `label_<name>` for each label that names a machine or a server: `machine`, `name`, `org`, `server`, and `instance`. The audit entry `alert.resolve` has the same actor and target, and the details `alertname`, `notice` (the ID of the entry `alert.fire`), `cause` (`resolved` or `fired_again`), `starts_at`, and `closed_notices`, the count of the notices that it closed. Each end of an alert also deletes the rows of `alerts` that ended more than 30 days before.
+
+hopbox cuts each label and each annotation to 2,000 bytes. A label or an annotation that looks like a credential gets the text `(withheld, because the text looks like a credential)`, so neither the audit log nor an email holds it.
+
+Each call of Alertmanager carries one alert group. The new alerts of one call share one email to each email of each instance admin, so a group of 100 alerts makes one email, not 100 (Q148). The email names the first 20 new alerts of the call, and counts the rest. Each alert still gets its own notice. A call without a new alert sends no email.
+
+The email goes out in the background after `hopboxd` answers Alertmanager, so the call and maintenance mode never wait for the mail server. A stop of the control role first refuses each new call with 503, and then waits for the calls that run and their emails before it closes the store, at most until the stop timeout of the unit. An email that the timeout cuts is lost. The email goes the way of the other notices, with a limit of 20 s for each address, and the log record and the audit entry `admin_notice.mail_failed` for each address that fails ([Notices to instance admins](#notices-to-instance-admins)). The target of that entry is the entry `alert.fire` of the first alert of the email.
+
+The subject is `Alert: <alertname> (<severity>) on <domain>` for one alert. For more alerts of one name it is `Alerts: <alertname> fires <n> times on <domain>`, and for alerts of several names `Alerts: <n> new alerts on <domain>`. For more than one alert, the text starts with a count of the alerts of each name, such as `HopboxEgressScan on 100 machines`, where each alert has the label `machine`. Then it has a block for each named alert: the summary, the start time, the labels that name a machine or a server, the ID of the audit entry, the description, and the link to the entry of the alert in the guide. It ends with the count of the rest and the link to `/admin/notices`:
+
+```text
+Subject: Alerts: HopboxEgressScan fires 2 times on example.com
+
+This is an alert of the monitoring bundle to the instance admins of example.com.
+
+2 new alerts fire: HopboxEgressScan on 2 machines.
+
+The alert HopboxEgressScan fires, severity warning. Machine box1 opens 140 outbound connections per second.
+Fires since: Sun, 01 Nov 2026 10:00:00 UTC
+Label machine: <machine id>
+Label name: box1
+Label org: <org id>
+Audit entry: <audit entry id>
+Machine <machine id> of org <org id> opened 100 or more new outbound connections per second for 10 minutes. Read what the alert means and what to do: https://docs.hopbox.dev/guide/monitor-an-install/#hopboxegressscan The notice closes by itself when the alert ends.
+
+The alert HopboxEgressScan fires, severity warning. Machine box2 opens 120 outbound connections per second.
+Fires since: Sun, 01 Nov 2026 10:00:00 UTC
+Label machine: <machine id>
+Label name: box2
+Label org: <org id>
+Audit entry: <audit entry id>
+Machine <machine id> of org <org id> opened 100 or more new outbound connections per second for 10 minutes. Read what the alert means and what to do: https://docs.hopbox.dev/guide/monitor-an-install/#hopboxegressscan The notice closes by itself when the alert ends.
+
+hopbox sends at most one email for each call of Alertmanager, and none for a repeat of an alert or for its end.
+The Admin area lists the open notices of your account: https://example.com/admin/notices
+You get this email because you are an instance admin of example.com.
+```
+
+With more than 20 new alerts, the line `And <n> more alerts. The page Notices lists each one.` follows the 20th block.
+
 ### The digest of new pending accounts
 
 The leader sends the instance admins an email digest of the new pending accounts ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). It checks every minute, and sends at most one digest every 15 minutes (`service.SignUpDigestEvery`). The clock of Postgres decides, through the column `sign_up_digest_at` of `install_config`, so a change of the leader keeps the interval. A digest names the pending accounts that no digest named yet, oldest first, at most 100. The rest wait for the next digest. Without such an account, the leader sends nothing.
@@ -866,7 +954,26 @@ Each digest writes the audit entry `admin_notice.sign_up_digest`, with the actor
 | `target_kind` | string | The target kind of the audit entry, or empty. |
 | `target_id` | string | The target ID of the audit entry, or empty. |
 | `create_time` | `google.protobuf.Timestamp` | The time of the action. |
-| `kind` | string | `security` for an action that lasts after the session that did it, or `sign_up` for a new pending account ([Notices of new accounts](#notices-of-new-accounts)). |
+| `kind` | string | `security` for an action that lasts after the session that did it, `sign_up` for a new pending account ([Notices of new accounts](#notices-of-new-accounts)), or `alert` for an alert of the monitoring bundle ([Notices of alerts](#notices-of-alerts)). |
+| `alert` | `AdminAlert` | The alert of a notice of the kind `alert`, as Alertmanager sent it last. Absent for the other kinds. |
+
+The `summary` of a notice of the kind `alert` has the form `The alert <alertname> fires, severity <severity>. <summary>`. Its `advice` is the description, the link to the entry of the alert in the guide, and the sentence `The notice closes by itself when the alert ends.`
+
+### AdminAlert
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `name` | string | The label `alertname`, such as `HopboxMachineCPUSustained`. |
+| `severity` | string | The label `severity`: `critical`, `warning`, or `info`. |
+| `summary` | string | The annotation `summary`, or empty. |
+| `description` | string | The annotation `description`, or empty. |
+| `runbook_url` | string | The annotation `runbook_url`, the entry of the alert in [Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/index.html.md#what-each-alert-means), or empty. |
+| `labels` | map of string to string | The labels that name a machine or a server: `machine`, `name`, `org`, `server`, and `instance`. A label that the alert does not have is absent. |
+| `start_time` | `google.protobuf.Timestamp` | The time at which the alert started to fire. |
+| `update_time` | `google.protobuf.Timestamp` | The last time at which Alertmanager sent the alert. |
+| `fingerprint` | string | The fingerprint of the alert in Alertmanager, 16 hex characters. |
+| `resolve_time` | `google.protobuf.Timestamp` | The end of the alert: `endsAt` of Alertmanager, or the time of the call when that is missing. Absent while the alert fires. |
+| `resolve_cause` | string | `resolved` when Alertmanager reported the end, or `fired_again` when the alert fired again with another start time after an end that hopbox missed. Empty while the alert fires. |
 
 ### ListAdminNotices
 
@@ -885,6 +992,7 @@ The request `ListAdminNoticesRequest` has no fields. The response `ListAdminNoti
 | --- | --- | --- |
 | `notices` | repeated `AdminNotice` | The open notices, newest first, at most 100. |
 | `total` | int32 | The count of all open notices of the account. It is more than the length of `notices` when the account has more than 100. |
+| `resolved_alerts` | repeated `AdminAlert` | The alerts of the monitoring bundle that ended in the last 30 days, newest end first, at most 50 ([Notices of alerts](#notices-of-alerts)). Their notices closed by themselves. The list is the same for each instance admin, and a dismiss does not change it. |
 
 ### DismissAdminNotices
 
@@ -2029,6 +2137,10 @@ The request `GetOverviewRequest` has no fields. The response `GetOverviewRespons
 | `pending_emails` | repeated string | The first emails of the 5 oldest pending accounts, oldest first. |
 | `open_notices` | int32 | The open notices of the caller ([ListAdminNotices](#listadminnotices)). A caller without an account, such as an admin API key, has none. |
 | `public_url_orgs` | int32 | The orgs with a machine with a public URL, from the control store. |
+| `firing_alerts` | repeated `FiringAlert` | The alerts of the monitoring bundle that fire now, newest first, at most 20, from the table `alerts` ([Notices of alerts](#notices-of-alerts)). Empty on an install whose Alertmanager does not call the alert webhook. |
+| `firing_alert_count` | int32 | The count of every alert that fires now, also those after the first 20. |
+
+The message `FiringAlert` has the fields `name`, `severity`, `summary`, `start_time`, and `fingerprint`, as in [AdminAlert](#adminalert).
 
 The message `ServerHealth` has the fields `server_id`, `hostname`, `state` (a `ServerState`), and `status` (a `ServerStatus`, unspecified before the first heartbeat) of one server ([Server](#server)).
 

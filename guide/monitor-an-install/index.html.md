@@ -1,8 +1,8 @@
 # Monitor an install with Prometheus and Grafana
 
-> How to set up the monitoring bundle on the control server: Prometheus, Alertmanager, node_exporter, and Grafana from Debian packages, the alert email, the outside check, a test alert, and what each alert means.
+> How to set up the monitoring bundle on the control server: Prometheus, Alertmanager, node_exporter, and Grafana from Debian packages, the alert token of the webhook to hopboxd, the outside check, a test alert, and what each alert means.
 
-This guide sets up the monitoring bundle on the control server of an install. The monitoring bundle is the set of files that hopbox ships for standard monitoring tools. Prometheus scrapes `hopboxd` and node_exporter, and runs the alert rules. Alertmanager sends each alert by email, and sends the alert `Watchdog` to an outside check. Grafana shows the dashboards D1 to D4, and it is optional.
+This guide sets up the monitoring bundle on the control server of an install. The monitoring bundle is the set of files that hopbox ships for standard monitoring tools. Prometheus scrapes `hopboxd` and node_exporter, and runs the alert rules. Alertmanager sends each alert to the alert webhook of `hopboxd`, which makes a notice for each instance admin and emails them through the mail of the install ([Metrics](/reference/metrics/index.html.md#alert-webhook)). Alertmanager sends the alert `Watchdog` to an outside check. Grafana shows the dashboards D1 to D4, and it is optional.
 
 The tools come from Debian packages. hopbox does not run them or upgrade them. Each tool listens on a loopback address only, as the metrics listener of `hopboxd` does ([Metrics](/reference/metrics/index.html.md#listener)):
 
@@ -24,8 +24,7 @@ The host firewall of hopbox also blocks inbound traffic to these ports ([the hos
 ## What you need
 
 - A control server of the install, with the release bundle in `/opt/hopbox/current` ([Install hopbox on a Debian 13 server by hand](/guide/install-debian/index.html.md)). Run every command of this guide as root on that server.
-- The SMTP server of the install, with a login for the alert email. `hopboxd admin config smtp get` prints the host, the port, and the login of the install ([hopboxd](/reference/hopboxd/index.html.md#admin-config-smtp-get)). The password of that login is not in the output.
-- An email address that gets the alerts, such as `admin@example.org`.
+- The mail of the install, which sends the alert emails to the instance admins. `hopboxd admin config smtp get` prints the SMTP server of the install ([hopboxd](/reference/hopboxd/index.html.md#admin-config-smtp-get)). Each instance admin gets the email of each new alert at each email of the account.
 - A check of a free outside check service, such as healthchecks.io. Set its period to 2 minutes and its grace time to 5 minutes, and copy its ping URL. This check is the dead man's switch of the install: when the pings stop, the service emails you.
 
 The release bundle carries the files under `/opt/hopbox/current/monitoring` ([Release bundle](/reference/release-bundle/index.html.md#contents)):
@@ -67,25 +66,19 @@ install -m 0644 "$m/alertmanager/prometheus-alertmanager" /etc/default/prometheu
 install -m 0644 "$m/node-exporter/prometheus-node-exporter" /etc/default/prometheus-node-exporter
 ```
 
-## 3. Set the email and the outside check
+## 3. Set the alert token and the outside check
 
-Open `/etc/prometheus/alertmanager.yml`, and replace each `example.org` value:
-
-| Key | Value |
-| --- | --- |
-| `smtp_smarthost` | The host and the port of the SMTP server, such as `smtp.example.org:587`. Port 587 uses STARTTLS, and port 465 uses TLS from the first byte. |
-| `smtp_from` | The sender of the alerts, such as `hopbox alerts <alerts@example.org>` |
-| `smtp_auth_username` | The SMTP login. For a relay on the same host without a login, remove this line and the line `smtp_auth_password_file`. |
-| `to` of the receiver `email` | The address that gets the alerts |
-
-Alertmanager reads the SMTP password and the ping URL from files of their own, outside the sealed store of hopbox. Only root and the user `prometheus` can read them. Write the password: type it at the prompt, then press Enter.
+Alertmanager calls the alert webhook of `hopboxd` at `http://127.0.0.1:9464/alerts`, with a token in the header `Authorization`. Make the token:
 
 ```sh
-install -m 0640 -o root -g prometheus /dev/null /etc/prometheus/alertmanager-smtp-password
-read -rs password && printf '%s' "$password" > /etc/prometheus/alertmanager-smtp-password; unset password
+hopboxd admin config alert-token set
 ```
 
-Write the ping URL of the outside check in the same way, such as `https://hc-ping.com/<uuid>`:
+The command keeps only the SHA-256 of the token in the control store. It writes the token to `/etc/prometheus/alertmanager-hopbox-token`, which only root and the group `prometheus` can read ([hopboxd](/reference/hopboxd/index.html.md#admin-config-alert-token-set)). The receiver `hopbox` of `alertmanager.yml` reads that file. A second run makes a new token, and the old one stops working at once. After each run, reload Alertmanager, as step 4 does.
+
+Each new alert gives each instance admin a notice on the page "Notices" of the Admin area ([Use the Admin area](/guide/admin-area/index.html.md#alerts)). Each call of Alertmanager sends one group of alerts, and gives each instance admin one email that lists the new alerts of the call. A repeat of the alert sends no email. When the alert ends, its notice closes by itself.
+
+Alertmanager reads the ping URL of the outside check from a file of its own, outside the sealed store of hopbox. Only root and the user `prometheus` can read it. Write the ping URL, such as `https://hc-ping.com/<uuid>`:
 
 ```sh
 install -m 0640 -o root -g prometheus /dev/null /etc/prometheus/alertmanager-watchdog-url
@@ -99,7 +92,37 @@ promtool check config /etc/prometheus/prometheus.yml
 amtool check-config /etc/prometheus/alertmanager.yml
 ```
 
-Each tool prints `SUCCESS`. `promtool` also checks the two rule files, and prints `SUCCESS: 22 rules found` and `SUCCESS: 32 rules found`.
+Each tool prints `SUCCESS`. `promtool` also checks the two rule files, and prints `SUCCESS: 22 rules found` and `SUCCESS: 34 rules found`.
+
+### Use the email of Alertmanager instead
+
+An install can let Alertmanager send the alert email itself, through the SMTP server of the install, in place of the notices of `hopboxd`. Then the alerts do not show on the page "Notices". Alertmanager needs the SMTP password in a file of its own, outside the sealed store of hopbox. Use one path only, so that the admins do not get each alert twice.
+
+1. In `/etc/prometheus/alertmanager.yml`, set `receiver: email` in place of `receiver: hopbox` on the two lines that name it: the top of `route`, and the route of `severity="info"`.
+
+2. Replace each `example.org` value:
+
+   | Key | Value |
+   | --- | --- |
+   | `smtp_smarthost` | The host and the port of the SMTP server, such as `smtp.example.org:587`. Port 587 uses STARTTLS, and port 465 uses TLS from the first byte. |
+   | `smtp_from` | The sender of the alerts, such as `hopbox alerts <alerts@example.org>` |
+   | `smtp_auth_username` | The SMTP login. For a relay on the same host without a login, remove this line and the line `smtp_auth_password_file`. |
+   | `to` of the receiver `email` | The address that gets the alerts |
+
+3. Write the SMTP password: type it at the prompt, then press Enter.
+
+   ```sh
+   install -m 0640 -o root -g prometheus /dev/null /etc/prometheus/alertmanager-smtp-password
+   read -rs password && printf '%s' "$password" > /etc/prometheus/alertmanager-smtp-password; unset password
+   ```
+
+4. Remove the token of the webhook, so that nothing can make a notice with it:
+
+   ```sh
+   hopboxd admin config alert-token clear
+   ```
+
+5. Run `amtool check-config /etc/prometheus/alertmanager.yml` again.
 
 ## 4. Restart the tools and check the targets
 
@@ -134,11 +157,14 @@ amtool --alertmanager.url=http://127.0.0.1:9093 alert add HopboxTestAlert severi
   --annotation='summary="A test alert of the monitoring guide"'
 ```
 
-Within 1 minute, the address of step 3 gets an email whose subject starts with `[FIRING:1] HopboxTestAlert`. The test alert ends by itself after 5 minutes, and a second email says `[RESOLVED]`. If no email arrives, read the log of Alertmanager:
+Within 1 minute, the page "Notices" of the Admin area lists the alert under "Alerts", and each instance admin gets an email with the subject `Alert: HopboxTestAlert (warning) on <domain>`. The test alert ends by itself after 5 minutes. Its notice then closes, and the alert moves to "Resolved alerts" on the same page. No second email comes. If no notice shows, read the log of Alertmanager and the log of `hopboxd`:
 
 ```sh
 journalctl -u prometheus-alertmanager --since '-10 min' | grep -i 'notify'
+journalctl -u hopboxd --since '-10 min' | grep -i 'alert'
 ```
+
+A line `refused a call of the alert webhook` in the log of `hopboxd` means that Alertmanager sends no token or an old one: run step 3 again, then `systemctl reload prometheus-alertmanager`. With the email of Alertmanager, the address of the receiver `email` gets an email whose subject starts with `[FIRING:1] HopboxTestAlert`, and a second email that says `[RESOLVED]`.
 
 Then make sure that the outside check gets its pings. The alert `Watchdog` always fires, and Alertmanager sends it to the ping URL every 1 to 2 minutes. The page of the check on the outside service shows a ping in the last 2 minutes. Alertmanager shows the alert too:
 
@@ -215,7 +241,7 @@ sudo hopboxd admin config set --grafana-url http://127.0.0.1:3000
 
 ## After an upgrade of hopboxd
 
-An upgrade of `hopboxd` does not copy the files of the bundle. The rules of a release read the metrics of that release, so copy the new files after each upgrade. Do not copy `alertmanager.yml` again: the copy has no values of step 3, so every alert email fails, and `Watchdog` still pings.
+An upgrade of `hopboxd` does not copy the files of the bundle. The rules of a release read the metrics of that release, so copy the new files after each upgrade. Do not copy `alertmanager.yml` again: the copy has no values of your changes, such as the email of Alertmanager, so the alerts can stop and `Watchdog` still pings.
 
 1. Compare the files of the release with the files of the server. `diff` prints nothing for a file that did not change.
 
@@ -227,7 +253,7 @@ An upgrade of `hopboxd` does not copy the files of the bundle. The rules of a re
    diff /etc/prometheus/alertmanager.yml "$m/alertmanager.yml"
    ```
 
-2. If the last `diff` shows a change apart from your values of step 3, add that change to `/etc/prometheus/alertmanager.yml` by hand.
+2. If the last `diff` shows a change apart from your own values, add that change to `/etc/prometheus/alertmanager.yml` by hand. An `alertmanager.yml` from before the alert webhook sends each alert by email. To move it to the webhook, add the receiver `hopbox` and the rules of `inhibit_rules` with `HopboxAlertWebhookFailing` and `HopboxDown`, and set `receiver: hopbox` on the two lines that name `email`. Then run step 3 for the token. Keep `email` on these lines only if you prefer the email of Alertmanager, because the admins otherwise get each alert twice.
 
 3. Copy the other files of step 2.
 
@@ -368,9 +394,9 @@ Info. In the last hour, public machine URLs got more than 10 times the requests 
 None. This alert always fires, and Alertmanager sends it to the outside check every 1 to 2 minutes. The pings stop for one of two causes, and then the outside service emails you:
 
 - The server, Prometheus, or Alertmanager stopped. Then no alert of the install can reach you.
-- Alertmanager fails to send email, and holds back `Watchdog` while HopboxAlertEmailFailing fires.
+- The path of the alerts fails. Alertmanager holds back `Watchdog` while HopboxAlertWebhookFailing, HopboxDown, or HopboxAlertEmailFailing fires: `hopboxd` refuses the calls of its webhook, `hopboxd` is down, or the email of Alertmanager fails.
 
-Read the log of Alertmanager first. If the command shows `Notify attempt failed` for the receiver `email`, the email path fails: go to HopboxAlertEmailFailing. If the command fails or shows nothing, check that the control server, Prometheus, and Alertmanager run.
+Read the log of Alertmanager first. If the command shows `Notify attempt failed` for the receiver `hopbox`, the alert webhook fails: go to HopboxAlertWebhookFailing and HopboxAlertmanagerWebhookFailing. For the receiver `email`, the email path fails: go to HopboxAlertEmailFailing. If the command fails or shows nothing, check that the control server, Prometheus, and Alertmanager run.
 
 ```sh
 journalctl -u prometheus-alertmanager --since '-30 min' | grep -i 'notify'
@@ -378,11 +404,31 @@ journalctl -u prometheus-alertmanager --since '-30 min' | grep -i 'notify'
 
 ### HopboxAlertEmailFailing
 
-Warning. Alertmanager failed to send alert email in the last 15 minutes. The email of this alert also fails, so Alertmanager then holds back `Watchdog`. The outside check gets no more pings, and emails you by its own path. Read the log of Alertmanager, and check the values and the password file of step 3:
+Warning. Alertmanager failed to send alert email in the last 15 minutes. Only the email of Alertmanager uses this path, not the emails of `hopboxd` ([Use the email of Alertmanager instead](#use-the-email-of-alertmanager-instead)). The email of this alert also fails, so Alertmanager then holds back `Watchdog`. The outside check gets no more pings, and emails you by its own path. Read the log of Alertmanager, and check the values and the password file of the email path:
 
 ```sh
 journalctl -u prometheus-alertmanager --since '-30 min' | grep -i 'notify'
 ```
+
+### HopboxAlertWebhookFailing
+
+Warning. `hopboxd` answered calls of its alert webhook with an error, and no call with success, in the last 15 minutes, for 5 minutes, from `hopbox_alert_webhook_requests_total` ([Metrics](/reference/metrics/index.html.md#alert-webhook)). A single error, such as a 503 while `hopboxd` restarts, does not fire it, because the next try of Alertmanager works. A wrong token fails each call, and fires it. The alerts of those calls did not reach the instance admins. While this alert fires, Alertmanager holds back `Watchdog`, so the outside check gets no more pings and emails you by its own path. HopboxDown does the same, because the webhook stops with `hopboxd`. Read the log of `hopboxd`:
+
+```sh
+journalctl -u hopboxd --since '-30 min' | grep -i 'alert webhook'
+```
+
+The label `code` of the metric names the answer. A 401 means a token that `hopboxd` does not know: run `hopboxd admin config alert-token set`, then `systemctl reload prometheus-alertmanager`. A 503 means that the control store of `hopboxd` was not open, or that the install was in maintenance mode. A 500 means that a write to the control store failed. A 400 or a 413 means a body that `hopboxd` refuses: compare the version of Alertmanager with the guide.
+
+### HopboxAlertmanagerWebhookFailing
+
+Warning. Alertmanager failed to call a webhook for 15 minutes. Alertmanager counts its webhooks together: the alert webhook of `hopboxd`, the outside check, and the GitHub relay. This alert holds back nothing, because a failed outside check is no failure of the path of the alerts. When `hopboxd` gets no call at all, for example with a wrong URL or port in the receiver `hopbox`, only this alert fires. Its notice then does not reach `hopboxd` either. Read the log of Alertmanager:
+
+```sh
+journalctl -u prometheus-alertmanager --since '-30 min' | grep -i 'notify'
+```
+
+The line names the receiver. For `hopbox`, check that its URL is the address of the metrics listener, `http://127.0.0.1:9464/alerts` by default, and that `hopboxd` runs. For `watchdog`, the outside check fails, and its own service tells you. For `github`, check the relay.
 
 ### HopboxRuleFailures
 

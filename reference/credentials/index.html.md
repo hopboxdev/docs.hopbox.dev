@@ -14,6 +14,7 @@ Each credential that a client keeps starts with a prefix, then 32 random bytes i
 | CLI refresh token | `hbxrt_` | `hbxrt_<43 characters>` | the field `refresh_token` of `RefreshCLIToken`, never a header |
 | API key, member or org | `hbx_` | `hbx_<43 characters>` | `Authorization: Bearer <key>` |
 | Admin API key | `hbxadm_` | `hbxadm_<43 characters>` | `Authorization: Bearer <key>` |
+| Alert token | `hbxam_` | `hbxam_<43 characters>` | `Authorization: Bearer <token>` on the alert webhook of the metrics listener ([Metrics](/reference/metrics/index.html.md#alert-webhook)). Alertmanager keeps it in a file, and the install keeps its SHA-256. |
 | Device code | none | `<43 characters>` | the field `device_code` of `PollDeviceAuthorization` |
 | User code | none | 8 letters, such as `WDJB-MJHT` | typed by a person in the console |
 
@@ -30,6 +31,7 @@ A credential of another form never matches a stored hash, so the server refuses 
 | CLI refresh token | 30 days. Each use gives a new refresh token with a new 30 days. | once | the same |
 | API key | 30, 90, or 365 days, or a custom date at most 365 days ahead. The default is 90 days. | many calls | the same |
 | Admin API key | as an API key | many calls | A product decision |
+| Alert token | no expiry. It works until the next `hopboxd admin config alert-token set` or `clear`. | many calls | An owner decision (Q143) |
 | SSH key | no expiry. It works until the account removes it. | many connections | A product decision |
 
 All times use the clock of Postgres. Each key and each CLI sign-in records its last use at most once per minute. In maintenance mode, nothing records a use, so a read writes nothing to the control store ([the API server](/reference/api/index.html.md#maintenance-mode)).

@@ -49,6 +49,8 @@ hopboxd --log-level=debug version
 | `admin config oauth get` | Prints the GitHub and Google clients for sign-in, without their secrets, with the redirect URIs. `admin config oauth` alone does the same. |
 | `admin config oauth set` | Sets the client of one sign-in provider. |
 | `admin config oauth clear` | Removes the client of one sign-in provider. |
+| `admin config alert-token set` | Makes the token of the alert webhook, and writes it to the file that Alertmanager reads. |
+| `admin config alert-token clear` | Removes the token of the alert webhook. |
 | `admin certificate get` | Prints the certificate of the install, without its key, and the state of the ACME job. |
 | `admin login-link` | Prints a one-time sign-in link for the first instance admin. |
 | `admin instance-admin list` | Lists the instance admins. |
@@ -942,6 +944,52 @@ Removes the client of one provider and its secret, so nobody can start a sign-in
 | --- | --- | --- | --- |
 | `--expected-version` | int | none | As for `admin config oauth set`. |
 | `--json` | bool | `false` | Prints one JSON object. |
+
+### admin config alert-token set
+
+```sh
+hopboxd admin config alert-token set [--file=PATH] [--group=GROUP]
+```
+
+Makes a new token for the alert webhook of `hopboxd`, with which Alertmanager calls it ([Metrics](/reference/metrics/index.html.md#alert-webhook)). Run it as root on a control server. The command makes the token, `hbxam_` and 32 random bytes in base64url ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#forms-and-prefixes)). It writes the token to a new file next to `--file`, with the mode `0640`, the owner root, and the group `--group`. It then calls `SetAlertToken` with the SHA-256 of the token ([the admin API](/reference/admin-api/index.html.md#setalerttoken)), and moves the new file to `--file`. So the token never reaches the server, and only the file holds it. The command never prints the token.
+
+A new token replaces the old one at once. Alertmanager reads the file at its start and at each reload, so reload it after each `set`:
+
+```sh
+sudo hopboxd admin config alert-token set
+systemctl reload prometheus-alertmanager
+```
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--file` | path | `/etc/prometheus/alertmanager-hopbox-token` | The file for the token, which `credentials_file` in `alertmanager.yml` names. Its directory must exist. |
+| `--group` | string | `prometheus` | The group that can read the file, the group of the user of Alertmanager. |
+
+The command writes one line to standard error. It is `The alert token is in <file>. Reload Alertmanager, so it sends the new token: systemctl reload prometheus-alertmanager`. When the install had a token before, it is `The new alert token is in <file>, and the old token no longer works. Reload Alertmanager, so it sends the new token: systemctl reload prometheus-alertmanager`.
+
+| Error | Cause |
+| --- | --- |
+| `find the group <group>, which reads the token file: <error>` | The group does not exist. Install the package `prometheus-alertmanager` first, or name the group of Alertmanager with `--group`. Nothing changed. |
+| `write the token file: <error>` or `write the token file <path>: <error>` | The command cannot write next to `--file`. Nothing changed. |
+| `the install has the new alert token, but the move of <temporary file> to <file> failed, so Alertmanager has the old one. Run the command again: <error>` | The install took the new token, but the file of Alertmanager still holds the old one. Alertmanager calls fail with 401 until you run the command again. |
+
+### admin config alert-token clear
+
+```sh
+hopboxd admin config alert-token clear [--file=PATH]
+```
+
+Removes the token of the alert webhook, so the webhook refuses each call with HTTP status 401. It calls `ClearAlertToken` ([the admin API](/reference/admin-api/index.html.md#clearalerttoken)), then removes the token file of Alertmanager.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--file` | path | `/etc/prometheus/alertmanager-hopbox-token` | The token file, which the command removes. A missing file is no error. |
+
+The command writes one line to standard error: `The install has no alert token now, so the alert webhook refuses each call.`, or `The install had no alert token.` when the install had none. When it removed the file, the line ends with `Removed <file>.`
+
+| Error | Cause |
+| --- | --- |
+| `the install has no alert token now, but the removal of <file> failed. Remove the file yourself: <error>` | The install has no token, but the file stays. Remove it with `rm`. |
 
 ### admin certificate get
 

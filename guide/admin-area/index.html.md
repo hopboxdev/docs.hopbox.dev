@@ -37,8 +37,8 @@ The pages "Overview", "Capacity", and "Machines" are the main view of the state 
 
 The page "Overview" has these parts:
 
-- Six tiles: the servers, the running machines, the allocated vCPUs, the pending accounts, your open notices, and the public URLs with the count of their orgs.
-- "Needs your attention": the machines that used 90% or more of their vCPUs over the last 30 minutes, the pending accounts, the servers that are not ready or that are degraded, and your open notices. A machine shows here only once it has 30 minutes of samples. A restart of `hopboxd` does not end its samples. Each line has a link to the page that acts on it, such as "Open machine" for the machines of the org of a busy machine.
+- Six tiles: the servers, the running machines, the allocated vCPUs, the pending accounts, your open notices, and the public URLs with the count of their orgs. While an alert of the monitoring bundle fires, the tile of the notices counts the alerts that fire under its number, and turns red for a critical alert ([Alerts](#alerts)).
+- "Needs your attention": the alerts of the monitoring bundle that fire, the machines that used 90% or more of their vCPUs over the last 30 minutes, the pending accounts, the servers that are not ready or that are degraded, and your open notices. Each alert shows its name, its summary, and since when it fires, with the link "See alert" to the page "Notices". The list shows the 20 newest alerts, and one line counts the rest. A machine shows here only once it has 30 minutes of samples. A restart of `hopboxd` does not end its samples. Each line has a link to the page that acts on it, such as "Open machine" for the machines of the org of a busy machine.
 - "Last 24 h": the sign-ups, the new orgs and API keys, the changes of machine URLs and the URLs made public, the refusals of the rate limits and of the org limits, the failed API calls, and the failed actions of the executors.
 - "Health": one line for the control plane, the nodes, the edge, and the network. DNS and SSH get their checks with milestone O6. Each line is ok, warning, critical, or unknown, and names each problem. The checks use the thresholds of the alerts of the monitoring bundle ([the admin API](/reference/admin-api/index.html.md#getoverview)).
 
@@ -289,6 +289,20 @@ While you have an open notice, each page of the console shows a banner with the 
 
 A dismiss changes only your own list. Each other instance admin has a list of their own.
 
+## Alerts
+
+When Alertmanager of the monitoring bundle calls the alert webhook of `hopboxd`, each alert that fires gives each instance admin a notice ([Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/index.html.md)). Each call of Alertmanager carries a group of alerts, and gives you one email that lists its new alerts, the first 20 by name. The page "Notices" lists these notices under "Alerts", the first heading. A critical alert has a red frame. Each notice shows these facts:
+
+- the name of the alert and its severity, such as `HopboxDiskFull` and `critical`
+- the summary and the description of the alert
+- the labels that name a machine or a server: `machine`, `name`, `org`, `server`, and `instance`
+- since when the alert fires, the last time that Alertmanager sent it, and the ID of its audit entry
+- the link "What the alert means and what to do", to the entry of the alert in the guide
+
+Alertmanager sends a firing alert again every 4 hours, or every 24 hours for an info alert. A repeat updates the notice and sends no email. When the alert ends, its notice closes by itself on the page of each instance admin. The alert then moves to the section "Resolved alerts" of the page "Notices", with the time it fired and the time it ended. That section lists the alerts that ended in the last 30 days, also when you have no open notice. A dismiss closes the notice on your page only, and a repeat does not open it again. The audit log keeps the start and the end of each alert, as the actions `alert.fire` and `alert.resolve` ([the admin API](/reference/admin-api/index.html.md#notices-of-alerts)). An alert that fires again later gives a new notice, and the email of its call.
+
+The alert `Watchdog` never makes a notice. It always fires, for the outside check of the install.
+
 ## Read the audit log
 
 The page "Audit log" lists the actions of everyone on the install, newest first. Each action of the Admin area is there, with the actor kind `session`. Each read of the admin API writes an entry too. So a page of the Admin area adds entries each time that it loads.
@@ -337,3 +351,4 @@ Some work never goes through the Admin area. Run `sudo hopboxd admin` on a contr
 | The register of an admin key from its hash, or of an image | `hopboxd admin admin-key register` and `hopboxd admin image register` |
 | The recovery of a lost sign-in method | `hopboxd admin account sign-in-method remove` |
 | The delete of another account | `hopboxd admin account delete` |
+| The token of the alert webhook | `hopboxd admin config alert-token set` and `clear` |
