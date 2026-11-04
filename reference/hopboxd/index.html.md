@@ -128,7 +128,7 @@ hopboxd run [--config=PATH]
 | --- | --- | --- | --- |
 | `--config` | path | `/etc/hopbox/hopboxd.toml` | The bootstrap config file. |
 
-First, `run` starts the metrics listener and the host firewall. Then it starts the units of the control role, the DNS role, the edge role, and the node role, in this order. Then it starts the unit of the control channel. A role that the config does not list has no units. Each unit starts after the unit before it is ready.
+First, `run` starts the metrics listener and the host firewall. Then it starts the units of the control role, the DNS role, the edge role, and the node role, in this order. Then it starts the unit of the control channel. A role that the config does not list has no units. Each unit starts after the unit before it is ready. The metric `hopbox_unit_up` gives the state of each unit ([Metrics](/reference/metrics/index.html.md#metrics-of-the-units)).
 
 | Order | Unit | What it does | Stop timeout |
 | --- | --- | --- | --- |

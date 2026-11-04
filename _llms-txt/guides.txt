@@ -5445,7 +5445,7 @@ Open `http://127.0.0.1:3000` in a browser, and sign in as `admin`. The folder `h
 
 | Dashboard                    | Content                                                                                                                                                                                                                                                                                                                                                                   |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| hopbox D1 Overview           | Targets down, firing alerts, nodes, running machines, the host firewall, the time until the certificate ends, API errors, executor failures, and the memory of `hopboxd`                                                                                                                                                                                                  |
+| hopbox D1 Overview           | Targets down, firing alerts, nodes, running machines, the host firewall, the time until the certificate ends, API errors, executor failures, the memory of `hopboxd`, the units of `hopboxd run` that do not run, and the releases of `hopboxd`                                                                                                                           |
 | hopbox D2 Capacity           | vCPUs, RAM, and disk per node and for the install, allocated against capacity, and the CPU and RAM of each host                                                                                                                                                                                                                                                           |
 | hopbox D3 Machines           | The top 10 machines by CPU share, RAM, disk, egress, inbound traffic, and new outbound connections. Each line shows the name of the machine and the ID of its org.                                                                                                                                                                                                        |
 | hopbox D4 Accounts and abuse | New accounts, orgs, API keys, machines, and URL changes in the last hour, from the recording rules that the alerts read. Also accounts by state, rate limits, org limits, and audit actions.                                                                                                                                                                              |
@@ -5609,6 +5609,30 @@ Warning. A create of a machine found no node with room in the last 15 minutes. `
 ### HopboxDown
 
 Critical. The label `cause` says which check fired. `scrape`: Prometheus got no answer from `hopboxd` for 5 minutes. On the server of the alert, run `systemctl status hopboxd`, and read the log of `hopboxd` ([hopboxd](/reference/hopboxd/#logs)). `no_job`: `prometheus.yml` has no job `hopboxd`, so no other alert of hopbox can fire. Copy the file of step 2 again.
+
+### HopboxUnitDown
+
+Critical. A unit of `hopboxd run` had no value 1 at any scrape of the last 5 minutes, and that stayed so for 5 more minutes. So a unit that ran fires after about 10 minutes. A unit with a new series has no earlier value 1, so it fires after 5 minutes. The label `unit` names the unit ([Metrics](/reference/metrics/#metrics-of-the-units)).
+
+The start of that unit hangs, and `hopboxd` starts no unit after it. The metrics listener still answers, so HopboxDown does not fire. An example is the unit `store` with a Postgres that accepts the connection and does not answer. A start that hangs ends at one of these limits:
+
+* The bundled Postgres must be ready 60 seconds after `hopboxd` runs it. Otherwise the start of the unit `postgres` fails.
+* The Postgres pool gives a new connection 120 seconds, unless `postgres.url` sets `connect_timeout`. Then the start of the unit `store` fails.
+* systemd ends the whole start of `hopboxd` after 180 seconds, also for a unit without a limit of its own.
+
+In each case, `hopboxd` exits, systemd starts it again after 5 seconds, and the alert stays on through these restarts.
+
+A start that fails at once does not fire this alert. An example is a Postgres that refuses connections. `hopboxd` exits at each start, so the scrapes rarely reach it, and the unit gets no sample. HopboxDown fires instead. A scrape that reaches a short run starts the 5 minutes of HopboxDown again, so it can come after more than 5 minutes. HopboxdRestarting also reports this case. It also reports a unit that starts well and fails later, which makes `hopboxd` exit.
+
+Read the log of `hopboxd` on the server of the alert:
+
+```sh
+journalctl -u hopboxd --since '-15 min' | grep -E 'starting|started|start failed'
+```
+
+The last line `starting` without a line `started` names the unit that hangs. A line `start failed` gives the error. Each unit has its row in [hopboxd](/reference/hopboxd/#run).
+
+While the unit `postgres` or `store` does not run on the control server, `hopboxd` answers the alert webhook with 503. So this alert reaches you as HopboxAlertWebhookFailing, which holds back `Watchdog`, so the outside check emails you. It does not reach you as a notice.
 
 ### HopboxExecutorFailures
 
@@ -5819,7 +5843,7 @@ Warning. The last heartbeat of a server had the status `degraded`: a check of se
 
 ### HopboxVersionSkew
 
-Info. The servers of the install ran two or more releases of `hopboxd` for more than 24 hours. An upgrade that stopped halfway leaves this state. Run `hopboxd admin server list` to see the release of each server, and upgrade the rest ([Install hopbox on a Debian 13 server by hand](/guide/install-debian/#upgrade)).
+Info. The servers of the install ran two or more releases of `hopboxd` for more than 24 hours. An upgrade that stopped halfway leaves this state. A gap of less than 1 hour in `hopbox_server_info`, such as a short maintenance window, changes nothing. A longer gap pauses a firing alert from 1 hour after the start of the gap until the samples return. The alert then pauses a second time, from 24 hours after the start of the gap until about 23 hours after its end. After a gap of a day or more, the two pauses join, so the alert stays quiet for about 23 hours of new samples, also when the releases still differ. Run `hopboxd admin server list` to see the release of each server, and upgrade the rest ([Install hopbox on a Debian 13 server by hand](/guide/install-debian/#upgrade)).
 
 ### HopboxChannelDown
 
@@ -5912,10 +5936,6 @@ Warning. The last WireGuard handshake of a server with a peer of the mesh stayed
 ### HopboxMeshPeerMissing
 
 Warning. The mesh device of a server had fewer peers than the last push of the control role named, for 5 minutes. The device refused the mesh, or lost a peer. Read the log of `hopboxd` for `the mesh device refused the mesh of the control plane` ([the mesh](/reference/mesh/#refused-mesh)).
-
-### Alerts that come later
-
-`HopboxUnitDown` comes with milestone O8, with the metric `hopbox_unit_up`, which `hopboxd` does not serve yet (plan section 7.2).
 
 # Check the network of a machine
 

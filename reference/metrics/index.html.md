@@ -2,7 +2,7 @@
 
 > The Prometheus metrics listener of hopboxd and every metric that it serves.
 
-`hopboxd` serves Prometheus metrics on a loopback listener. The code is in `internal/obs`, `internal/api`, `internal/audit`, `internal/service`, `internal/control`, `internal/control/channel`, `internal/acme`, `internal/store`, `internal/placement`, `internal/node`, `internal/node/executor`, `internal/node/machines`, `internal/node/vmm/firecracker`, `internal/node/netcfg`, `internal/mesh`, and `internal/dns`.
+`hopboxd` serves Prometheus metrics on a loopback listener. The code is in `internal/obs`, `internal/daemon`, `internal/api`, `internal/audit`, `internal/service`, `internal/control`, `internal/control/channel`, `internal/acme`, `internal/store`, `internal/placement`, `internal/node`, `internal/node/executor`, `internal/node/machines`, `internal/node/vmm/firecracker`, `internal/node/netcfg`, `internal/mesh`, and `internal/dns`.
 
 The counter `hopbox_account_creations_total` came with milestone A2, the approval of new accounts (metrics catalog).
 
@@ -739,7 +739,7 @@ The monitoring bundle computes these series in Prometheus, in `monitoring/rules/
 | `install:hopbox_edge_public_machine_requests:rate1h` | The requests to public machine URLs per second, over the last hour |
 | `install:hopbox_api_failed_calls:increase10m`, `install:hopbox_api_calls:increase10m` | The API calls of the last 10 minutes with the code `internal`, `unavailable`, `unknown`, or `data_loss`, and all API calls. The alert `HopboxAPIErrors` reads them. |
 | `install:hopbox_maintenance:max` | 1 while the install is in maintenance mode. The alert `HopboxMaintenanceLong` reads it over 2 hours. |
-| `install:hopbox_server_versions:count` | The releases of `hopboxd` that the servers run, from the label `version` of `hopbox_server_info`. The alert `HopboxVersionSkew` reads it over 24 hours. |
+| `install:hopbox_server_versions:count` | The releases of `hopboxd` that the servers run. It counts each value of the label `version` of `hopbox_build_info` and `hopbox_server_info` once. Only a scraped `hopboxd` serves `hopbox_build_info`. An older server and a server that Prometheus does not scrape show through `hopbox_server_info` of the leader. While no leader serves that metric, one scraped release says nothing of the other servers, so the rule records no sample. The alert `HopboxVersionSkew` reads this rule over 24 hours, and skips such a gap. |
 
 The leader serves the gauges of the servers. After a change of the leader, two control processes can serve a series of the same server for a short time. So the `server:` rules keep the largest value of each server.
 
@@ -769,12 +769,64 @@ hopbox_log_messages_total{component="executor",level="warn"} 2
 hopbox_log_messages_total{component="netcfg",level="error"} 1
 ```
 
+## Metrics of the units
+
+`hopboxd run` does its work in units, and starts them in the order of [hopboxd](/reference/hopboxd/index.html.md#run). A unit that fails stops every unit, so `hopboxd` exits, and systemd starts it again. So the value 0 shows a start that waits or fails, or a stop.
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_unit_up` | gauge | `unit` | 1 after the start of the unit returned, until the unit fails or its stop begins. 0 during its start and its stop, and after a failure. A unit that `hopboxd` did not begin to start has no series, so a start that hangs names one unit. |
+
+The value 1 says that the unit started and reported no failure. A part of the work of the unit can still wait, as this table shows. Another metric reports that part.
+
+| `unit` | The value 1 means | What it leaves out |
+| --- | --- | --- |
+| `metrics` | The metrics listener serves. | |
+| `host firewall` | `hopboxd` read and set up the table `inet hopbox_host`, and watches it. | `hopbox_host_firewall_up` says whether the table is whole. |
+| `role-data` | `hopboxd` removed the data of the roles that left this server. This unit does its work at its start, and holds nothing after it. | A removal that fails is a warning in the log, and the next start tries again. |
+| `postgres` | The bundled Postgres started once, and its supervisor runs. With an external Postgres, `hopboxd` read `postgres.url`. | `hopbox_postgres_up` says whether the bundled Postgres takes connections now. The supervisor restarts Postgres after a crash, and the unit stays at 1. |
+| `store` | The pool of the control store is open, and the migrations ended. | `hopbox_store_errors_total` counts the queries that fail. |
+| `events` | The reader of the change events runs. | `hopbox_events_lag_seconds` says how far it lags. |
+| `leader election` | This control process takes part in the election. | `hopbox_leader` says whether it leads. |
+| `api`, `internal listener`, `admin socket` | The listener serves. | |
+| `dns`, `edge` | The listeners of the role serve. | |
+| `machines` | The node network and the executors run. | |
+| `channel` | The loop that keeps the control channel runs. | `hopbox_channel_connected` says whether this server holds its channel. The loop dials again after a loss, and the unit stays at 1. |
+| `systemd notify` | `hopboxd` told systemd that it is ready. | |
+
+Maintenance mode stops no unit, so it does not change these values.
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_unit_up'
+```
+
+```text
+hopbox_unit_up{unit="host firewall"} 1
+hopbox_unit_up{unit="machines"} 0
+hopbox_unit_up{unit="metrics"} 1
+hopbox_unit_up{unit="role-data"} 1
+```
+
+In this example, the `machines` unit did not end its start, and the later units did not begin theirs.
+
 ## Metrics of the process
 
 | Prefix | Source |
 | --- | --- |
 | `go_` | The Go runtime: goroutines, memory, and garbage collection. |
 | `process_` | The process: CPU time, memory, open files, and start time. Linux only. On macOS, these metrics are absent. |
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_build_info` | gauge | `version`, `go_version` | Always 1. `version` is the release of this `hopboxd`, the same string that its heartbeats give to `hopbox_server_info`. `go_version` is the Go version of its build. |
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_build_info'
+```
+
+```text
+hopbox_build_info{go_version="go1.27.1",version="v0.9.0"} 1
+```
 
 ## History of samples
 
