@@ -714,6 +714,8 @@ postgres_exporter serves the statistics of Postgres (Q132). hopbox does not run 
 | `pg_wal_size_bytes` | The size of the write-ahead log |
 | `pg_stat_activity_max_tx_duration` | The age of the longest open transaction, by database, state, and role |
 
+The names of `pg_stat_database_deadlocks` and `pg_stat_database_blks_hit` have no `_total`, so Prometheus answers a rate of them with the info `metric might not be a counter`, and Grafana shows a warning icon on the panel. So the row "Postgres" of D5 reads recording rules for these rates ([Recording rules](#recording-rules)).
+
 [Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/index.html.md#add-postgres_exporter) sets it up.
 
 ## Recording rules
@@ -727,6 +729,7 @@ The monitoring bundle computes these series in Prometheus, in `monitoring/rules/
 | `machine:hopbox_machine_cpu_pressure:rate5m`, `machine:hopbox_machine_disk_written_bytes:rate5m` | The share of the time that a process of each machine waited for a CPU, and the bytes that each machine wrote to the disks of the node per second |
 | `machine:hopbox_machine_restarts:increase15m` | The restarts of each machine by the restart policy in the last 15 minutes, all reasons together |
 | `server:hopbox_server_vcpus:free` | The vCPUs of each node that placement can still give |
+| `install:hopbox_nodes:count`, `install:hopbox_server_vcpus:free` | The nodes of the install, and the vCPUs that placement can still give on all of them. They read 0 on an install without a node. While the leader serves no stats, as in maintenance mode, they record no sample, because the count is unknown. |
 | `server:hopbox_server_vcpus_allocated:ratio`, `server:hopbox_server_memory_allocated:ratio` | The allocated share of the vCPU capacity and of the RAM of each node |
 | `server:hopbox_server_disk_free:ratio`, `server:hopbox_server_disk_allocated:ratio` | The free share of the data dir of each node, and the disk sizes of its machines divided by the size of the data dir |
 | `instance:node_cpu_busy:ratio_rate5m`, `instance:node_memory_available:ratio` | The busy share of the CPUs and the available share of the RAM of each host, from node_exporter |
@@ -739,9 +742,12 @@ The monitoring bundle computes these series in Prometheus, in `monitoring/rules/
 | `install:hopbox_edge_public_machine_requests:rate1h` | The requests to public machine URLs per second, over the last hour |
 | `install:hopbox_api_failed_calls:increase10m`, `install:hopbox_api_calls:increase10m` | The API calls of the last 10 minutes with the code `internal`, `unavailable`, `unknown`, or `data_loss`, and all API calls. The alert `HopboxAPIErrors` reads them. |
 | `install:hopbox_maintenance:max` | 1 while the install is in maintenance mode. The alert `HopboxMaintenanceLong` reads it over 2 hours. |
+| `install:pg_stat_database_deadlocks:rate5m`, `install:pg_stat_database_blks_hit:ratio_rate5m` | The deadlocks per second of the database `hopbox`, and the share of its block reads that found the block in the cache of Postgres. They record nothing without postgres_exporter. |
 | `install:hopbox_server_versions:count` | The releases of `hopboxd` that the servers run. It counts each value of the label `version` of `hopbox_build_info` and `hopbox_server_info` once. Only a scraped `hopboxd` serves `hopbox_build_info`. An older server and a server that Prometheus does not scrape show through `hopbox_server_info` of the leader. While no leader serves that metric, one scraped release says nothing of the other servers, so the rule records no sample. The alert `HopboxVersionSkew` reads this rule over 24 hours, and skips such a gap. |
 
 The leader serves the gauges of the servers. After a change of the leader, two control processes can serve a series of the same server for a short time. So the `server:` rules keep the largest value of each server.
+
+The counts of the group `hopbox-accounts`, from `install:hopbox_account_creations:increase1h` to `install:hopbox_limit_refusals:increase1h`, read 0 before the first event while `hopbox_leader` shows that a control process answers. Without that process, or with a rule that fails, they record no sample. So a panel reads "No data" when the count is unknown. An alert on these counts fires at the same values as before.
 
 A counter with labels shows only after its first event, so `increase()` misses that event. Each `install:` count adds the value of each series that is new in the window. The count needs a scrape of that `hopboxd` at the start of the window. A new series has no sample in the 5 minutes before the window. So a failed scrape does not make an old series new. After the first install of Prometheus, no series counts as new. So the totals of `hopboxd` from before the first scrape count as no burst. A control process that Prometheus did not scrape at the start of the window loses its first event in that window.
 

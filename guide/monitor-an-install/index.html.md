@@ -240,6 +240,23 @@ Open `http://127.0.0.1:3000` in a browser, and sign in as `admin`. The folder `h
 
 The same tunnel works for Prometheus on port 9090 and Alertmanager on port 9093.
 
+The panel "Machines by state" of D1 and "Machines per node" of D2 leave out the state `deleted`. "Moves by state" of D6 leaves out the state `done`. These counts stay until the sweep drops the row, so they set the scale and hide the live states.
+
+A stat with no value shows a word in a neutral color. The word says only that no scraped `hopboxd` serves the metric. It does not say that all is well:
+
+| Dashboard | Stat | Word | Normal case | Fault case |
+| --- | --- | --- | --- | --- |
+| D1 | Certificate ends in | no value | The install has no edge. | The edge runs on a server that Prometheus does not scrape. An edge before its first certificate reads `0 s` in red. |
+| D2 | Disk free | no value | The install has no node, or it is in maintenance mode. | The install has no leader, or the leader fails to read its stats. |
+| D5 | Bundled Postgres | no value | The install uses an external Postgres, or the scraped server has no control role. | The start of a unit before `postgres` hangs, which "Units down" of D1 shows. A bundled Postgres whose start hangs reads `0` in red. |
+| D8 | Egress exits | no value | The scraped server has the edge role, or no node role. | A node without the edge role runs on a server that Prometheus does not scrape. On a scraped node, the value `0` stays red. |
+
+A failed scrape leaves no value on each of these stats. The stat "Targets down" of D1 shows a scrape that fails. It does not show a server that is no target of Prometheus, and the bundle has one target for `hopboxd`, the control server.
+
+Each server serves `hopbox_edge_certificate_not_after_seconds` and `hopbox_egress_exits` itself. So on a fleet, "Certificate ends in", "Egress exits", HopboxCertificateExpiry, and HopboxEgressFailClosed do not see an edge or a node on another server. The leader serves the disk metrics for each node. So "Disk free", HopboxDiskFull, and HopboxDiskOvercommit see each node, while the scraped control process leads.
+
+The counts of D4 read 0 before the first event, while a control process answers. If its scrape fails, or a recording rule fails, they read "No data". So "No data" on D4 means that the count is unknown, and 0 means that no event happened. "Nodes" of D1 and "Free vCPUs" of D2 read 0 on an install without a node, and "No data" while the leader serves no stats, as in maintenance mode.
+
 The pages "Overview", "Capacity", "Machines", and "Accounts" of the Admin area can link to these dashboards. For the links, set the URL of Grafana in the install config on a control server ([Use the Admin area](/guide/admin-area/index.html.md)). For the tunnel above, the URL is `http://127.0.0.1:3000`:
 
 ```sh
