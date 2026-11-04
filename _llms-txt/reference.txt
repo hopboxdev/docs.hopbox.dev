@@ -14376,7 +14376,7 @@ The agent reads `/etc/passwd` and `/etc/group` for the user ID, the groups, the 
 
 Example of `/etc/hopbox/env`:
 
-```sh
+```text
 # Written by hopbox-guest from the env vars and secrets of the machine.
 # hopbox-guest rewrites this file at each configuration.
 export DATABASE_URL='postgres://db1/app'
@@ -18227,7 +18227,7 @@ The script does not reboot. Reboot by hand.
 
 The file of step 4 pins the GRUB default by the ID of the menu entry. GRUB names each entry after the UUID of the root file system:
 
-```sh
+```text
 GRUB_DEFAULT="gnulinux-advanced-<root-uuid>>gnulinux-6.18.57-hopbox1-advanced-<root-uuid>"
 ```
 

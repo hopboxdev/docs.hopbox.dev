@@ -19440,7 +19440,7 @@ The script does not reboot. Reboot by hand.
 
 The file of step 4 pins the GRUB default by the ID of the menu entry. GRUB names each entry after the UUID of the root file system:
 
-```sh
+```text
 GRUB_DEFAULT="gnulinux-advanced-<root-uuid>>gnulinux-6.18.57-hopbox1-advanced-<root-uuid>"
 ```
 

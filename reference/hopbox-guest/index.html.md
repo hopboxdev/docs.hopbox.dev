@@ -116,7 +116,7 @@ The agent reads `/etc/passwd` and `/etc/group` for the user ID, the groups, the 
 
 Example of `/etc/hopbox/env`:
 
-```sh
+```text
 # Written by hopbox-guest from the env vars and secrets of the machine.
 # hopbox-guest rewrites this file at each configuration.
 export DATABASE_URL='postgres://db1/app'
