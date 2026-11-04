@@ -5311,7 +5311,7 @@ promtool check config /etc/prometheus/prometheus.yml
 amtool check-config /etc/prometheus/alertmanager.yml
 ```
 
-Each tool prints `SUCCESS`. `promtool` also checks the two rule files, and prints `SUCCESS: 27 rules found` and `SUCCESS: 81 rules found`.
+Each tool prints `SUCCESS`. `promtool` also checks the two rule files, and prints `SUCCESS: 29 rules found` and `SUCCESS: 81 rules found`.
 
 ### Use the email of Alertmanager instead
 
@@ -5749,7 +5749,7 @@ Warning. `hopboxd` failed to send emails in the last 30 minutes, and sent none. 
 
 ### HopboxAPIErrors
 
-Warning. 5 or more API calls of the last 10 minutes, and more than 5% of them, ended with the code `internal`, `unavailable`, `unknown`, or `data_loss`. The minimum keeps 1 failed call of 3 on a quiet install from an alert. The health line of the control plane on the page “Overview” counts in the same way. Maintenance mode refuses calls with `unavailable` by design, so this alert does not fire in maintenance mode, or in the 10 minutes after it, while those calls stay in the window. A fence of the control process also refuses calls with `unavailable`, so look at HopboxControlFenced first. D1 shows the failed calls by code, and D5 shows the share of failed calls. Read the log of `hopboxd`.
+Warning. 5 or more API calls of the last 10 minutes, and more than 5% of them, ended with the code `internal`, `unavailable`, `unknown`, or `data_loss`. The minimum keeps 1 failed call of 3 on a quiet install from an alert. The first call of a procedure and a code counts too. The alert waits 1 minute before it fires, so it comes up to 2 minutes after the health line. The health line of the control plane on the page “Overview” counts in the same way. Maintenance mode refuses calls with `unavailable` by design, so this alert does not fire in maintenance mode, or in the 10 minutes after it, while those calls stay in the window. A maintenance shorter than one scrape gives Prometheus no flag to read, so this alert can fire after it while the health line stays quiet. A fence of the control process also refuses calls with `unavailable`, so look at HopboxControlFenced first. D1 shows the failed calls by code, and D5 shows the share of failed calls. Read the log of `hopboxd`.
 
 ### HopboxAPISlow
 
@@ -5827,7 +5827,7 @@ Critical. A server held no control channel for 1 minute. Without its channel, th
 
 ### HopboxLeaseLosses
 
-Warning. A node lost machine leases in the last 15 minutes. The executor then stops its actions on those machines ([the node executor](/reference/executor/#metrics)). A lost control channel often causes it. Look at HopboxChannelDown and HopboxHeartbeatLate.
+Warning. A node lost machine leases in the last 15 minutes. The executor then stops its actions on those machines ([the node executor](/reference/executor/#metrics)). This alert does not fire in maintenance mode, or in the 16 minutes after it, because no lease renews in maintenance mode. A lost control channel often causes it. Look at HopboxChannelDown and HopboxHeartbeatLate.
 
 ### HopboxMachineCrashLoop
 
@@ -5883,7 +5883,7 @@ Warning. The open connections of a listener of an edge stayed above 80% of its l
 
 ### HopboxEdgeUpstreamErrors
 
-Warning. More than 10% of the requests to machine URLs of running machines got a 502 or a 503 for 10 minutes. The label `reason` of `hopbox_edge_upstream_errors_total` says why: `no_address`, `no_answer`, or `expired_lease` ([the edge role](/reference/edge/#metrics)). `no_answer` means that the machine does not answer on its URL port. The reason `not_running` does not count, because a bot that polls a stopped machine makes it. D7 shows each reason, also `not_running`.
+Warning. More than 10% of the requests to machine URLs of running machines got a 502 or a 503 for 10 minutes. The label `reason` of `hopbox_edge_upstream_errors_total` says why: `no_address`, `no_answer`, or `expired_lease` ([the edge role](/reference/edge/#metrics)). `no_answer` means that the machine does not answer on its URL port. The reason `not_running` does not count, because a bot that polls a stopped machine makes it. D7 shows each reason, also `not_running`. This alert does not fire in maintenance mode, when each machine URL answers `expired_lease` as planned.
 
 ### HopboxEdgeRoutesStale
 

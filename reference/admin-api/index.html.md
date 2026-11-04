@@ -2191,7 +2191,7 @@ The message `HealthLine` has the fields `area`, a `HealthArea`, `state`, a `Heal
 | `HealthArea` | Number | Checks |
 | --- | --- | --- |
 | `HEALTH_AREA_UNSPECIFIED` | 0 | Never in a response. |
-| `HEALTH_AREA_CONTROL_PLANE` | 1 | The leader took a sample in the last 3 minutes. 5 or more API calls of the last 10 minutes, and more than 5% of them, failed, as `HopboxAPIErrors` counts them (warning). Neither counts while maintenance mode is on, or in the 10 minutes after it, because it refuses calls by design. |
+| `HEALTH_AREA_CONTROL_PLANE` | 1 | The leader took a sample in the last 3 minutes. 5 or more API calls of the last 10 minutes, and more than 5% of them, failed, as `HopboxAPIErrors` counts them (warning). The first value of a new series counts whole in both. The alert waits 1 minute, so it comes up to 2 minutes after this line. Neither counts while maintenance mode is on, or in the 10 minutes after it, because it refuses calls by design. |
 | `HEALTH_AREA_NODES` | 2 | A server is unresponsive (critical) or degraded (warning). A node has 90% or more of its vCPUs or of its RAM allocated (warning). The data dir of a node has less than 15% free (warning) or less than 5% free (critical). An action of an executor failed in the last 15 minutes (warning). |
 | `HEALTH_AREA_EDGE` | 3 | The edge: it has no certificate (critical), or its certificate ends within 3 days (critical) or 14 days (warning). DNS and the SSH front door get their checks with milestone O6. |
 | `HEALTH_AREA_NETWORK` | 4 | The host firewall of a server is down (critical). `hopboxd` repaired the node network in the last hour (warning). |

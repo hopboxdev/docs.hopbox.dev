@@ -737,6 +737,7 @@ The monitoring bundle computes these series in Prometheus, in `monitoring/rules/
 | `install:hopbox_rate_limited:increase1h`, `install:hopbox_limit_refusals:increase1h` | The refusals of the rate limits and of the org limits in the last hour |
 | `install:hopbox_placements_no_capacity:increase15m` | The placements with the result `no_capacity` in the last 15 minutes |
 | `install:hopbox_edge_public_machine_requests:rate1h` | The requests to public machine URLs per second, over the last hour |
+| `install:hopbox_api_failed_calls:increase10m`, `install:hopbox_api_calls:increase10m` | The API calls of the last 10 minutes with the code `internal`, `unavailable`, `unknown`, or `data_loss`, and all API calls. The alert `HopboxAPIErrors` reads them. |
 | `install:hopbox_maintenance:max` | 1 while the install is in maintenance mode. The alert `HopboxMaintenanceLong` reads it over 2 hours. |
 | `install:hopbox_server_versions:count` | The releases of `hopboxd` that the servers run, from the label `version` of `hopbox_server_info`. The alert `HopboxVersionSkew` reads it over 24 hours. |
 

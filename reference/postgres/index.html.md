@@ -147,7 +147,7 @@ pgsup creates a missing parent dir, such as `/var/lib/hopbox` or `/run/hopbox`, 
 | --- | --- | --- |
 | `hopbox-pg` | OS user | Postgres refuses to run as root. So when `hopboxd` runs as root, Postgres runs as this user. The user must exist before the first start. When `hopboxd` is not root, Postgres runs as the user of `hopboxd`. |
 | `hopbox` | database role | The bootstrap superuser of the cluster. `hopboxd` connects with this role. |
-| `hopbox_monitor` | database role | The role of postgres_exporter. It can log in to the database `postgres` only, with at most 3 connections, and it is a member of `pg_monitor`. On each start, pgsup applies its limits, and makes sure that it exists. A failure of these steps does not stop Postgres or `hopboxd`, because postgres_exporter is optional. pgsup logs a warning, and postgres_exporter then cannot connect ([What the role hopbox_monitor can do](#what-the-role-hopbox_monitor-can-do), Q154). |
+| `hopbox_monitor` | database role | The role of postgres_exporter. It can log in to the database `postgres` only, with at most 3 connections, and it is a member of `pg_monitor`. On each start, pgsup applies its limits, and makes sure that it exists. A failure of these steps does not stop Postgres or `hopboxd`, because postgres_exporter is optional. pgsup logs a warning that the role is not up to date. postgres_exporter then connects with the role of an earlier start, or not at all without one ([What the role hopbox_monitor can do](#what-the-role-hopbox_monitor-can-do), Q154). |
 | `hopbox` | database | The control store database. On each start, pgsup makes sure that it exists. |
 
 Postgres accepts connections only on the unix socket, and only with peer authentication. Peer authentication takes the OS user of the client from the kernel. The two files that pgsup writes after `initdb` set this up:
@@ -198,7 +198,7 @@ postgres_exporter connects to the database `postgres`, and reads the statistics 
 | `REVOKE CONNECT ON DATABASE hopbox FROM PUBLIC` | The role cannot connect to the control store, so it takes no advisory lock there, such as the lock of the leader, and sends no `NOTIFY` there. The role `hopbox`, a superuser, keeps its access. |
 | `REVOKE CONNECT ON DATABASE template1 FROM PUBLIC` | The role cannot connect to `template1`. |
 | `REVOKE TEMP ON DATABASE postgres FROM PUBLIC` | The role makes no temp table. `PUBLIC` has no `CREATE` on the schema `public`, so the role makes no table either. |
-| `REVOKE EXECUTE` from `PUBLIC` on the advisory lock functions and on `lo_creat`, `lo_create`, and `lo_from_bytea`, in the database `postgres` | The role takes no advisory lock and makes no large object. |
+| `REVOKE EXECUTE` from `PUBLIC` on the advisory lock functions and on `lo_creat`, `lo_create`, `lo_from_bytea`, and `pg_logical_emit_message`, in the database `postgres` | The role takes no advisory lock, makes no large object, and writes no message to the WAL. |
 | `CONNECTION LIMIT 3` | The role holds at most 3 connections, so it cannot use up `max_connections`. Two scrapes of postgres_exporter 0.17.1 at once fit, and 3 at once do not. |
 
 An advisory lock is per database, so a lock in the database `postgres` with the key of the leader does not stop the leader in the database `hopbox`. But all databases share the lock table. On Postgres 18.6, a role that took about 14,800 advisory locks in the database `postgres` stopped each new connection to the database `hopbox` with `FATAL: out of shared memory`. So the role takes none.
@@ -300,7 +300,7 @@ pgsup writes slog records with `component=pgsup`.
 | `postgres ready` | info | `pid`, `socket_dir` |
 | `created database` | info | `database` |
 | `created role` | info | `role`, `hopbox_monitor` |
-| `the role of postgres_exporter is not ready, so postgres_exporter cannot connect` | warn | `role`, `err` |
+| `the role of postgres_exporter is not up to date` | warn | `role`, `err` |
 | `the OS group of the socket of postgres is gone, so the socket closes to it` | warn | `group`, `socket_dir` |
 | `the socket of postgres is open to an OS group` | info | `group`, `socket_dir` |
 | `the socket of postgres stays closed to its OS group, because the look-up failed` | warn | `group`, `err` |
