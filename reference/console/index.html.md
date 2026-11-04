@@ -183,28 +183,39 @@ Each call needs a sign-in within the last 10 minutes. After an older one, a call
 
 ## Look
 
-The console has the look of the public site [hopbox.dev](https://hopbox.dev). It uses the same colors, fonts, buttons, cards, and icon:
+The console uses the tokens of the brand kit in `brand/`. The guide of the kit is `brand/BRAND.md`.
 
 | Part | Value |
 | --- | --- |
-| Background | `#0A0E0B`, with panels in `#111712` |
-| Text | `#ECF2EC`, and `#A3B1A5` for secondary text |
-| Accent | lime `#C4F05A`, for links, the main button, the focus ring, and the state `running` |
-| Warning | amber `#FFB443`, for a public URL, a state that changes, and the `not verified` tag of an email. Also for the tag `port 25 open` of an org, and the banner and the notices of an instance admin. |
-| Error | `#FF7A6B`, for errors and the delete buttons |
-| Text font | Bricolage Grotesque |
-| Code font | JetBrains Mono, for names, URLs, and the web terminal |
+| Background | Basalt `#0D0E0C`, with panels in Slag `#22231F`, and table headers in `#161714` |
+| Border | Ash `#3A3C35`. A form field has a border in Summit `#8E9088`, which has a contrast of at least 3:1. |
+| Text | Alpine `#EDEEE8`, Mist `#B9BBB3` for secondary text, and Summit `#8E9088` for muted text |
+| Accent | Lichen `#C6EA2B`, for the main button, the focus ring, a running machine, the cursor of the terminal, a link in text, and the line of the active tab |
+| Warning | an outline in Ember `#FF6B2C`, with a transparent ground and a label in Ember. Examples are a public URL, the `not verified` tag of an email, the tag `port 25 open` of an org, and the banner of an instance admin. |
+| Error | a ground in `#2E1A10`, a border in Ember, and a filled tag in Ember with text in Basalt. Examples are a failed machine, a suspended org, and the error of a call. |
+| Delete | quiet text in Ember, and a filled button in Ember with text in Basalt in the dialog that asks before the delete |
+| Usage bar or chart | Mist, and Ember when the value is over a threshold. A warning bar is an outline, and an error bar is a fill. |
+| Logo and icons | the lockup of the kit, with the accessible name `Hopbox`. Its height is 32 px in the top bar and 40 px on the sign-in pages and the other center pages. The build takes the favicons and the Apple touch icon from `brand/icons/`. |
+| Machine glyph | an incomplete cube next to the name of each machine, in the machine lists, the page of a machine, the bar of the web terminal, and the stranded machines of a server. The glyph comes from the ID of the machine, so a new name keeps it. It is Lichen when the machine runs, and Summit otherwise. |
+| Text font | Instrument Sans, in the weights 400, 500, and 600, for text and form labels |
+| Code font | Martian Mono, for names, hostnames, URLs, commands, IDs, table headers, and short labels |
+| Shape | a radius of 10, 14, or 20 px, or a pill. The console has no shadows, no glows, and no gradients. The dots behind the sign-in pages are the only exception. |
 
-The console has a dark theme only, as the site has. It does not follow the light or dark setting of the system.
+The kit has no tint of Ember, so `#2E1A10` is a token of the console only, `--color-signal-subtle`.
+
+The console has a dark theme only. It does not follow the light or dark setting of the system.
+
+Only the cursor of the web terminal blinks. A state that changes, such as `starting`, shows a still ring in Mist.
 
 The look keeps the console accessible:
 
 - Text has a contrast of at least 4.5:1 on its background (WCAG 2.2 level AA). A disabled control is the only exception.
-- The control that has the keyboard focus shows a lime ring.
+- The control that has the keyboard focus shows a Lichen ring.
 - Each state has a word next to its color, such as `running` or `Public URL: public`.
 - A link inside a sentence has an underline, so it differs from the text by more than its color.
+- A button or a form field has a height of at least 44 px. A small button or a link in a table row looks smaller, but its hit area is at least 44 px high, and the hit areas do not overlap.
 
-The web terminal takes its colors from the same values. If a program picks a text color with a contrast below 4.5:1, xterm.js makes it lighter.
+The web terminal has a Basalt ground and an Ash border. It uses Martian Mono at 14 px, in the standard width. Its cursor is Lichen. A program picks its ANSI colors, so they stay readable instead of brand colors. If a program picks a text color with a contrast below 4.5:1, xterm.js makes it lighter.
 
 ## Browsers
 
@@ -308,13 +319,29 @@ Each response of the console has these headers:
 
 The policy allows scripts only from the console itself: no inline script, no `eval`, and no other site. The build has no inline script and no data URL. The console loads nothing from a CDN. No site can show the console in a frame.
 
-The fonts are files of the build, so `font-src 'self'` covers them. Each file is a variable font in WOFF2, so one file gives every weight that the console uses:
+The fonts are files of the build, so `font-src 'self'` covers them. Each text font is a variable font in WOFF2, so one file gives every weight that the console uses. The fonts are under the SIL Open Font License 1.1.
 
 | Font | Characters | Size |
 | --- | --- | --- |
-| Bricolage Grotesque | the Latin subset that hopbox.dev uses | 75 KiB |
-| Bricolage Grotesque | the Latin Extended subset that hopbox.dev uses, such as `ł` and `ő`. The browser gets this file only for a page that shows such a character. | 30 KiB |
-| JetBrains Mono 2.304 | the Latin and Latin Extended-A characters, arrows, geometric shapes, dingbats such as `✓` and `❯`, box-drawing and block characters, and the Powerline symbols, for terminal programs such as `htop` and `tmux` | 45 KiB |
+| Instrument Sans | the Latin subset of Fontsource 5.3.0 | 29 KiB |
+| Instrument Sans | the Latin Extended subset of Fontsource 5.3.0, such as `ł` and `ő`. The browser gets this file only for a page that shows such a character. | 11 KiB |
+| Martian Mono | the Latin subset of Fontsource 5.3.0, at the standard width (`wdth` 100) | 23 KiB |
+| Martian Mono | the Latin Extended subset of Fontsource 5.3.0, at the standard width. The browser gets this file only for a page that shows such a character. | 16 KiB |
+| Hopbox Terminal Symbols | arrows, box-drawing and block characters, geometric shapes, dingbats such as `✓` and `❯`, and the Powerline symbols. Only the web terminal uses this file. | 5 KiB |
+
+### The terminal symbols font
+
+Martian Mono has no block characters and only 15 of the 128 box-drawing characters, and the Latin subsets hold none of them. Martian Mono also has no `❯` and no Powerline symbols. Terminal programs such as `htop` and `tmux` need these characters, so the font stack of the web terminal is Martian Mono, then Hopbox Terminal Symbols.
+
+Hopbox Terminal Symbols comes from JetBrains Mono 2.304, under the SIL Open Font License 1.1. The steps below use fontTools, and each one has a reason:
+
+1. Fix the `wght` axis at 400 with `fontTools.varLib.instancer`, because the file has one weight.
+2. Subset to the characters of U+2190-21FF, U+2500-25FF, U+2700-27BF, and U+E0A0-E0B3 that the JetBrains Mono file has and the Latin subsets of Martian Mono do not have. Drop the hinting and the layout features.
+3. Scale U+2500-259F and the Powerline symbols by 7/6 in width, because JetBrains Mono has an advance of 0.6 em and Martian Mono has 0.7 em. Then lines connect from cell to cell.
+4. Scale the same glyphs by 1224/1320 in height, and map the range -300 to 1020 to the range -220 to 1004. Then a block fills the cell of Martian Mono, whose height is 1200 units plus the rounding of the row.
+5. Scale the solid block elements, which are U+2580-2590 and U+2594-259F, by 724/600 in width, with a shift of -12 units, in place of step 3. The cell width is 9.8 px, so without this overlap a run of `█` shows thin seams.
+6. Move each other glyph 50 units right and 40 units up, without a change of shape. Then the glyph sits at the center of the cell.
+7. Set each advance to 700. Name the family Hopbox Terminal Symbols, and keep the copyright record.
 
 The policy allows inline styles. xterm.js writes style elements and style attributes while it runs, for the size of the cells and the colors of the text. Without inline styles, the terminal shows the text without its colors and its layout. An inline style cannot run code.
 
@@ -334,7 +361,7 @@ Each file has an `ETag` from its SHA-256, and a request with a matching `If-None
 
 1. It builds the SDK into `web/packages/sdk/dist/` with `tsc`.
 2. It type-checks the console with `tsc`.
-3. Vite writes the build to `internal/console/dist/`: `index.html`, and the hashed files under `assets/`, the icon and the two fonts among them. The terminal and xterm.js load in a chunk of their own, only on the terminal page. When an instance admin opens a page of the Admin area, the page loads in a chunk of its own.
+3. Vite writes the build to `internal/console/dist/`: `index.html`, and the hashed files under `assets/`, the icons and the fonts among them. The terminal and xterm.js load in a chunk of their own, only on the terminal page. When an instance admin opens a page of the Admin area, the page loads in a chunk of its own.
 
 `make build` runs `make console` first, so each `hopboxd` holds the console of its own commit. `tools/bundle` refuses a `hopboxd` without the console, so no release ships without it ([Release bundle](/reference/release-bundle/index.html.md)). `internal/console` embeds `internal/console/dist/` with `go:embed`. Git ignores the build, apart from the empty file `.gitkeep`, which `go:embed` needs. The same lockfile gives the same files, so the build is reproducible.
 
@@ -366,12 +393,12 @@ The console pins each package to an exact version in `web/apps/console/package.j
 
 `TestConsole` runs a control role with a node that runs machines with the real guest agent. Before the suite, it writes an hour of samples of the history, in which `box1` uses 95% of its 2 vCPUs. It serves the API with the console of the test binary at `https://hop.example.org`. An HTTP proxy of the test sits in front, and ends TLS with a certificate that the test makes. Chromium reaches the console through that proxy. The suite:
 
-1. Checks the headers and the sign-in page without a session, and checks that both fonts load under the policy.
+1. Checks the headers and the sign-in page without a session, and checks that the fonts load under the policy.
 2. Signs in with a login link, comes back to the page that asked for the sign-in, and finds `box1` running. It checks that the scrolling row of tabs does not cut off the focus ring of a tab or the underline of the current tab.
 3. Creates, stops, starts, and deletes a machine, and checks the name suggestion of a taken name.
 4. Makes the URL of `box1` public, then private.
 5. Runs `echo` in the web terminal, then `exit`. Before that, it checks at 844 by 390 and 1280 by 560 pixels that the tabs of the org keep their height.
-6. Adds and removes an SSH key, creates an API key, and sets an env var.
+6. Adds and removes an SSH key, creates an API key, and sets an env var. It checks that an env var value of 180 characters breaks inside the table, so the page does not scroll sideways at a width of 1280 px.
 7. Opens each dialog, and checks it at a desktop and a phone width. The title starts at the left edge, the text stays inside the dialog, and the buttons sit at the bottom right. The dialogs are "New machine", "Delete box1", "Revoke the API key", "Remove the SSH key", "Remove the member", "Leave Team", and "Delete Team".
 8. Checks that a click on the backdrop and the Escape key close a dialog, and that a click or a drag inside it does not.
 9. Creates an org, and finds it in the org switcher.
