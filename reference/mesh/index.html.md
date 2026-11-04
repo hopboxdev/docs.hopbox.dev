@@ -61,6 +61,7 @@ Each peer of the device is another server of the mesh:
 | --- | --- |
 | Public key | The key of the last heartbeat of that server. |
 | Endpoint | Its peer address and port `51820`, such as `203.0.113.12:51820`. The control role takes it from `servers.peer_address`, never from a heartbeat. |
+| Persistent keepalive | 25 seconds (`domain.MeshKeepalive`), the value that the WireGuard docs name for most firewalls and NATs. The device sends an empty packet every 25 seconds, so a healthy peer always has traffic, and WireGuard makes a new handshake about every 2 minutes. A device from an older release gets it with the first mesh of the control role after a restart, which keeps its sessions and counts no repair. When two servers take a new peer at the same time, each one starts a handshake. Two handshakes that cross both fail, and WireGuard tries again after 5 seconds. So the first packets between them can wait that long. |
 | Allowed IPs | See [Allowed IPs](#allowed-ips). WireGuard sends a packet to the peer whose allowed IPs hold its destination. It drops a packet from a peer with a source outside the allowed IPs of that peer. |
 | Egress | True for an edge server that takes the egress of the machines now, an egress edge ([the egress of the machines](/reference/egress/index.html.md#egress-edges)). The device does not use it. It hands the egress edges and the nodes of each mesh to the egress tunnels. |
 
@@ -103,6 +104,7 @@ peer: <public key of a node>
   allowed ips: 10.239.0.2/32, 10.240.16.0/20
   latest handshake: 12 seconds ago
   transfer: 18.42 KiB received, 9.10 KiB sent
+  persistent keepalive: every 25 seconds
 ```
 
 ## The host firewall
@@ -161,7 +163,7 @@ The metrics listener serves these metrics on each server with the device ([Metri
 | Metric | Type | Labels | Meaning |
 | --- | --- | --- | --- |
 | `hopbox_mesh_peers` | gauge | none | The peers of the device. |
-| `hopbox_mesh_peer_last_handshake_seconds` | gauge | `server` | The Unix time of the last WireGuard handshake with the peer, or 0 before the first one. WireGuard makes a handshake at least every 2 minutes while traffic flows. |
+| `hopbox_mesh_peer_last_handshake_seconds` | gauge | `server` | The Unix time of the last WireGuard handshake with the peer, or 0 before the first one. With the persistent keepalive, the age of a healthy peer stays below about 145 seconds: WireGuard renews a session after 120 seconds at its next packet, and the next packet comes within 25 seconds. Two idle peers in a test on 2026-11-03 made a handshake every 125 seconds. |
 | `hopbox_mesh_peer_receive_bytes_total` | counter | `server` | The bytes that the device got from the peer. |
 | `hopbox_mesh_peer_transmit_bytes_total` | counter | `server` | The bytes that the device sent to the peer. |
 | `hopbox_mesh_repairs_total` | counter | none | The changes to the device after it lost a part outside `hopboxd`. |

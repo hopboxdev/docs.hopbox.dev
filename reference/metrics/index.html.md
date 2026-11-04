@@ -328,6 +328,7 @@ Each control process serves these metrics of the control store as it sees it ([C
 | `hopbox_events_lag_seconds` | gauge | none | The age of the last change event that this control process read, at the time of its read ([Control store tables](/reference/control-store/index.html.md#events)). It is 0 before the first event. A clock of the server ahead of the clock of Postgres gives 0. The process reads up to the end of the events after each new event, and at least every 30 s. After 1 minute without such a read, for example after a lost connection, the gauge gives the time since the last one, so a stalled subscription shows as a growing lag. It shows once the events unit starts. |
 | `hopbox_postgres_up` | gauge | none | 1 while the bundled Postgres runs and takes connections, and 0 while it restarts or after its stop ([the bundled Postgres](/reference/postgres/index.html.md#start-restart-and-stop)). A control process with an external Postgres does not serve it. |
 | `hopbox_postgres_restarts_total` | counter | none | The starts of the bundled Postgres after an exit that `hopboxd` did not ask for, such as a crash. A control process with an external Postgres does not serve it. |
+| `hopbox_postgres_disk_free_bytes` | gauge | none | The free bytes of the file system that holds the data dir of the bundled Postgres, for a user that is not root, read at each scrape (Q155). A control process with an external Postgres does not serve it. A read that fails leaves it out of that scrape. |
 
 | `kind` | Errors |
 | --- | --- |
@@ -344,6 +345,7 @@ curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(store|events|postgres)
 
 ```text
 hopbox_events_lag_seconds 0.004
+hopbox_postgres_disk_free_bytes 3.1e+11
 hopbox_postgres_restarts_total 0
 hopbox_postgres_up 1
 hopbox_store_acquire_wait_seconds_total 0.021
@@ -700,6 +702,20 @@ The host firewall of hopbox blocks inbound traffic on port 9100 ([the host firew
 
 [Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/index.html.md) sets up node_exporter together with Prometheus, Alertmanager, and Grafana.
 
+## postgres_exporter
+
+postgres_exporter serves the statistics of Postgres (Q132). hopbox does not run it. It is an optional part of the monitoring bundle, from the Debian 13 package `prometheus-postgres-exporter`. The bundle carries its arguments in `monitoring/postgres-exporter/prometheus-postgres-exporter`, and its scrape job in `monitoring/scrape-configs/postgres.yml`. It listens on `127.0.0.1:9187`, and connects with the role `hopbox_monitor` ([the bundled Postgres](/reference/postgres/index.html.md#who-can-reach-the-socket)). D5 reads these families:
+
+| Metric | Source of the value |
+| --- | --- |
+| `pg_stat_database_numbackends`, `pg_settings_max_connections` | The connections of each database, and the limit of Postgres |
+| `pg_stat_database_deadlocks` | The deadlocks of each database |
+| `pg_stat_database_blks_hit`, `pg_stat_database_blks_read` | The block reads of each database that found the block in the cache of Postgres, and those that did not |
+| `pg_wal_size_bytes` | The size of the write-ahead log |
+| `pg_stat_activity_max_tx_duration` | The age of the longest open transaction, by database, state, and role |
+
+[Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/index.html.md#add-postgres_exporter) sets it up.
+
 ## Recording rules
 
 The monitoring bundle computes these series in Prometheus, in `monitoring/rules/hopbox-recording.yml`. The alerts and the Grafana dashboards read them ([Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/index.html.md)). A name has the form `level:metric:operation`. The level names the labels that stay: `machine`, `server`, `instance`, or `install` for one value of the whole install.
@@ -708,6 +724,8 @@ The monitoring bundle computes these series in Prometheus, in `monitoring/rules/
 | --- | --- |
 | `machine:hopbox_machine_cpu_share:rate30m`, `machine:hopbox_machine_cpu_share:rate5m` | The CPU time of each machine per second, divided by `hopbox_machine_vcpus`. 1 is all vCPUs of the machine. |
 | `machine:hopbox_machine_egress_bytes:rate5m`, `machine:hopbox_machine_inbound_bytes:rate5m`, `machine:hopbox_machine_egress_connections:rate5m` | The bytes and the new outbound connections of each machine per second |
+| `machine:hopbox_machine_cpu_pressure:rate5m`, `machine:hopbox_machine_disk_written_bytes:rate5m` | The share of the time that a process of each machine waited for a CPU, and the bytes that each machine wrote to the disks of the node per second |
+| `machine:hopbox_machine_restarts:increase15m` | The restarts of each machine by the restart policy in the last 15 minutes, all reasons together |
 | `server:hopbox_server_vcpus:free` | The vCPUs of each node that placement can still give |
 | `server:hopbox_server_vcpus_allocated:ratio`, `server:hopbox_server_memory_allocated:ratio` | The allocated share of the vCPU capacity and of the RAM of each node |
 | `server:hopbox_server_disk_free:ratio`, `server:hopbox_server_disk_allocated:ratio` | The free share of the data dir of each node, and the disk sizes of its machines divided by the size of the data dir |
@@ -719,6 +737,8 @@ The monitoring bundle computes these series in Prometheus, in `monitoring/rules/
 | `install:hopbox_rate_limited:increase1h`, `install:hopbox_limit_refusals:increase1h` | The refusals of the rate limits and of the org limits in the last hour |
 | `install:hopbox_placements_no_capacity:increase15m` | The placements with the result `no_capacity` in the last 15 minutes |
 | `install:hopbox_edge_public_machine_requests:rate1h` | The requests to public machine URLs per second, over the last hour |
+| `install:hopbox_maintenance:max` | 1 while the install is in maintenance mode. The alert `HopboxMaintenanceLong` reads it over 2 hours. |
+| `install:hopbox_server_versions:count` | The releases of `hopboxd` that the servers run, from the label `version` of `hopbox_server_info`. The alert `HopboxVersionSkew` reads it over 24 hours. |
 
 The leader serves the gauges of the servers. After a change of the leader, two control processes can serve a series of the same server for a short time. So the `server:` rules keep the largest value of each server.
 

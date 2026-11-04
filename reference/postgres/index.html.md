@@ -137,9 +137,9 @@ $ go run ./tools/pgdist
 | `/var/lib/hopbox/pg` | `hopbox-pg` | `0700` | The Postgres state dir. If it does not exist, pgsup creates it. |
 | `/var/lib/hopbox/pg/data` | `hopbox-pg` | `0700` | The cluster, which is the data dir of Postgres. |
 | `/var/lib/hopbox/pg/data.init` | `hopbox-pg` | `0700` | A cluster that `initdb` is creating. It exists only during the first start. |
-| `/run/hopbox/pg` | `hopbox-pg` | `0700` | The socket dir. It holds `.s.PGSQL.5432` and its lock file. |
+| `/run/hopbox/pg` | `hopbox-pg` | `0700`, or `0750` with the group `prometheus` | The socket dir. It holds `.s.PGSQL.5432` and its lock file. |
 
-pgsup creates a missing parent dir, such as `/var/lib/hopbox` or `/run/hopbox`, with mode `0755`. A parent dir that exists must let `hopbox-pg` enter it. pgsup sets the mode `0700` on the state dir and the socket dir on each start. `hopbox-pg` must also be able to read the Postgres install. The path of the socket file must be at most 103 bytes, the limit of unix sockets on macOS.
+pgsup creates a missing parent dir, such as `/var/lib/hopbox` or `/run/hopbox`, with mode `0755`. A parent dir that exists must let `hopbox-pg` enter it. pgsup sets the mode `0700` on the state dir on each start. It sets the mode of the socket dir on each start too ([Who can reach the socket](#who-can-reach-the-socket)). `hopbox-pg` must also be able to read the Postgres install. The path of the socket file must be at most 103 bytes, the limit of unix sockets on macOS.
 
 ## OS users and database roles
 
@@ -147,6 +147,7 @@ pgsup creates a missing parent dir, such as `/var/lib/hopbox` or `/run/hopbox`, 
 | --- | --- | --- |
 | `hopbox-pg` | OS user | Postgres refuses to run as root. So when `hopboxd` runs as root, Postgres runs as this user. The user must exist before the first start. When `hopboxd` is not root, Postgres runs as the user of `hopboxd`. |
 | `hopbox` | database role | The bootstrap superuser of the cluster. `hopboxd` connects with this role. |
+| `hopbox_monitor` | database role | The role of postgres_exporter. It can log in to the database `postgres` only, with at most 3 connections, and it is a member of `pg_monitor`. On each start, pgsup applies its limits, and makes sure that it exists. A failure of these steps does not stop Postgres or `hopboxd`, because postgres_exporter is optional. pgsup logs a warning, and postgres_exporter then cannot connect ([What the role hopbox_monitor can do](#what-the-role-hopbox_monitor-can-do), Q154). |
 | `hopbox` | database | The control store database. On each start, pgsup makes sure that it exists. |
 
 Postgres accepts connections only on the unix socket, and only with peer authentication. Peer authentication takes the OS user of the client from the kernel. The two files that pgsup writes after `initdb` set this up:
@@ -155,13 +156,61 @@ Postgres accepts connections only on the unix socket, and only with peer authent
 # pg_hba.conf
 local all all peer map=hopbox
 
-# pg_ident.conf: maps the OS user of hopboxd to the role hopbox
+# pg_ident.conf: maps the OS user of hopboxd to the role hopbox, and the OS user prometheus to the role hopbox_monitor
 hopbox root hopbox
+hopbox prometheus hopbox_monitor
 ```
 
-When `hopboxd` is not root, the second line names the user of `hopboxd` in place of `root`. pgsup writes both files on each start, so a change of the user of `hopboxd` takes effect at the next start. pgsup syncs them to disk, because an empty `pg_hba.conf` after a power loss locks `hopboxd` out.
+When `hopboxd` is not root, the line of the role `hopbox` names the user of `hopboxd` in place of `root`. pgsup writes both files on each start, so a change of the user of `hopboxd` takes effect at the next start. pgsup syncs them to disk, because an empty `pg_hba.conf` after a power loss locks `hopboxd` out.
 
 As root, pgsup works in dirs that `hopbox-pg` owns, and `hopbox-pg` can plant symlinks there. So pgsup does each file operation in the state dir through a handle on that dir that never leaves it. It reads only regular files of at most 4 KiB. It writes a file under a new temp name with `O_EXCL`, changes the owner through the open file, and renames it into place. It never opens an existing path for writing, and never follows a symlink with `chown` or `chmod`.
+
+### Who can reach the socket
+
+The Debian package of postgres_exporter runs it as the OS user `prometheus`, which must reach the socket ([Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/index.html.md#add-postgres_exporter)). At each start of `hopboxd`, pgsup looks up the OS group `prometheus`:
+
+| State of the host | Socket dir | Socket | Groups of Postgres | Who reaches the socket |
+| --- | --- | --- | --- | --- |
+| The group exists | `0750`, with the group `prometheus` | `0770`, with the group `prometheus` | `prometheus` | root, `hopbox-pg`, and the members of the group |
+| No such group, or `hopboxd` is not root and not a member of the group | `0700` | `0700` | none | root and `hopbox-pg` |
+
+pgsup alone sets `unix_socket_group`, and it starts Postgres with `prometheus` as a supplementary group, because Postgres can give the socket only a group that it is a member of. A setgid socket dir cannot do this job, because `hopboxd.service` sets `RestrictSUIDSGID=yes`, and `chmod` to a setgid mode then fails (Q154).
+
+This access has a cost. While the group exists, Postgres can read each file of the group `prometheus`. The Debian package of Prometheus makes the group, so this holds on each install with the monitoring bundle, also without postgres_exporter. These files hold secrets:
+
+| File | Content | Made by |
+| --- | --- | --- |
+| `/etc/prometheus/alertmanager-hopbox-token` | The token of the alert webhook | `hopboxd admin config alert-token set` ([hopboxd](/reference/hopboxd/index.html.md#admin-config-alert-token-set)) |
+| `/etc/prometheus/alertmanager-watchdog-url` | The ping URL of the outside check | [Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/index.html.md#3-set-the-alert-token-and-the-outside-check) |
+| `/etc/prometheus/alertmanager-smtp-password` | The SMTP password, only with the email of Alertmanager | [Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/index.html.md#use-the-email-of-alertmanager-instead) |
+| The token file of the GitHub relay, at a path of your choice | The GitHub token, only with the relay, and only if you give the file this group | [Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/index.html.md#change-a-rule) |
+
+Only code that runs as the OS user `hopbox-pg` reads them: the Postgres server, and the database role `hopbox`, a superuser, through functions such as `pg_read_file`. The role `hopbox_monitor` cannot, because `pg_monitor` does not include `pg_read_server_files`. A bug in `hopboxd` that lets a caller run SQL as `hopbox` then also exposes these secrets.
+
+Each member of the group reaches the socket, but `pg_ident.conf` still decides the role. Only the OS user `prometheus` maps to `hopbox_monitor`, and no other member maps to any role. A group that appears or goes away takes effect at the next start of `hopboxd`, or at the restart after a crash of Postgres. Each of them looks up the group again, and sets the mode and the group of the socket dir. So a group that went away does not keep Postgres down.
+
+### What the role hopbox_monitor can do
+
+postgres_exporter connects to the database `postgres`, and reads the statistics of the whole cluster, also of the database `hopbox`, from there. At each start, pgsup applies these limits:
+
+| Limit | Effect |
+| --- | --- |
+| `REVOKE CONNECT ON DATABASE hopbox FROM PUBLIC` | The role cannot connect to the control store, so it takes no advisory lock there, such as the lock of the leader, and sends no `NOTIFY` there. The role `hopbox`, a superuser, keeps its access. |
+| `REVOKE CONNECT ON DATABASE template1 FROM PUBLIC` | The role cannot connect to `template1`. |
+| `REVOKE TEMP ON DATABASE postgres FROM PUBLIC` | The role makes no temp table. `PUBLIC` has no `CREATE` on the schema `public`, so the role makes no table either. |
+| `REVOKE EXECUTE` from `PUBLIC` on the advisory lock functions and on `lo_creat`, `lo_create`, and `lo_from_bytea`, in the database `postgres` | The role takes no advisory lock and makes no large object. |
+| `CONNECTION LIMIT 3` | The role holds at most 3 connections, so it cannot use up `max_connections`. Two scrapes of postgres_exporter 0.17.1 at once fit, and 3 at once do not. |
+
+An advisory lock is per database, so a lock in the database `postgres` with the key of the leader does not stop the leader in the database `hopbox`. But all databases share the lock table. On Postgres 18.6, a role that took about 14,800 advisory locks in the database `postgres` stopped each new connection to the database `hopbox` with `FATAL: out of shared memory`. So the role takes none.
+
+In the database `postgres`, the role can still do these things:
+
+- Read the statistics and the settings of the cluster, and the text of the queries of other sessions in `pg_stat_activity`, because `pg_monitor` allows it. It reads no table of the control store.
+- List the WAL files and other server files with functions such as `pg_ls_waldir`, also because of `pg_monitor`. It cannot read their contents.
+- Run queries that use CPU, RAM, and temp files on disk, on up to 3 connections. No limit of time or size applies, so a process of the OS user `prometheus` can slow the server or fill its disk that way.
+- Run `LISTEN` and `NOTIFY`. A notification reaches only sessions of the database `postgres`, but all databases share the queue of the notifications, and no limit keeps the role from using it.
+
+So the limits stop the attacks on the leader and on the connections that a test showed. They do not make the OS user `prometheus` harmless. Treat that user as a trusted local user.
 
 ## initdb flags
 
@@ -187,7 +236,8 @@ pgsup starts `bin/postgres -D <dir>/data` with these parameters as `-c name=valu
 | --- | --- | --- |
 | `listen_addresses` | empty | No TCP listener. |
 | `unix_socket_directories` | the socket dir | |
-| `unix_socket_permissions` | `0700` | |
+| `unix_socket_permissions` | `0770` with the OS group `prometheus`, otherwise `0700` | [Who can reach the socket](#who-can-reach-the-socket) |
+| `unix_socket_group` | `prometheus` with that OS group, otherwise unset | [Who can reach the socket](#who-can-reach-the-socket) |
 | `port` | `5432` | Names the socket file `.s.PGSQL.5432`. |
 | `log_destination` | `stderr` | pgsup turns each line into a log record. |
 | `logging_collector` | `off` | |
@@ -249,6 +299,13 @@ pgsup writes slog records with `component=pgsup`.
 | `postgres started` | info | `pid`, `data_dir` |
 | `postgres ready` | info | `pid`, `socket_dir` |
 | `created database` | info | `database` |
+| `created role` | info | `role`, `hopbox_monitor` |
+| `the role of postgres_exporter is not ready, so postgres_exporter cannot connect` | warn | `role`, `err` |
+| `the OS group of the socket of postgres is gone, so the socket closes to it` | warn | `group`, `socket_dir` |
+| `the socket of postgres is open to an OS group` | info | `group`, `socket_dir` |
+| `the socket of postgres stays closed to its OS group, because the look-up failed` | warn | `group`, `err` |
+| `the socket of postgres stays closed to its OS group, because its ID is not a number` | warn | `group`, `gid` |
+| `cannot read the free space of the postgres data dir` | warn | `data_dir`, `err`. It comes with each scrape of `hopbox_postgres_disk_free_bytes` that fails ([Metrics](/reference/metrics/index.html.md#metrics-of-the-control-store)). |
 | `postgres exited` | error | `pid`, `err`, `uptime` |
 | `restarting postgres` | info | `delay` |
 | `postgres restart failed` | error | `err` |
@@ -298,6 +355,7 @@ With `postgres.url`, the control role changes in these ways:
 - The unit `postgres` of `hopboxd run` starts no Postgres. It reads `postgres.ca_file` and `postgres.password_file`, and logs `using the external postgres` at level info, with `url`, the URL without its query, and `ca_file` ([hopboxd](/reference/hopboxd/index.html.md#run)). A file that fails a check stops the start.
 - The connection pool, the connection of the leader election, and the connection of the event subscriber connect over TCP with TLS and `sslmode=verify-full`. The client checks that the CA of `postgres.ca_file` signed the certificate of the server, and that the certificate names the host of `postgres.url`. The client sends the password only after that check. A failed check stops the unit `store`, and `hopboxd run` exits with status 1.
 - No `<data_dir>/pg`, no `<run_dir>/pg`, and no OS user `hopbox-pg` exist. `hopboxd install` makes none of them, and runs no `initdb` ([hopboxd](/reference/hopboxd/index.html.md#install)).
+- No role `hopbox_monitor` exists. An operator who runs postgres_exporter makes a role of their own on the external Postgres (Q154).
 - `hopboxd install` reads the schema version from the external Postgres. A database without the table `schema_migrations` counts as a new control store, so the install needs `--domain`.
 - The upgrades of Postgres and its failover are the job of the operator. After a failover, the connections end. The pool connects again for the next call. The leader election loses its lock with its connection, and takes part again. The event subscriber connects again and reads the events that it missed.
 
