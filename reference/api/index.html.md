@@ -217,6 +217,7 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `machine.exec` | `MachineService.Exec`, `Upload`, `Download`, `StreamMachineLogs`, and the WebSocket `/api/ws/exec` | the machine | as for `machine.start` |
 | `machine.ssh` | an SSH connection through the front door, in `EdgeService.AuthorizeSSH` ([the SSH front door](/reference/ssh-front-door/index.html.md#who-opens-a-machine)) | the machine | an `ssh_key` of an account that uses the machine, as for `machine.exec`. No other caller kind. |
 | `machine.open_url` | `GET /auth/machine`, and `EdgeService.AuthorizeMachineRequest` for the account of a token ([the edge role](/reference/edge/index.html.md#private-machine-urls)) | the machine | a `session` of an account that uses the machine, as for `machine.start`. No other caller kind. |
+| `grafana.open` | `GET /auth/grafana`, the trade of its code, and each request of the Grafana host ([the edge role](/reference/edge/index.html.md#the-grafana-host)) | the install | a `session` of an instance admin whose sign-in is at most 1 hour old ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#the-grafana-host)). No other caller kind. |
 | `machine.list_all` | admin `MachineService.ListMachines` | the install | `local_root`, `admin_key`, an admin `session` |
 | `machine.admin_stop` | admin `MachineService.StopMachine` | the install | `local_root`, `admin_key`, an admin `session` |
 | `machine.admin_delete` | admin `MachineService.DeleteMachine` | the install | `local_root`, `admin_key`, an admin `session` |

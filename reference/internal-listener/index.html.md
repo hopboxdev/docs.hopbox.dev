@@ -132,14 +132,15 @@ The messages and the errors are in [the control channel](/reference/control-chan
 
 ## Forwarded requests
 
-The edge servers forward the requests of the domain of the install to this listener, over the mutual TLS of their server certificates ([the edge role](/reference/edge/index.html.md#forwarded-requests)). Each forwarded request carries the header `Hopbox-Client-Addr` with the address of the client, `IP:port`. The edge sets the header on each request, over any value that the client sent.
+The edge servers forward two kinds of requests to this listener: the requests of the domain of the install, and the requests of the Grafana host. They use the mutual TLS of their server certificates ([the edge role](/reference/edge/index.html.md#forwarded-requests)). Each forwarded request carries the header `Hopbox-Client-Addr` with the address of the client, `IP:port`. The edge sets the header on each request, over any value that the client sent. A request of the Grafana host also carries the marker `Hopbox-Forward-Target: grafana`. The edge deletes any value of the marker that a client sent, on each host.
 
-The listener splits the requests by this header:
+`api.SplitForwarded` splits the requests by these headers:
 
-- A request without the header reaches the cluster API, as in [Callers](#callers).
-- A request with the header reaches the public API and the admin API, as on the API listener ([the API server](/reference/api/index.html.md)). The plain HTTP routes under `/auth/` and the WebSocket of exec are there too. So a forwarded request never reaches the cluster API with the certificate of the edge server.
+- A request without `Hopbox-Client-Addr` reaches the cluster API, as in [Callers](#callers). The marker alone changes nothing.
+- A request with `Hopbox-Client-Addr` and `Hopbox-Forward-Target: grafana` reaches the handler of the Grafana host ([the edge role](/reference/edge/index.html.md#the-grafana-host)). The API listener does not serve this host.
+- Any other request with `Hopbox-Client-Addr` reaches the public API and the admin API, as on the API listener ([the API server](/reference/api/index.html.md)). The plain HTTP routes under `/auth/` and the WebSocket of exec are there too. So a forwarded request never reaches the cluster API with the certificate of the edge server.
 
-Before it serves a forwarded request, the listener checks the certificate of its connection. The certificate must pass the checks of [Enrollment and the install PKI](/reference/enrollment/index.html.md#client-certificates-on-each-call). It must also carry the role `edge`, under the policy action `server.forward_requests`. The listener keeps a passed check for 5 s, by the serial of the certificate. So each request does not cost a read of the control store. It keeps at most 1024 checks. So a decommission or a retired certificate stops the forwards within 5 s. Then the address of the header becomes the peer of the request, and the header goes. The request gate, the rate limits, and the logs see the address of the client. The credentials of the request, such as the session cookie or an API key, prove its caller. The certificate of the edge server proves no caller. Only this check trusts a client address: no listener reads `X-Forwarded-For`.
+The listener takes the marker under the same proof as the address of the client, because the check below comes first. Before it serves a forwarded request, the listener checks the certificate of its connection. The certificate must pass the checks of [Enrollment and the install PKI](/reference/enrollment/index.html.md#client-certificates-on-each-call). It must also carry the role `edge`, under the policy action `server.forward_requests`. The listener keeps a passed check for 5 s, by the serial of the certificate. So each request does not cost a read of the control store. It keeps at most 1024 checks. So a decommission or a retired certificate stops the forwards within 5 s. Then the address of the header becomes the peer of the request, and both headers go. The request gate, the rate limits, and the logs see the address of the client. The credentials of the request, such as the session cookie or an API key, prove its caller. The certificate of the edge server proves no caller. Only this check trusts a client address: no listener reads `X-Forwarded-For`.
 
 | Status | Body | Cause |
 | --- | --- | --- |
@@ -147,7 +148,7 @@ Before it serves a forwarded request, the listener checks the certificate of its
 | 503 | `the server failed to check the credential. Retry later` | The check of the certificate failed, for example on a failure of the control store. The listener logs `forwarded request check failed` at level error, with `peer` and `err`. |
 | 400 | `the header Hopbox-Client-Addr must hold one IP:port` | The header has more than one value, or a value that is not an IP address and a port. |
 
-The forwarded requests get the label `listener="edge"` in the metrics of the API. Each forwarded call also gets the access log record `api call` ([the API server](/reference/api/index.html.md#logs)).
+The forwarded requests get the label `listener="edge"` in the metrics of the API. Each forwarded call also gets the access log record `api call` ([the API server](/reference/api/index.html.md#logs)). A request of the Grafana host is no API call. It counts only in `hopbox_http_requests_total`, with the same label ([Metrics](/reference/metrics/index.html.md)).
 
 ## Examples
 

@@ -152,6 +152,8 @@ A machine name is the first label of the machine URL, such as `box1` in `box1.ex
 | `xn--bx-0ia` | `invalid name: the machine name "xn--bx-0ia" must not have "--" in the third and fourth places` |
 | `ns1` | `reserved machine name: "ns1"` |
 
+A create and a rename also refuse the new name `grafana`, with `ValidateNewMachineName` and the error `reserved machine name: "grafana"`. The Grafana host of the install uses this name ([the edge role](/reference/edge/index.html.md#the-grafana-host)). A machine that already holds the name keeps it. Lookups and routes use `ValidateMachineName`, so its owner can still stop, rename, or delete it.
+
 A create and a rename also refuse a new name that looks like a credential, with `ValidateNewMachineName`. The check uses the patterns of the audit log ([Control store tables](/reference/control-store/index.html.md#record-an-entry)), in `LooksLikeCredential`. A machine name is public. It is in the machine URL, in DNS, and in the audit entry of the create or the rename. Examples are `xoxb-` with 10 more digits, which has the form of a Slack token, and `dev-sk-proj-` with 20 more letters.
 
 | Name | Result |

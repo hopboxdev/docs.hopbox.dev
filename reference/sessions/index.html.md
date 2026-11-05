@@ -1,8 +1,8 @@
 # Sessions, cookies, and sign-in links
 
-> The session cookie, the lifetimes, the check against cross-site requests, the magic links and login links, what a sign-in does, the sign-up modes, the limits of new accounts, the pending accounts, and the rate limits.
+> The session cookie, the lifetimes, the check against cross-site requests, the cookie and the window of the Grafana host, the magic links and login links, what a sign-in does, the sign-up modes, the limits of new accounts, the pending accounts, and the rate limits.
 
-A person signs in to the console of an install with a magic link, with GitHub, or with Google. On the first day, the first instance admin signs in with a first-admin login link. A sign-in starts a session, and a cookie holds the session in the browser. This page gives the cookie, the lifetimes, the check against cross-site requests, and the recent sign-in. It also gives the form of the links, the sign-up modes, the pending accounts, the link of a new sign-in method, and the rate limits. [The sign-in, account, and audit API](/reference/auth-api/index.html.md) lists the calls. [Sign-in with GitHub and Google](/reference/oauth/index.html.md) covers the sign-in with GitHub and Google. [CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md) covers the credentials of the hopbox CLI, scripts, and SSH clients. The code is in `internal/auth`, `internal/service`, and `internal/api`.
+A person signs in to the console of an install with a magic link, with GitHub, or with Google. On the first day, the first instance admin signs in with a first-admin login link. A sign-in starts a session, and a cookie holds the session in the browser. This page gives the cookie, the lifetimes, the check against cross-site requests, the recent sign-in, and the cookie of the Grafana host. It also gives the form of the links, the sign-up modes, the pending accounts, the link of a new sign-in method, and the rate limits. [The sign-in, account, and audit API](/reference/auth-api/index.html.md) lists the calls. [Sign-in with GitHub and Google](/reference/oauth/index.html.md) covers the sign-in with GitHub and Google. [CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md) covers the credentials of the hopbox CLI, scripts, and SSH clients. The code is in `internal/auth`, `internal/service`, and `internal/api`.
 
 ## Lifetimes
 
@@ -10,12 +10,15 @@ A person signs in to the console of an install with a magic link, with GitHub, o
 | --- | --- | --- | --- |
 | Session | 30 days after the sign-in. After 7 days without a call, it ends before that. | many calls | A phase 1 default |
 | Recent sign-in of a session | 10 minutes after the sign-in | the calls that need it, such as the Admin area of the console ([Recent sign-in](#recent-sign-in)) | A phase 2 default |
+| Grafana window of a session | 1 hour after the sign-in | the Grafana host ([The Grafana host](#the-grafana-host)) | Q161 of the abuse plan |
 | Magic link | 15 minutes | once | the same |
 | First-admin login link | 15 minutes | once | the same |
 | Flow of a sign-in with GitHub or Google | 10 minutes | once | [Sign-in with GitHub and Google](/reference/oauth/index.html.md#start) |
 | Invitation to an org | 7 days | once | [The org API](/reference/org-api/index.html.md#invitations) |
 | Code of a private machine URL | 60 seconds | once | [The edge role](/reference/edge/index.html.md#private-machine-urls) |
 | Token of a private machine URL, in the cookie `__Host-hopbox_machine` | as long as the session that made it | many requests | [The edge role](/reference/edge/index.html.md#private-machine-urls) |
+| Code of the Grafana host | 60 seconds | once | [The edge role](/reference/edge/index.html.md#the-grafana-host) |
+| Token of the Grafana host, in the cookie `__Host-hopbox_grafana` | the shortest of three: 1 hour after the sign-in, the end of the session that made it, and the delete of its row | many requests | [The edge role](/reference/edge/index.html.md#the-grafana-host) |
 
 All times use the clock of Postgres. A session records its last use at most once per minute, so the idle time of 7 days is exact to one minute. In maintenance mode, a session records no use ([the API server](/reference/api/index.html.md#maintenance-mode)). Only a call that passes the check against cross-site requests records a use ([Calls with the cookie](#calls-with-the-cookie)).
 
@@ -42,7 +45,7 @@ Set-Cookie: __Host-hopbox_session=<token>; Path=/; Expires=<end>; Max-Age=<secon
 | `Secure` | set | The browser sends the cookie only over HTTPS. |
 | `SameSite` | `Lax` | The browser sends the cookie with a link from another site, but not with a form post or a script call from another site. |
 
-`SignOut` and `DeleteAccount` clear the cookie with `Max-Age=0`. They also end the private machine URLs of the session: the delete of the session deletes their tokens, and the edge servers check each URL again ([the edge role](/reference/edge/index.html.md#private-machine-urls)). A browser sends a cookie on its own, also after its session ended. So a cookie that names no live session counts as no cookie, and the response clears it. A stale cookie thus never blocks the next sign-in.
+`SignOut` and `DeleteAccount` clear the cookie with `Max-Age=0`. They also end the private machine URLs of the session: the delete of the session deletes their tokens, and the edge servers check each URL again ([the edge role](/reference/edge/index.html.md#private-machine-urls)). The delete of the session also ends the Grafana host of the session at its next request ([The Grafana host](#the-grafana-host)). A browser sends a cookie on its own, also after its session ended. So a cookie that names no live session counts as no cookie, and the response clears it. A stale cookie thus never blocks the next sign-in.
 
 ## Calls with the cookie
 
@@ -99,6 +102,28 @@ Only the refusal of an old session has the detail. So a client knows from the de
 To get a recent sign-in, the person signs in again in the same browser. The new sign-in ends the old session of that browser and starts a new one ([What a sign-in does](#what-a-sign-in-does)). The sessions of the account in other browsers stay. The console shows the sign-in page for this with `/signin?again=1` ([Console](/reference/console/index.html.md#sign-in)).
 
 The policy check enforces the rule for the admin API and for `ListAuditEntries` ([the API server](/reference/api/index.html.md#callers-and-policy)). Their rules allow the session of an instance admin only with a recent sign-in. A rule can refuse a session with an older sign-in, and allow the same session with a recent one. In that case, `policy.Authorize` returns the error of this section. `ApproveDevice`, `RequestMagicLink` with `link`, and the start of a link with GitHub or Google call `service.RequireRecentSignIn` after their policy check. Both checks refuse only a session with an older sign-in, so an admin key and local root keep the calls that their policy allows.
+
+## The Grafana host
+
+The Grafana host `grafana.<domain>` has its own cookie, because the browser never sends the session cookie to another host ([the edge role](/reference/edge/index.html.md#the-grafana-host)). The trade of a one-time code sets it:
+
+```text
+Set-Cookie: __Host-hopbox_grafana=<token>; Path=/; Secure; HttpOnly; SameSite=Lax
+```
+
+When the browser closes, the cookie ends, because it has no `Max-Age`. It opens only this host, and no API call takes it. The edge drops it from the requests to a machine. On the server, its token dies with the session that made it. A sign-out, a new sign-in, a suspend, and the delete of an account each end the token.
+
+The host has a longer window than a recent sign-in. The policy action `grafana.open` needs the session of an instance admin whose sign-in is at most 1 hour old ([the API server](/reference/api/index.html.md#callers-and-policy)). The handler reads the time of the sign-in with the clock of Postgres on each request, and keeps no answer. So a revoke or a sign-out acts at the next request.
+
+| Age of the sign-in | Admin API call | Grafana host |
+| --- | --- | --- |
+| At most 10 minutes | The call goes on. | The request goes on. |
+| More than 10 minutes, and at most 1 hour | `permission_denied` ([Recent sign-in](#recent-sign-in)) | The request goes on. |
+| More than 1 hour | `permission_denied` | A navigation goes to `/auth/grafana`. After the click on its page, it reads the console session. A console session of that age goes on to `/signin?again=1&return_to=/admin/overview`. Any other request gets `403 Forbidden` with JSON. |
+
+A use of Grafana does not extend the hour. Only a new sign-in does, and it ends the old session and its token. An admin key, a CLI token, and local root do not open the host.
+
+One session gets at most 30 codes in a minute. The next one gets `429 Too Many Requests`, and counts in `hopbox_rate_limited_total` with `limit="grafana_codes"` ([Metrics](/reference/metrics/index.html.md)).
 
 ## Magic links
 
@@ -303,4 +328,4 @@ A link of GitHub or Google needs no match between its email and the emails of th
 
 ## Sweep
 
-Every 10 minutes, the leader deletes the ended sessions. It also deletes the magic links, the login links, and the flows of GitHub and Google that are older than 24 hours ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). It deletes the codes of machine URLs that expired before their trade too. The delete of a session also deletes the tokens of the machine URLs that it made ([Control store tables](/reference/control-store/index.html.md#machine_url_sessions)). A link stays after its use for the rate limits. The same sweep deletes the ended CLI sign-ins and the old device sign-ins ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#sweep)).
+Every 10 minutes, the leader deletes the ended sessions. It also deletes the magic links, the login links, and the flows of GitHub and Google that are older than 24 hours ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). It deletes the codes of machine URLs and of the Grafana host that expired before their trade too. The delete of a session also deletes the tokens of the machine URLs and of the Grafana host that it made ([Control store tables](/reference/control-store/index.html.md#machine_url_sessions), [Control store tables](/reference/control-store/index.html.md#grafana_sessions)). A link stays after its use for the rate limits. The same sweep deletes the ended CLI sign-ins and the old device sign-ins ([CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#sweep)).

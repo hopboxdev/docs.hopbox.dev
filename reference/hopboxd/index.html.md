@@ -113,6 +113,8 @@ hopboxd --log-level=debug version
 | `admin maintenance on` | Turns maintenance mode of the install on, and waits until the writes, the control channels, and the leader jobs that ran have ended in every live control process. |
 | `admin maintenance off` | Turns maintenance mode of the install off. |
 | `admin db export` | Copies the control store of this server from the bundled Postgres to an empty external Postgres, in maintenance mode, and prints the config lines for it. |
+| `admin grafana-key set` | Makes a new key of the identity that `hopboxd` shows to Grafana, and writes its two files. |
+| `admin grafana-key clear` | Removes the private key of that identity, which closes the Grafana host. |
 | `version` | Prints the version of `hopboxd`. See [the version command](/reference/version/index.html.md). |
 | `stop-guest` | Shuts down the guest of a machine unit. systemd runs it as the `ExecStop` of the unit. The help does not list it. See [stop-guest](#stop-guest). |
 
@@ -2570,6 +2572,40 @@ Each error that leaves the install in maintenance mode ends with `The install st
 If the source must come back instead, run `hopboxd admin maintenance off` on it. Do not roll it back to a release older than schema version 44 while it is in maintenance mode: such a release does not know the flag and serves writes again.
 
 `make test` runs `TestExport` and `TestExportRefusals` of `internal/dbexport` against a TLS Postgres of the bundled install, whose user is no superuser ([the bundled Postgres](/reference/postgres/index.html.md#tests)). `TestExport` then runs the migrations, a write, a change event, and the leader election on the copy. `TestExportRefusals` covers a target with a table, a wrong CA, a URL without `verify-full`, a user that cannot create tables, and a failed dump, which keeps maintenance mode on and the target empty. `TestCompareMajor` covers the refusal of an older major version. The fleet test runs the export with live nodes.
+
+### admin grafana-key set
+
+```sh
+hopboxd admin grafana-key set [--public-key=PATH] [--json]
+```
+
+Makes a new Ed25519 key of the identity that `hopboxd` shows to Grafana ([the edge role](/reference/edge/index.html.md#what-grafana-gets)), and writes its two files. The private key goes to `grafana-identity.key`, with mode `0600`, next to the bootstrap config that `--config` of `hopboxd admin` names. The public key goes to `--public-key`, with mode `0644`, so the user of Grafana reads it. The command writes the public key first, so a failed write leaves no private key that Grafana does not trust.
+
+You run this command as root on the control server that runs Grafana. It reads no bootstrap config and calls no admin socket, so it works while `hopboxd` is down. It writes no audit entry, because root on a control server is outside the audit model. `hopboxd` reads the private key within a minute, with no restart. Grafana reads the public key only at its start, so you restart `grafana-server` after this command. A second `set` makes a new pair, and Grafana refuses the old one after its restart.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--public-key` | path | `/etc/grafana/hopbox-identity.pub` | The file of the public key that Grafana reads. Its dir must exist. |
+| `--json` | bool | `false` | Prints the two paths as one JSON object, with the fields `private_key_file` and `public_key_file`. |
+
+```text
+$ sudo hopboxd admin grafana-key set
+private key	/etc/hopbox/grafana-identity.key
+public key	/etc/grafana/hopbox-identity.pub
+Restart grafana-server, because Grafana reads the public key only at its start. hopboxd reads the private key within a minute.
+```
+
+### admin grafana-key clear
+
+```sh
+hopboxd admin grafana-key clear [--json]
+```
+
+Removes the private key, which closes the Grafana host within a minute. The command leaves the public key, because Grafana does not start without that file while its drop-in names it. Remove the drop-in first to take the host out ([Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/index.html.md)). A clear of a missing key succeeds, and prints `removed` as `false`.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--json` | bool | `false` | Prints the result as one JSON object, with the fields `private_key_file` and `removed`. |
 
 ### Errors of admin
 

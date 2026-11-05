@@ -50,7 +50,15 @@ The page "Accounts" starts with "Activity, last 24 h": the sign-ups, the new org
 
 A server with the node role and without the control role sends no sample, so its machines do not show on these pages yet. The Prometheus of the monitoring bundle does not see them either.
 
-The pages link to the dashboards of Grafana when the install config has the URL of Grafana. Set it on a control server, for example for the SSH tunnel of the monitoring bundle:
+When the install config has the URL of Grafana, the pages link to its dashboards. Set the URL on a control server. With the [Grafana host](/guide/monitor-an-install/index.html.md#8-turn-on-the-grafana-host), the URL is the host:
+
+```sh
+sudo hopboxd admin config set --grafana-url https://grafana.example.com
+```
+
+A link then opens a dashboard in your browser, without a tunnel and without a second password. It works for up to 1 hour after your sign-in, which is longer than the 10 minutes of the Admin area. After that hour, the link asks you to sign in again. The sign-in ends in the Admin area, so open the link again.
+
+Without the Grafana host, use the URL of the SSH tunnel of the monitoring bundle:
 
 ```sh
 sudo hopboxd admin config set --grafana-url http://127.0.0.1:3000

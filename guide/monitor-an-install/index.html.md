@@ -1,8 +1,8 @@
 # Monitor an install with Prometheus and Grafana
 
-> How to set up the monitoring bundle on the control server: Prometheus, Alertmanager, node_exporter, and Grafana from Debian packages, the alert token of the webhook to hopboxd, the outside check, a test alert, and what each alert means.
+> How to set up the monitoring bundle on the control server: Prometheus, Alertmanager, node_exporter, and Grafana from Debian packages, the alert token of the webhook to hopboxd, the outside check, a test alert, the Grafana host and its rollback, and what each alert means.
 
-This guide sets up the monitoring bundle on the control server of an install. The monitoring bundle is the set of files that hopbox ships for standard monitoring tools. Prometheus scrapes `hopboxd` and node_exporter, and runs the alert rules. Alertmanager sends each alert to the alert webhook of `hopboxd`, which makes a notice for each instance admin and emails them through the mail of the install ([Metrics](/reference/metrics/index.html.md#alert-webhook)). Alertmanager sends the alert `Watchdog` to an outside check. Grafana shows the dashboards D1 to D8, and it is optional.
+This guide sets up the monitoring bundle on the control server of an install. The monitoring bundle is the set of files that hopbox ships for standard monitoring tools. Prometheus scrapes `hopboxd` and node_exporter, and runs the alert rules. Alertmanager sends each alert to the alert webhook of `hopboxd`, which makes a notice for each instance admin and emails them through the mail of the install ([Metrics](/reference/metrics/index.html.md#alert-webhook)). Alertmanager sends the alert `Watchdog` to an outside check. Grafana shows the dashboards D1 to D8, and it is optional. An instance admin opens Grafana through an SSH tunnel, or at its own host `grafana.<domain>`.
 
 The tools come from Debian packages. hopbox does not run them or upgrade them. Each tool listens on a loopback address only, as the metrics listener of `hopboxd` does ([Metrics](/reference/metrics/index.html.md#listener)):
 
@@ -41,6 +41,7 @@ The release bundle carries the files under `/opt/hopbox/current/monitoring` ([Re
 | `postgres-exporter/prometheus-postgres-exporter` | `/etc/default/prometheus-postgres-exporter`, for [postgres_exporter](#add-postgres_exporter) |
 | `scrape-configs/postgres.yml` | `/etc/prometheus/scrape-configs/postgres.yml`, for [postgres_exporter](#add-postgres_exporter) |
 | `grafana/grafana-server.conf` | `/etc/systemd/system/grafana-server.service.d/hopbox.conf` |
+| `grafana/grafana-host.conf` | `/etc/systemd/system/grafana-server.service.d/hopbox-host.conf`, for [the Grafana host](#8-turn-on-the-grafana-host) |
 | `grafana/provisioning/datasources/hopbox.yml` | `/etc/grafana/provisioning/datasources/hopbox.yml` |
 | `grafana/provisioning/dashboards/hopbox.yml` | `/etc/grafana/provisioning/dashboards/hopbox.yml` |
 | `grafana/hopbox-*.json` | `/var/lib/grafana/dashboards/hopbox/` |
@@ -191,7 +192,9 @@ apt-get install grafana=13.3.0
 apt-mark hold grafana
 ```
 
-`apt-mark hold` keeps `apt-get upgrade` from a move to a new Grafana. Copy the files of the bundle, and start Grafana:
+`apt-mark hold` keeps `apt-get upgrade` from a move to a new Grafana, so a security fix of Grafana does not reach the server by itself. The owner of hopbox reads the Grafana advisories at each hopbox release, and moves the pin. The same check reads whether Safari sends `Sec-Purpose` yet, or turned on speculation rules by default ([the edge role](/reference/edge/index.html.md#requests-of-other-sites)). A new pin goes with a rerun of `make check-grafana` and `make test-grafana-browser`. A new Grafana version can change the paths that the [Grafana host](#8-turn-on-the-grafana-host) needs.
+
+Copy the files of the bundle, and start Grafana:
 
 ```sh
 m=/opt/hopbox/current/monitoring
@@ -213,7 +216,7 @@ read -rs password && printf '%s\n' "$password" | grafana cli --homepath /usr/sha
 
 ## 7. Open Grafana through an SSH tunnel
 
-Grafana listens on loopback, so you reach it through SSH. On your computer, open a tunnel to the control server:
+Grafana listens on loopback, so you reach it through SSH, or at [the Grafana host](#8-turn-on-the-grafana-host). When `hopboxd` is down, the SSH tunnel at `http://127.0.0.1:3000/` stays the way in, with the login form of Grafana. The tunnel depends on no part of `hopboxd`. On your computer, open a tunnel to the control server:
 
 ```sh
 ssh -L 3000:127.0.0.1:3000 root@control1.example.org
@@ -272,11 +275,90 @@ Each server serves `hopbox_edge_certificate_not_after_seconds` and `hopbox_egres
 
 The counts of D4 read 0 before the first event, while a control process answers. If its scrape keeps failing for about 45 seconds, or a recording rule fails for that time, they read "No data". So "No data" on D4 means that the count is unknown, and 0 means that no event happened. "Nodes" of D1 and "Free vCPUs" of D2 read 0 on an install without a node, and "No data" while the leader serves no stats, as in maintenance mode.
 
-The pages "Overview", "Capacity", "Machines", and "Accounts" of the Admin area can link to these dashboards. For the links, set the URL of Grafana in the install config on a control server ([Use the Admin area](/guide/admin-area/index.html.md)). For the tunnel above, the URL is `http://127.0.0.1:3000`:
+The pages "Overview", "Capacity", "Machines", and "Accounts" of the Admin area can link to these dashboards. For the links, set the URL of Grafana in the install config on a control server ([Use the Admin area](/guide/admin-area/index.html.md)). For the tunnel above, the URL is `http://127.0.0.1:3000`. Step 8 of [the Grafana host](#8-turn-on-the-grafana-host) sets the URL of the host instead.
 
 ```sh
 sudo hopboxd admin config set --grafana-url http://127.0.0.1:3000
 ```
+
+## 8. Turn on the Grafana host
+
+The Grafana host `grafana.<domain>` opens Grafana in the browser of an instance admin, after a sign-in on the console. It needs no tunnel and no second password ([the edge role](/reference/edge/index.html.md#the-grafana-host)). It is optional. Grafana stays on loopback. The wildcard certificate and the wildcard DNS record of the install cover the host, so no certificate, DNS record, or port changes. `hopboxd` needs no restart. Until this server has the key, the host answers `404` to an instance admin.
+
+Grafana works on one control server only (Q163 of the abuse plan). The edge servers send the requests in turn to each control server. So a control server without the key answers `404` on its share.
+
+Pick your case:
+
+- A new install: run the steps below after section 7. A new machine cannot take the name `grafana`, so step 1 finds no such machine.
+- An existing install: first upgrade `hopboxd`, and follow [After an upgrade of hopboxd](#after-an-upgrade-of-hopboxd). A machine can hold the name from an earlier release. That machine keeps its URL, and the host stays off on this install until the machine is renamed or deleted. Until then, `https://example.com/auth/grafana` answers `409 Conflict`, and the host serves that machine.
+
+Run these steps in this order:
+
+1. Make sure that no machine holds the name. The second column of the output must not show `grafana`. If it does, the owner of that machine renames it or deletes it first.
+
+   ```sh
+   hopboxd admin machine list
+   ```
+
+2. Make sure that DNS and the certificate serve the host. `dig` prints the public addresses of the install. `curl` prints `303`.
+
+   ```sh
+   dig +short grafana.example.com
+   curl -s -o /dev/null -w '%{http_code}\n' https://grafana.example.com/
+   ```
+
+3. Make the key. `ls` must show the public key before the next step, because Grafana does not start without that file while the drop-in names it.
+
+   ```sh
+   hopboxd admin grafana-key set
+   ls -l /etc/grafana/hopbox-identity.pub
+   ```
+
+4. Copy the drop-in, and restart Grafana.
+
+   ```sh
+   install -m 0644 /opt/hopbox/current/monitoring/grafana/grafana-host.conf /etc/systemd/system/grafana-server.service.d/hopbox-host.conf
+   systemctl daemon-reload
+   systemctl restart grafana-server
+   ```
+
+5. Make sure that Grafana stays on loopback and refuses a forged header. `ss` must show `127.0.0.1`, and the last `curl` must print `401`.
+
+   ```sh
+   until curl -fs http://127.0.0.1:3000/api/health >/dev/null; do sleep 1; done
+   ss -ltn | grep ':3000 '
+   curl -s -o /dev/null -w '%{http_code}\n' -H 'X-Hopbox-Identity: admin' http://127.0.0.1:3000/api/user
+   ```
+
+6. Make sure that the tunnel still works. Open it as in [section 7](#7-open-grafana-through-an-ssh-tunnel), go to `http://127.0.0.1:3000/`, and sign in as `admin` with the password of section 6.
+
+7. Sign in on the console, open `https://grafana.example.com/`, click the link on the page that opens, and open the dashboards D1 to D8.
+
+8. Set the links of the console. They then open `https://grafana.example.com/d/hopbox-overview` and the other dashboards. A change of the domain needs a new URL here.
+
+   ```sh
+   hopboxd admin config set --grafana-url https://grafana.example.com
+   ```
+
+A link in the Admin area opens Grafana with one click. A typed address or a bookmark takes one more click when the cookie of the host is gone: a small page holds one link, and the click on it opens the path that you asked for. A browser that sends no `Sec-Fetch-Site`, such as Safari before 16.4, cannot open the host. Use the SSH tunnel there.
+
+A tab of Grafana works for up to 1 hour after your sign-in. Each request reads the session, so a revoke or a sign-out acts at the next request. After the hour, a reload asks you to sign in again. The sign-in ends in the Admin area, so open the link again. Prometheus and Alertmanager stay behind the tunnel.
+
+### Roll back the Grafana host
+
+Run these commands in this exact order.
+
+```sh
+hopboxd admin config set --grafana-url http://127.0.0.1:3000
+rm /etc/systemd/system/grafana-server.service.d/hopbox-host.conf
+systemctl daemon-reload
+systemctl restart grafana-server
+hopboxd admin grafana-key clear
+```
+
+Warning: a clear of the public key while the drop-in exists stops Grafana, and you lose the tunnel too. `hopboxd admin grafana-key clear` removes only the private key, and leaves the file `/etc/grafana/hopbox-identity.pub`. Do not remove that file before the drop-in.
+
+Grafana then runs as it did before step 4. The host answers `404` to an instance admin. The table `grafana_sessions` and the user `hopbox` in the database of Grafana stay, and they do nothing.
 
 ## Add postgres_exporter
 
@@ -373,7 +455,9 @@ An upgrade of `hopboxd` does not copy the files of the bundle. The rules of a re
 
 6. If step 1 showed a change in a file of `/etc/default/`, restart that tool. A reload does not read the arguments. For example, run `systemctl restart prometheus` after a change of `/etc/default/prometheus`.
 
-7. If you run Grafana, copy the Grafana files of step 6 again, then run `systemctl daemon-reload` and `systemctl restart grafana-server`.
+7. If you run Grafana, copy the Grafana files of step 6 again. If this server has the Grafana host on, also copy `grafana-host.conf` as in step 4 of [section 8](#8-turn-on-the-grafana-host). Do not copy it to a server without the public key, because Grafana then does not start. Then run `systemctl daemon-reload` and `systemctl restart grafana-server`.
+
+8. An upgrade does not turn on the Grafana host. To turn it on, follow [section 8](#8-turn-on-the-grafana-host).
 
 ## Change a rule
 

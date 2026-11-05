@@ -1,6 +1,6 @@
 # The edge role
 
-> The edge role: its listeners, TLS, routing, and forwarded requests. Also the machine URLs, their sign-in, EdgeService, metrics, and logs.
+> The edge role: its listeners, TLS, routing, and forwarded requests. Also the machine URLs, their sign-in, the Grafana host, EdgeService, metrics, and logs.
 
 The network redesign of 2026-10-27 changes this page. hopbox leaves the vRack and the OVHcloud API, and the servers talk over their public addresses (Q90). This page still describes the current code. Milestones N26 to N32 change the code and this page. Before you set up a fleet on the vRack, read Q90.
 
@@ -120,6 +120,7 @@ The edge role routes each HTTPS request by its host. The host is the `Host` head
 | Method `CONNECT` | `405 Method Not Allowed`. The edge role is not a proxy. |
 | Host `example.com`, path under `/hopbox.cluster.v1.` | `404 Not Found`. The cluster API is only for the servers of the install, on the internal listener. |
 | Host `example.com` | Forwarded to the control role ([Forwarded requests](#forwarded-requests)). |
+| Host `grafana.example.com`, while no machine holds the name `grafana` | Forwarded to the control role with `Hopbox-Forward-Target: grafana` ([The Grafana host](#the-grafana-host)). |
 | Host `<name>.example.com` | The machine `<name>` ([Machine URLs](#machine-urls)). |
 | Any other host under the domain, such as `sub.box1.example.com` | `404 Not Found`. Subdomain routes come in phase 4. |
 
@@ -135,13 +136,14 @@ The HTTP listener answers each request for the domain or a name under it with `3
 
 ## Forwarded requests
 
-The edge role forwards each request of the domain to the internal listeners of the control servers ([the internal listener](/reference/internal-listener/index.html.md#forwarded-requests)). It uses the dial order of the control channel: the URLs of the live control servers that the control role sent and the server keeps, then the URLs of `channel.control_urls` of the bootstrap config that are not among them ([the control channel](/reference/control-channel/index.html.md#control-urls)). Each new list of the control role replaces the order at once. A control server that stays in the order keeps its skip. It sends the requests to the live control servers in turn, one request after the other. It tries the other URLs of `channel.control_urls` in order after them, as fallbacks. Without a list from the control role, it sends the requests to the URLs of `channel.control_urls` in turn. Its `EdgeService` calls, such as the machine URL sign-in and the checks of the SSH front door, go the same way. A request that got no connection, because a dial or the TLS handshake failed, goes to the next control server with its body unread. The edge role then skips that control server for 10 s, so the next requests try the others first. A request that reached a control server and failed before its answer came does not go again, but the edge skips that control server for 10 s too. The HTTP/2 transport of the edge sends a request again on a new connection to the same control server when that server ended the old connection with GOAWAY before it took the request. A request with a body goes again too, while no try read its body. A request whose client went away, or whose deadline ended, marks no control server and goes to no other one. A short deadline of a caller says nothing of the control server. A dead control server still gets skipped: its connection fails the ping within 10 s, and a new dial to it fails within 3 s. A new connection to a control server has 3 s for its dial and 3 s for its TLS handshake: a dial to the peer address of a control server takes a few round trips of the internet, so a slower one is gone, and the request goes on to the next control server well within the deadline of its call. A control server that died hard leaves its HTTP/2 connection half open. So the edge pings a connection to a control server that sent nothing for 5 s, and closes it when the answer does not come within 5 s. The requests on it then fail, and the next requests go to the others. This covers Connect, gRPC, gRPC-Web, streams in both directions, trailers, the sign-in pages under `/auth/`, and the WebSocket of exec (`/api/ws/exec`). The end of the answer of the control server that took the request also ends the body of the request. So a stream whose answer ended, such as an exec at the exit of its command, ends while its client still holds its side of the stream open. The admin API is public behind the edge too, for admin API keys.
+The edge role forwards each request of the domain and of the Grafana host to the internal listeners of the control servers ([the internal listener](/reference/internal-listener/index.html.md#forwarded-requests)). It uses the dial order of the control channel: the URLs of the live control servers that the control role sent and the server keeps, then the URLs of `channel.control_urls` of the bootstrap config that are not among them ([the control channel](/reference/control-channel/index.html.md#control-urls)). Each new list of the control role replaces the order at once. A control server that stays in the order keeps its skip. It sends the requests to the live control servers in turn, one request after the other. It tries the other URLs of `channel.control_urls` in order after them, as fallbacks. Without a list from the control role, it sends the requests to the URLs of `channel.control_urls` in turn. Its `EdgeService` calls, such as the machine URL sign-in and the checks of the SSH front door, go the same way. A request that got no connection, because a dial or the TLS handshake failed, goes to the next control server with its body unread. The edge role then skips that control server for 10 s, so the next requests try the others first. A request that reached a control server and failed before its answer came does not go again, but the edge skips that control server for 10 s too. The HTTP/2 transport of the edge sends a request again on a new connection to the same control server when that server ended the old connection with GOAWAY before it took the request. A request with a body goes again too, while no try read its body. A request whose client went away, or whose deadline ended, marks no control server and goes to no other one. A short deadline of a caller says nothing of the control server. A dead control server still gets skipped: its connection fails the ping within 10 s, and a new dial to it fails within 3 s. A new connection to a control server has 3 s for its dial and 3 s for its TLS handshake: a dial to the peer address of a control server takes a few round trips of the internet, so a slower one is gone, and the request goes on to the next control server well within the deadline of its call. A control server that died hard leaves its HTTP/2 connection half open. So the edge pings a connection to a control server that sent nothing for 5 s, and closes it when the answer does not come within 5 s. The requests on it then fail, and the next requests go to the others. This covers Connect, gRPC, gRPC-Web, streams in both directions, trailers, the sign-in pages under `/auth/`, and the WebSocket of exec (`/api/ws/exec`). The end of the answer of the control server that took the request also ends the body of the request. So a stream whose answer ended, such as an exec at the exit of its command, ends while its client still holds its side of the stream open. The admin API is public behind the edge too, for admin API keys.
 
 | Item | Value |
 | --- | --- |
 | Transport | Mutual TLS 1.3 with the server certificate of the edge server, against the install CA. HTTP/2 for every request but a WebSocket upgrade, which uses HTTP/1.1, because HTTP/2 cannot carry it. |
 | Host | The host of the client request, such as `example.com`. |
 | `Hopbox-Client-Addr` | The address of the client, `IP:port`. The edge role sets it over any value that the client sent. |
+| `Hopbox-Forward-Target` | `grafana` on a request of the Grafana host ([The Grafana host](#the-grafana-host)). On any other host, the request does not carry it. The edge role deletes any value that the client sent. |
 | `X-Forwarded-For` | The IP address of the client alone. The edge role drops the value that the client sent. |
 | `X-Forwarded-Host`, `X-Forwarded-Proto` | The host of the request, and `https`. |
 | `Forwarded` | Dropped. |
@@ -151,7 +153,7 @@ The edge role forwards each request of the domain to the internal listeners of t
 
 The header `Hopbox-Not-Run: 1` tells a client that the call changed nothing, so the client can retry it ([the API server](/reference/api/index.html.md#answers-of-calls-that-changed-nothing)). The refusals of the bounds of open requests carry it too ([Listeners](#listeners)).
 
-The control role trusts `Hopbox-Client-Addr` only on a connection whose certificate proves a server with the edge role. The rate limits of sign-in then count each client by its own address ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#rate-limits)).
+The control role trusts `Hopbox-Client-Addr` and `Hopbox-Forward-Target` only on a connection whose certificate proves a server with the edge role ([the internal listener](/reference/internal-listener/index.html.md#forwarded-requests)). The rate limits of sign-in then count each client by its own address ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#rate-limits)).
 
 ## Machine URLs
 
@@ -182,7 +184,7 @@ The edge role forwards a request to `http://<address>:<url port>` over HTTP/1.1,
 | Host | The machine host, such as `box1.example.com`. |
 | `X-Forwarded-For` | The IP address of the client alone. |
 | `X-Forwarded-Host`, `X-Forwarded-Proto` | The machine host, and `https`. |
-| `Forwarded`, `Hopbox-Client-Addr` | Dropped. Only the control role reads `Hopbox-Client-Addr`. |
+| `Forwarded`, `Hopbox-Client-Addr`, `Hopbox-Forward-Target` | Dropped. Only the control role reads `Hopbox-Client-Addr` and `Hopbox-Forward-Target`. |
 | `Cookie` | Each cookie of the client, except the cookies of hopbox: every name that starts with `__Host-hopbox_`, in any case. The other cookies stay as the client sent them. |
 | WebSocket | An upgrade over HTTP/1.1 passes. |
 | Answer header | At most 64 KiB. |
@@ -261,6 +263,8 @@ The machine hosts of an install share one site, such as `example.com`. A browser
 - A WebSocket upgrade needs no `Origin`, or the origin `https://<machine host>`. A browser always sends the origin of its page with a WebSocket.
 - `/__hopbox/auth` takes only a top-level navigation by `GET`. A request with another `Sec-Fetch-Mode` gets `405 Method Not Allowed`, so a page cannot plant a cookie with a code of its own.
 
+- A prefetch or a prerender of speculation rules is no navigation, because no person asked for it. Chromium sends it with the headers of a navigation, `Sec-Fetch-Site: none` or `same-site`, and the Lax cookie. The header `Sec-Purpose`, or the older `Purpose`, names it with `prefetch` or `prerender`. Such a request counts as a request without a machine cookie, and it starts no sign-in. So a page of a machine cannot use up the codes of a person or write in the name of that person. Chromium names the prefetch that a machine page makes of its own pages `none` too, so that prefetch gets `401`, and only speed changes, because the real click works. Safari sends no `Sec-Purpose`, and MDN records speculation rules prefetch in Safari 26.2 behind a preference. If Safari turns that on by default without the header, this rule does not hold there.
+
 A request from the page of the machine itself has `Sec-Fetch-Site: same-origin`, and uses the cookie. A client without fetch metadata, such as curl, also uses it.
 
 ### Answers of `/auth/machine`
@@ -275,8 +279,142 @@ A request from the page of the machine itself has `Sec-Fetch-Site: same-origin`,
 | An account that sees the machine, but does not use it, such as an org admin on a private machine of another member | `403 Forbidden` |
 | More than 30 codes of the session in a minute | `429 Too Many Requests` |
 | The org of the machine is suspended, or the install has no domain | `409 Conflict` |
+| A request that is not a top-level navigation, such as a prefetch, a frame, or a fetch | `403 Forbidden`, and no code |
 
 The answer is a plain text page with the reason and the request ID.
+
+## The Grafana host
+
+The host `grafana.<domain>` serves Grafana to an instance admin. The wildcard certificate and the wildcard DNS record of the install already cover the host, so no certificate, DNS record, or port changes. The owner decided the host in Q162 of the abuse plan.
+
+The edge role keeps no sign-in state for this host. It forwards each request to a control server, over the same mTLS connection as the API, with `Hopbox-Forward-Target: grafana`. It deletes any value of that header that a client sent, on each host. The control role trusts the header under the same proof as `Hopbox-Client-Addr` ([Listeners](#listeners)). The API listener on `127.0.0.1:7080` does not serve this host. A separate host keeps Grafana out of the console origin, so a script bug in Grafana cannot use the console session.
+
+If a machine holds the name `grafana`, it keeps its URL, and the host serves that machine. No new machine takes the name ([Domain rules](/reference/domain-rules/index.html.md)). While a machine holds the name, `/auth/grafana` answers `409 Conflict`, so a browser never carries a code to machine code. A rename or a delete ends the route of the machine, and the host then serves Grafana. This is Q165.
+
+The sign-in takes the steps of a private machine URL, on the control role. The dashboard is `hopbox-overview`.
+
+1. A browser asks for `https://grafana.example.com/d/hopbox-overview` without a cookie. The handler answers `303 See Other` to `https://example.com/auth/grafana?path=%2Fd%2Fhopbox-overview`. A path longer than 512 characters becomes `/`.
+2. Unless the request has `Sec-Fetch-Site: same-origin`, `/auth/grafana` answers with a page that holds one link, and it writes nothing ([The page with one link](#the-page-with-one-link)). A click on the link comes back to this step. The control role reads the session cookie of the console at `/auth/grafana`. With the session of an instance admin whose sign-in is at most 1 hour old, it makes a one-time code, and answers `303 See Other` to `https://grafana.example.com/__hopbox/auth?code=<code>&path=%2Fd%2Fhopbox-overview`.
+3. The handler takes the code at `/__hopbox/auth`, trades it for a token in one transaction, writes the audit entry `grafana.open`, sets the cookie `__Host-hopbox_grafana`, and answers `303 See Other` to the path. A path off the list of [Paths of the host](#paths-of-the-host) becomes `/`. The code never reaches Grafana.
+4. The handler reads the session in the control store on each later request, and forwards the request to `127.0.0.1:3000` with a signed token.
+
+The check runs on each request and keeps no answer, because a revoke of an instance admin deletes a row and sends no event. So a revoke, a sign-out, a suspend, and a new sign-in act at the next request. A forwarded request has a bound of 2 minutes. Grafana Live is off and the handler refuses each `Upgrade`, so no request stays open past a revoke. Numbers already on the screen stay until the tab closes.
+
+| Item | Value |
+| --- | --- |
+| Code | 32 random bytes in base64url. The control store keeps only its SHA-256. It works once, for 60 s. |
+| Codes of one session | At most 30 in a minute, also when the browser trades each one, and for requests at the same time. The next one gets `429 Too Many Requests`. So the audit log gets at most 30 entries `grafana.open` in a minute from one session. An open waits at most 2 s for another open of its session, and then gets `429 Too Many Requests` too. |
+| Token | 32 random bytes in base64url. The control store keeps only its SHA-256 in `grafana_sessions` ([Control store tables](/reference/control-store/index.html.md#grafana_sessions)). A new token of the same browser replaces the older one. |
+| Token lifetime | The shortest of three: 1 hour after the sign-in, the end of the console session, and the delete of the row. A use of Grafana does not extend the hour. Each allowed request keeps the session alive, as a call of the console does. |
+| Cookie | `__Host-hopbox_grafana=<token>; Path=/; Secure; HttpOnly; SameSite=Lax`. It is host-only and has no `Max-Age`. It opens only this host. No API call takes it, and the edge role drops it toward a machine. |
+| Who opens it | Policy action `grafana.open`: the console session of an instance admin with a sign-in at most 1 hour old. An admin key, a CLI token, and local root use the SSH tunnel. Admin API calls keep their 10 minutes ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#recent-sign-in)). |
+
+### Answers of `/auth/grafana`
+
+`GET /auth/grafana` is a plain HTTP endpoint of the public API on the domain of the install, outside of the Connect chain. Its parameter is `path`.
+
+| Case | Answer |
+| --- | --- |
+| No live session | `303 See Other` to `/signin?return_to=/admin/overview` |
+| A session of an account that is not an instance admin | `404 Not Found` |
+| An instance admin whose sign-in is more than 1 hour old | `303 See Other` to `/signin?again=1&return_to=/admin/overview` |
+| A machine holds the name `grafana`, or the install has no domain | `409 Conflict` |
+| More than 30 codes of the session in a minute | `429 Too Many Requests` |
+| A request that is not a top-level navigation by `GET`, such as a prefetch of a page of a machine | `403 Forbidden`, and no code |
+| A navigation with `Sec-Fetch-Site: none`, `same-site`, or `cross-site` | `200 OK` with a page that holds one link, and no code and no audit entry |
+| A navigation with no `Sec-Fetch-Site` | `403 Forbidden`, with text that says the browser is too old and names the SSH tunnel. No code and no audit entry. |
+| Maintenance mode | `503 Service Unavailable`, because a code is a write |
+| The control store does not answer | `503 Service Unavailable`, with text that names the SSH tunnel. It logs `the sign-in of the Grafana host failed`. |
+
+The console follows its return path with a client-side navigation, so a sign-in ends in the Admin area. The admin then opens the link of Grafana again.
+
+### The page with one link
+
+A page of a machine can start a real navigation with a script and stop it at once, and the server acts before the stop. It can also go back in its history to a page that redirects, and that request looks like a typed address. So `/auth/grafana` makes a code only for a click on the domain of the install. This is Q170 of the abuse plan. Links from anywhere still work with one click, so Q167 stays.
+
+| `Sec-Fetch-Site` | Answer |
+| --- | --- |
+| `same-origin` | The sign-in goes on. The links of the Admin area and the link of the page send it. |
+| `none`, `same-site`, `cross-site`, or any other value | The page with one link, and no code and no audit entry, whatever `Sec-Fetch-User` says |
+| No value | `403 Forbidden`, with text that says the browser is too old for this host and names the SSH tunnel. No code, no audit entry, and no link. |
+
+`Sec-Fetch-User` decides nothing here. In Chromium, a script gets `Sec-Fetch-Site: none` with `Sec-Fetch-User: ?1` with no click or key, through `history.back()` and a redirect. So the server cannot tell such a request from a typed address.
+
+| How a browser arrives | What it takes |
+| --- | --- |
+| A link in the Admin area | One click. The link goes straight to `/auth/grafana` on the domain, with its path. |
+| A live cookie of the host, on any host path | No page. Grafana opens. |
+| A typed address, a bookmark, or a link from another site, without a live cookie of the host | The page, then one click |
+| The host without a cookie, or with a cookie of an ended session | A redirect to `/auth/grafana`, the page, then one click. The click goes on to the path that the browser asked for. |
+
+The page holds one plain link to the same sign-in, with its path escaped. Its headers are `Cache-Control: no-store`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Cross-Origin-Opener-Policy: same-origin`, and a policy of `default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`. So a frame gets `403`, a window that a script opens gives that script no handle on the page, and no script runs on it.
+
+As far as the tests show, an audit entry `grafana.open` means a click on the domain of the install. The tests ran in Chromium only. A page on the domain is the console, so a script bug in the console can still send such a request. The console refuses a `return_to` value under `/auth/`, because any page can set that value. Before this rule, the console followed such a value with a navigation in the page, and a reload of that page sent `same-origin` and made a code. No real flow returns to such a path.
+
+`/auth/machine` has no such page. The backlog holds that question.
+
+### Answers of the host
+
+| Case | A navigation | Any other request |
+| --- | --- | --- |
+| No cookie, two different cookies, or a request from another site ([Requests of other sites](#requests-of-other-sites)) | `303 See Other` to `/auth/grafana` | `403 Forbidden` with JSON |
+| A token with no live session, after a sign-out, a suspend, or a new sign-in | The handler clears the cookie, and answers `303 See Other` to `/auth/grafana` | `403 Forbidden` with JSON. The cookie stays. |
+| An account that lost the role | The handler clears the cookie, and answers `404 Not Found` | `404 Not Found` with JSON. The cookie stays. |
+| A sign-in more than 1 hour old | `303 See Other` to `/auth/grafana`. That step reads the console session. An old one goes to the sign-in, and a new one gets a code that replaces the cookie. So a cookie of an older session never holds the browser on the sign-in page. | `403 Forbidden` with JSON and the text `this page needs a sign-in within the last hour` |
+| A path off the list | `303 See Other` to `/` | `403 Forbidden` with JSON |
+| A `POST` whose `Origin` is not the origin of the host, or an `Upgrade` | Does not apply | `403 Forbidden` with JSON |
+| A body of more than 4 MiB | Does not apply | `413 Content Too Large` with JSON |
+| No private key on this control server, or a key file that does not work, such as one that its group can read | `404 Not Found` with text that names the guide. The log holds the reason for a key file that does not work. | The same |
+| Grafana does not answer | `502 Bad Gateway` with text that names the SSH tunnel. It logs `Grafana did not answer`. | The same |
+| Grafana answers with a redirect to `/login`, because it refused the signed identity | `502 Bad Gateway` with text that says to restart `grafana-server`, and that names the SSH tunnel. It logs `Grafana refused the identity of hopboxd`. | The same |
+| The control store does not answer | `503 Service Unavailable` with text that names the SSH tunnel. It logs `reading a sign-in of the Grafana host failed`. | The same |
+| A code that is unknown, used, or expired | `403 Forbidden` with a page that says to open the host again | `405 Method Not Allowed` |
+| A failed trade, for example a failed write of its audit entry | `503 Service Unavailable` with text that names the SSH tunnel. It logs `trading a code of the Grafana host failed`. | `405 Method Not Allowed` |
+
+Only a navigation clears the cookie. The answer to a fetch can arrive after a trade set a new cookie, and a clear then ends the new one. A dead token does nothing, and the next trade replaces it.
+
+The sign-in runs first, so a person without the role cannot tell whether an install has Grafana. Maintenance mode stops a code and a trade, but not a live token, because the check only reads. A tab that opened before maintenance mode works until its hour ends.
+
+A top-level navigation from any site works, also from a page of a machine, as for a private machine URL. With a live cookie of the host it opens Grafana, and without one it takes the click of the page with one link. The list of paths applies to it. This is Q167.
+
+A code is not bound to a browser. An instance admin can send a link with a code to another instance admin. The browser of the other admin then uses the session of the first, and the audit log names the first. Both hold the role, and all admins share one Viewer, so no access changes. An account without the role cannot get a code. A fix needs a state cookie on the host, and it does not cover a link straight to `/auth/grafana`, so this limit stays.
+
+Each refusal goes to the log as `grafana refused`, with the reason, the method, the path, the client address, the request ID, and the account and the session when a token named them. A refusal writes no audit entry. A file that holds a wrong key logs `the key of the identity toward Grafana does not work`. The log and the audit log never hold the cookie, the code, the signed token, the key, the query string, or the body. The audit entry holds the path without its query, or `/` for a path that looks like a credential.
+
+### What Grafana gets
+
+The handler deletes `Cookie` and `Authorization` from the request, and sets `X-Hopbox-Identity` over any value that a client sent. The header holds a signed Ed25519 token with the claims `iss` (`hopboxd`), `sub` (`hopbox`), `iat`, and `exp`, which is 120 s later. The handler reuses a token for 60 s. The private key is the file `grafana-identity.key` next to the bootstrap config, and Grafana holds only the public key ([hopboxd](/reference/hopboxd/index.html.md#admin-grafana-key-set)). `hopboxd` refuses a key file that its group or others can read.
+
+All instance admins share one Grafana user, `hopbox`, which is always a Viewer. A Viewer can run any PromQL through `/api/ds/query`, so a stolen cookie reads all metrics and can send heavy queries. It reaches nothing else in Grafana.
+
+The handler removes each `Set-Cookie` of Grafana, because a Grafana bug must not set a cookie on the whole domain. It adds these headers to each answer of Grafana. `Cache-Control: no-store` applies outside `/public/`.
+
+| Header | Value |
+| --- | --- |
+| `Content-Security-Policy`, as a second header | `default-src 'self'; connect-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' blob:; font-src 'self'; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; worker-src 'self' blob:; script-src 'self'`, plus the nonce that the policy of Grafana names for its page. So an inline script without that nonce does not run. The policy stops a `fetch`, a beacon, a stylesheet, an image, a font, a `<link rel=prefetch>`, and the request of a frame. It does not close the page. A script bug can still send data in four ways: with a speculation rule that holds the nonce of the page, with `RTCPeerConnection`, in the TLS handshake of a blocked frame, and with a top-level navigation. |
+| `X-Frame-Options` | `DENY` |
+| `X-Content-Type-Options` | `nosniff` |
+| `Referrer-Policy` | `no-referrer` |
+| `Cross-Origin-Opener-Policy` | `same-origin` |
+| `Cross-Origin-Resource-Policy` | `same-origin` |
+| `Cache-Control` | `no-store` |
+
+### Paths of the host
+
+The list applies at the root of the host. A path with an escaped byte, a backslash, `//`, or a dot segment never passes, because Grafana had a path traversal bug through such a path ([CVE-2025-4123](https://advisories.gitlab.com/golang/github.com/grafana/grafana/CVE-2025-4123/)). Each new Grafana version can change this list. If it does, the browser test of the host fails.
+
+| Method | Paths |
+| --- | --- |
+| `GET`, `HEAD` | `/`, `/dashboards`, `/d/hopbox-*`, `/d/hopbox-*/<slug>`, the `.js`, `.css`, `.svg`, `.png`, and `.woff2` files under `/public/build/`, `/public/fonts/`, `/public/img/`, and `/public/plugins/prometheus/`, `/api/annotations`, `/api/plugins/prometheus/settings`, `/api/search`, `/api/teams/search`, `/api/prometheus/grafana/api/v1/rules`, `/api/alertmanager/grafana/api/v2/alerts`, `/api/user`, `/api/user/orgs`, `/api/user/teams`, and the reads of the `/apis/` groups `dashboard`, `folder`, `iam`, `collections`, `preferences`, `provisioning`, `quotas`, and `userstorage` that the dashboards use |
+| `POST` | `/api/ds/query`, `/ofrep/v1/evaluate/flags`, `/api/frontend-metrics`, and the `user-storage` path of `/apis/userstorage.grafana.app/` |
+
+The browser test proves that the dashboards need these parts of `/public/`. The pages under `/public/views/` and `/public/emails/` run an inline script and have no policy of Grafana, so the list leaves them out. It also leaves out each `.html` file and `/public/mockServiceWorker.js`.
+
+Everything else is blocked, among others `/login`, `/logout`, `/metrics`, `/admin/*`, `/explore`, `/render/*`, `/api/datasources*`, `/api/admin/*`, `/api/live/*`, `/api/org*`, `/api/snapshots`, `/api/dashboards/*`, and each `PUT`, `PATCH`, and `DELETE`. `/__hopbox/` belongs to the handler. The `POST` of `user-storage` and of `/api/frontend-metrics` lets the shared user keep a page history, and a stolen cookie can change that history. This is Q168.
+
+### The SSH tunnel
+
+The tunnel stays the way in when `hopboxd` is down, because it uses Grafana's own login form and depends on no part of `hopboxd`. See [Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/index.html.md).
 
 ## The public IPv6 address
 
@@ -356,7 +494,7 @@ The edge role serves these metrics on the metrics listener of `hopboxd` ([Metric
 
 | Metric | Type | Labels | Meaning |
 | --- | --- | --- | --- |
-| `hopbox_edge_requests_total` | counter | `to`: `api`, `machine`, `redirect`, or `refused` | The HTTP requests of the edge role, by where they went. A redirect goes to HTTPS, to a sign-in, or back from a sign-in. A refusal got a page of the edge role, also a refusal past the bounds of open requests. |
+| `hopbox_edge_requests_total` | counter | `to`: `api`, `machine`, `redirect`, or `refused` | The HTTP requests of the edge role, by where they went. `api` holds the requests of the domain and of the Grafana host. A redirect goes to HTTPS, to a sign-in, or back from a sign-in. A refusal got a page of the edge role, also a refusal past the bounds of open requests. |
 | `hopbox_edge_tls_refusals_total` | counter | `reason`: `no_sni`, `unknown_host`, or `no_certificate` | The TLS handshakes that the edge role refused. |
 | `hopbox_edge_client_connection_refusals_total` | counter | `listener`: `https` or `http`. `bound`: `client` or `network` | The connections that the edge role closed at once. `client`: their IPv4 address or IPv6 /64 held 256 open connections on the listener. `network`: their IPv6 /48 held 1,024. |
 | `hopbox_edge_open_connections` | gauge | `listener`: `https` or `http` | The connections that the listener holds now. |
