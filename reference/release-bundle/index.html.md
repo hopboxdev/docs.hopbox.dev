@@ -26,6 +26,7 @@ A bundle is about 600 MB. The compressed disk of the default image is about 560 
 | `firecracker/firecracker` | 0755 | Firecracker v1.17.0. |
 | `firecracker/jailer` | 0755 | The jailer v1.17.0. |
 | `firecracker/LICENSE`, `firecracker/NOTICE`, `firecracker/THIRD-PARTY` | 0644 | The license files of the Firecracker release. The Apache License 2.0 asks for them in each copy. |
+| `licenses/fonts.txt` | 0644 | The SIL Open Font License and the copyright line of each font of the console, from `brand/licenses/fonts.txt` of the checkout. `hopboxd` holds the fonts, and also serves this text ([Console](/reference/console/index.html.md#headers)). A reader of a manifest does not require this file, because a rollback reads the manifest of an older release without it. `tools/bundle` always adds it. |
 | `postgres/` | 0755 and 0644 | The bundled Postgres 18.6 for `linux/amd64`: `bin/`, `lib/`, and `share/` ([the bundled Postgres](/reference/postgres/index.html.md#the-install)). `lib/` also holds the OpenSSL libraries `libssl.so.3` and `libcrypto.so.3`, which `pg_dump` and `pg_restore` need for TLS. It holds symlinks, such as `lib/libpq.so`. |
 | `kernel/vmlinux` | 0644 | The guest kernel ([Guest kernel](/reference/guest-kernel/index.html.md)). Its sha256 is the one in `kernel/vmlinux.sha256` of the checkout. |
 | `image/artifact.json` | 0644 | The metadata of the default image ([Artifact format](/reference/artifact-format/index.html.md#artifactjson)). |
@@ -184,7 +185,7 @@ It checks these parts before it writes anything:
 | Part | Check |
 | --- | --- |
 | `hopboxd` | The build info says `GOOS=linux`, `GOARCH=amd64`, and `CGO_ENABLED=0`. The variable `version` of the package `internal/version` of the Go module of hopbox, which `make build` sets with `-ldflags -X`, holds exactly `-version`. The tool reads it from the ELF symbol table, because a `-trimpath` build records no `-ldflags` in its build info. |
-| Console | `hopboxd` holds the console build of `make console`: its bytes contain the line `<meta name="application-name" content="hopbox console" />` of the `index.html` of the console ([Console](/reference/console/index.html.md#build)). No Go code of `hopboxd` has that line, so a `hopboxd` of `go build` without `make console` fails. |
+| Console | `hopboxd` holds the console build of `make console`: its bytes contain the line `<meta name="application-name" content="hopbox console" />` of the `index.html` of the console ([Console](/reference/console/index.html.md#build)). No Go code of `hopboxd` has that line, so a `hopboxd` of `go build` without `make console` fails. Its bytes also contain the whole text of `brand/licenses/fonts.txt` of the checkout, so a console without the license of its fonts fails too. |
 | Kernel | Its sha256 is the `vmlinux` line of `kernel/vmlinux.sha256`, the hash of the reproducible build. |
 | Image | `artifact.json` is valid, names a compressed disk with the right size and sha256, and names the kernel of the bundle. Its arch is `x86_64`, and its program `hopbox-guest` has the version `-version`: the guest agent and `hopboxd` of a release ship together. |
 | Postgres | The dir has `bin/postgres`, and its name is the one that `tools/pgdist -target linux/amd64` gives the build of the current recipe: `postgres-<version>-linux-amd64-<hash>` ([the bundled Postgres](/reference/postgres/index.html.md#pgdist)). So a build for another platform or of another recipe fails. The version comes from `build/postgres/source.env`. |
@@ -219,6 +220,8 @@ The download goes to `<cache>/firecracker/`. A cached tarball with the pinned sh
 | `-hopboxd <path>: read its schema version: the binary has no symbol ...` | The binary was not built with `make build`. |
 | `-hopboxd <path> is built for <os>/<arch>, not linux/amd64` | The binary is for another platform. |
 | `-hopboxd <path> holds no console. Build it with make build, which runs make console first` | The binary was built without the console. |
+| `-hopboxd <path> holds no copy of <checkout>/brand/licenses/fonts.txt. Build it from this checkout with make build` | The console of the binary lacks the license of the fonts, or it holds another text. |
+| `read the license of the fonts: open <checkout>/brand/licenses/fonts.txt: no such file or directory` | The checkout has no license of the fonts. |
 | `-hopboxd <path> is built with cgo. ...` | The binary is not static. |
 | `bundle: the image in <dir> was built for the kernel <a>, but the kernel <path> has the sha256 <b>. Build the image with this kernel` | The image and the kernel do not belong together. |
 | `-firecracker <path> has the sha256 <a>, and it does not have the pinned sha256 <b>` | A local tarball that is not the pinned release. |
@@ -232,7 +235,7 @@ The exit status is 0 on success, 1 on an error, and 2 for a bad command line.
 | Test | Where it runs | What it checks |
 | --- | --- | --- |
 | `internal/bundle` | `make test` | A build, an extract, and the checks of a release. Two builds give the same bytes. A changed file, mode, symlink, or image, and an extra file or dir, fail the check. Unsafe tar entries fail the extract. Bad manifests fail the parse. |
-| `tools/bundle` | `make test` | A bundle from stand-in parts with pins of a test checkout, and the refusal of a wrong version, kernel, Firecracker tarball, and platform. |
+| `tools/bundle` | `make test` | A bundle from stand-in parts with pins of a test checkout, with the file `licenses/fonts.txt`, and the refusal of a wrong version, kernel, Firecracker tarball, and platform. Also the refusal of a `hopboxd` without the license of the fonts and of a checkout without it, and the lines of each font family and a sha256 of the OFL notice and the license text in `brand/licenses/fonts.txt` of this checkout. |
 | `TestSystemdServer` | `make test-install`, and the CI job `install` | An install, an upgrade, and a rollback in a systemd container ([hopboxd](/reference/hopboxd/index.html.md#tests-of-install-and-upgrade)). |
 
 The package `internal/bundle/bundletest` makes bundles for tests from small stand-ins of Firecracker, the jailer, the kernel, Postgres, and the image.
