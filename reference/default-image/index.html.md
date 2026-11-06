@@ -302,6 +302,7 @@ Run `make image-pins` before the build of an image that machines will use, so th
 | `images/default/check-disk.sh` | Runs in the `builder` stage. Reads the disk with `debugfs` and checks the rules of this page. |
 | `images/default/boottest/` | The boot test of `make test-image`. |
 | `tools/imageartifact` | Writes and checks `artifact.json` ([Artifact format](/reference/artifact-format/index.html.md#imageartifact)). |
+| `tools/imagepatch` | Puts the guest agent and the rootfs files of a checkout into the image of a release, for the KVM tests of CI (the build guide). It ships in no binary. |
 | `tools/imagepins` | Moves the pins to the latest releases. |
 
 The build does these steps:
@@ -345,7 +346,8 @@ It also writes `bin/linux_amd64/hopbox-guest`. `make bundle` puts `artifact.json
 
 | Target | What it does | Needs |
 | --- | --- | --- |
-| `image` | Builds `hopbox-guest` for `linux/amd64` and the image, and prints the digest. | Docker with buildx and `linux/amd64` containers, Go |
+| `guest` | Builds `hopbox-guest` for `linux/amd64` into `bin/linux_amd64/`. | Go |
+| `image` | Runs `make guest`, builds the image, and prints the digest. | Docker with buildx and `linux/amd64` containers, Go |
 | `check-image` | Checks the artifact in `IMAGE_OUT`: `artifact.json`, the size and sha256 of each file, and the rules below. | Docker, Go |
 | `test-image` | Boots the image under Firecracker and checks it ([Boot test](#boot-test)). | Linux, KVM, sudo, Firecracker, a built kernel and image |
 | `image-pins` | Sets `images/default/pins.env` to the latest releases ([Pins](#pins)). | Go, internet access |
