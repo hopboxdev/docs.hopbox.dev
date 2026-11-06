@@ -688,7 +688,7 @@
 <tr>
 <td><code dir="auto">ssh_host_keys</code></td>
 <td>repeated string</td>
-<td>For a report of <code dir="auto">running</code>, the public SSH host keys of the guest, as the guest agent reported them in its status. Each one is in the <code dir="auto">authorized_keys</code> format without a comment. The executor leaves out a key that does not parse, and a key that it has already. After a change of the keys, the executor reports <code dir="auto">running</code> again. A report of another state carries none.</td>
+<td>For a report of <code dir="auto">running</code>, the public SSH host keys of the guest, as the guest agent reported them in its status. Each one is in the <code dir="auto">authorized_keys</code> format without a comment. The executor leaves out a key that does not parse, and a key that it has already. After a change of the keys, the executor reports <code dir="auto">running</code> again. The list can be empty: the guest agent could not make or read a host key, no key of its status parses, or a guest agent of an older image sent <code dir="auto">ConfigApplied</code> before its status (<a href="/reference/guest-link/#link-messages">Guest link</a>). A report of another state carries none.</td>
 <td>at most 8, each one key without options or a comment</td>
 </tr>
 <tr>

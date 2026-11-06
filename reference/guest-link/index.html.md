@@ -121,7 +121,7 @@ After the handshake, both sides keep the `Link` call open. Each `LinkRequest` an
 | `NodeHello` | `LinkResponse.hello` | node | the answer to `GuestHello` |
 | `Config` | `LinkResponse.config` | node | after the handshake, and after each change |
 | `ConfigApplied` | `LinkRequest.config_applied` | guest | after each `Config`. It holds the generation, the errors, and the count of env values that the agent left out. |
-| `Status` | `LinkRequest.status` | guest | after the handshake, and after each change of the start command |
+| `Status` | `LinkRequest.status` | guest | after the handshake, and after each change of the start command. It is the first message of the guest agent after its proof, ahead of the first `ConfigApplied` of the link. A status and a `ConfigApplied` that wait together go in this order. So the node has the SSH host keys of the guest when the link becomes ready. A guest agent of an older image can send `ConfigApplied` first, if its sender starts late. |
 | `LogEntry` | `LinkRequest.log` | guest | for each line of output of the start command |
 | `Attach` | `LinkResponse.attach` | node | to start an exec, an upload, or a download. It holds the attach ID `id`, and the operation `exec` (an `ExecStart`), `upload` (an `UploadStart`), or `download` (a `DownloadStart`). |
 | `RunStartCommand` | `LinkResponse.run_start_command` | node | to run the start command again, for the restart policy "always". It has no fields. If the start command runs, the guest agent does nothing. If there is no start command, it sends the status `START_COMMAND_STATE_NONE` again. |

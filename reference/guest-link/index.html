@@ -412,7 +412,7 @@
 <td><code dir="auto">Status</code></td>
 <td><code dir="auto">LinkRequest.status</code></td>
 <td>guest</td>
-<td>after the handshake, and after each change of the start command</td>
+<td>after the handshake, and after each change of the start command. It is the first message of the guest agent after its proof, ahead of the first <code dir="auto">ConfigApplied</code> of the link. A status and a <code dir="auto">ConfigApplied</code> that wait together go in this order. So the node has the SSH host keys of the guest when the link becomes ready. A guest agent of an older image can send <code dir="auto">ConfigApplied</code> first, if its sender starts late.</td>
 </tr>
 <tr>
 <td><code dir="auto">LogEntry</code></td>
