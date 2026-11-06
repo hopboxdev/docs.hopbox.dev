@@ -18410,6 +18410,8 @@ A machine is always in one current state. It also has a target state, which is t
 
 A new machine starts with the current state `pending` and the target state `running`.
 
+Milestone T21 of phase 3 changes the meaning of `deleted` for backups. While the org lives, a delete by a user keeps the backups of the machine until their retention ends, with an undo for the same org, which milestones T21 and T22 build. A leave of the creator, and the delete of an org or an account, remove them at once. The owner decided this on 2026-11-06, in Q189.
+
 ## Steps between current states
 
 Only the executor of a machine changes its current state. Each step goes from one current state to a next one. The executor can make only the steps in this table. `CheckStep(from, to)` refuses any other step with the error `machine state step not allowed: from <from> to <to>`.
@@ -18460,6 +18462,8 @@ An action that asks for the target that the machine already has succeeds and cha
 ## Hibernated machines keep their memory file
 
 Only a delete drops the memory file of a hibernated machine. So a machine with the target `hibernated` refuses `stop` and `restore` with the error `machine action not allowed: cannot <action> a hibernated machine: wake it first`. To stop or restore it, wake it first.
+
+Milestone T03 of phase 3 adds the explicit call `DiscardMemory`, for the creator. It drops the memory file with an audit entry, and the next start boots from the disk. Until T03, the rules of this section hold as written. The owner decided this on 2026-11-06, in Q192.
 
 A wake can be pending: the target is `running`, but the current state is still `hibernated`. Then `restore` waits for the wake to end, because a restore replaces the memory file that the wake needs. The error is `machine action not allowed: cannot restore a machine that is hibernated`.
 
@@ -19449,7 +19453,7 @@ The edge role can refuse a certificate or routes that the control role pushed. T
 
 These parts of the edge role come later:
 
-* A machine in standby or hibernated wakes at the first request (phase 3). Until then, its URL answers 503.
+* A machine in standby or hibernated wakes after the check of access of a request, in milestone T06 of phase 3. Any request for a public URL passes the check, and a private URL needs a request from a signed-in account with access to the machine. A public URL never wakes a private machine whose creator is suspended. An open connection that passed the check keeps its machine awake. The owner decided these rules on 2026-11-06, in Q180 and Q181. Until T06, its URL answers 503.
 * Subdomain routes, such as `sub.box1.example.com` (phase 4).
 * Custom domains and org domains (phase 4).
 * Raw TCP and UDP ports (phase 4).
@@ -20451,7 +20455,7 @@ A failure never deletes saved state. The executor follows the contract of [Domai
 1. A wake that fails reports `failed`. The memory file stays.
 2. A stop then steps from `failed` to `stopped`. The memory file stays.
 3. A later start wakes the machine from the kept memory file.
-4. Only a delete drops the memory file.
+4. Only a delete drops the memory file. Milestone T03 of phase 3 adds the explicit call `DiscardMemory`, which also drops it. The owner decided this on 2026-11-06, in Q192.
 
 ## Node-local state
 
@@ -26194,7 +26198,7 @@ These rules hold for each caller that acts in the org of the machine:
 
 * A `session` or a `cli_token` acts in each org where its account has a role.
 * A `member_key` acts only in its own org, as its account, while the account has a role there.
-* An `org_key` acts only in its own org. It has the rights of a member, without private machines. It is never an org admin. A machine that an org key makes is shared from the start, and its creator is that key.
+* An `org_key` acts only in its own org. It has the rights of a member, without private machines. It is never an org admin. A machine that an org key makes is shared from the start, and its creator is that key. Milestone T12 of phase 3 builds forks, and a fork through an org key then makes a shared machine. The owner decided this on 2026-11-06, in Q193.
 * An instance admin has only the rights of its own roles here. It acts on the machines of others through the admin API ([the admin API](/reference/admin-api/#machineservice)).
 
 A caller that cannot read a machine gets `not_found`, with the same message as for a machine that does not exist. So the call tells nothing about the private machines of others.
@@ -26634,7 +26638,9 @@ Sets the target of a machine to `deleted`, and waits until its executor deleted 
 
 The request `DeleteMachineRequest` names the machine. The response `DeleteMachineResponse` has the fields `machine`, `duration`, and `done`. The machine has `delete_request_time`.
 
-A delete is allowed from any target but `deleted`. It is the only action that drops the memory file of a hibernated machine ([Domain rules](/reference/domain-rules/#hibernated-machines-keep-their-memory-file)). The leader drops the row of the machine 7 days after the delete request, once its executor deleted it ([hopboxd](/reference/hopboxd/#leader-jobs)).
+A delete is allowed from any target but `deleted`. It is the only action that drops the memory file of a hibernated machine ([Domain rules](/reference/domain-rules/#hibernated-machines-keep-their-memory-file)), until milestone T03 of phase 3 adds `DiscardMemory` (Q192). The leader drops the row of the machine 7 days after the delete request, once its executor deleted it ([hopboxd](/reference/hopboxd/#leader-jobs)).
+
+Milestone T21 of phase 3 adds backups. A delete by a user then keeps the backups of the machine until their retention ends, with an undo for the same org, which milestones T21 and T22 build. The owner decided this on 2026-11-06, in Q189.
 
 | Error                                                                                                                             | Code                  |
 | --------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
@@ -26768,7 +26774,7 @@ Each message `ExecRequest` and `ExecResponse` holds one `ExecChunk` in the field
 
 A client that ends its side of the stream sends no more input, and the command runs on. A client that cancels the call ends the command.
 
-`hopbox connect` opens a shell with `Exec`: `tty` true and no `argv`. Phase 1 has no standby and no hibernate, so a connect to a machine that does not run gets `failed_precondition`. The CLI gives exec its JSON output, its exit status, and its terminal handling ([hopbox CLI](/reference/cli/#exec)).
+`hopbox connect` opens a shell with `Exec`: `tty` true and no `argv`. Phase 1 has no standby and no hibernate, so a connect to a machine that does not run gets `failed_precondition`. Milestone T06 of phase 3 makes `hopbox connect`, `Exec`, `Upload`, and `Download` wake a machine. `GetMachine`, `ListMachines`, and `StreamMachineLogs` do not wake one. The owner decided this on 2026-11-06, in Q180. The CLI gives exec its JSON output, its exit status, and its terminal handling ([hopbox CLI](/reference/cli/#exec)).
 
 ### The WebSocket endpoint
 
@@ -29692,7 +29698,7 @@ Deletes an org, its memberships, its invitations, and every resource in it. The 
 | `org_id`  | optional string | The org.                      |
 | `confirm` | string          | The name of the org, exactly. |
 
-The response `DeleteOrgResponse` has no fields. The audit log keeps the entries of the deleted org, and instance admins read them.
+The response `DeleteOrgResponse` has no fields. The audit log keeps the entries of the deleted org, and instance admins read them. Milestone T21 of phase 3 adds backups, and the delete of an org then removes them at once. The owner decided this on 2026-11-06, in Q189.
 
 | Error                                                                                                                                                                                       | Code                  |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
@@ -29833,6 +29839,8 @@ The machines do this in each method. Each method locks the machine rows in the o
 | `OrgDeleting(org)`               | Sets the target `deleted` on every machine of the org.                                                                                                                                                                                              | `machine.delete`, with the detail `reason` (`org deleted`)                       |
 | `OrgSuspending(org)`             | Sets the target `stopped` on every machine of the org, except a machine whose target is `hibernated`. A hibernated machine stays hibernated, because only a delete drops its memory file ([Domain rules](/reference/domain-rules/#org-suspension)). | `machine.stop`, with the details `old_target` and `reason` (`org suspended`)     |
 | `MemberSuspending(org, account)` | Sets the target `stopped` on each machine that the account made in the org and did not share. A machine whose target is `hibernated` stays hibernated. A shared machine keeps running, because the org uses it.                                     | `machine.stop`, with the details `old_target` and `reason` (`account suspended`) |
+
+Milestone T21 of phase 3 adds backups. A leave of the creator then removes at once the backups of each machine that `MemberLeaving` deletes, and the backups that an earlier delete kept for a machine of that creator. The delete of an org or an account does the same for its machines. A live shared machine keeps its backups. The owner decided this on 2026-11-06, in Q189.
 
 `MemberSuspending` of the env vars and secrets does nothing, because a value runs nothing. A delete reserves the name and the SSH port of the machine for 7 days, as `DeleteMachine` does ([the machine API](/reference/machine-api/#deletemachine)). The actor of each entry is the caller of the change, and each change publishes the event `machine.updated` ([the machine API](/reference/machine-api/#change-events)). A delete of an org sets `org_id` of its machines to null once their target is `deleted`. The machines then wait for their executor ([Control store tables](/reference/control-store/#machines)).
 
@@ -32180,7 +32188,7 @@ When the front door cannot reach the machine, the client stays signed in, and ea
 | `the OpenSSH server of the machine refused the front door`                                      | The SSH handshake failed: another host key, or no sign-in with the client key.                                                                                                                                      |
 | `the machine is gone`                                                                           | The routes name no machine at the port any more.                                                                                                                                                                    |
 
-A machine in standby or hibernated does not wake at a connection before phase 3.
+A machine in standby or hibernated does not wake at a connection before milestone T06 of phase 3.
 
 ## The mesh
 
@@ -32355,7 +32363,7 @@ The control role logs each refusal of `AuthorizeSSH` as `refused an SSH connecti
 
 ## Not in phase 1
 
-* A machine in standby or hibernated wakes at the first packet to its SSH port (phase 3).
+* A machine in standby or hibernated wakes after the front door accepts an SSH key, in milestone T06 of phase 3. An SSH connection that passed that check keeps its machine awake. The owner decided these rules on 2026-11-06, in Q180 and Q181.
 
 # hopbox Terraform provider
 
@@ -34036,11 +34044,11 @@ A driver runs the microVMs of one node. Its microVMs run apart from `hopboxd`, s
 | `Attach(ctx, id)`     | Returns the microVM of a machine that runs, for example after a restart of `hopboxd`. It fails with `vmm.ErrNotRunning` for a machine that does not run.                                                                                                                                                               |
 | `Delete(ctx, id)`     | Removes the disk, the memory file, and every other file of a machine that does not run. A machine without files succeeds.                                                                                                                                                                                              |
 
-| `Status` field | Description                                                   |
-| -------------- | ------------------------------------------------------------- |
-| `Disk`         | The disk of the machine exists.                               |
-| `Running`      | The microVM runs.                                             |
-| `Memory`       | A memory file of a hibernate is kept. Only `Delete` drops it. |
+| `Status` field | Description                                                                                                                                                                                    |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Disk`         | The disk of the machine exists.                                                                                                                                                                |
+| `Running`      | The microVM runs.                                                                                                                                                                              |
+| `Memory`       | A memory file of a hibernate is kept. Only `Delete` drops it. Milestone T03 of phase 3 adds the explicit call `DiscardMemory`, which also drops it (Q192, decided by the owner on 2026-11-06). |
 
 `Boot` holds the `Machine` and the link key of the boot:
 

@@ -39,7 +39,7 @@ A driver runs the microVMs of one node. Its microVMs run apart from `hopboxd`, s
 | --- | --- |
 | `Disk` | The disk of the machine exists. |
 | `Running` | The microVM runs. |
-| `Memory` | A memory file of a hibernate is kept. Only `Delete` drops it. |
+| `Memory` | A memory file of a hibernate is kept. Only `Delete` drops it. Milestone T03 of phase 3 adds the explicit call `DiscardMemory`, which also drops it (Q192, decided by the owner on 2026-11-06). |
 
 `Boot` holds the `Machine` and the link key of the boot:
 

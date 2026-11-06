@@ -211,7 +211,7 @@ Deletes an org, its memberships, its invitations, and every resource in it. The 
 | `org_id` | optional string | The org. |
 | `confirm` | string | The name of the org, exactly. |
 
-The response `DeleteOrgResponse` has no fields. The audit log keeps the entries of the deleted org, and instance admins read them.
+The response `DeleteOrgResponse` has no fields. The audit log keeps the entries of the deleted org, and instance admins read them. Milestone T21 of phase 3 adds backups, and the delete of an org then removes them at once. The owner decided this on 2026-11-06, in Q189.
 
 | Error | Code |
 | --- | --- |
@@ -352,6 +352,8 @@ The machines do this in each method. Each method locks the machine rows in the o
 | `OrgDeleting(org)` | Sets the target `deleted` on every machine of the org. | `machine.delete`, with the detail `reason` (`org deleted`) |
 | `OrgSuspending(org)` | Sets the target `stopped` on every machine of the org, except a machine whose target is `hibernated`. A hibernated machine stays hibernated, because only a delete drops its memory file ([Domain rules](/reference/domain-rules/index.html.md#org-suspension)). | `machine.stop`, with the details `old_target` and `reason` (`org suspended`) |
 | `MemberSuspending(org, account)` | Sets the target `stopped` on each machine that the account made in the org and did not share. A machine whose target is `hibernated` stays hibernated. A shared machine keeps running, because the org uses it. | `machine.stop`, with the details `old_target` and `reason` (`account suspended`) |
+
+Milestone T21 of phase 3 adds backups. A leave of the creator then removes at once the backups of each machine that `MemberLeaving` deletes, and the backups that an earlier delete kept for a machine of that creator. The delete of an org or an account does the same for its machines. A live shared machine keeps its backups. The owner decided this on 2026-11-06, in Q189.
 
 `MemberSuspending` of the env vars and secrets does nothing, because a value runs nothing. A delete reserves the name and the SSH port of the machine for 7 days, as `DeleteMachine` does ([the machine API](/reference/machine-api/index.html.md#deletemachine)). The actor of each entry is the caller of the change, and each change publishes the event `machine.updated` ([the machine API](/reference/machine-api/index.html.md#change-events)). A delete of an org sets `org_id` of its machines to null once their target is `deleted`. The machines then wait for their executor ([Control store tables](/reference/control-store/index.html.md#machines)).
 

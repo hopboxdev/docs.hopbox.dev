@@ -531,7 +531,7 @@ The edge role can refuse a certificate or routes that the control role pushed. T
 
 These parts of the edge role come later:
 
-- A machine in standby or hibernated wakes at the first request (phase 3). Until then, its URL answers 503.
+- A machine in standby or hibernated wakes after the check of access of a request, in milestone T06 of phase 3. Any request for a public URL passes the check, and a private URL needs a request from a signed-in account with access to the machine. A public URL never wakes a private machine whose creator is suspended. An open connection that passed the check keeps its machine awake. The owner decided these rules on 2026-11-06, in Q180 and Q181. Until T06, its URL answers 503.
 - Subdomain routes, such as `sub.box1.example.com` (phase 4).
 - Custom domains and org domains (phase 4).
 - Raw TCP and UDP ports (phase 4).

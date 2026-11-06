@@ -154,7 +154,7 @@ A failure never deletes saved state. The executor follows the contract of [Domai
 1. A wake that fails reports `failed`. The memory file stays.
 2. A stop then steps from `failed` to `stopped`. The memory file stays.
 3. A later start wakes the machine from the kept memory file.
-4. Only a delete drops the memory file.
+4. Only a delete drops the memory file. Milestone T03 of phase 3 adds the explicit call `DiscardMemory`, which also drops it. The owner decided this on 2026-11-06, in Q192.
 
 ## Node-local state
 

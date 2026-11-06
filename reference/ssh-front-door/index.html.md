@@ -124,7 +124,7 @@ When the front door cannot reach the machine, the client stays signed in, and ea
 | `the OpenSSH server of the machine refused the front door` | The SSH handshake failed: another host key, or no sign-in with the client key. |
 | `the machine is gone` | The routes name no machine at the port any more. |
 
-A machine in standby or hibernated does not wake at a connection before phase 3.
+A machine in standby or hibernated does not wake at a connection before milestone T06 of phase 3.
 
 ## The mesh
 
@@ -299,4 +299,4 @@ The control role logs each refusal of `AuthorizeSSH` as `refused an SSH connecti
 
 ## Not in phase 1
 
-- A machine in standby or hibernated wakes at the first packet to its SSH port (phase 3).
+- A machine in standby or hibernated wakes after the front door accepts an SSH key, in milestone T06 of phase 3. An SSH connection that passed that check keeps its machine awake. The owner decided these rules on 2026-11-06, in Q180 and Q181.

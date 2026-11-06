@@ -24,6 +24,8 @@ A machine is always in one current state. It also has a target state, which is t
 
 A new machine starts with the current state `pending` and the target state `running`.
 
+Milestone T21 of phase 3 changes the meaning of `deleted` for backups. While the org lives, a delete by a user keeps the backups of the machine until their retention ends, with an undo for the same org, which milestones T21 and T22 build. A leave of the creator, and the delete of an org or an account, remove them at once. The owner decided this on 2026-11-06, in Q189.
+
 ## Steps between current states
 
 Only the executor of a machine changes its current state. Each step goes from one current state to a next one. The executor can make only the steps in this table. `CheckStep(from, to)` refuses any other step with the error `machine state step not allowed: from <from> to <to>`.
@@ -74,6 +76,8 @@ An action that asks for the target that the machine already has succeeds and cha
 ## Hibernated machines keep their memory file
 
 Only a delete drops the memory file of a hibernated machine. So a machine with the target `hibernated` refuses `stop` and `restore` with the error `machine action not allowed: cannot <action> a hibernated machine: wake it first`. To stop or restore it, wake it first.
+
+Milestone T03 of phase 3 adds the explicit call `DiscardMemory`, for the creator. It drops the memory file with an audit entry, and the next start boots from the disk. Until T03, the rules of this section hold as written. The owner decided this on 2026-11-06, in Q192.
 
 A wake can be pending: the target is `running`, but the current state is still `hibernated`. Then `restore` waits for the wake to end, because a restore replaces the memory file that the wake needs. The error is `machine action not allowed: cannot restore a machine that is hibernated`.
 

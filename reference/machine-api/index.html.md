@@ -61,7 +61,7 @@ These rules hold for each caller that acts in the org of the machine:
 
 - A `session` or a `cli_token` acts in each org where its account has a role.
 - A `member_key` acts only in its own org, as its account, while the account has a role there.
-- An `org_key` acts only in its own org. It has the rights of a member, without private machines. It is never an org admin. A machine that an org key makes is shared from the start, and its creator is that key.
+- An `org_key` acts only in its own org. It has the rights of a member, without private machines. It is never an org admin. A machine that an org key makes is shared from the start, and its creator is that key. Milestone T12 of phase 3 builds forks, and a fork through an org key then makes a shared machine. The owner decided this on 2026-11-06, in Q193.
 - An instance admin has only the rights of its own roles here. It acts on the machines of others through the admin API ([the admin API](/reference/admin-api/index.html.md#machineservice)).
 
 A caller that cannot read a machine gets `not_found`, with the same message as for a machine that does not exist. So the call tells nothing about the private machines of others.
@@ -501,7 +501,9 @@ Sets the target of a machine to `deleted`, and waits until its executor deleted 
 
 The request `DeleteMachineRequest` names the machine. The response `DeleteMachineResponse` has the fields `machine`, `duration`, and `done`. The machine has `delete_request_time`.
 
-A delete is allowed from any target but `deleted`. It is the only action that drops the memory file of a hibernated machine ([Domain rules](/reference/domain-rules/index.html.md#hibernated-machines-keep-their-memory-file)). The leader drops the row of the machine 7 days after the delete request, once its executor deleted it ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)).
+A delete is allowed from any target but `deleted`. It is the only action that drops the memory file of a hibernated machine ([Domain rules](/reference/domain-rules/index.html.md#hibernated-machines-keep-their-memory-file)), until milestone T03 of phase 3 adds `DiscardMemory` (Q192). The leader drops the row of the machine 7 days after the delete request, once its executor deleted it ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)).
+
+Milestone T21 of phase 3 adds backups. A delete by a user then keeps the backups of the machine until their retention ends, with an undo for the same org, which milestones T21 and T22 build. The owner decided this on 2026-11-06, in Q189.
 
 | Error | Code |
 | --- | --- |
@@ -635,7 +637,7 @@ Each message `ExecRequest` and `ExecResponse` holds one `ExecChunk` in the field
 
 A client that ends its side of the stream sends no more input, and the command runs on. A client that cancels the call ends the command.
 
-`hopbox connect` opens a shell with `Exec`: `tty` true and no `argv`. Phase 1 has no standby and no hibernate, so a connect to a machine that does not run gets `failed_precondition`. The CLI gives exec its JSON output, its exit status, and its terminal handling ([hopbox CLI](/reference/cli/index.html.md#exec)).
+`hopbox connect` opens a shell with `Exec`: `tty` true and no `argv`. Phase 1 has no standby and no hibernate, so a connect to a machine that does not run gets `failed_precondition`. Milestone T06 of phase 3 makes `hopbox connect`, `Exec`, `Upload`, and `Download` wake a machine. `GetMachine`, `ListMachines`, and `StreamMachineLogs` do not wake one. The owner decided this on 2026-11-06, in Q180. The CLI gives exec its JSON output, its exit status, and its terminal handling ([hopbox CLI](/reference/cli/index.html.md#exec)).
 
 ### The WebSocket endpoint
 
