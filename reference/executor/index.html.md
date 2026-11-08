@@ -70,7 +70,7 @@ Each action has a timeout of 5 min (`DefaultActionTimeout`). An action that fail
 | `stopping the machine for its delete failed` | warn | `err`. The delete runs again 5 s later. |
 | `the VMM driver declares the capability snapshot but cannot snapshot` | error | `driver`. The hibernate runs again 5 s later. |
 | `the VMM driver declares the capability pause but cannot pause`, `the VMM driver declares the capability pause but cannot resume` | error | `driver`. The action runs again 5 s later. |
-| `pausing the machine failed` | warn | `err`. The pause runs again 5 s later. The microVM runs on without a guest link until then. |
+| `pausing the machine failed` | warn | `err`. If the guest still runs, or if the driver cannot read its state, the pause runs again 5 s later. Until then, the microVM runs on without a guest link. If the guest reads as paused, the executor reports `standby` at once ([Standby](#standby)). |
 | `cannot run the machine again` | warn | `err`. A resume that fails keeps the microVM paused, and runs again 5 s later. |
 | `the machine has the target standby without a microVM, so its RAM is gone` | warn | |
 | `the microVM of a machine in standby ended` | warn | `reason`, `err` |
