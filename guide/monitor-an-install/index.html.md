@@ -228,7 +228,7 @@ A control server that is not an edge server takes SSH only through an edge serve
 ssh -J root@edge1.example.org -L 3000:127.0.0.1:3000 root@control1.example.org
 ```
 
-Open `http://127.0.0.1:3000` in a browser, and sign in as `admin`. The folder `hopbox` holds the eight dashboards:
+Open `http://127.0.0.1:3000` in a browser, and sign in as `admin`. The folder `hopbox` holds the nine dashboards:
 
 | Dashboard | Content |
 | --- | --- |
@@ -240,6 +240,7 @@ Open `http://127.0.0.1:3000` in a browser, and sign in as `admin`. The folder `h
 | hopbox D6 Nodes | The executor actions and boot phases, the lease losses, the guest links, the image caches, the cold moves with their pulls, and the state and restarts of `hopboxd.service` |
 | hopbox D7 Edge, DNS, and SSH | The requests of the edge, the requests to machines and the upstream errors, the routes, the connections against their limit, the refusals, the certificate, the DNS queries and zone serials, and the SSH front door |
 | hopbox D8 Network | The egress exits and uplinks, the traffic and dropped packets of the machines, the repairs of the node network, the mesh peers with their handshakes and traffic, and the host firewall |
+| hopbox D9 Memory | The machines in standby and hibernated, the machines by state, the failed wakes and resumes, and the count and the p99 of pauses, resumes, hibernates, and wakes |
 
 The same tunnel works for Prometheus on port 9090 and Alertmanager on port 9093.
 
@@ -332,7 +333,7 @@ Run these steps in this order:
 
 6. Make sure that the tunnel still works. Open it as in [section 7](#7-open-grafana-through-an-ssh-tunnel), go to `http://127.0.0.1:3000/`, and sign in as `admin` with the password of section 6.
 
-7. Sign in on the console, open `https://grafana.example.com/`, click the link on the page that opens, and open the dashboards D1 to D8.
+7. Sign in on the console, open `https://grafana.example.com/`, click the link on the page that opens, and open the dashboards D1 to D9.
 
 8. Set the links of the console. They then open `https://grafana.example.com/d/hopbox-overview` and the other dashboards. A change of the domain needs a new URL here.
 
@@ -783,7 +784,11 @@ Warning. 2 or more fetches of an image for a boot failed on a node in the last h
 
 ### HopboxGuestLinkDown
 
-Warning. Machines ran on a node without an authenticated guest link for 5 minutes. Exec, file copies, and the start command of those machines do not work. Read the logs of the machines, and the log of `hopboxd` on the node.
+Warning. Machines ran on a node without an authenticated guest link for 5 minutes. Exec, file copies, and the start command of those machines do not work. A machine in standby does not count, because the node closed its link on purpose. This alert also fires for a resume whose guest agent does not connect again: the guest runs, and `HopboxWakesFailing` stays quiet, because such a resume counts one failure. The machine stays in the state `standby` until its link comes back. Read the logs of the machines, and the log of `hopboxd` on the node.
+
+### HopboxWakesFailing
+
+Warning. Wakes or resumes of machines failed on a node for 10 minutes. Each machine keeps its memory, and its executor tries again. A machine in the state `standby` stays paused until a resume works. Read the log of `hopboxd` on the node for `cannot run the machine again` ([the node executor](/reference/executor/index.html.md#standby)), and the journal of the unit of the machine.
 
 ### HopboxGuestLinkProofFailed
 

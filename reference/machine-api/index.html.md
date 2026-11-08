@@ -9,7 +9,7 @@ The service `hopbox.v1.MachineService` of the public API creates, reads, and cha
 | `CreateMachine` | Makes a machine and places it on a node. |
 | `GetMachine`, `ListMachines`, `WatchMachines` | Read the machines that the caller sees, once or as a stream of changes. |
 | `ListMachineSizes` | Reads the sizes that a machine can have. |
-| `StartMachine`, `StopMachine`, `RebootMachine`, `RenameMachine`, `DeleteMachine` | Set the target state of a machine, then wait for it ([Lifecycle calls](#lifecycle-calls)). |
+| `StartMachine`, `StopMachine`, `PauseMachine`, `ResumeMachine`, `RebootMachine`, `RenameMachine`, `DeleteMachine` | Set the target state of a machine, then wait for it ([Lifecycle calls](#lifecycle-calls)). |
 | `ShareMachine`, `UnshareMachine` | Open a private machine to the whole org, or make it private again. |
 | `UpdateMachine` | Changes the restart policy, the start command, or the auto-delete timeout. |
 | `SetMachineURLPort`, `SetMachineURLVisibility` | Change the port that the URL of a machine reaches, and who can open the URL. |
@@ -52,8 +52,8 @@ The creator of a machine is the account that made it, or the org key that made i
 | Call | The creator | A member, on a shared machine | A member, on a private machine of another | An org admin or owner, on a private machine of another |
 | --- | --- | --- | --- | --- |
 | `GetMachine`, and the machine in `ListMachines` and `WatchMachines` | yes | yes | no, `not_found` | yes |
-| `StopMachine`, `DeleteMachine` | yes | yes | no, `not_found` | yes |
-| `StartMachine`, `RebootMachine`, `RenameMachine`, `UpdateMachine` | yes | yes | no, `not_found` | no, `permission_denied` |
+| `StopMachine`, `PauseMachine`, `DeleteMachine` | yes | yes | no, `not_found` | yes |
+| `StartMachine`, `ResumeMachine`, `RebootMachine`, `RenameMachine`, `UpdateMachine` | yes | yes | no, `not_found` | no, `permission_denied` |
 | `ShareMachine`, `UnshareMachine`, `SetMachineURLPort`, `SetMachineURLVisibility` | yes | no, `permission_denied` | no, `not_found` | no, `permission_denied` |
 | `Exec`, `Upload`, `Download`, `StreamMachineLogs`, and the WebSocket of exec (action `machine.exec`) | yes | yes | no, `not_found` | no, `permission_denied` |
 
@@ -153,7 +153,7 @@ The edge servers serve the URL of a machine ([the edge role](/reference/edge/ind
 
 ## Lifecycle calls
 
-`StartMachine`, `StopMachine`, `RebootMachine`, `RenameMachine`, and `DeleteMachine` are the lifecycle calls. Each one takes these steps:
+`StartMachine`, `StopMachine`, `PauseMachine`, `ResumeMachine`, `RebootMachine`, `RenameMachine`, and `DeleteMachine` are the lifecycle calls. Each one takes these steps:
 
 1. It checks the policy, then its input.
 2. It locks the rows in the order of [Control store tables](/reference/control-store/index.html.md#orgs): the key lock of the creator account, the org row, then the machine row. It checks the policy again under the locks, because the role or the machine can change in between.
@@ -183,6 +183,8 @@ The wait wakes on each change event of the machine ([Change events](#change-even
 | --- | --- |
 | `StartMachine` | the current state is `running`, and every boot that a request asked for ran: `reboot_pending` is `false` |
 | `StopMachine` | the current state is `stopped` |
+| `PauseMachine` | the current state is `standby` |
+| `ResumeMachine` | the current state is `running`, after the handshake of the guest agent on its new guest link |
 | `RebootMachine` | the current state is `running`, and the new boot runs: `reboot_pending` is `false` |
 | `RenameMachine` | the new boot runs, for a machine whose current and target state are both `running`. Any other rename has no wait, and returns `done` `true` at once. |
 | `DeleteMachine` | the current state is `deleted` |
@@ -441,6 +443,54 @@ On an install without an executor, the wait ends after 60 s. The state stays `MA
 
 The output here is cut short.
 
+### PauseMachine
+
+Puts a running machine in standby, and waits until it is there. The memory of the machine stays in the RAM of its node, and the guest does not run. A machine in standby still counts in the limits of its org and on its node ([Usage and limits](#usage-and-limits)).
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.v1.MachineService/PauseMachine` |
+| Policy action | `machine.pause`: those who use the machine, and the org admins and owners, as for `StopMachine` |
+| Idempotent option | no. A second call changes nothing. |
+| Audit entry | action `machine.pause`, target kind `machine`, details `name` and `old_target` |
+
+The request `PauseMachineRequest` names the machine. The response `PauseMachineResponse` has the fields `machine`, `duration`, and `done`. A pause is allowed in a suspended org.
+
+A pause closes the guest link of the machine. So an exec, a file copy, or a web terminal that runs ends with an error. The machine has no route while it is in standby, so its URL and its SSH port refuse a connection, as for a machine that does not run. Milestone T06 of phase 3 makes a connection resume the machine.
+
+| Error | Code |
+| --- | --- |
+| The current state is not `running` or `standby`, for example `failed precondition: machine action not allowed: cannot pause a machine that is pending` | `failed_precondition` |
+| The target is not `running` or `standby`, for example `failed precondition: machine action not allowed: cannot pause a machine whose target state is stopped` | `failed_precondition` |
+| The machine has a move that runs, in `stopping` or `pulling`: `failed precondition: the machine <name> moves to another node. Pause it after the move`. A move hands the target of the machine to its target node, which has no microVM to pause. A node that removes the old copy of a move that ended blocks no pause. | `failed_precondition` |
+| The node of the machine runs an older release: `failed precondition: the node of the machine <name> runs hopboxd <version>, whose heartbeats name no feature standby. An instance admin must upgrade the node first` | `failed_precondition` |
+| The driver of the node cannot pause: `failed precondition: the node of the machine <name> runs hopboxd <version>, whose VMM driver cannot pause` | `failed_precondition` |
+
+```sh
+browser -d '{"name":"box1"}' $API/hopbox.v1.MachineService/PauseMachine
+```
+
+### ResumeMachine
+
+Takes a machine out of standby, and waits until it runs. The guest goes on from where it was. A resume boots nothing, so the boot ID stays, and the start command does not run again. The guest agent gets a new link key and a new guest link ([the node executor](/reference/executor/index.html.md#standby)).
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.v1.MachineService/ResumeMachine` |
+| Policy action | `machine.resume`: those who use the machine, as for `StartMachine` |
+| Idempotent option | no. A second call fails with `failed_precondition`, because the target is `running` then. |
+| Audit entry | action `machine.resume`, target kind `machine`, details `name` and `old_target` |
+
+The request `ResumeMachineRequest` names the machine. The response `ResumeMachineResponse` has the fields `machine`, `duration`, and `done`. A resume counts as a use for the auto-delete timeout. It checks no limit, because a machine in standby holds its vCPUs and RAM already. A resume needs the node of the machine, because the memory of the machine lives in the RAM of that node.
+
+| Error | Code |
+| --- | --- |
+| The target is not `standby`: `failed precondition: machine action not allowed: cannot resume a machine whose target state is running` | `failed_precondition` |
+| A suspended org: `failed precondition: org suspended: an instance admin suspended the org, so it cannot resume a machine` | `failed_precondition` |
+| The node of the machine lacks the feature or the capability, with the messages of `PauseMachine` | `failed_precondition` |
+
+A machine can lose its standby: a node reboot, a crash, or a kill of its unit ends its RAM. The target then follows its restart policy, `running` for `always` and `stopped` for `never` ([the node executor](/reference/executor/index.html.md#a-lost-standby)). So after a reboot of the node, a call of `ResumeMachine` finds another target and fails.
+
 ### RebootMachine
 
 Boots a running machine again, and waits for the new boot. The call adds 1 to the reboot number of the machine, so `reboot_pending` is `true` until the executor runs the new boot. The target stays `running`.
@@ -477,6 +527,8 @@ Gives a machine a new name. The old name stays reserved for the org for 7 days, 
 
 The response `RenameMachineResponse` has the fields `machine`, `duration`, and `done`. A rename to the name that the machine has already changes nothing, and returns `done` `true` at once. A rename is allowed in a suspended org.
 
+A machine in standby refuses a new name, because a rename reboots a running machine, and a machine in standby takes no reboot. The refusal covers each machine whose current state or target is `standby`, so also a pause or a resume in progress. A rename to the name that the machine has already stays a success, in each of these states. The owner decided this on 2026-11-07, in Q200.
+
 An org holds at most 100 names in reservation (`domain.MaxNameReservations`): the old names of renames and the names of deleted machines, for 7 days each. A rename while the org holds 100 fails, so renames cannot hold back names from other orgs without end. A delete always reserves its name, also beyond 100.
 
 Two renames that swap the names of two machines at the same time lock both name rows in the order of the names ([Control store tables](/reference/control-store/index.html.md#orgs)). So they never deadlock: the first one wins, and the second one finds its new name taken.
@@ -487,6 +539,7 @@ Two renames that swap the names of two machines at the same time lock both name 
 | The new name is taken, with a free name in the message and in the detail `MachineNameTaken`, as for `CreateMachine` | `already_exists` |
 | The org holds 100 reserved names: `usage limit exceeded: the org holds 100 reserved machine names, the most that it can hold. A name stays reserved for 7 days after its rename or delete` | `resource_exhausted` |
 | The target is `deleted` | `failed_precondition` |
+| The current state or the target is `standby`: `failed precondition: machine action not allowed: cannot rename a machine in standby: resume it first` | `failed_precondition` |
 
 ### DeleteMachine
 
@@ -535,6 +588,7 @@ Every access call has the policy action `machine.exec`. Only a caller who uses t
 | A member on a private machine of another member | `not_found` |
 | An org admin or owner on a private machine of another member | `permission_denied` |
 | A machine that is not running, for `Exec`, `Upload`, or `Download` | `failed_precondition`, with the message `failed precondition: the machine <name> is <state>, not running. Start it first` |
+| A machine in standby, for `Exec`, `Upload`, or `Download` | `failed_precondition`, with the message `failed precondition: the machine <name> is in standby. Resume it first`. Milestone T06 of phase 3 makes these calls resume the machine. |
 | A machine of a suspended org, for `Exec`, `Upload`, or `Download` | `failed_precondition`, with the message `failed precondition: org suspended: an instance admin suspended the org of the machine` |
 | A machine whose target or current state is `deleted` | `not_found` |
 | The node of the machine has no channel to the control process. Or it has 255 data streams open. Or it did not attach the stream within 10 s. | `unavailable`. A retry can work. |
@@ -637,7 +691,7 @@ Each message `ExecRequest` and `ExecResponse` holds one `ExecChunk` in the field
 
 A client that ends its side of the stream sends no more input, and the command runs on. A client that cancels the call ends the command.
 
-`hopbox connect` opens a shell with `Exec`: `tty` true and no `argv`. Phase 1 has no standby and no hibernate, so a connect to a machine that does not run gets `failed_precondition`. Milestone T06 of phase 3 makes `hopbox connect`, `Exec`, `Upload`, and `Download` wake a machine. `GetMachine`, `ListMachines`, and `StreamMachineLogs` do not wake one. The owner decided this on 2026-11-06, in Q180. The CLI gives exec its JSON output, its exit status, and its terminal handling ([hopbox CLI](/reference/cli/index.html.md#exec)).
+`hopbox connect` opens a shell with `Exec`: `tty` true and no `argv`. A connect to a machine that does not run gets `failed_precondition`, also a connect to a machine in standby ([Who can call them](#who-can-call-them)). Milestone T06 of phase 3 makes `hopbox connect`, `Exec`, `Upload`, and `Download` wake a machine. `GetMachine`, `ListMachines`, and `StreamMachineLogs` do not wake one. The owner decided this on 2026-11-06, in Q180. The CLI gives exec its JSON output, its exit status, and its terminal handling ([hopbox CLI](/reference/cli/index.html.md#exec)).
 
 ### The WebSocket endpoint
 
@@ -883,9 +937,9 @@ An instance admin can suspend an org ([the org API](/reference/org-api/index.htm
 
 | Call | In a suspended org |
 | --- | --- |
-| `CreateMachine`, `StartMachine`, `RebootMachine` | blocked, with `failed_precondition` and the message `failed precondition: org suspended: an instance admin suspended the org, so it cannot <action> a machine` |
+| `CreateMachine`, `StartMachine`, `ResumeMachine`, `RebootMachine` | blocked, with `failed_precondition` and the message `failed precondition: org suspended: an instance admin suspended the org, so it cannot <action> a machine` |
 | `DeleteMachine` | blocked, because a suspension keeps the data of the org |
-| `StopMachine`, `RenameMachine` | allowed |
+| `StopMachine`, `PauseMachine`, `RenameMachine` | allowed |
 | `GetMachine`, `ListMachines`, `WatchMachines`, `ListMachineSizes`, `ShareMachine`, `UnshareMachine`, `UpdateMachine`, `SetMachineURLPort`, `SetMachineURLVisibility`, `StreamMachineLogs` | allowed |
 | `Exec`, `Upload`, `Download` | blocked, with `failed_precondition` and the message `failed precondition: org suspended: an instance admin suspended the org of the machine`. A suspension also ends the open ones ([How a stream ends](#how-a-stream-ends)). |
 
@@ -917,8 +971,10 @@ The machine calls write these entries in the transaction of the change. Their or
 | Action | Written by | Details besides `name` |
 | --- | --- | --- |
 | `machine.create` | `CreateMachine` | `size`, `image` (the digest), `shared` |
-| `machine.start` | `StartMachine` | `old_target`, `retry`, `boot_again` |
-| `machine.stop` | `StopMachine`, and `SuspendOrg` and `SuspendAccount` of the admin API for each machine that they stop | `old_target`, and `reason` for a stop of the admin API. The reason is `org suspended` in an org that the call suspends, and `account suspended` for a private machine of the account in another org. |
+| `machine.start` | `StartMachine`, and the report of a lost standby of a machine with the restart policy `always`, with the actor `system` | `old_target`, `retry`, `boot_again`. For a lost standby, `old_target` and `reason`. |
+| `machine.pause` | `PauseMachine` | `old_target` |
+| `machine.resume` | `ResumeMachine` | `old_target` |
+| `machine.stop` | `StopMachine`, the report of a lost standby of a machine with the restart policy `never`, with the actor `system`, and `SuspendOrg` and `SuspendAccount` of the admin API for each machine that they stop | `old_target`, and `reason` for a stop of the admin API. The reason is `org suspended` in an org that the call suspends, and `account suspended` for a private machine of the account in another org. |
 | `machine.reboot` | `RebootMachine` | none |
 | `machine.rename` | `RenameMachine` | `old_name`, `new_name` |
 | `machine.delete` | `DeleteMachine`, the calls of [What a member leaves behind](/reference/org-api/index.html.md#what-a-member-leaves-behind), and the auto-delete | `reason` for a delete by hopbox or by another call. It is `member left` (`LeaveOrg`, `RemoveOrgMember`, `DeleteAccount`), `org deleted` (`DeleteOrg`, `DeleteAccount` for the personal org), or `auto-delete`. The auto-delete adds `auto_delete_timeout` and `last_activity_at` (RFC 3339, UTC). |

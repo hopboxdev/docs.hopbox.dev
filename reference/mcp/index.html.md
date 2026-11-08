@@ -130,6 +130,8 @@ Each tool tells the client whether it only reads, with the hint `readOnlyHint`. 
 | `hopbox_v1_MachineService_ListMachineSizes` | [ListMachineSizes](/reference/machine-api/index.html.md#listmachinesizes) | yes |
 | `hopbox_v1_MachineService_StartMachine` | [StartMachine](/reference/machine-api/index.html.md#startmachine) | no |
 | `hopbox_v1_MachineService_StopMachine` | [StopMachine](/reference/machine-api/index.html.md#stopmachine) | no |
+| `hopbox_v1_MachineService_PauseMachine` | [PauseMachine](/reference/machine-api/index.html.md#pausemachine) | no |
+| `hopbox_v1_MachineService_ResumeMachine` | [ResumeMachine](/reference/machine-api/index.html.md#resumemachine) | no |
 | `hopbox_v1_MachineService_RebootMachine` | [RebootMachine](/reference/machine-api/index.html.md#rebootmachine) | no |
 | `hopbox_v1_MachineService_RenameMachine` | [RenameMachine](/reference/machine-api/index.html.md#renamemachine) | no |
 | `hopbox_v1_MachineService_DeleteMachine` | [DeleteMachine](/reference/machine-api/index.html.md#deletemachine) | no |

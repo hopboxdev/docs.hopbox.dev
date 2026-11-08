@@ -28,6 +28,8 @@ The definitions are in `proto/hopbox/guest/v1/link.proto`, package `hopbox.guest
 
 Each microVM has its own vsock device socket, so the socket tells the node which machine connects. The guest agent opens a new link at once after a drop. A Firecracker snapshot resets every vsock connection, also in the running machine. After a failed attempt, the guest agent waits 100 ms, then twice as long after each further failure, up to 5 s. A link that ends within 1 s counts as a failed attempt, so a link that drops at once does not loop without a pause.
 
+A paused guest answers no PING. So before a pause, the node closes the link and its socket ([the node executor](/reference/executor/index.html.md#standby)). A resume gives the guest a new link key and a new socket. The guest agent sees the old connection end when its vCPUs run again, and opens a new link at once. The first exec after a resume thus waits for that handshake.
+
 ## Link key
 
 Each boot of a machine has its own link key: 32 random bytes. The node puts the key in the metadata service of the microVM, and keeps the same key for the handshake. The key never goes on the kernel command line.

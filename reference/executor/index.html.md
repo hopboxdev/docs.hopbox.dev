@@ -40,7 +40,11 @@ Every log record of the executor has `component=executor`, apart from the record
 | `stopped` | the state `hibernated` | none | none. A hibernated machine never steps to `stopped`, because that step drops its memory file. |
 | `deleted` | anything | delete: a stop of the microVM, then the removal of the disk and the memory file | `deleted` |
 | `hibernated` | a microVM, and a driver with the capability snapshot | hibernate | `hibernated` |
-| `hibernated` or `standby` | a driver without the capability | none | none. The executor logs `the executor cannot reach the target` at level warn, with `target` and `reason`. |
+| `standby` | a microVM that runs, and a driver with the capability pause | pause: the executor withdraws and closes the guest link, and pauses the microVM | `standby` |
+| `standby` | a paused microVM, and another state in the control store, after a restart of `hopboxd` | none | `standby` |
+| `standby` | no microVM | none. The executor boots nothing ([Standby](#standby)). | `stopped` with `standby_lost`, once for each version of the spec |
+| `running` | a paused microVM | resume: a new link key, a new guest link, and `PATCH /vm`. Then the executor waits for the guest agent. | `running`, after the handshake |
+| `hibernated` or `standby` | a microVM, and a driver without the capability | none | none. The executor logs `the executor cannot reach the target` at level warn, with `target` and `reason`. |
 | any but `deleted` | a move in `pending_move` whose disk is not here yet, and a spec with `move` | pull: a copy of the disk from the source node of the move ([Cold move](/reference/cold-move/index.html.md#the-pull)) | none, or `failed` after 3 pulls that fail for good |
 | `running` | the disk of the move in `pending_move` is here, without the proof that the control role accepted | report the proof of the pull, then boot once the control role accepted it | `stopped` with `pulled_move_id`, then `starting` and `running` |
 | `stopped`, `hibernated`, or `standby` | the same | report the proof of the pull | `stopped` with `pulled_move_id`. A machine that the control store has `stopped` already gets a report of `stopped` again. |
@@ -65,6 +69,11 @@ Each action has a timeout of 5 min (`DefaultActionTimeout`). An action that fail
 | `cannot stop a machine whose guest agent did not come up` | error | `err` |
 | `stopping the machine for its delete failed` | warn | `err`. The delete runs again 5 s later. |
 | `the VMM driver declares the capability snapshot but cannot snapshot` | error | `driver`. The hibernate runs again 5 s later. |
+| `the VMM driver declares the capability pause but cannot pause`, `the VMM driver declares the capability pause but cannot resume` | error | `driver`. The action runs again 5 s later. |
+| `pausing the machine failed` | warn | `err`. The pause runs again 5 s later. The microVM runs on without a guest link until then. |
+| `cannot run the machine again` | warn | `err`. A resume that fails keeps the microVM paused, and runs again 5 s later. |
+| `the machine has the target standby without a microVM, so its RAM is gone` | warn | |
+| `the microVM of a machine in standby ended` | warn | `reason`, `err` |
 | `the lifecycle has no steps between two states` | error | `from`, `to`. The executor sends no report. |
 
 ## The guest link
@@ -98,6 +107,42 @@ The server of the guest link, `internal/node/guestlink`, writes these records wi
 | `push the configuration` | warn | `generation`, `err` |
 | `the guest agent failed to apply the configuration` | error | `generation`, `err` |
 | `ignored a guest link message that this node does not know` | debug | |
+
+## Standby
+
+A machine in standby keeps its microVM on the node, paused, with its memory in the RAM of the node. It keeps its allocation, so it counts on its node and in the limits of its org.
+
+A paused guest answers no HTTP/2 PING, so its keepalive drops the guest link about 20 s into standby ([Guest link](/reference/guest-link/index.html.md#transport)). So the pause runs in this order:
+
+1. The executor withdraws the guest link from `Manager.Guest`, and closes it. An exec or a file copy that runs ends with an error.
+2. The executor pauses the microVM with `vmm.Pauser` ([the VMM driver interface](/reference/vmm/index.html.md#pauser)). A call can fail after Firecracker applied it, so the driver then reads the state of the microVM. If the guest still runs, it runs on without a guest link. With the target `standby`, the pause runs again 5 s later. With the target `running`, the executor attaches the guest link again. If the guest is paused, the executor goes on as for a pause that worked: with the target `standby`, it reports `standby`, and with the target `running`, it resumes the guest. If the driver cannot read the state, the error wraps `vmm.ErrStateUnknown`. The executor then reports no `standby`. With the target `standby`, the pause runs again 5 s later, and the report of `standby` waits for a pause that works. With the target `running`, the executor resumes the guest, which is safe in either state. Until then, the machine counts in `hopbox_guest_links_down`.
+3. The executor reports `standby`.
+
+The resume runs in this order:
+
+1. The executor makes a new link key, and gives it to the microVM with `Instance.SetLinkKey`, as an attach does. So the guest never runs without its key.
+2. The executor serves a new guest link, and resumes the microVM.
+3. The guest agent sees the old connection end, reads the new key, and connects again ([Guest link](/reference/guest-link/index.html.md#transport)).
+4. After the handshake, the executor publishes the guest link, and reports `running`. The guest agent keeps its boot ID and its run ID, so the start command does not run again.
+
+If the guest agent does not come back within the action timeout, the machine stays in the state `standby` with its microVM running. The executor then attaches the guest link again, as after a restart of `hopboxd`, and `hopbox_guest_links_down` counts the machine.
+
+A pause closes the backoff of a start command that exited, with its link. So the first status after the resume starts that backoff again.
+
+After a restart of `hopboxd`, `Attach` tells the executor that the microVM is paused ([the VMM driver interface](/reference/vmm/index.html.md#driver)). With the target `standby`, the machine stays paused, and the executor names its allocation again. With the target `running`, it resumes. A reboot request that a pause crossed reboots the machine, and `Instance.Stop` resumes the guest for that. A stop and a delete also go through `Instance.Stop`, so the guest shuts down cleanly.
+
+### A lost standby
+
+A node reboot, a crash, or a kill of the unit ends the RAM of a machine in standby. With the target `standby` and no microVM, nothing else starts the machine. So the executor reports `stopped` with `standby_lost`, once for each version of the spec. A microVM that ends with the target `standby` needs no report of `failed` first.
+
+In the transaction of that report, the control role sets the target by the restart policy of the machine, with an audit entry ([the executor protocol](/reference/executor-protocol/index.html.md#what-the-control-role-does)). The owner decided this on 2026-11-06, in Q182.
+
+| Restart policy | New target | What happens next |
+| --- | --- | --- |
+| `always` | `running` | The executor boots the machine from its disk. |
+| `never` | `stopped` | The machine stays down until a start. So a machine with `never` stays down after a node reboot, unlike a running one. |
+
+A reboot request that a pause crossed leaves the boot of the report below the `reboot_generation` of the machine. The rule holds for that report too. With the target `running`, the executor then boots the new generation.
 
 ## Exec, file copy, and logs
 
@@ -192,11 +237,11 @@ After a restart, the executor asks the driver for each machine of the state dir.
 | `hopbox_executor_boot_phase_seconds` | histogram | `phase` | The duration of each phase of a boot. |
 | `hopbox_machine_restarts_total` | counter | `machine`, `reason` | The restarts of each machine by its restart policy. |
 | `hopbox_guest_link_handshakes_total` | counter | `result` | The handshakes of the guest links of the node. |
-| `hopbox_guest_links_down` | gauge | none | The machines whose microVM runs on the node without an authenticated guest link. |
+| `hopbox_guest_links_down` | gauge | none | The machines whose microVM runs on the node without an authenticated guest link. A machine in standby does not count, because the executor closed its link on purpose. |
 
 | Label | Values |
 | --- | --- |
-| `action` | `boot`, `wake`, `reboot`, `stop`, `delete`, `hibernate`, `link`, `report`, `config`, `start_command`, `pull` |
+| `action` | `boot`, `wake`, `reboot`, `stop`, `delete`, `hibernate`, `pause`, `resume`, `link`, `report`, `config`, `start_command`, `pull` |
 | `result` of the actions | `ok`, `failed`, or `canceled` for an action that ended with the loss of its lease |
 | `phase` | `unit_start`, `vmm_ready`, `guest_link`, or `start_command` |
 | `machine` | The ID of the machine |

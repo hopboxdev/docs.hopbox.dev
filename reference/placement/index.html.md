@@ -39,8 +39,9 @@ A server must pass every filter, in this order:
 | 6 | Compatibility class | The request names no class, or the class of the server. | `class` |
 | 7 | Version | Its `hopboxd` is at least the oldest version that the request allows. The version must be a valid semver version. | `version` |
 | 8 | Cold move | Only for the target of a cold move: its heartbeats say that it pulls disks with its current `hopboxd`, and it is in the mesh ([Cold move](/reference/cold-move/index.html.md#two-releases)). A create skips this filter. | `move` |
-| 9 | vCPUs | The vCPUs that it uses, plus the vCPUs of the size, are at most 2 times its CPU threads. | `cpu` |
-| 10 | RAM | The RAM that it uses, plus the RAM of the size, is at most its RAM. | `ram` |
+| 9 | Features and capabilities | Its last heartbeat, from its current `hopboxd`, names each feature and each capability that the request names ([the control channel](/reference/control-channel/index.html.md#heartbeat)). A request that names none passes every server. No request names one yet, and the milestones of phase 3 add them. | `capability` |
+| 10 | vCPUs | The vCPUs that it uses, plus the vCPUs of the size, are at most 2 times its CPU threads. | `cpu` |
+| 11 | RAM | The RAM that it uses, plus the RAM of the size, is at most its RAM. | `ram` |
 
 A create takes the pool and the labels of its size for filters 4 and 5. So does a cold move, with the size of the machine. The size `default` names no pool and no label, so its machines pass both filters on every server. A move with memory state names a compatibility class. A cold move carries no memory, so it names none, and filter 6 passes every server. The target of a cold move is never the node of the machine.
 

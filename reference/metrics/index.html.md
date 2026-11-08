@@ -473,13 +473,13 @@ The executors of a node count their actions, and what happens to their machines 
 
 | Metric | Type | Labels | Description |
 | --- | --- | --- | --- |
-| `hopbox_executor_actions_total` | counter | `action`, `result` | The actions of the executors of the node. |
+| `hopbox_executor_actions_total` | counter | `action`, `result` | The actions of the executors of the node, such as `boot`, `pause`, and `resume` ([the node executor](/reference/executor/index.html.md#metrics)). |
 | `hopbox_executor_action_duration_seconds` | histogram | `action` | The duration of the actions. |
 | `hopbox_executor_lease_losses_total` | counter | none | The machine leases that the node lost: the control role did not renew one or refused a report with it, or it expired. Each grant counts once, 10 s after its end. The end of a grant by a cold move, or after a delete, does not count ([the node executor](/reference/executor/index.html.md#metrics)). |
 | `hopbox_executor_boot_phase_seconds` | histogram | `phase` | The duration of each phase of a boot or a reboot: `unit_start`, `vmm_ready`, `guest_link`, and `start_command`. |
 | `hopbox_machine_restarts_total` | counter | `machine`, `reason` | The restarts of each machine by the restart policy: `crash`, `guest_shutdown`, or `start_command_exit`. The series of a machine go away when it leaves the node. |
 | `hopbox_guest_link_handshakes_total` | counter | `result` | The handshakes of the guest links: `ok`, `bad_proof`, `no_version`, or `error`. Each of the 4 series starts at 0. |
-| `hopbox_guest_links_down` | gauge | none | The machines whose microVM runs on the node without an authenticated guest link. A boot counts until its guest agent connects. A machine that runs before its first spec after a restart of `hopboxd` does not count. |
+| `hopbox_guest_links_down` | gauge | none | The machines whose microVM runs on the node without an authenticated guest link. A boot counts until its guest agent connects. A machine that runs before its first spec after a restart of `hopboxd` does not count. A machine in standby does not count, because the node closed its link on purpose. |
 
 The catalog names the phases and the results in words, so these label values stand for them:
 

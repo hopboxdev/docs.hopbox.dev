@@ -17,6 +17,7 @@ Each guide, reference page, and release note also has a Markdown copy at its URL
 
 - [Reach a machine over SSH](https://docs.hopbox.dev/guide/ssh/index.html.md): How to reach a machine through the SSH front door with ssh, scp, sftp, rsync, and port forwards. Also what each failure means.
 - [Run commands and copy files in a machine](https://docs.hopbox.dev/guide/exec-and-files/index.html.md): How to run commands in a machine, copy files, and read its log through the API with grpcurl, and open a shell over the WebSocket.
+- [Standby and hibernate](https://docs.hopbox.dev/guide/standby-and-hibernate/index.html.md): How to put a machine in standby and bring it back, and what happens when a machine loses its standby.
 - [Work in the prompt of the CLI](https://docs.hopbox.dev/guide/cli-prompt/index.html.md): How to work in the prompt of the hopbox CLI: Tab completion of commands and live machine names, quotes, a shell, Ctrl-C, the history, and profiles.
 - [Use the console](https://docs.hopbox.dev/guide/console/index.html.md): How to use the console of an install in a browser: sign in, create a machine, open a shell, approve the hopbox CLI, and the other pages.
 - [Work in a team org](https://docs.hopbox.dev/guide/orgs/index.html.md): How to share an org with a team, and how the operator sets the limits of an org and suspends it.

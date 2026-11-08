@@ -12,13 +12,13 @@ This release has two drivers. The Firecracker driver of `internal/node/vmm/firec
 
 | Capability | Go value | What it allows | Interface |
 | --- | --- | --- | --- |
-| pause | `vmm.CapPause` | standby: the microVM pauses in RAM | none yet |
+| pause | `vmm.CapPause` | standby: the microVM pauses in RAM | `vmm.Pauser` |
 | snapshot | `vmm.CapSnapshot` | hibernate: the memory goes to a memory file | `vmm.Snapshotter` |
 | restore | `vmm.CapRestore` | wake: a boot from the memory file | `vmm.Restorer` |
 | fork | `vmm.CapFork` | a new microVM from the state of another | none yet |
 | migrate | `vmm.CapMigrate` | a move of a microVM to another node | none yet |
 
-The Firecracker driver of phase 1 declares none.
+The Firecracker driver declares pause. The node names the capabilities of its driver in each heartbeat ([the control channel](/reference/control-channel/index.html.md#heartbeat)). So placement and the API can decide by them without a call to a driver.
 
 ## Driver
 
@@ -32,13 +32,14 @@ A driver runs the microVMs of one node. Its microVMs run apart from `hopboxd`, s
 | `LinkSocket(id)` | The unix socket of the guest link of the machine: its path, its mode, and its owner. It is the same for each boot of the machine ([Guest link](/reference/guest-link/index.html.md#transport)). The Firecracker driver keeps the socket in the jail of the machine. So before it listens, the executor makes the dir of the socket. |
 | `Inspect(ctx, id)` | What the node holds of the machine, as a `Status`. A machine that the node never saw has the zero `Status`. |
 | `Boot(ctx, Boot)` | Boots a machine that does not run. For a machine without a disk, it makes the disk from the image first. It returns once the microVM runs, before the guest booted. On an error, no microVM of the machine runs. After a failed boot, the executor asks `Inspect` again before its next action. |
-| `Attach(ctx, id)` | Returns the microVM of a machine that runs, for example after a restart of `hopboxd`. It fails with `vmm.ErrNotRunning` for a machine that does not run. |
+| `Attach(ctx, id)` | Returns the microVM of a machine that runs, for example after a restart of `hopboxd`, also a paused one. `Instance.Paused` then tells the executor that it is paused. It fails with `vmm.ErrNotRunning` for a machine that does not run. |
 | `Delete(ctx, id)` | Removes the disk, the memory file, and every other file of a machine that does not run. A machine without files succeeds. |
 
 | `Status` field | Description |
 | --- | --- |
 | `Disk` | The disk of the machine exists. |
-| `Running` | The microVM runs. |
+| `Running` | The microVM runs, also while it is paused. |
+| `Paused` | The microVM is paused in RAM. |
 | `Memory` | A memory file of a hibernate is kept. Only `Delete` drops it. Milestone T03 of phase 3 adds the explicit call `DiscardMemory`, which also drops it (Q192, decided by the owner on 2026-11-06). |
 
 `Boot` holds the `Machine` and the link key of the boot:
@@ -60,7 +61,8 @@ A driver runs the microVMs of one node. Its microVMs run apart from `hopboxd`, s
 | --- | --- |
 | `Done()` | A channel that closes once the microVM stopped, for any reason. |
 | `Exit()` | Why the microVM stopped, once `Done` closed. |
-| `Stop(ctx)` | Stops the microVM, and returns once `Done` closed. The driver first asks the guest to shut down. At the end of `ctx`, it ends the microVM. A stopped microVM succeeds. |
+| `Stop(ctx)` | Stops the microVM, and returns once `Done` closed. The driver first asks the guest to shut down, and it resumes a paused guest for that. At the end of `ctx`, it ends the microVM. A stopped microVM succeeds. |
+| `Paused()` | Whether the microVM is paused in RAM. |
 | `SetLinkKey(ctx, key)` | Puts a new link key in the metadata service. The executor calls it after an attach, because the key of a boot lives only in memory. |
 
 | Exit reason | Go value | Meaning |
@@ -69,6 +71,15 @@ A driver runs the microVMs of one node. Its microVMs run apart from `hopboxd`, s
 | `shutdown` | `vmm.ExitShutdown` | A shutdown or a reboot from inside the machine. |
 | `crash` | `vmm.ExitCrash` | An end that nobody asked for, such as a crash of the VMM. `Exit.Err` says what went wrong. |
 | `snapshot` | `vmm.ExitSnapshot` | The end of `Snapshot`. The memory is in the memory file. |
+
+## Pauser
+
+A driver with the capability pause is a `vmm.Pauser`. Both calls are safe to run twice.
+
+| Interface | Method | Description |
+| --- | --- | --- |
+| `vmm.Pauser` | `Pause(ctx, inst)` | Pauses the vCPUs of a running microVM. Its memory stays in the RAM of the node. The executor closes the guest link first, because a paused guest answers no keepalive ([Guest link](/reference/guest-link/index.html.md#transport)). After a call that fails, `Instance.Paused` gives the state that the driver read from the VMM, because a call can fail after the VMM applied it. A state that the driver cannot read counts as paused, and the error then wraps `vmm.ErrStateUnknown`. So the caller resumes such a guest, or pauses it again, and never takes it for paused. |
+| `vmm.Pauser` | `Resume(ctx, inst)` | Runs a paused microVM again. The executor first gives it a new link key with `Instance.SetLinkKey`, and serves a new guest link. |
 
 ## Snapshotter and Restorer
 

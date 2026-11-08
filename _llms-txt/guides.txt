@@ -1930,11 +1930,11 @@ drain_stranded  box3 01a14406-1f2e-7b44-8c10-5d3a9e0b2c11: no capacity: no node 
 
 These are the reasons:
 
-| Reason                                                                                                                       | What to do                                                                                                                                                                            |
-| ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `no capacity: ...`                                                                                                           | Make room on another server. The drain tries the machine again once a minute.                                                                                                         |
-| `a cold move needs a machine that booted, with the target running or stopped. This one is <state>, with the target <target>` | The machine never booted, is hibernated, or is in standby. Start it, stop it, or delete it. Then run the drain again.                                                                 |
-| `its move failed: <error of the move>`                                                                                       | The machine is stopped, with its disk on the node. Fix the error of the move, such as a node that cannot take the disk. Then run the drain again. The machine boots again on a start. |
+| Reason                                                                                                                       | What to do                                                                                                                                                                                                                                                                                  |
+| ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `no capacity: ...`                                                                                                           | Make room on another server. The drain tries the machine again once a minute.                                                                                                                                                                                                               |
+| `a cold move needs a machine that booted, with the target running or stopped. This one is <state>, with the target <target>` | The machine never booted, is hibernated, or is in standby. A cold move drops memory, so a drain strands a machine in standby until a resume or a stop. Milestone T23 of phase 3 moves such a machine with its memory. Start it, stop it, resume it, or delete it. Then run the drain again. |
+| `its move failed: <error of the move>`                                                                                       | The machine is stopped, with its disk on the node. Fix the error of the move, such as a node that cannot take the disk. Then run the drain again. The machine boots again on a start.                                                                                                       |
 
 A drain never deletes a machine. A machine that cannot move stays on the node with its disk: a running machine with no room keeps running, a machine whose move failed stays stopped.
 
@@ -3956,6 +3956,8 @@ The server keeps the previous release. To go back to it, run:
 sudo hopboxd upgrade --rollback
 ```
 
+Before a rollback to a release without standby, resume each machine in standby ([Standby and hibernate](/guide/standby-and-hibernate/)). Such a release has no resume call.
+
 A rollback cannot undo a schema migration of the newer release. Each migration names the oldest release that runs with it. If the newer release applied a migration that does not allow the previous release, the rollback stops before the switch, and the newer release keeps running. The error starts with `the control store has the schema migration`. Upgrade to a release that knows the migrations instead ([hopboxd](/reference/hopboxd/#upgrade)).
 
 v0.1.0 runs only on a store whose migrations it knows. So a rollback from v0.2.0 to v0.1.0 stops with that error. A rollback from a later release, such as v0.3.0, to v0.2.0 works when the migrations of v0.3.0 allow v0.2.0. Then `readlink /opt/hopbox/current` prints `releases/v0.2.0`, and `readlink /opt/hopbox/previous` prints `releases/v0.3.0`. A second rollback goes forward again.
@@ -5452,7 +5454,7 @@ A control server that is not an edge server takes SSH only through an edge serve
 ssh -J root@edge1.example.org -L 3000:127.0.0.1:3000 root@control1.example.org
 ```
 
-Open `http://127.0.0.1:3000` in a browser, and sign in as `admin`. The folder `hopbox` holds the eight dashboards:
+Open `http://127.0.0.1:3000` in a browser, and sign in as `admin`. The folder `hopbox` holds the nine dashboards:
 
 | Dashboard                    | Content                                                                                                                                                                                                                                                                                                                                                                   |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -5464,6 +5466,7 @@ Open `http://127.0.0.1:3000` in a browser, and sign in as `admin`. The folder `h
 | hopbox D6 Nodes              | The executor actions and boot phases, the lease losses, the guest links, the image caches, the cold moves with their pulls, and the state and restarts of `hopboxd.service`                                                                                                                                                                                               |
 | hopbox D7 Edge, DNS, and SSH | The requests of the edge, the requests to machines and the upstream errors, the routes, the connections against their limit, the refusals, the certificate, the DNS queries and zone serials, and the SSH front door                                                                                                                                                      |
 | hopbox D8 Network            | The egress exits and uplinks, the traffic and dropped packets of the machines, the repairs of the node network, the mesh peers with their handshakes and traffic, and the host firewall                                                                                                                                                                                   |
+| hopbox D9 Memory             | The machines in standby and hibernated, the machines by state, the failed wakes and resumes, and the count and the p99 of pauses, resumes, hibernates, and wakes                                                                                                                                                                                                          |
 
 The same tunnel works for Prometheus on port 9090 and Alertmanager on port 9093.
 
@@ -5556,7 +5559,7 @@ Run these steps in this order:
 
 6. Make sure that the tunnel still works. Open it as in [section 7](#7-open-grafana-through-an-ssh-tunnel), go to `http://127.0.0.1:3000/`, and sign in as `admin` with the password of section 6.
 
-7. Sign in on the console, open `https://grafana.example.com/`, click the link on the page that opens, and open the dashboards D1 to D8.
+7. Sign in on the console, open `https://grafana.example.com/`, click the link on the page that opens, and open the dashboards D1 to D9.
 
 8. Set the links of the console. They then open `https://grafana.example.com/d/hopbox-overview` and the other dashboards. A change of the domain needs a new URL here.
 
@@ -6007,7 +6010,11 @@ Warning. 2 or more fetches of an image for a boot failed on a node in the last h
 
 ### HopboxGuestLinkDown
 
-Warning. Machines ran on a node without an authenticated guest link for 5 minutes. Exec, file copies, and the start command of those machines do not work. Read the logs of the machines, and the log of `hopboxd` on the node.
+Warning. Machines ran on a node without an authenticated guest link for 5 minutes. Exec, file copies, and the start command of those machines do not work. A machine in standby does not count, because the node closed its link on purpose. This alert also fires for a resume whose guest agent does not connect again: the guest runs, and `HopboxWakesFailing` stays quiet, because such a resume counts one failure. The machine stays in the state `standby` until its link comes back. Read the logs of the machines, and the log of `hopboxd` on the node.
+
+### HopboxWakesFailing
+
+Warning. Wakes or resumes of machines failed on a node for 10 minutes. Each machine keeps its memory, and its executor tries again. A machine in the state `standby` stays paused until a resume works. Read the log of `hopboxd` on the node for `cannot run the machine again` ([the node executor](/reference/executor/#standby)), and the journal of the unit of the machine.
 
 ### HopboxGuestLinkProofFailed
 
@@ -7188,6 +7195,100 @@ curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_edge_ssh_'
 ```
 
 `hopbox_edge_ssh_connections_total{result="forwarded"}` counts the connections that reached their machine. The other results and the logs are in [the SSH front door](/reference/ssh-front-door/#metrics).
+
+# Standby and hibernate
+
+> How to put a machine in standby and bring it back, and what happens when a machine loses its standby.
+
+This guide shows you how to put a machine in standby and how to bring it back. Standby keeps the memory of a machine in the RAM of its node. A machine in standby does not run, and it goes on from the same place at the resume. Processes keep their PIDs, and data in RAM stays. Hibernate comes in a later milestone of phase 3.
+
+You need:
+
+* The `hopbox` CLI, signed in ([Use the hopbox CLI](/guide/cli/)).
+* A running machine, here `box1`.
+
+## Put a machine in standby
+
+Run this command on your computer:
+
+```sh
+hopbox machine pause box1
+```
+
+The command waits until the machine is in standby, and prints:
+
+```text
+Paused the machine box1 in <time>.
+```
+
+`hopbox list` now shows `box1` with the state `standby`. In the console, each running machine has the button Pause.
+
+A pause has these effects:
+
+* Each exec and each terminal of the machine ends with an error.
+* `hopbox exec`, `hopbox connect`, and a file copy fail with `the machine box1 is in standby. Resume it first`.
+* The URL and the SSH port of the machine refuse connections, as for a machine that does not run. A later milestone of phase 3 makes a connection resume the machine.
+* The machine still holds its RAM on its node. So it counts in the vCPU and RAM limits of its org, as a running machine does ([Create and manage machines](/guide/machines/)).
+
+## Bring a machine back
+
+Run this command on your computer:
+
+```sh
+hopbox machine resume box1
+```
+
+The command waits until the guest agent of the machine connected, and prints:
+
+```text
+Resumed the machine box1 in <time>.
+```
+
+A resume boots nothing, so the boot ID of the machine stays, and the start command does not run again. In the console, a machine in standby has the button Resume.
+
+You can also stop or delete a machine in standby. The guest then resumes for a moment, and shuts down cleanly.
+
+If the guest agent does not connect again, the machine stays in the state `standby`, although its guest runs. It leaves that state when its link comes back.
+
+A machine in standby refuses a new name, because a rename reboots a running machine. Resume the machine first. The refusal also covers a machine on its way in or out of standby.
+
+## A machine in standby on a drained node
+
+A machine in standby does not move, because its memory lives in the RAM of its node. A drain strands such a machine until you resume it or stop it. A later milestone of phase 3 moves such a machine with its memory. You cannot pause a machine while it moves to another node.
+
+## What the wall clock does
+
+A guest in standby does not run, so its wall clock stops. After a resume, the clock of the guest stays behind until the guest syncs it. The default image has no time service. A later milestone of phase 3 sets the clock at each resume.
+
+## When a machine loses its standby
+
+The memory of a machine in standby lives only in the RAM of its node. A reboot or a crash of the node ends that RAM, and so does a kill of the unit of the machine. The machine then loses what its memory held. Its disk stays. The restart policy of the machine decides the next step:
+
+| Restart policy | What happens                               |
+| -------------- | ------------------------------------------ |
+| `always`       | The machine boots from its disk.           |
+| `never`        | The machine stays down until you start it. |
+
+So a machine with the restart policy `never` stays down after a reboot of its node. The audit log of the org holds an entry with the actor `system` and the reason `the RAM of the machine in standby is gone`. A planned reboot of the node shuts each guest down cleanly first, so data that the guest wrote to its disk stays.
+
+Keep data that must survive a reboot on the disk.
+
+## Errors
+
+| Error                                                                                                                                                                                    | Cause                                                                   | Fix                                                        |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `failed_precondition: failed precondition: machine action not allowed: cannot pause a machine whose target state is stopped`                                                             | Only a running machine goes to standby.                                 | Start the machine first.                                   |
+| `failed_precondition: failed precondition: machine action not allowed: cannot resume a machine whose target state is running`                                                            | The machine is not in standby, or it lost its standby.                  | Read its state with `hopbox machine show box1`.            |
+| `failed_precondition: failed precondition: the machine box1 is in standby. Resume it first`                                                                                              | An exec, a file copy, or `hopbox connect` found the machine in standby. | Run `hopbox machine resume box1`.                          |
+| `failed_precondition: failed precondition: machine action not allowed: cannot rename a machine in standby: resume it first`                                                              | A rename found the machine in standby, or on its way in or out of it.   | Run `hopbox machine resume box1`, then rename the machine. |
+| `failed_precondition: failed precondition: the machine box1 moves to another node. Pause it after the move`                                                                              | An instance admin or a drain moves the machine.                         | Wait for the end of the move, and pause again.             |
+| `failed_precondition: failed precondition: the node of the machine box1 runs hopboxd <version>, whose heartbeats name no feature standby. An instance admin must upgrade the node first` | The node runs an older release.                                         | Ask an instance admin to upgrade the node.                 |
+
+## See also
+
+* [The machine API](/reference/machine-api/#pausemachine) for `PauseMachine` and `ResumeMachine`.
+* [hopbox CLI](/reference/cli/#machine-pause) for the commands.
+* [The node executor](/reference/executor/#standby) for the steps on the node.
 
 # Call the API from TypeScript
 

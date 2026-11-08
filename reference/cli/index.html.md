@@ -511,6 +511,8 @@ At the prompt itself, the keys Ctrl-C and Ctrl-D are keys, not signals. A SIGINT
 | [`machine show`](#machine-show) | Prints one machine. |
 | [`machine start`](#machine-start) | Starts a stopped machine, and waits until it runs. |
 | [`machine stop`](#machine-stop) | Stops a machine, and waits until it stops. |
+| [`machine pause`](#machine-pause) | Puts a running machine in standby, and waits for it. |
+| [`machine resume`](#machine-resume) | Takes a machine out of standby, and waits until it runs. |
 | [`machine reboot`](#machine-reboot) | Boots a running machine again, and waits for the new boot. |
 | [`machine rename`](#machine-rename) | Gives a machine a new name. |
 | [`machine delete`](#machine-delete), `machine rm` | Deletes a machine and its disk. |
@@ -745,7 +747,7 @@ Starts a stopped machine with `StartMachine`, and waits until it runs.
 Started the machine box1 in 1.204s.
 ```
 
-The install waits for the machine for up to 60 s ([the machine API](/reference/machine-api/index.html.md#the-wait)). If the machine is not there at the end of the wait, the command fails with status 6: `the machine <name> is not <state> after <time>. It is <state>. hopbox machine show <name> shows its state later`. The machine keeps its target, so it can still get there. The commands `machine stop`, `machine reboot`, `machine rename`, and `machine delete` work in the same way.
+The install waits for the machine for up to 60 s ([the machine API](/reference/machine-api/index.html.md#the-wait)). If the machine is not there at the end of the wait, the command fails with status 6: `the machine <name> is not <state> after <time>. It is <state>. hopbox machine show <name> shows its state later`. The machine keeps its target, so it can still get there. The commands `machine stop`, `machine pause`, `machine resume`, `machine reboot`, `machine rename`, and `machine delete` work in the same way.
 
 JSON fields of each of these commands: `machine`, the machine object, `duration_seconds`, how long the call took, and `done`, which is always `true`.
 
@@ -756,6 +758,24 @@ hopbox machine stop MACHINE
 ```
 
 Stops a machine with `StopMachine`, and waits until it stops. Its disk stays.
+
+### machine pause
+
+```sh
+hopbox machine pause MACHINE
+```
+
+Puts a running machine in standby with `PauseMachine`, and waits for it. The memory of the machine stays in the RAM of its node, and it still counts in the limits of its org. The command prints `Paused the machine <name> in <time>.`
+
+A pause ends each exec and each terminal of the machine. An exec, a file copy, and `hopbox connect` then fail with `the machine <name> is in standby. Resume it first`. See [Standby and hibernate](/guide/standby-and-hibernate/index.html.md).
+
+### machine resume
+
+```sh
+hopbox machine resume MACHINE
+```
+
+Takes a machine out of standby with `ResumeMachine`, and waits until it runs. The guest goes on from where it was. The command prints `Resumed the machine <name> in <time>.`
 
 ### machine reboot
 
@@ -772,6 +792,8 @@ hopbox machine rename MACHINE NAME
 ```
 
 Gives a machine the new name `NAME` with `RenameMachine`. A running machine reboots, and the command waits for the new boot. The old name stays reserved for the org for 7 days. The CLI moves the machine to its new alias in the managed SSH block. A taken name fails with status 5, as at [new](#new).
+
+A machine in standby refuses a new name with `cannot rename a machine in standby: resume it first`. Run `hopbox machine resume` first.
 
 ### machine delete
 

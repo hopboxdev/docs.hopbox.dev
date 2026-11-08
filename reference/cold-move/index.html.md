@@ -50,6 +50,8 @@ The control role writes the current state `moving` itself, and also `stopped` af
 | The named target fails a filter of placement | `the node <id> cannot take the machine: it <reason>` |
 | A live control process runs a release of the schema version 44 to 49 ([Two releases](#two-releases)) | `the control process <id> on <host> (hopboxd <release>) knows the migrations up to <version>, and only a hopboxd that knows migration 50 moves machines. Upgrade it first` |
 
+A machine with the target `standby` does not start a move. Its memory lives in the RAM of its node, and a cold move drops memory. A pause also waits for the end of a move in `stopping` or `pulling` ([the machine API](/reference/machine-api/index.html.md#pausemachine)), because a move hands the target of the machine to its target node. Milestone T23 of phase 3 moves a machine in standby with its memory.
+
 A named target that is the node of the machine fails with `invalid_argument`. An unknown named target fails with `not_found`. Without a named target, placement picks one ([Placement](/reference/placement/index.html.md#hard-filters)). It takes the size, the pool, and the labels of the size of the machine, and leaves out the node of the machine. A move needs no compatibility class, because it carries no memory. When no node takes the machine, the call fails with `unavailable` and the message of [Placement](/reference/placement/index.html.md#when-no-node-has-room).
 
 The start of a move writes the audit entry `machine.move` with `move`, `source`, `target`, and `old_target`.

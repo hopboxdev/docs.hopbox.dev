@@ -63,7 +63,7 @@ A lifecycle action only sets the target state. The executor then moves the curre
 | `resume` | `standby` | any | `running` |
 | `hibernate` | `running`, `standby`, or `hibernated` | any | `hibernated` |
 | `wake` | `hibernated` | any | `running` |
-| `rename` | any target except `deleted` | any | unchanged. A rename reboots a running machine. |
+| `rename` | any target except `deleted` | any. `CheckRename(target, current)` then refuses a new name when the target or the current state is `standby`. | unchanged. A rename reboots a running machine. |
 | `delete` | any target except `deleted` | any | `deleted` |
 | `fork` | `running` | `running` | unchanged. The fork is a new machine. |
 | `checkpoint` | `running` | `running` | unchanged |

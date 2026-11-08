@@ -1102,6 +1102,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.v1.ListMachinesResponse'
+  /hopbox.v1.MachineService/PauseMachine:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: PauseMachine
+      description: |-
+        PauseMachine puts a running machine in standby, and waits for it. Its memory stays in the RAM of
+         its node, and it still counts in the limits of its org and on its node.
+      operationId: hopbox.v1.MachineService.PauseMachine
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.PauseMachineRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.PauseMachineResponse'
   /hopbox.v1.MachineService/RebootMachine:
     post:
       tags:
@@ -1148,7 +1189,8 @@ paths:
       summary: RenameMachine
       description: |-
         RenameMachine gives a machine a new name. The old name stays reserved for the org for 7 days.
-         A rename reboots a running machine, and then waits for the new boot.
+         A rename reboots a running machine, and then waits for the new boot. A machine in standby, or on
+         its way in or out of it, refuses a new name with failed_precondition: resume it first.
       operationId: hopbox.v1.MachineService.RenameMachine
       parameters:
         - name: Connect-Protocol-Version
@@ -1182,6 +1224,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.v1.RenameMachineResponse'
+  /hopbox.v1.MachineService/ResumeMachine:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: ResumeMachine
+      description: ResumeMachine takes a machine out of standby, and waits until it runs and its guest agent connected.
+      operationId: hopbox.v1.MachineService.ResumeMachine
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.ResumeMachineRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.ResumeMachineResponse'
   /hopbox.v1.MachineService/SetMachineURLPort:
     post:
       tags:
@@ -4234,6 +4315,59 @@ components:
       title: OrgUsage
       additionalProperties: false
       description: OrgUsage is what an org uses of its limits.
+    hopbox.v1.PauseMachineRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      title: PauseMachineRequest
+      description: PauseMachineRequest names one machine.
+    hopbox.v1.PauseMachineResponse:
+      type: object
+      properties:
+        machine:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Machine'
+          title: machine
+          description: machine is the machine at the end of the wait.
+        duration:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: duration
+          description: duration is how long the call took, the wait included.
+        done:
+          type: boolean
+          title: done
+          description: done is true when the machine is in standby at the end of the wait.
+      title: PauseMachineResponse
+      additionalProperties: false
+      description: PauseMachineResponse holds the machine after the wait.
     hopbox.v1.PollDeviceAuthorizationRequest:
       type: object
       properties:
@@ -4488,6 +4622,59 @@ components:
         - RESTART_POLICY_ALWAYS
         - RESTART_POLICY_NEVER
       description: RestartPolicy says what the executor does when a machine stops by itself.
+    hopbox.v1.ResumeMachineRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      title: ResumeMachineRequest
+      description: ResumeMachineRequest names one machine.
+    hopbox.v1.ResumeMachineResponse:
+      type: object
+      properties:
+        machine:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Machine'
+          title: machine
+          description: machine is the machine at the end of the wait.
+        duration:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: duration
+          description: duration is how long the call took, the wait included.
+        done:
+          type: boolean
+          title: done
+          description: done is true when the machine runs at the end of the wait.
+      title: ResumeMachineResponse
+      additionalProperties: false
+      description: ResumeMachineResponse holds the machine after the wait.
     hopbox.v1.RevokeAPIKeyRequest:
       type: object
       properties:

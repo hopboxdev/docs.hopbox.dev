@@ -8,7 +8,7 @@ The Firecracker driver is the VMM driver of the node role ([the VMM driver inter
 
 ## Capabilities
 
-The driver declares no capability in phase 1. It boots, stops, attaches to, and deletes machines. Pause, snapshot, restore, and fork come in phase 3.
+The driver declares the capability `pause`. It boots, stops, attaches to, pauses, resumes, and deletes machines. Snapshot, restore, and fork come in later milestones of phase 3. Standby needs Firecracker 1.17.0, or 1.16.2 and later, because 1.16.0 and 1.16.1 can block vsock traffic after a pause. The release bundle holds 1.17.0, and the driver does not read the version.
 
 `SnapshotFormat` runs `firecracker --snapshot-version` once, with at most 5 s, and returns the version that it prints, such as `v12.0.0`. The compatibility class of the node holds it ([the control channel](/reference/control-channel/index.html.md#compatibility-class)).
 
@@ -156,16 +156,24 @@ Each machine has a tap device, a virtual network device of Linux, in the network
 | State | For a machine with an address, the driver calls `Network.Connect` of its config before it starts the unit. The device is then up, with the gateway address and the route of the machine ([the node network](/reference/node-network/index.html.md#the-tap-device-of-a-machine)). A failed connect fails the boot. A machine without an address, or a driver without `Network`, keeps the device down, and the driver logs `the machine boots without network`. Firecracker answers the requests of the guest to the metadata service itself, so they never reach the device. |
 | Removal | when the microVM ends while `hopboxd` watches it, after a failed boot, and at a delete. The driver first calls `Network.Disconnect`, so the table of the node network drops the device. |
 
+## Pause and resume
+
+`Pause` sends `PATCH /vm` with `{"state": "Paused"}`, and `Resume` sends it with `{"state": "Resumed"}`. The vCPUs stop, and the memory stays in the RAM of the node. The process of Firecracker goes on, and so does its API. The unit keeps its memory limit, so the RAM of the guest stays in the cgroup of the unit. Phase 0 measured about 1 ms for each call on ks.
+
+`PUT /mmds` works on a paused microVM. So the executor gives the microVM its new link key before the resume, and the guest never runs without it.
+
+Firecracker can apply a call whose answer gets lost. So after a failed `Pause` or `Resume`, the driver reads the state with `GET /`, and `Instance.Paused` gives that state. A state that the driver cannot read counts as paused, because a resume of a running microVM succeeds, but a guest link to a paused guest never comes up. The error of the call then wraps `vmm.ErrStateUnknown`, and the executor pauses again before it reports `standby` ([the node executor](/reference/executor/index.html.md#standby)).
+
 ## Stop
 
-`Instance.Stop` sends `SendCtrlAltDel` through the API. The guest reboots, and with `reboot=k` a reboot ends Firecracker. The stop waits for the end of the process. After 30 s, or at the end of the context of the call, the driver kills the unit with `SIGKILL`. On the tested server, a stop of the default image takes about 0.4 s.
+`Instance.Stop` first reads the state of the microVM with `GET /`. `SendCtrlAltDel` needs a running guest, so a paused guest resumes first. If a call fails, the driver kills the microVM. Then `Instance.Stop` sends `SendCtrlAltDel` through the API. The guest reboots, and with `reboot=k` a reboot ends Firecracker. The stop waits for the end of the process. After 30 s, or at the end of the context of the call, the driver kills the unit with `SIGKILL`. On the tested server, a stop of the default image takes about 0.4 s.
 
 ## A stop through systemd
 
 A reboot or a shutdown of the server stops each unit through systemd. So does `sudo systemctl stop hopbox-machine-<id>.service`. Without `ExecStop`, systemd sends `SIGTERM`, which ends Firecracker at once, as a power loss does. So the unit of each machine gets an `ExecStop`, and a stop runs these steps:
 
 1. At a shutdown, systemd stops `hopboxd.service` first, because each unit is ordered before it. So no executor sees its guests go down, and none applies the restart policy or reports a state.
-2. systemd runs `hopboxd stop-guest`. It sends `SendCtrlAltDel` through the API socket, as `Instance.Stop` does.
+2. systemd runs `hopboxd stop-guest`. It resumes a paused guest, and sends `SendCtrlAltDel` through the API socket, as `Instance.Stop` does.
 3. The guest shuts down. It writes its page cache to the disk, and unmounts its file systems. Then it reboots, and with `reboot=k` Firecracker ends with status 0.
 4. `stop-guest` sees the end of the process, and exits with status 0. The unit is then inactive.
 
@@ -181,7 +189,7 @@ A unit keeps the properties of the boot that started it. So a microVM that a rel
 
 ## Exit reasons
 
-The driver watches the main process of the unit with a pidfd, a file descriptor of a process. When the process ends, it asks systemd why.
+The driver watches the main process of the unit with a pidfd, a file descriptor of a process. When the process ends, it asks systemd why. A stop that starts during that wait still counts as a stop of the driver. A poll of the pidfd that fails with `EINTR` runs again at once, and one that fails with `ENOMEM` runs again after 10 ms, then after twice as long each time, up to 1 s. Any other error of the poll ends the watch, and systemd then says why the unit ended.
 
 | What ended the process | Unit after the end | Root file system | Exit reason |
 | --- | --- | --- | --- |
@@ -199,7 +207,7 @@ The driver resets the failed state of the unit, so the name is free for the next
 
 ## Attach after a restart or an upgrade
 
-After a restart of `hopboxd`, the executor asks the driver for each machine of its node-local state ([the node executor](/reference/executor/index.html.md#node-local-state)). `Inspect` reports a machine as running while its unit is `active`, `activating`, `deactivating`, `reloading`, or `refreshing`. `Attach` then asks the API of Firecracker for the state of the microVM. For a microVM that runs, it watches the main process of the unit again. The executor then gives the microVM a new link key through `PUT /mmds`, and the guest agent connects again.
+After a restart of `hopboxd`, the executor asks the driver for each machine of its node-local state ([the node executor](/reference/executor/index.html.md#node-local-state)). `Inspect` reports a machine as running while its unit is `active`, `activating`, `deactivating`, `reloading`, or `refreshing`. `Inspect` and `Attach` then ask the API of Firecracker for the state of the microVM. For a microVM that runs, `Attach` watches the main process of the unit again. The executor then gives the microVM a new link key through `PUT /mmds`, and the guest agent connects again. For a microVM in the state `Paused`, `Instance.Paused` returns true, and the executor leaves the guest paused while the target of the machine is `standby` ([the node executor](/reference/executor/index.html.md#standby)).
 
 A microVM in the state `Not started` comes from a boot that `hopboxd` left before `InstanceStart`. Its link key went with that `hopboxd`. So `Attach` kills its unit and returns `vmm.ErrNotRunning`, and the executor boots the machine again.
 
@@ -227,6 +235,9 @@ Every record has `component=firecracker`.
 | `cannot remove a temp file of the image cache` | warn | `file`, `err` |
 | `cannot ask the guest to shut down, so the microVM gets killed` | warn | `machine`, `err` |
 | `the guest did not shut down in time, so the microVM gets killed` | warn | `machine`, `timeout` |
+| `paused a microVM` | info | `machine`, `duration` |
+| `resumed a microVM` | info | `machine`, `duration` |
+| `cannot read the state of a microVM after a failed call, so it counts as paused` | warn | `machine`, `err` |
 | `cannot stop the unit of a failed boot` | error | `machine`, `unit`, `err` |
 | `the machine boots without network` | warn | `machine`, `address`, `network` |
 | `cannot remove the tap device of a machine` | warn | `machine`, `err` |
@@ -274,15 +285,15 @@ The driver serves the metrics of its image cache ([Metrics](/reference/metrics/i
 | `SnapshotFormat(ctx)` | The snapshot format version of Firecracker. |
 | `Close()` | Closes the connection to systemd. A later call makes a new one. `hopboxd run` calls it after the stop of the unit `machines`. |
 
-The function `firecracker.StopGuest(ctx, sock, pid, timeout)` is the body of `hopboxd stop-guest`. It sends `SendCtrlAltDel` to the API socket `sock`, and waits for the end of the process `pid`, at most for `timeout`. A `pid` of 0 returns at once.
+The function `firecracker.StopGuest(ctx, sock, pid, timeout)` is the body of `hopboxd stop-guest`. It resumes a paused guest, sends `SendCtrlAltDel` to the API socket `sock`, and waits for the end of the process `pid`, at most for `timeout`. A `pid` of 0 returns at once.
 
-The methods of `vmm.Driver` follow [the VMM driver interface](/reference/vmm/index.html.md#driver). The driver needs Linux. On another system, `Inspect`, `Boot`, `Attach`, and `Delete` fail with `firecracker: the driver runs only on Linux`.
+The methods of `vmm.Driver` follow [the VMM driver interface](/reference/vmm/index.html.md#driver). The driver needs Linux. On another system, `Inspect`, `Boot`, `Attach`, `Pause`, `Resume`, and `Delete` fail with `firecracker: the driver runs only on Linux`.
 
 ## Tests
 
 `make test` runs the unit tests of the driver on any system: the config checks, the names, the API client against a fake Firecracker, the image cache, the kernel cache, and the jail IDs. `make test-linux` runs them on Linux too.
 
-`make test-kvm` runs the KVM tests. Each machine of these tests has at most 1 GiB of RAM, because the host of the CI runner also runs other services. `TestKVMLifecycle` boots the default image with the real guest agent and checks the unit, the jail user, the cgroup, the tap device, and the disk. Then it restarts the driver and attaches, stops, and boots from the kept disk. It reboots and powers off from inside, which must give `shutdown`. A kernel panic and a kill of Firecracker must give `crash`. It checks `ExecStop`, `Before`, and `TimeoutStopUSec` of the unit. Then the guest turns its writeback off and writes a file without a sync, and `systemctl stop` stops the unit. That must give `shutdown`, and the file must be there at the next boot. Then the stop helper is `/bin/false`, as after a rollback. A reboot from inside must still give `shutdown`, and the unit must not end failed. A stop of the unit must then give `crash`, with a root file system in use. It also attaches to a microVM that never started, and deletes the machine. `TestKVMFailedBoot` checks that a failed boot leaves no unit and no tap device. `TestKVMSystemdConnection` checks that the connection to systemd outlives the call that made it. `TestKVMEndToEnd` of `internal/control` runs a single-host install. It adds the size `kvm`, with 1 GiB of RAM, and makes a machine of that size through the API, runs exec, stops and starts it, upgrades `hopboxd` with the microVM running, and deletes it. It also checks the node network with a second machine ([the node network](/reference/node-network/index.html.md#tests)). The KVM tests run in a network namespace of their own.
+`make test-kvm` runs the KVM tests. Each machine of these tests has at most 1 GiB of RAM, because the host of the CI runner also runs other services. `TestKVMLifecycle` boots the default image with the real guest agent and checks the unit, the jail user, the cgroup, the tap device, and the disk. Then it restarts the driver and attaches, stops, and boots from the kept disk. It reboots and powers off from inside, which must give `shutdown`. A kernel panic and a kill of Firecracker must give `crash`. It checks `ExecStop`, `Before`, and `TimeoutStopUSec` of the unit. Then the guest turns its writeback off and writes a file without a sync, and `systemctl stop` stops the unit. That must give `shutdown`, and the file must be there at the next boot. Then the stop helper is `/bin/false`, as after a rollback. A reboot from inside must still give `shutdown`, and the unit must not end failed. A stop of the unit must then give `crash`, with a root file system in use. It also attaches to a microVM that never started, and deletes the machine. It pauses a guest that holds a process and data in RAM, restarts the driver, attaches, and resumes. The process, the data, and the boot ID must stay. It stops a paused guest, also through `systemctl stop`, and the root file system must end clean, with no lost file. A kill of a paused guest must give `crash`. `TestKVMFailedBoot` checks that a failed boot leaves no unit and no tap device. `TestKVMSystemdConnection` checks that the connection to systemd outlives the call that made it. `TestKVMEndToEnd` of `internal/control` runs a single-host install. It adds the size `kvm`, with 1 GiB of RAM, and makes a machine of that size through the API, runs exec, stops and starts it, upgrades `hopboxd` with the microVM running, and deletes it. It also pauses the machine through the API, reads `hopbox_guest_links_down` for 30 s, resumes, and logs the time to the first exec. It restarts `hopboxd` in standby and stops a machine in standby. A kill of the unit in standby, and a restart of `hopboxd` with no microVM, must each end at the target of the restart policy. It also checks the node network with a second machine ([the node network](/reference/node-network/index.html.md#tests)). The KVM tests run in a network namespace of their own.
 
 | Variable of `make test-kvm` | Default | Description |
 | --- | --- | --- |

@@ -150,7 +150,7 @@ These are the reasons:
 | Reason | What to do |
 | --- | --- |
 | `no capacity: ...` | Make room on another server. The drain tries the machine again once a minute. |
-| `a cold move needs a machine that booted, with the target running or stopped. This one is <state>, with the target <target>` | The machine never booted, is hibernated, or is in standby. Start it, stop it, or delete it. Then run the drain again. |
+| `a cold move needs a machine that booted, with the target running or stopped. This one is <state>, with the target <target>` | The machine never booted, is hibernated, or is in standby. A cold move drops memory, so a drain strands a machine in standby until a resume or a stop. Milestone T23 of phase 3 moves such a machine with its memory. Start it, stop it, resume it, or delete it. Then run the drain again. |
 | `its move failed: <error of the move>` | The machine is stopped, with its disk on the node. Fix the error of the move, such as a node that cannot take the disk. Then run the drain again. The machine boots again on a start. |
 
 A drain never deletes a machine. A machine that cannot move stays on the node with its disk: a running machine with no room keeps running, a machine whose move failed stays stopped.
