@@ -549,7 +549,7 @@
 <td><code dir="auto">false</code></td>
 </tr>
 <tr>
-<td>Another request set another target, for example a stop during the wait of a start.</td>
+<td>Another request set another target, for example a stop during the wait of a start. The control role sets another target too, for example after a refused save.</td>
 <td><code dir="auto">false</code></td>
 </tr>
 <tr>
@@ -566,7 +566,7 @@
 </tr>
 </tbody>
 </table>
-<p>The wait wakes on each change event of the machine (<a href="#change-events">Change events</a>), and reads the machine again every 2 s in any case. The machine in the response is the machine at the end of the wait. A wait that ends with <code dir="auto">done</code> false is not an error: the call succeeds, and the machine goes on toward its target.</p>
+<p>The wait wakes on each change event of the machine (<a href="#change-events">Change events</a>), and reads the machine again every 2 s in any case. The machine in the response is the machine at the end of the wait. A wait that ends with <code dir="auto">done</code> false is not an error: the call succeeds, and the machine goes on toward its target. One case fails: a hibernate whose node refused the save (<a href="#hibernatemachine">HibernateMachine</a>).</p>
 <table>
 <thead>
 <tr>
@@ -1270,7 +1270,7 @@
 </table>
 <p>A machine can lose its standby: a node reboot, a crash, or a kill of its unit ends its RAM. The target then follows its restart policy, <code dir="auto">running</code> for <code dir="auto">always</code> and <code dir="auto">stopped</code> for <code dir="auto">never</code> (<a href="/reference/executor/#a-lost-standby">the node executor</a>). So after a reboot of the node, a call of <code dir="auto">ResumeMachine</code> finds another target and fails.</p>
 <div class="sl-heading-wrapper level-h3"><h3 id="hibernatemachine">HibernateMachine</h3><a class="sl-anchor-link" href="#hibernatemachine"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “HibernateMachine”</span></a></div>
-<p>Saves the memory of a running machine, or of a machine in standby, to a memory file on its node. Then it ends the microVM, and waits until the machine is hibernated. A hibernated machine frees its vCPUs and RAM, so no limit refuses a hibernate. It still counts in the machine count and the disk of its org (<a href="#usage-and-limits">Usage and limits</a>).</p>
+<p>Saves the memory of a running machine, or of a machine in standby, to a memory file on its node. Then it ends the microVM, and waits until the machine is hibernated. A hibernated machine frees its vCPUs and RAM. It still counts in the machine count and the disk of its org. Its memory file counts in the stored state of the org (<a href="#usage-and-limits">Usage and limits</a>). Only the daily budget of saves, <code dir="auto">saved_bytes_per_day</code>, refuses a hibernate.</p>
 <table>
 <thead>
 <tr>
@@ -1299,6 +1299,15 @@
 </table>
 <p>The request <code dir="auto">HibernateMachineRequest</code> names the machine. The response <code dir="auto">HibernateMachineResponse</code> has the fields <code dir="auto">machine</code>, <code dir="auto">duration</code>, and <code dir="auto">done</code>. A hibernate is allowed in a suspended org. The response has <code dir="auto">memory_saved</code> <code dir="auto">true</code> once the node reported the file.</p>
 <p>A hibernate closes the guest link of the machine first. So an exec, a file copy, or a web terminal that runs ends with an error. A hibernated machine has no route, so its URL and its SSH port refuse a connection. Milestone T06 of phase 3 makes a connection wake the machine. A save that fails keeps the machine as it was, and the node tries again (<a href="/reference/executor/#hibernate">the node executor</a>). The wait then ends after 60 s with <code dir="auto">done</code> false.</p>
+<p>A call that changes the target checks the daily budget of the org under the lock of the org row. The save writes up to the RAM of the machine, so the check counts the RAM as the size of the save (<a href="/reference/domain-rules/#limits-of-saved-state">Domain rules</a>). The bytes of the saves of the last 24 hours plus the RAM must be at most <code dir="auto">saved_bytes_per_day</code>. Otherwise the call fails, and the machine keeps its target. The refusal sets <code dir="auto">save_budget_refused_at</code> of the org, outside the transaction of the call, and logs <code dir="auto">the daily budget of saves refused a hibernate, so the machine runs on</code> at level warn, with <code dir="auto">org</code> and <code dir="auto">err</code>. The next run of the abuse detection gives each instance admin a notice of it (<a href="/reference/abuse-detection/#signals">Abuse detection</a>). A record that fails logs <code dir="auto">cannot record the refusal of the daily budget of saves</code> at level warn, and the call still fails with the refusal.</p>
+<p>If the save leaves less free disk than the floor of the node, the node refuses it (<a href="/reference/executor/#the-gate-of-a-save">the node executor</a>). Then the machine runs on, or stays in standby:</p>
+<ol>
+<li>The node reports the current state again, with the refusal and its reason (<a href="/reference/executor-protocol/#machinereport">the executor protocol</a>).</li>
+<li>The control role sets the target back to that state, <code dir="auto">running</code> or <code dir="auto">standby</code>. It records the time and the reason of the refusal in the machine row (<a href="/reference/control-store/#machines">Control store tables</a>).</li>
+<li>It writes the audit entry <code dir="auto">machine.save_refuse</code> with the actor <code dir="auto">system</code>. Its details are <code dir="auto">old_target</code> <code dir="auto">hibernated</code>, <code dir="auto">target</code> <code dir="auto">running</code> or <code dir="auto">standby</code>, <code dir="auto">refused</code> <code dir="auto">disk_low</code>, and <code dir="auto">reason</code>, the words of the node.</li>
+<li>The wait of the call ends on the new target, and the call fails with the reason of the node.</li>
+</ol>
+<p>A refusal that the node reported before the call does not fail the call. A control process of an older release ignores the refusal, so the target stays <code dir="auto">hibernated</code>, and the node tries the save again.</p>
 <table>
 <thead>
 <tr>
@@ -1307,6 +1316,14 @@
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>The daily budget of the org: <code dir="auto">usage limit exceeded: the saves of the org would write &lt;bytes&gt; bytes in 24 hours, and its daily budget is &lt;limit&gt;</code></td>
+<td><code dir="auto">resource_exhausted</code></td>
+</tr>
+<tr>
+<td>The node refused the save: <code dir="auto">resource exhausted: the node of the machine &lt;name&gt; refused the save, so the machine runs on: &lt;reason&gt;</code>. The reason is the words of the node, for example <code dir="auto">the free disk of the node is below the floor of a save: &lt;free&gt; bytes are free, the save takes up to &lt;bytes&gt;, and the floor is &lt;floor&gt;</code>.</td>
+<td><code dir="auto">resource_exhausted</code></td>
+</tr>
 <tr>
 <td>The target is not <code dir="auto">running</code>, <code dir="auto">standby</code>, or <code dir="auto">hibernated</code>, for example <code dir="auto">failed precondition: machine action not allowed: cannot hibernate a machine whose target state is stopped</code></td>
 <td><code dir="auto">failed_precondition</code></td>
@@ -1333,7 +1350,7 @@
 </tr>
 </tbody>
 </table>
-<p>The check of the control processes, the move check, and the node checks run only for a call that changes the target.</p>
+<p>Only a call that changes the target runs these checks: the control processes, the move, the node, and the daily budget.</p>
 <div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="sh"><code><div class="ec-line hb-command"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">browser </span><span style="--0:#B9BBB3;--1:#5C5E57">-d</span><span style="--0:#EDEEE8;--1:#0D0E0C"> </span><span style="--0:#B9BBB3;--1:#5C5E57">'{"name":"box1"}'</span><span style="--0:#EDEEE8;--1:#0D0E0C"> $API</span><span style="--0:#B9BBB3;--1:#5C5E57">/hopbox.v1.MachineService/HibernateMachine</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="browser -d &#x27;{&quot;name&quot;:&quot;box1&quot;}&#x27; $API/hopbox.v1.MachineService/HibernateMachine"><div></div></button></div></figure></div>
 <div class="sl-heading-wrapper level-h3"><h3 id="wakemachine">WakeMachine</h3><a class="sl-anchor-link" href="#wakemachine"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “WakeMachine”</span></a></div>
 <p>Loads a hibernated machine from its memory file, and waits until it runs. The guest goes on from where it was, so the boot ID stays, and the start command does not run again. The guest agent gets a new link key and a new guest link. The node drops the memory file once the guest agent linked (<a href="/reference/executor/#the-end-of-a-wake">the node executor</a>).</p>
@@ -2740,13 +2757,21 @@
 <td>vCPUs and RAM</td>
 <td>the machines whose target is <code dir="auto">running</code> or <code dir="auto">standby</code></td>
 </tr>
+<tr>
+<td>Stored state</td>
+<td>the memory files of the machines whose target is not <code dir="auto">deleted</code></td>
+</tr>
+<tr>
+<td>Saves in 24 hours</td>
+<td>the saves of the last 24 hours, also those of a deleted machine</td>
+</tr>
 </tbody>
 </table>
-<p><code dir="auto">CreateMachine</code>, the start of a stopped machine, and <code dir="auto">WakeMachine</code> check the limits under the lock of the org row. A hibernated machine holds no vCPUs and no RAM, so a hibernate needs no check. The other calls do not add to the usage, so they take only a shared lock of the org row (<a href="/reference/control-store/#orgs">Control store tables</a>). The limits that apply follow the tier of the org: the personal org of a limited account takes the limited defaults, and every other org the first defaults (<a href="/reference/org-api/#usage-limits">the org API</a>).</p>
+<p><code dir="auto">CreateMachine</code>, the start of a stopped machine, and <code dir="auto">WakeMachine</code> check the limits under the lock of the org row. A hibernated machine holds no vCPUs and no RAM, so a hibernate checks only the daily budget of saves, under the same lock (<a href="#hibernatemachine">HibernateMachine</a>). The other calls do not add to the usage, so they take only a shared lock of the org row (<a href="/reference/control-store/#orgs">Control store tables</a>). The limits that apply follow the tier of the org: the personal org of a limited account takes the limited defaults, and every other org the first defaults (<a href="/reference/org-api/#usage-limits">the org API</a>).</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="auto-delete">Auto-delete</h2><a class="sl-anchor-link" href="#auto-delete"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Auto-delete”</span></a></div>
 <p>A machine with an auto-delete timeout goes after that time without use. The leader checks every minute (<a href="/reference/hopboxd/#leader-jobs">hopboxd</a>). The use is <code dir="auto">last_activity_time</code>. Today these set it: the create, each start that changes the machine, each resume, each wake, and each update with a new auto-delete timeout. The access calls set it too: each <code dir="auto">Exec</code>, <code dir="auto">Upload</code>, <code dir="auto">Download</code>, and <code dir="auto">StreamMachineLogs</code> at its start, and then every 30 s while it runs (<a href="#how-a-stream-ends">How a stream ends</a>). SSH sessions set it, and so does inbound traffic: each heartbeat of the node names the machines with inbound traffic (<a href="/reference/node-network/#inbound-traffic-as-a-use">the node network</a>). An SSH session calls <code dir="auto">Service.TouchMachine</code> of <code dir="auto">internal/service</code> after its own policy check. <code dir="auto">TouchMachine</code> writes at most once a minute for each machine, and does not change the <code dir="auto">version</code> of the machine. So <code dir="auto">last_activity_time</code> can be up to a minute older than the last use. The job deletes a machine only once <code dir="auto">last_activity_time</code> is older than its timeout plus 1 minute (<code dir="auto">service.TouchInterval</code>). So a machine that someone used within its timeout always stays. The job reads the idle machines in pages of 100, in the order of their last use. It goes on after a machine that fails, so a few bad machines never hold back the others. The job deletes the machine as <code dir="auto">DeleteMachine</code> does, so its name and its SSH port stay reserved for 7 days. It skips the machines of a suspended org. Its audit entry has the actor <code dir="auto">system</code>.</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="audit-entries">Audit entries</h2><a class="sl-anchor-link" href="#audit-entries"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Audit entries”</span></a></div>
-<p>The machine calls write these entries in the transaction of the change. Their org is the org of the machine, so its owners and admins read them with <code dir="auto">ListAuditEntries</code> (<a href="/reference/auth-api/#listauditentries">the sign-in, account, and audit API</a>). The target kind is <code dir="auto">machine</code>, and the target ID is the machine ID. Each entry has the detail <code dir="auto">name</code>: the name of the machine before the change. The actor is the caller, except for the auto-delete, whose actor is <code dir="auto">system</code>.</p>
+<p>The machine calls write these entries in the transaction of the change. Their org is the org of the machine, so its owners and admins read them with <code dir="auto">ListAuditEntries</code> (<a href="/reference/auth-api/#listauditentries">the sign-in, account, and audit API</a>). The target kind is <code dir="auto">machine</code>, and the target ID is the machine ID. Each entry has the detail <code dir="auto">name</code>: the name of the machine before the change. The actor is the caller. The auto-delete, a lost standby, and a refused save have the actor <code dir="auto">system</code>.</p>
 <table>
 <thead>
 <tr>
@@ -2770,6 +2795,11 @@
 <td><code dir="auto">machine.pause</code></td>
 <td><code dir="auto">PauseMachine</code></td>
 <td><code dir="auto">old_target</code></td>
+</tr>
+<tr>
+<td><code dir="auto">machine.save_refuse</code></td>
+<td>A save that the node refused, with the actor <code dir="auto">system</code> (<a href="#hibernatemachine">HibernateMachine</a>)</td>
+<td><code dir="auto">old_target</code>, <code dir="auto">target</code>, <code dir="auto">refused</code>, <code dir="auto">reason</code></td>
 </tr>
 <tr>
 <td><code dir="auto">machine.resume</code></td>

@@ -57,6 +57,8 @@ The file names the Postgres binaries that `hopboxd` runs and the external Postgr
 | `vmm.firecracker` | absolute path | `/opt/hopbox/current/firecracker/firecracker` | The Firecracker binary of the node role ([the Firecracker driver](/reference/firecracker-driver/index.html.md)). Its file name must be `firecracker`, because the jailer names the jail of each machine after it. Each boot uses the file at this path, so an upgrade moves new boots to the Firecracker of the new release. A running microVM keeps its own copy. The compatibility class takes its snapshot format version ([the control channel](/reference/control-channel/index.html.md#compatibility-class)). |
 | `vmm.jailer` | absolute path | `/opt/hopbox/current/firecracker/jailer` | The jailer binary of the node role. The unit of each machine runs it ([the Firecracker driver](/reference/firecracker-driver/index.html.md#the-unit-of-a-machine)). |
 | `vmm.kernel` | absolute path | `/opt/hopbox/current/kernel/vmlinux` | The guest kernel of the release. At each start, `hopboxd run` adds it to the kernel cache ([the Firecracker driver](/reference/firecracker-driver/index.html.md#the-kernel-cache)). A missing file gives a warning, and the start goes on. |
+| `vmm.save_free_percent` | integer, 0 to 90 | `10` | The share of the file system of `<data_dir>/machines`, in percent, that a save of the memory of a machine leaves free at least ([the node executor](/reference/executor/index.html.md#the-gate-of-a-save)). A save can fill the disk that the running machines write to. A save needs both floors free after it: this share and `vmm.save_free_bytes`. Otherwise the node refuses the save, and the machine runs on. The free disk counts the blocks that a user other than root can take. |
+| `vmm.save_free_bytes` | integer, bytes, 0 or more | `53687091200` (50 GiB) | The bytes that a save leaves free at least on the same file system. A small node sets a lower value, as the test fleet does on its KVM nodes with `536870912` (512 MiB) and `vmm.save_free_percent` `5`. A release before T05 refuses both keys as unknown keys, so set them only after the upgrade of the node, and remove them before a rollback. |
 | `network.nameservers` | array of IPv4 addresses | empty | The resolvers of the machines of the node role, at most 3, each once ([the node network](/reference/node-network/index.html.md#the-resolvers-of-the-machines)). The guest agent writes them to `/etc/resolv.conf` of each machine, and the machines reach them on port 53. Empty takes the IPv4 resolvers of the host, from `/run/systemd/resolve/resolv.conf` or `/etc/resolv.conf`. A loopback, unspecified, link-local, or multicast address, or an address of the install range `10.240.0.0/12`, is refused. A resolver on the node itself does not work, because a machine reaches no service of its node. |
 
 When a removal takes the role `dns` or `edge` from a running server, `hopboxd install --roles` without the role drops the whole table of the role from the file: `[dns]` with `dns.listen`, and `[edge]` with `edge.public_ipv4`, `edge.floating_addresses`, and `edge.public_ipv6` ([hopboxd](/reference/hopboxd/index.html.md#remove-roles)). A table whose role the old file did not list stays as it is.
@@ -127,6 +129,16 @@ roles = ["control", "node"]
 
 [network]
 nameservers = ["213.186.33.99", "9.9.9.9"]
+```
+
+A small node whose data dir holds 16 GiB. The default floor of a save, 50 GiB, refuses every hibernate there, so the node sets its own:
+
+```toml
+roles = ["node"]
+
+[vmm]
+save_free_percent = 5
+save_free_bytes = 536870912
 ```
 
 A DNS server of the install. It enrolls with the control role at `channel.control_urls`, and answers DNS on port 53 of one address:
@@ -250,6 +262,8 @@ listen = "127.0.0.1:9464"
 | `[node] is the old name of [channel]. Keep only [channel]` | The file has both `[node]` and `[channel]`. |
 | `network.nameservers: "<value>" is not an IPv4 address that a machine can reach, such as 9.9.9.9` | A resolver is not IPv4, or is a loopback, unspecified, link-local, multicast, or machine address. |
 | `network.nameservers: <address> appears twice` | A resolver is in the list twice. |
+| `vmm.save_free_percent: <n> is not 0 to 90`, for example `vmm.save_free_percent: 91 is not 0 to 90` | On a server with the node role, the share is below 0 or above 90. |
+| `vmm.save_free_bytes: <n> is below 0`, for example `vmm.save_free_bytes: -1 is below 0` | On a server with the node role, the bytes are below 0. With a bad share too, only the error of the share shows. |
 | `network.nameservers: <n> resolvers, more than 3` | The list is too long. |
 | `channel.control_url is the old key of channel.control_urls. Keep only channel.control_urls` | The file has both keys. |
 | `channel.control_urls: "<value>" is not a URL: ...` | A value does not parse as a URL. |

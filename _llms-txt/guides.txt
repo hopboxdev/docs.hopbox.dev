@@ -1207,12 +1207,18 @@ sudo hopboxd admin account block --email-domain=example.net --reason='abuse repo
 
 The Admin area has no shell and no file access for a machine. It never shows a secret or an env var of an org. An instance admin sees the metadata of an org, not its contents. The audit log of `org1` shows each of these actions to the owners of the org.
 
-To change the limits of one org, click “Limits” in its row. A field that you leave empty takes the default of the install. For the personal org of a limited account, that is the default of the tier `limited`. The row of such an org has the tag “limited”. The dialog shows the limits that apply now, and it has two more choices:
+The row of each org shows its usage against its limits, also its stored state and its saves in 24 hours. To change the limits of one org, click “Limits” in its row. A field that you leave empty takes the default of the install. For the personal org of a limited account, that is the default of the tier `limited`. The row of such an org has the tag “limited”. The dialog shows the limits that apply now. Four fields bound the saved state of the org:
+
+* “Stored state in GiB”: the memory files of hibernated machines, and later checkpoints and snapshots. A hibernate never checks it.
+* “Snapshots” and “Backups in GiB”: no snapshot or backup exists yet.
+* “Saves in 24 hours, in GiB”: the daily budget of saves. A hibernate above it fails, and the machine runs on.
+
+The dialog also has two choices:
 
 * “Public URLs”: “yes” lets the creator of a machine make its URL public, to anyone. “no” refuses a new public URL, and keeps each URL that is public already. The row then has the tag “no public URLs”.
 * “Outbound TCP port 25”: “open” lets the machines of the org send email to other mail servers. The default is “blocked”. Open it only for an org that you trust. A machine takes a change of port 25 at its next start or reboot. The row of an org with port 25 open has the tag “port 25 open”.
 
-The section “Default limits” sets those defaults, in two groups. “Team orgs and personal orgs of full accounts” holds the defaults of each org, apart from the personal org of a limited account. Its field “Orgs of one full account, besides its personal org” is the most orgs that a full account owns. A limited account owns no org. “Personal org of a limited account” holds the defaults of the tier `limited`: machines, vCPUs, RAM, disk, and public URLs. No default opens port 25. [The org API](/reference/org-api/#usage-limits) gives the defaults of a fresh install.
+The section “Default limits” sets those defaults, in two groups. “Team orgs and personal orgs of full accounts” holds the defaults of each org, apart from the personal org of a limited account. Its field “Orgs of one full account, besides its personal org” is the most orgs that a full account owns. A limited account owns no org. “Personal org of a limited account” holds the defaults of the tier `limited`: machines, vCPUs, RAM, disk, the four limits of saved state, and public URLs. No default opens port 25. [The org API](/reference/org-api/#usage-limits) gives the defaults of a fresh install.
 
 ## Approve or reject new accounts
 
@@ -1369,15 +1375,15 @@ The alert `Watchdog` never makes a notice. It always fires, for the outside chec
 
 ## Abuse signals
 
-`hopboxd` watches each account for the signals of abuse that the alerts of the monitoring bundle watch for the whole install: a machine at full CPU for hours, high egress, a scan of outbound connections, bursts of orgs, API keys, or machines, a churn of machine URLs, and a public URL of a new account ([Abuse detection](/reference/abuse-detection/)). It needs no Prometheus. Each signal gives each instance admin one notice under the heading “Abuse signals” of the page “Notices”. The notice names the account, and the machines or the org when the signal has them.
+`hopboxd` watches each account for the signals of abuse that the alerts of the monitoring bundle watch for the whole install: a machine at full CPU for hours, high egress, a scan of outbound connections, bursts of orgs, API keys, or machines, a churn of machine URLs, and a public URL of a new account ([Abuse detection](/reference/abuse-detection/)). It also watches each org for saved state at 90% of its limit, and for saves at 90% of the budget of 24 hours. It needs no Prometheus. Each signal gives each instance admin one notice under the heading “Abuse signals” of the page “Notices”. The notice names the account, and the machines or the org when the signal has them.
 
-The detection runs every minute. A repeat of the signal updates the notice. When the signal ends, the notice closes by itself, and the signal moves to the section “Resolved alerts” for 30 days. While a signal is active, the page “Overview” also lists it under “Needs your attention”. Without a token of the alert webhook, each run with new signals also sends you one email. With a token, Prometheus emails you its alerts, so the detection emails you only a public URL of a new account, which no alert of Prometheus watches.
+The detection runs every minute. A repeat of the signal updates the notice. When the signal ends, the notice closes by itself, and the signal moves to the section “Resolved alerts” for 30 days. While a signal is active, the page “Overview” also lists it under “Needs your attention”. Without a token of the alert webhook, each run with new signals also sends you one email. With a token, Prometheus emails you its alerts. The detection then emails you only the signals that no alert of Prometheus watches: a public URL of a new account, and the two signals of saved state.
 
 hopbox stops nothing by itself. Legitimate work, such as a build or an AI agent, can use a whole CPU for hours. To act on a notice, do these steps:
 
 1. Read the notice. It names the signal, its value, the threshold, and the account, such as `org_burst` for 6 orgs in one hour.
 2. Open the page “Audit log”, and read the entries of the account ([Handle an abuse report](#handle-an-abuse-report)).
-3. For a machine signal, open the page “Machines”, and find the machines that the notice names.
+3. For a machine signal, open the page “Machines”, and find the machines that the notice names. For a signal of saved state, open the page “Orgs”, and read the stored state and the saves in 24 hours in the row of the org. Raise its limits, or suspend the org if a loop of hibernates is abuse.
 4. If it is abuse, follow [Handle an abuse report](#handle-an-abuse-report): stop the machine, suspend the org, or suspend the account. Otherwise, dismiss the notice.
 
 To change a threshold, open the section “Abuse detection” of the page “Config”, or run `sudo hopboxd admin config set` with an `--abuse-` flag ([hopboxd](/reference/hopboxd/#admin-config-set)). For example, a team that builds all day can raise the CPU time before a notice:
@@ -5470,11 +5476,11 @@ Open `http://127.0.0.1:3000` in a browser, and sign in as `admin`. The folder `h
 | hopbox D6 Nodes              | The executor actions and boot phases, the lease losses, the guest links, the image caches, the cold moves with their pulls, and the state and restarts of `hopboxd.service`                                                                                                                                                                                               |
 | hopbox D7 Edge, DNS, and SSH | The requests of the edge, the requests to machines and the upstream errors, the routes, the connections against their limit, the refusals, the certificate, the DNS queries and zone serials, and the SSH front door                                                                                                                                                      |
 | hopbox D8 Network            | The egress exits and uplinks, the traffic and dropped packets of the machines, the repairs of the node network, the mesh peers with their handshakes and traffic, and the host firewall                                                                                                                                                                                   |
-| hopbox D9 Memory             | The machines in standby and hibernated, the machines by state, the failed wakes and resumes, the count and the p99 of pauses, resumes, hibernates, and wakes, and the p95 of the saves and loads of the VMM driver                                                                                                                                                        |
+| hopbox D9 Memory             | The machines in standby and hibernated, the machines by state, the failed wakes and resumes, the count and the p99 of pauses, resumes, hibernates, and wakes, and the p95 of the saves and loads of the VMM driver. Also the saved state of the nodes, in all and by node and kind, and the saves that the nodes refused, by reason.                                      |
 
 The same tunnel works for Prometheus on port 9090 and Alertmanager on port 9093.
 
-The panel “Machines by state” of D1 and “Machines per node” of D2 leave out the state `deleted`. “Moves by state” of D6 leaves out the state `done`. These counts stay until the sweep drops the row, so they set the scale and hide the live states.
+The panel “Running machines per node” of D3 leaves out the hibernated machines, whose series of `hopbox_machine_info` have the state `saved` ([Metrics](/reference/metrics/#metrics-of-the-machines)). The panel “Machines by state” of D1 and “Machines per node” of D2 leave out the state `deleted`. “Moves by state” of D6 leaves out the state `done`. These counts stay until the sweep drops the row, so they set the scale and hide the live states.
 
 Each stat reads one value, at the end of the time range. It reads its series through a window of 45 seconds, about 3 scrapes. So one or two missed scrapes do not change it, and a series that ended loses its value within 45 seconds. The dashboards refresh once a minute, so the change can take up to one more minute to show. After an upgrade, the release stats of D1 can show both releases for those 45 seconds.
 
@@ -6020,6 +6026,10 @@ Warning. Machines ran on a node without an authenticated guest link for 5 minute
 
 Warning. Wakes or resumes of machines failed on a node for 10 minutes. Each machine keeps its memory, and its executor tries again. A machine in the state `standby` stays paused until a resume works. A machine whose wake failed is `failed`, and keeps its memory file. Its executor tries the wake again only with the restart policy `always`. Read the log of `hopboxd` on the node for `cannot run the machine again` ([the node executor](/reference/executor/#standby)), and for `a machine action failed` with the error of the wake ([the node executor](/reference/executor/#the-end-of-a-wake)). Read the journal of the unit of the machine too. A memory file that never wakes stays until its creator drops it ([Standby and hibernate](/guide/standby-and-hibernate/#a-failed-wake)).
 
+### HopboxSavedStateDiskLow
+
+Warning. A node refused a save of the memory of a machine in the last 10 minutes. The save would leave less free disk than the floor of the node, `vmm.save_free_percent` and `vmm.save_free_bytes` ([the bootstrap config of hopboxd](/reference/hopboxd-config/#keys)). The machine runs on, and its hibernate fails with `resource_exhausted`. The alert ends 10 minutes after the last refusal. Read the log of `hopboxd` on the node for `refused the save of a hibernate, because the node has too little free disk`, which names the free bytes and the floor ([the node executor](/reference/executor/#the-gate-of-a-save)). Check the free disk of `<data_dir>/machines` with `df -h /var/lib/hopbox/machines`, and the panel “Saved state by kind” of D9. Free disk on the node, or move machines to another node. Lower the floor only on a small node whose disk holds less than the default of 50 GiB.
+
 ### HopboxGuestLinkProofFailed
 
 Warning. A guest agent on a node failed the proof of its guest link in the last 15 minutes. The proof does not match the link key of the machine. A guest agent that someone changed inside the machine can cause it. Find the machine in the log of `hopboxd` on the node.
@@ -6472,10 +6482,10 @@ as user2 -d "{\"orgId\":\"$ORG\"}" $API/hopbox.v1.OrgService/GetOrgUsage
 ```
 
 ```json
-{"usage":{},"limits":{"machines":3,"vcpus":6,"memoryBytes":"25769803776","diskBytes":"300000000000","publicUrls":true}}
+{"usage":{},"limits":{"machines":3,"vcpus":6,"memoryBytes":"25769803776","diskBytes":"300000000000","storedStateBytes":"107374182400","snapshots":10,"backupBytes":"107374182400","savedBytesPerDay":"1099511627776","publicUrls":true}}
 ```
 
-The org has no machines yet, so it uses nothing. The limits are the defaults of the install: 3 machines, 6 vCPUs, 24 GiB of RAM, 300 GB of disk, and public URLs. Outbound TCP port 25 stays closed, so `outboundSmtp` is left out. The personal org of a limited account has other defaults: 1 machine, 1 vCPU, 1 GiB of RAM, 5 GB of disk, and no public URL ([the org API](/reference/org-api/#usage-limits)).
+The org has no machines yet, so it uses nothing. The limits are the defaults of the install: 3 machines, 6 vCPUs, 24 GiB of RAM, 300 GB of disk, and public URLs. The org also keeps up to 100 GiB of stored state, 10 snapshots, and 100 GiB of backups. Its saves write up to 1 TiB in 24 hours. Outbound TCP port 25 stays closed, so `outboundSmtp` is left out. The personal org of a limited account has other defaults: 1 machine, 1 vCPU, 1 GiB of RAM, 5 GB of disk, and no public URL. It keeps no saved state, snapshot, or backup, and its saves write up to 20 GiB in 24 hours ([the org API](/reference/org-api/#usage-limits)). A hibernate checks only the budget of 24 hours, so a limited account still hibernates its machine.
 
 ## Manage the orgs as the operator
 
@@ -6506,15 +6516,25 @@ machines  0/10
 vcpus  0/6
 memory_bytes  0/68719476736
 disk_bytes  0/300000000000
+stored_state_bytes  0/107374182400
+snapshots  0/10
+backup_bytes  0/107374182400
+saved_bytes_per_day  0/1099511627776
 public_urls  true
 outbound_smtp  false
 version  2
 ```
 
+The org hibernates many machines, and needs a larger budget of saves. Set it in whole GiB, and give the other overrides again:
+
+```sh
+admin org set-limits --org-id $ORG --machines 10 --memory-gib 64 --saved-gib-per-day 2048
+```
+
 The org needs to send mail to other mail servers, for example from a mail server of its own. Open outbound TCP port 25 for its machines, and give the other overrides again. Each machine of the org takes the change at its next start or reboot:
 
 ```sh
-admin org set-limits --org-id $ORG --machines 10 --memory-gib 64 --outbound-smtp
+admin org set-limits --org-id $ORG --machines 10 --memory-gib 64 --saved-gib-per-day 2048 --outbound-smtp
 ```
 
 Change the defaults of every other org with `admin org default-limits set`, for example `--machines 5`. The flags with the prefix `--limited-` change the defaults of the personal org of a limited account, for example `--limited-disk-gb 10`. Each new org brings its own limits, so a full account owns at most 3 orgs besides its personal org on a fresh install, and a limited account owns none. Change that cap with `admin org default-limits set --max-orgs-per-account N`.
@@ -7202,17 +7222,18 @@ curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_edge_ssh_'
 
 # Standby and hibernate
 
-> How to put a machine in standby and bring it back, and what happens when a machine loses its standby. Also how to hibernate and wake a machine, what a failed wake leaves, how to drop a memory file, and how an operator protects the memory files on a node.
+> How to put a machine in standby and bring it back, and what happens when a machine loses its standby. Also how to hibernate and wake a machine, why a hibernate fails, what a failed wake leaves, how to drop a memory file, and how an operator protects the memory files and the free disk of a node.
 
 This guide shows you how to put a machine in standby or hibernate it, and how to bring it back. Standby keeps the memory of a machine in the RAM of its node. Hibernate saves that memory to a memory file on the disk of its node, and frees the RAM. In both cases, the machine does not run. At its return, it goes on from the same place. Processes keep their PIDs, and data in RAM stays.
 
-|                                        | Standby                      | Hibernate                                     |
-| -------------------------------------- | ---------------------------- | --------------------------------------------- |
-| Command                                | `hopbox machine pause`       | `hopbox machine hibernate`                    |
-| Back with                              | `hopbox machine resume`      | `hopbox machine wake`                         |
-| The memory                             | stays in the RAM of the node | goes to a memory file on the disk of the node |
-| vCPUs and RAM in the limits of the org | count                        | do not count                                  |
-| A reboot of the node                   | ends the memory              | keeps the memory file                         |
+|                                        | Standby                      | Hibernate                                                                |
+| -------------------------------------- | ---------------------------- | ------------------------------------------------------------------------ |
+| Command                                | `hopbox machine pause`       | `hopbox machine hibernate`                                               |
+| Back with                              | `hopbox machine resume`      | `hopbox machine wake`                                                    |
+| The memory                             | stays in the RAM of the node | goes to a memory file on the disk of the node                            |
+| vCPUs and RAM in the limits of the org | count                        | do not count                                                             |
+| The saved state of the org             | nothing                      | the memory file counts, and the save counts in the daily budget of saves |
+| A reboot of the node                   | ends the memory              | keeps the memory file                                                    |
 
 You need:
 
@@ -7307,7 +7328,23 @@ A hibernate has these effects:
 * `hopbox exec`, `hopbox connect`, and a file copy fail, because the machine does not run.
 * The URL and the SSH port of the machine refuse connections. A later milestone of phase 3 makes a connection wake the machine.
 * The machine frees its vCPUs and its RAM, so they do not count in the limits of its org. Its disk and its memory file stay on its node.
+* The memory file counts in the stored state of the org, and the save counts in the saves of the last 24 hours. `hopbox org usage` shows both ([hopbox CLI](/reference/cli/#org-usage)).
 * A reboot of the node keeps the memory file. The machine stays hibernated.
+
+### When a hibernate fails
+
+Two checks can refuse a hibernate. In both cases, the machine runs on, or stays in standby, and the command fails with status 6:
+
+* The daily budget of saves of the org. The save writes up to the whole RAM of the machine, so the check counts the RAM. A machine with 8 GiB of RAM needs 8 GiB of the budget. The stored state of the org never refuses a hibernate.
+* The free disk of the node. A save needs a floor of free disk on the node after it, 10% of the disk and 50 GiB by default. The node refuses a save below that floor.
+
+Check the budget of the org:
+
+```sh
+hopbox org usage
+```
+
+The row `saves in 24 hours` shows the saves of the last 24 hours and the budget. A save leaves the budget 24 hours after it. Try the hibernate again later, or ask an instance admin for a higher budget. For a refused save of the node, ask an instance admin to free disk on the node.
 
 A hibernated machine refuses a stop, because a stop does not keep the memory. Wake it first, or drop the memory file ([Drop the memory file](#drop-the-memory-file)).
 
@@ -7399,28 +7436,40 @@ So put `/var/lib/hopbox` on an encrypted block device, such as a LUKS volume, on
 
 A drop of a memory file, by a wake, by `discard-memory`, or by a delete, unlinks the file. The bytes can stay on the disk of the node until the file system reuses the blocks. With the trim timer of Debian, `fstrim.timer`, a trim of the file system follows.
 
+A save can fill the disk that the running machines write to. So each node refuses a save that leaves less free disk than its floor: `vmm.save_free_percent`, 10% by default, and `vmm.save_free_bytes`, 50 GiB by default ([the bootstrap config of hopboxd](/reference/hopboxd-config/#keys)). A node with a small data dir sets lower values in `/etc/hopbox/hopboxd.toml`, for example:
+
+```toml
+[vmm]
+save_free_percent = 5
+save_free_bytes = 536870912
+```
+
+Restart `hopboxd` on the node after the change. Each refused save counts in `hopbox_saved_state_refusals_total`, and the alert `HopboxSavedStateDiskLow` fires ([Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/#hopboxsavedstatedisklow)). A node also runs at most 4 saves at once, and 2 for each org. A save above that waits for its turn.
+
 ## Errors
 
-| Error                                                                                                                                                                                                         | Cause                                                                   | Fix                                                                                                                                     |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `failed_precondition: failed precondition: machine action not allowed: cannot pause a machine whose target state is stopped`                                                                                  | Only a running machine goes to standby.                                 | Start the machine first.                                                                                                                |
-| `failed_precondition: failed precondition: machine action not allowed: cannot resume a machine whose target state is running`                                                                                 | The machine is not in standby, or it lost its standby.                  | Read its state with `hopbox machine show box1`.                                                                                         |
-| `failed_precondition: failed precondition: the machine box1 is in standby. Resume it first`                                                                                                                   | An exec, a file copy, or `hopbox connect` found the machine in standby. | Run `hopbox machine resume box1`.                                                                                                       |
-| `failed_precondition: failed precondition: machine action not allowed: cannot rename a machine in standby: resume it first`                                                                                   | A rename found the machine in standby, or on its way in or out of it.   | Run `hopbox machine resume box1`, then rename the machine.                                                                              |
-| `failed_precondition: failed precondition: machine action not allowed: cannot rename a hibernated machine: wake it first`                                                                                     | A rename found the machine hibernated, or on its way in or out of it.   | Run `hopbox machine wake box1`, then rename the machine.                                                                                |
-| `failed_precondition: failed precondition: the machine box1 moves to another node. Pause it after the move`                                                                                                   | An instance admin or a drain moves the machine.                         | Wait for the end of the move, and pause again.                                                                                          |
-| `failed_precondition: failed precondition: the node of the machine box1 runs hopboxd <version>, whose heartbeats name no feature standby. An instance admin must upgrade the node first`                      | The node runs an older release.                                         | Ask an instance admin to upgrade the node.                                                                                              |
-| `failed_precondition: failed precondition: machine action not allowed: cannot hibernate a machine whose target state is stopped`                                                                              | Only a running machine or a machine in standby hibernates.              | Start the machine first.                                                                                                                |
-| `failed_precondition: failed precondition: machine action not allowed: cannot wake a machine whose target state is running`                                                                                   | The machine is not hibernated, or a wake of it failed.                  | Read its state with `hopbox machine show box1`. After a failed wake, run `hopbox machine start box1` ([A failed wake](#a-failed-wake)). |
-| `failed_precondition: failed precondition: machine action not allowed: cannot stop a hibernated machine: wake it first`                                                                                       | A stop does not keep the memory of a hibernated machine.                | Run `hopbox machine wake box1`, or drop the memory file with `hopbox machine discard-memory box1`.                                      |
-| `failed_precondition: failed precondition: machine action not allowed: cannot stop a machine that is hibernated: wait for the end of its wake. After a failed wake, drop the file with DiscardMemory`         | A wake of the machine is pending, and its load did not start yet.       | Wait for the wake, then stop the machine. If the wake fails, run `hopbox machine discard-memory box1`.                                  |
-| `failed_precondition: failed precondition: the machine box1 is hibernated, not running. Start it first`                                                                                                       | An exec, a file copy, or `hopbox connect` found the machine hibernated. | Run `hopbox machine wake box1`.                                                                                                         |
-| `resource_exhausted: usage limit exceeded: ...`                                                                                                                                                               | The wake takes the org over a limit.                                    | Stop another machine of the org, or ask an owner of the org for a higher limit.                                                         |
-| `unavailable: no capacity: the node of the machine has too little free RAM to start it. Stop another machine, or retry later`                                                                                 | The node of the machine has no room for it now.                         | Retry later.                                                                                                                            |
-| `failed_precondition: failed precondition: the machine has no memory file`                                                                                                                                    | `discard-memory` found no memory file, as after a wake that worked.     | None. The machine has no memory file to drop.                                                                                           |
-| `failed_precondition: failed precondition: machine action not allowed: cannot discard the memory of a machine that is running, with the target running: only a machine with no microVM drops its memory file` | The machine runs.                                                       | Nothing to drop: a wake that worked dropped the file.                                                                                   |
-| `permission_denied: permission denied: ...` on `discard-memory`                                                                                                                                               | Only the creator of the machine drops its memory file.                  | Ask the creator.                                                                                                                        |
-| `failed_precondition: failed precondition: the node of the machine box1 runs hopboxd <version>, whose heartbeats name no feature hibernate. An instance admin must upgrade the node first`                    | The node runs an older release.                                         | Ask an instance admin to upgrade the node.                                                                                              |
+| Error                                                                                                                                                                                                         | Cause                                                                         | Fix                                                                                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `failed_precondition: failed precondition: machine action not allowed: cannot pause a machine whose target state is stopped`                                                                                  | Only a running machine goes to standby.                                       | Start the machine first.                                                                                                                |
+| `failed_precondition: failed precondition: machine action not allowed: cannot resume a machine whose target state is running`                                                                                 | The machine is not in standby, or it lost its standby.                        | Read its state with `hopbox machine show box1`.                                                                                         |
+| `failed_precondition: failed precondition: the machine box1 is in standby. Resume it first`                                                                                                                   | An exec, a file copy, or `hopbox connect` found the machine in standby.       | Run `hopbox machine resume box1`.                                                                                                       |
+| `failed_precondition: failed precondition: machine action not allowed: cannot rename a machine in standby: resume it first`                                                                                   | A rename found the machine in standby, or on its way in or out of it.         | Run `hopbox machine resume box1`, then rename the machine.                                                                              |
+| `failed_precondition: failed precondition: machine action not allowed: cannot rename a hibernated machine: wake it first`                                                                                     | A rename found the machine hibernated, or on its way in or out of it.         | Run `hopbox machine wake box1`, then rename the machine.                                                                                |
+| `failed_precondition: failed precondition: the machine box1 moves to another node. Pause it after the move`                                                                                                   | An instance admin or a drain moves the machine.                               | Wait for the end of the move, and pause again.                                                                                          |
+| `failed_precondition: failed precondition: the node of the machine box1 runs hopboxd <version>, whose heartbeats name no feature standby. An instance admin must upgrade the node first`                      | The node runs an older release.                                               | Ask an instance admin to upgrade the node.                                                                                              |
+| `failed_precondition: failed precondition: machine action not allowed: cannot hibernate a machine whose target state is stopped`                                                                              | Only a running machine or a machine in standby hibernates.                    | Start the machine first.                                                                                                                |
+| `failed_precondition: failed precondition: machine action not allowed: cannot wake a machine whose target state is running`                                                                                   | The machine is not hibernated, or a wake of it failed.                        | Read its state with `hopbox machine show box1`. After a failed wake, run `hopbox machine start box1` ([A failed wake](#a-failed-wake)). |
+| `failed_precondition: failed precondition: machine action not allowed: cannot stop a hibernated machine: wake it first`                                                                                       | A stop does not keep the memory of a hibernated machine.                      | Run `hopbox machine wake box1`, or drop the memory file with `hopbox machine discard-memory box1`.                                      |
+| `failed_precondition: failed precondition: machine action not allowed: cannot stop a machine that is hibernated: wait for the end of its wake. After a failed wake, drop the file with DiscardMemory`         | A wake of the machine is pending, and its load did not start yet.             | Wait for the wake, then stop the machine. If the wake fails, run `hopbox machine discard-memory box1`.                                  |
+| `failed_precondition: failed precondition: the machine box1 is hibernated, not running. Start it first`                                                                                                       | An exec, a file copy, or `hopbox connect` found the machine hibernated.       | Run `hopbox machine wake box1`.                                                                                                         |
+| `resource_exhausted: usage limit exceeded: ...`                                                                                                                                                               | The wake takes the org over a limit.                                          | Stop another machine of the org, or ask an owner of the org for a higher limit.                                                         |
+| `resource_exhausted: usage limit exceeded: the saves of the org would write <bytes> bytes in 24 hours, and its daily budget is <limit>`                                                                       | A hibernate passes the daily budget of saves of the org. The machine runs on. | Try again later, or ask an instance admin for a higher budget ([When a hibernate fails](#when-a-hibernate-fails)).                      |
+| `resource_exhausted: resource exhausted: the node of the machine box1 refused the save, so the machine runs on: the free disk of the node is below the floor of a save: ...`                                  | The save leaves less free disk on the node than its floor.                    | Ask an instance admin to free disk on the node ([The memory file on the node](#the-memory-file-on-the-node)).                           |
+| `unavailable: no capacity: the node of the machine has too little free RAM to start it. Stop another machine, or retry later`                                                                                 | The node of the machine has no room for it now.                               | Retry later.                                                                                                                            |
+| `failed_precondition: failed precondition: the machine has no memory file`                                                                                                                                    | `discard-memory` found no memory file, as after a wake that worked.           | None. The machine has no memory file to drop.                                                                                           |
+| `failed_precondition: failed precondition: machine action not allowed: cannot discard the memory of a machine that is running, with the target running: only a machine with no microVM drops its memory file` | The machine runs.                                                             | Nothing to drop: a wake that worked dropped the file.                                                                                   |
+| `permission_denied: permission denied: ...` on `discard-memory`                                                                                                                                               | Only the creator of the machine drops its memory file.                        | Ask the creator.                                                                                                                        |
+| `failed_precondition: failed precondition: the node of the machine box1 runs hopboxd <version>, whose heartbeats name no feature hibernate. An instance admin must upgrade the node first`                    | The node runs an older release.                                               | Ask an instance admin to upgrade the node.                                                                                              |
 
 ## See also
 

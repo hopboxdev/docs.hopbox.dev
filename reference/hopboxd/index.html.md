@@ -213,7 +213,7 @@ The leader of the control role runs these jobs. In maintenance mode, the leader 
 | Step of the drains | 5 s | Takes the drain of each `draining` or `shutting_down` server one step on: it starts the cold moves off the server, at most 2 at once, names the machines that cannot move, and runs the empty checks ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node)). The first empty check turns the server `shutting_down`, with the audit entry `server.mark_shutting_down`. A check that finds it not empty turns it `draining` again, with `server.mark_draining`. The third empty check in a row, one minute after the second, decommissions the server, with the audit entry `server.decommission`. Both entries have the actor `system`. Every write checks the leader lease. |
 | Step of the removals of the node role | 5 s | Takes each pending removal of the role `node` one step on, after the step of the drains. It keeps the server cordoned, and starts the cold moves off the server, at most 2 at once. It names the machines that cannot move ([Cold move](/reference/cold-move/index.html.md#removal-of-the-node-role)). It runs no empty check and no decommission. Every write checks the leader lease. |
 | Sweep of invitations | 10 min | Deletes the invitations to orgs and the instance invitations that ended more than 24 hours ago, by a use, a revoke, or the expiry. It also deletes the records of their rate limits that are older than 24 hours ([the org API](/reference/org-api/index.html.md#invitations), [the admin API](/reference/admin-api/index.html.md#invitationservice)). |
-| Sweep of machines | 10 min | Frees the machine names and the SSH ports whose reservation of 7 days ended ([Domain rules](/reference/domain-rules/index.html.md#name-reservation)). Drops the row of each machine that its executor deleted, 7 days after its delete request. Then deletes the machine lease of each machine whose row is gone ([Control store tables](/reference/control-store/index.html.md#machines)). Last, it frees the subnet of a decommissioned node once no machine address of it is held ([Control store tables](/reference/control-store/index.html.md#node_subnets)). Each of these five steps runs in a transaction of its own that checks the leader lease. So a leader that lost its lease frees nothing more. |
+| Sweep of machines | 10 min | Frees the machine names and the SSH ports whose reservation of 7 days ended ([Domain rules](/reference/domain-rules/index.html.md#name-reservation)). Drops the row of each machine that its executor deleted, 7 days after its delete request. Then deletes the machine lease of each machine whose row is gone ([Control store tables](/reference/control-store/index.html.md#machines)). Then it frees the subnet of a decommissioned node once no machine address of it is held ([Control store tables](/reference/control-store/index.html.md#node_subnets)). Last, it deletes the records of saves recorded more than 48 hours, twice the window of the daily budget of saves ([Control store tables](/reference/control-store/index.html.md#saved_state_writes)). Each of these six steps runs in a transaction of its own that checks the leader lease. So a leader that lost its lease frees nothing more. |
 | Sweep of the history | 10 min | Deletes the samples of the history that are older than 24 hours and 25 minutes ([Control store tables](/reference/control-store/index.html.md#metric_samples)). |
 | Prune of change events | 10 min | Deletes the change events that are older than 24 hours. Every reader of the events starts from the head, so an older event serves nobody ([Control store tables](/reference/control-store/index.html.md#events)). |
 | Certificate of the install | when due | Gets the wildcard certificate of the install from the ACME CA, and renews it after two thirds of its lifetime. It starts at the start of each term, and plans again after each change of an input of the ACME job ([the certificate of the install](/reference/acme/index.html.md#the-acme-job)). Every write checks the leader lease. |
@@ -2187,7 +2187,7 @@ Suspends an org, and prints it. It calls `SuspendOrg` ([the admin API](/referenc
 | `--reason` | string | empty | The reason, which the members of the org see. At most 256 characters. |
 | `--json` | bool | `false` | Prints the org as one JSON object, with the keys of `admin org list`. |
 
-Without `--json`, the command prints one line per fact: a name, a tab, and a value. Each line of the machines, the vCPUs, the RAM, and the disk holds the usage, a slash, and the limit, in bytes for RAM and disk. The lines `public_urls` and `outbound_smtp` hold `true` or `false`.
+Without `--json`, the command prints one line per fact: a name, a tab, and a value. Each line of the machines, the vCPUs, the RAM, the disk, and the four limits of saved state holds the usage, a slash, and the limit. RAM, disk, and saved state are in bytes. The line `saved_bytes_per_day` holds the saves of the last 24 hours, a slash, and the daily budget. The lines `public_urls` and `outbound_smtp` hold `true` or `false`.
 
 ```text
 $ sudo hopboxd admin org suspend --org-id 01a14565-a2df-75a1-9401-ed28dfa37fc4 --reason 'spam reports'
@@ -2204,7 +2204,13 @@ disk_bytes	0/300000000000
 public_urls	true
 outbound_smtp	false
 version	3
+stored_state_bytes	0/107374182400
+snapshots	0/10
+backup_bytes	0/107374182400
+saved_bytes_per_day	0/1099511627776
 ```
+
+The lines of a release before T05 keep their order, so a script that reads them still works. The four lines of saved state come last.
 
 A personal org also prints the lines `personal_account_id` and `tier`, the tier of its account.
 
@@ -2224,7 +2230,9 @@ Ends the suspension of an org, and prints it as `admin org suspend` does. It cal
 ### admin org set-limits
 
 ```sh
-hopboxd admin org set-limits --org-id=ID [--machines=N] [--vcpus=N] [--memory-gib=N] [--disk-gb=N] [--[no-]public-urls] [--[no-]outbound-smtp] [--expected-version=N] [--json]
+hopboxd admin org set-limits --org-id=ID [--machines=N] [--vcpus=N] [--memory-gib=N] [--disk-gb=N]
+    [--stored-state-gib=N] [--snapshots=N] [--backup-gib=N | --backup-gb=N] [--saved-gib-per-day=N]
+    [--[no-]public-urls] [--[no-]outbound-smtp] [--expected-version=N] [--json]
 ```
 
 Replaces the usage limits of one org, and prints the org as `admin org suspend` does. It calls `SetOrgLimits` ([the admin API](/reference/admin-api/index.html.md#setorglimits)). A limit that you leave out takes the default of the install for the tier of the org. So `set-limits` with only `--org-id` puts the org back on the defaults.
@@ -2236,12 +2244,17 @@ Replaces the usage limits of one org, and prints the org as `admin org suspend` 
 | `--vcpus` | int32 | the default | The most vCPUs of all machines together. |
 | `--memory-gib` | int64 | the default | The most RAM of all machines together, in GiB (2^30 bytes). |
 | `--disk-gb` | int64 | the default | The most disk of all machines together, in GB (10^9 bytes). |
+| `--stored-state-gib` | int64 | the default | The most stored state that the nodes keep, in GiB: memory files, checkpoints, and snapshots. A hibernate never checks it. |
+| `--snapshots` | int32 | the default | The most snapshots. |
+| `--backup-gib` | int64 | the default | The most bytes of backups in object storage, in GiB. |
+| `--backup-gb` | int64 | the default | The same limit in GB, as `--disk-gb` takes the disk. Give it or `--backup-gib`, not both: the command refuses both with `give --backup-gib or --backup-gb, not both`. |
+| `--saved-gib-per-day` | int64 | the default | The most bytes that the saves write in 24 hours, in GiB. A hibernate above it fails, and the machine runs on. |
 | `--public-urls`, `--no-public-urls` | bool | the default | Lets a creator make a machine URL of the org public, or refuses it. A URL that is public already stays public. |
 | `--outbound-smtp`, `--no-outbound-smtp` | bool | the default, blocked | Opens TCP port 25 for the machines of the org, or blocks it ([the node network](/reference/node-network/index.html.md#outbound-tcp-port-25)). Each machine takes the change at its next start or reboot. |
 | `--expected-version` | int64 | none | The version that the org must have now. With another version, the command changes nothing and fails with `aborted`. |
 | `--json` | bool | `false` | Prints the org as one JSON object. |
 
-Each limit is 0 or more. The command refuses a negative `--memory-gib` or `--disk-gb`, and the API refuses a negative `--machines` or `--vcpus` with `invalid_argument`.
+Each limit is 0 or more. The command refuses a negative size in GiB or GB, and the API refuses a negative `--machines`, `--vcpus`, or `--snapshots` with `invalid_argument`. The sizes of saved state are whole GiB, as in the Admin area of the console. For a limit that is not a whole number of GiB, such as 10 GB, call `SetOrgLimits` or `SetDefaultOrgLimits` of the admin API with the bytes ([the admin API](/reference/admin-api/index.html.md#the-admin-socket)).
 
 ```sh
 sudo hopboxd admin org set-limits --org-id 01a14565-a2df-75a1-9401-ed28dfa37fc4 --machines 10 --memory-gib 64
@@ -2280,24 +2293,36 @@ limited_public_urls	false
 max_orgs_per_account	3
 version	3
 update_time	2026-10-16T15:47:06Z
+stored_state_bytes	107374182400
+snapshots	10
+backup_bytes	107374182400
+saved_bytes_per_day	1099511627776
+limited_stored_state_bytes	0
+limited_snapshots	0
+limited_backup_bytes	0
+limited_saved_bytes_per_day	21474836480
 ```
+
+The lines of a release before T05 keep their order. The eight lines of saved state come last.
 
 The version is that of the whole install config.
 
 ### admin org default-limits set
 
 ```sh
-hopboxd admin org default-limits set [--machines=N] [--vcpus=N] [--memory-gib=N] [--disk-gb=N] [--[no-]public-urls]
-    [--limited-machines=N] [--limited-vcpus=N] [--limited-memory-gib=N] [--limited-disk-gb=N] [--[no-]limited-public-urls]
-    [--max-orgs-per-account=N] [--expected-version=N] [--json]
+hopboxd admin org default-limits set [--machines=N] [--vcpus=N] [--memory-gib=N] [--disk-gb=N]
+    [--stored-state-gib=N] [--snapshots=N] [--backup-gib=N | --backup-gb=N] [--saved-gib-per-day=N] [--[no-]public-urls]
+    [--limited-machines=N] [--limited-vcpus=N] [--limited-memory-gib=N] [--limited-disk-gb=N]
+    [--limited-stored-state-gib=N] [--limited-snapshots=N] [--limited-backup-gib=N | --limited-backup-gb=N] [--limited-saved-gib-per-day=N]
+    [--[no-]limited-public-urls] [--max-orgs-per-account=N] [--expected-version=N] [--json]
 ```
 
 Changes the default limits of every org, and prints them as `default-limits get` does. It calls `SetDefaultOrgLimits` ([the admin API](/reference/admin-api/index.html.md#setdefaultorglimits)). A limit that you leave out keeps its value. The command needs at least one limit.
 
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
-| `--machines`, `--vcpus`, `--memory-gib`, `--disk-gb`, `--public-urls` | as for `set-limits` | the value now | The new defaults of each org, apart from the personal org of a limited account. |
-| `--limited-machines`, `--limited-vcpus`, `--limited-memory-gib`, `--limited-disk-gb`, `--limited-public-urls` | as for `set-limits` | the value now | The new defaults of the personal org of a limited account. |
+| `--machines`, `--vcpus`, `--memory-gib`, `--disk-gb`, `--stored-state-gib`, `--snapshots`, `--backup-gib`, `--backup-gb`, `--saved-gib-per-day`, `--public-urls` | as for `set-limits` | the value now | The new defaults of each org, apart from the personal org of a limited account. |
+| `--limited-machines`, `--limited-vcpus`, `--limited-memory-gib`, `--limited-disk-gb`, `--limited-stored-state-gib`, `--limited-snapshots`, `--limited-backup-gib`, `--limited-backup-gb`, `--limited-saved-gib-per-day`, `--limited-public-urls` | as for `set-limits` | the value now | The new defaults of the personal org of a limited account. |
 | `--max-orgs-per-account` | int32 | the value now | The most orgs that a full account owns besides its personal org. A limited account owns none. |
 | `--expected-version` | int64 | none | The version that the install config must have now. With another version, the command changes nothing and fails with `aborted`. |
 | `--json` | bool | `false` | Prints one JSON object. |
@@ -2652,7 +2677,7 @@ Removes the private key, which closes the Grafana host within a minute. The comm
 | `failed_precondition: failed precondition: the server <id> has no pending removal of a role` | `admin server cancel-remove-role` of a server without a removal. |
 | `failed_precondition: failed precondition: the server <id> shares its host with the last live control process of the install, ...` | `admin server decommission` of the server on the host of the last live control process, before the other servers. Decommission them first, or start the control role on another server. |
 | `invalid_argument: invalid argument: invalid label: ...` | `admin server set-labels` with a label that breaks a rule. |
-| `--memory-gib <n> is too large`, `--disk-gb <n> is too large` | `admin org set-limits` or `admin org default-limits set` with a size of more than 2^63 - 1 bytes. |
+| `--memory-gib <n> is too large`, `--disk-gb <n> is too large`, and the same for `--stored-state-gib`, `--backup-gib`, `--backup-gb`, and `--saved-gib-per-day` | `admin org set-limits` or `admin org default-limits set` with a size of more than 2^63 - 1 bytes. A flag of `default-limits set` with the prefix `limited-` names itself with that prefix. |
 | `--memory-gib must be from 1 to <max>, not <n>`, `--disk-gb must be from 1 to <max>, not <n>` | `admin size create` with a size of 0, a negative size, or a size of more than 2^63 - 1 bytes. |
 | `already_exists: already exists: a pool is named "<name>" already` | `admin pool create` with the name of a live pool. |
 | `already_exists: already exists: a size is named "<name>" already. ...` | `admin size create` with the name of a size, also of a retired one. |
@@ -2661,7 +2686,7 @@ Removes the private key, which closes the Grafana host within a minute. The comm
 | `failed_precondition: failed precondition: the pool <name> holds <n> servers. Decommission them first` | `admin pool delete` of a pool with servers. |
 | `failed_precondition: failed precondition: <n> sizes name the pool <name>. Retire them first` | `admin pool delete` of a pool that live sizes name. |
 | `failed_precondition: failed precondition: the pool default stays, ...`, `failed_precondition: failed precondition: the size default stays, ...` | `admin pool delete default` or `admin size retire default`. |
-| `--memory-gib must be 0 or more, not <n>`, `--disk-gb must be 0 or more, not <n>` | A negative size. |
+| `--memory-gib must be 0 or more, not <n>`, `--disk-gb must be 0 or more, not <n>`, and the same for `--stored-state-gib`, `--backup-gib`, `--backup-gb`, and `--saved-gib-per-day` | A negative size. |
 | `missing flags: --name=NAME or --id=ID` | `admin machine stop` or `delete` without a machine. The exit status is 80. |
 | `--name and --id can't be used together` | `admin machine stop` or `delete` with both flags. The exit status is 80. |
 | `<metadata>: stat <path>: no such file or directory` | `admin image register` with a file that does not exist. The exit status is 80. |
@@ -2739,7 +2764,7 @@ A field of type duration is a number of nanoseconds.
 | `sweep of enrollment tokens and server certificates failed` | warn | `component=leader`, `err` |
 | `swept ended invitations` | info | `component=leader`, `count` |
 | `sweep of invitations failed` | warn | `component=leader`, `err` |
-| `freed reserved machine names and ports` | info | `component=leader`, `names`, `ports`, `machines`, `subnets` (the counts) |
+| `freed reserved machine names and ports` | info | `component=leader`, `names`, `ports`, `machines`, `subnets`, `saved_state_writes` (the counts) |
 | `sweep of machine names and ports failed` | warn | `component=leader`, `err` |
 | `pruned old change events` | info | `component=leader`, `count` |
 | `swept the rows of control processes that ended without their stop` | info | `component=leader`, `count` |

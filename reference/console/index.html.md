@@ -52,7 +52,7 @@ A page that needs a session sends a browser without one to `/signin?return_to=<p
 | `/orgs/<org ID>/members` | yes | The members and their roles. Owners and admins also see the invitations, and invite people. | `ListOrgMembers`, `SetOrgMemberRole`, `RemoveOrgMember`, `ListInvitations`, `CreateInvitation`, `RevokeInvitation` |
 | `/orgs/<org ID>/api-keys` | yes | The API keys of the org. A new key shows its secret once. | `ListAPIKeys`, `CreateAPIKey`, `RevokeAPIKey` |
 | `/orgs/<org ID>/vars` | yes | The env vars and secrets of the org. A secret shows no value. | `ListVars`, `SetVar`, `DeleteVar` |
-| `/orgs/<org ID>/settings` | yes | The name, the usage and the limits of the org, and the leave and delete actions. The table of the usage also has the rows "Public URLs", `yes` or `no`, and "Outbound TCP port 25", `open` or `blocked`. | `GetOrg`, `UpdateOrg`, `GetOrgUsage`, `LeaveOrg`, `DeleteOrg` |
+| `/orgs/<org ID>/settings` | yes | The name, the usage and the limits of the org, and the leave and delete actions. The table of the usage has a row for each limit. The rows of the limits of saved state are "Stored state", "Snapshots", "Backups", and "Saves in 24 hours", in GiB. The text under the table says that memory files never block a hibernate, and that a hibernate above the budget of saves fails. The table also has the rows "Public URLs", `yes` or `no`, and "Outbound TCP port 25", `open` or `blocked`. | `GetOrg`, `UpdateOrg`, `GetOrgUsage`, `LeaveOrg`, `DeleteOrg` |
 | `/admin/...` | yes, of an instance admin | The Admin area ([Admin area](#admin-area)). | the admin API |
 
 Every page of an org also calls `GetOrg`. Each page shows the actions that the role of the account allows. The service layer still decides each call ([the API server](/reference/api/index.html.md)), and the page shows its error.
@@ -129,21 +129,23 @@ The row of an org has the name of the org with these tags:
 | `no public URLs` | The limits of the org allow no public machine URL. |
 | `port 25 open` | The machines of the org reach outbound TCP port 25 ([the node network](/reference/node-network/index.html.md#outbound-tcp-port-25)). The tag is in the warning color. |
 
-The button "Limits" opens the dialog "Limits of <name>". It has the fields "Machines", "vCPUs", "RAM in GiB", and "Disk in GB", and two selects:
+The usage of a row gives each amount with its limit, such as "2 of 6 vCPUs, 8 GiB of 24 GiB RAM, 100 GB of 300 GB disk, 8 GiB of 100 GiB stored state, 8 GiB of 1024 GiB saved in 24 hours".
+
+The button "Limits" opens the dialog "Limits of <name>". It has the fields "Machines", "vCPUs", "RAM in GiB", "Disk in GB", "Stored state in GiB", "Snapshots", "Backups in GiB", and "Saves in 24 hours, in GiB", and two selects:
 
 | Select | Choices |
 | --- | --- |
 | "Public URLs" | "default: yes" or "default: no", "yes", and "no" |
 | "Outbound TCP port 25" | "default: blocked", "open", and "blocked" |
 
-An empty field, or a choice "default", takes the default of the install. The personal org of a limited account takes the limited defaults, and the dialog says so. The placeholder of an empty field shows its default. The line "The limits that apply now" gives the limits of the org. An example is "1 machine, 1 vCPU, 1 GiB RAM, 5 GB disk, public URLs: no, outbound TCP port 25: blocked". The dialog also says two rules. A limit below the usage stops nothing, but the org starts no more machines. A machine takes a change of port 25 at its next start or reboot. The button "Set limits" calls `SetOrgLimits` with the `version` of the row ([the admin API](/reference/admin-api/index.html.md#setorglimits)).
+An empty field, or a choice "default", takes the default of the install. The personal org of a limited account takes the limited defaults, and the dialog says so. The placeholder of an empty field shows its default. The line "The limits that apply now" gives the limits of the org. An example is "1 machine, 1 vCPU, 1 GiB RAM, 5 GB disk, 0 GiB stored state, 0 snapshots, 0 GiB backups, 20 GiB saved in 24 hours, public URLs: no, outbound TCP port 25: blocked". The dialog also says two rules. A limit below the usage stops nothing, but the org starts no more machines. A machine takes a change of port 25 at its next start or reboot. The button "Set limits" calls `SetOrgLimits` with the `version` of the row ([the admin API](/reference/admin-api/index.html.md#setorglimits)).
 
 The section "Default limits" has two groups of fields:
 
 | Group | Fields |
 | --- | --- |
-| "Team orgs and personal orgs of full accounts" | "Machines", "vCPUs", "RAM in GiB", "Disk in GB", "Public URLs", and "Orgs of one full account, besides its personal org" |
-| "Personal org of a limited account" | "Machines", "vCPUs", "RAM in GiB", "Disk in GB", and "Public URLs" |
+| "Team orgs and personal orgs of full accounts" | "Machines", "vCPUs", "RAM in GiB", "Disk in GB", "Stored state in GiB", "Snapshots", "Backups in GiB", "Saves in 24 hours, in GiB", "Public URLs", and "Orgs of one full account, besides its personal org" |
+| "Personal org of a limited account" | "Machines", "vCPUs", "RAM in GiB", "Disk in GB", "Stored state in GiB", "Snapshots", "Backups in GiB", "Saves in 24 hours, in GiB", and "Public URLs" |
 
 The field "Orgs of one full account, besides its personal org" is the cap of a full account. A limited account owns no org. No default opens port 25, so the section has no field for it. The text of the section says to open port 25 for one org in its limits. The button "Set default limits" stays off until a field changes. It calls `SetDefaultOrgLimits`, with the second group in `limited` ([the admin API](/reference/admin-api/index.html.md#setdefaultorglimits)).
 

@@ -1,6 +1,6 @@
 # Standby and hibernate
 
-> How to put a machine in standby and bring it back, and what happens when a machine loses its standby. Also how to hibernate and wake a machine, what a failed wake leaves, how to drop a memory file, and how an operator protects the memory files on a node.
+> How to put a machine in standby and bring it back, and what happens when a machine loses its standby. Also how to hibernate and wake a machine, why a hibernate fails, what a failed wake leaves, how to drop a memory file, and how an operator protects the memory files and the free disk of a node.
 
 This guide shows you how to put a machine in standby or hibernate it, and how to bring it back. Standby keeps the memory of a machine in the RAM of its node. Hibernate saves that memory to a memory file on the disk of its node, and frees the RAM. In both cases, the machine does not run. At its return, it goes on from the same place. Processes keep their PIDs, and data in RAM stays.
 
@@ -10,6 +10,7 @@ This guide shows you how to put a machine in standby or hibernate it, and how to
 | Back with | `hopbox machine resume` | `hopbox machine wake` |
 | The memory | stays in the RAM of the node | goes to a memory file on the disk of the node |
 | vCPUs and RAM in the limits of the org | count | do not count |
+| The saved state of the org | nothing | the memory file counts, and the save counts in the daily budget of saves |
 | A reboot of the node | ends the memory | keeps the memory file |
 
 You need:
@@ -105,7 +106,23 @@ A hibernate has these effects:
 - `hopbox exec`, `hopbox connect`, and a file copy fail, because the machine does not run.
 - The URL and the SSH port of the machine refuse connections. A later milestone of phase 3 makes a connection wake the machine.
 - The machine frees its vCPUs and its RAM, so they do not count in the limits of its org. Its disk and its memory file stay on its node.
+- The memory file counts in the stored state of the org, and the save counts in the saves of the last 24 hours. `hopbox org usage` shows both ([hopbox CLI](/reference/cli/index.html.md#org-usage)).
 - A reboot of the node keeps the memory file. The machine stays hibernated.
+
+### When a hibernate fails
+
+Two checks can refuse a hibernate. In both cases, the machine runs on, or stays in standby, and the command fails with status 6:
+
+- The daily budget of saves of the org. The save writes up to the whole RAM of the machine, so the check counts the RAM. A machine with 8 GiB of RAM needs 8 GiB of the budget. The stored state of the org never refuses a hibernate.
+- The free disk of the node. A save needs a floor of free disk on the node after it, 10% of the disk and 50 GiB by default. The node refuses a save below that floor.
+
+Check the budget of the org:
+
+```sh
+hopbox org usage
+```
+
+The row `saves in 24 hours` shows the saves of the last 24 hours and the budget. A save leaves the budget 24 hours after it. Try the hibernate again later, or ask an instance admin for a higher budget. For a refused save of the node, ask an instance admin to free disk on the node.
 
 A hibernated machine refuses a stop, because a stop does not keep the memory. Wake it first, or drop the memory file ([Drop the memory file](#drop-the-memory-file)).
 
@@ -197,6 +214,16 @@ So put `/var/lib/hopbox` on an encrypted block device, such as a LUKS volume, on
 
 A drop of a memory file, by a wake, by `discard-memory`, or by a delete, unlinks the file. The bytes can stay on the disk of the node until the file system reuses the blocks. With the trim timer of Debian, `fstrim.timer`, a trim of the file system follows.
 
+A save can fill the disk that the running machines write to. So each node refuses a save that leaves less free disk than its floor: `vmm.save_free_percent`, 10% by default, and `vmm.save_free_bytes`, 50 GiB by default ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)). A node with a small data dir sets lower values in `/etc/hopbox/hopboxd.toml`, for example:
+
+```toml
+[vmm]
+save_free_percent = 5
+save_free_bytes = 536870912
+```
+
+Restart `hopboxd` on the node after the change. Each refused save counts in `hopbox_saved_state_refusals_total`, and the alert `HopboxSavedStateDiskLow` fires ([Monitor an install with Prometheus and Grafana](/guide/monitor-an-install/index.html.md#hopboxsavedstatedisklow)). A node also runs at most 4 saves at once, and 2 for each org. A save above that waits for its turn.
+
 ## Errors
 
 | Error | Cause | Fix |
@@ -214,6 +241,8 @@ A drop of a memory file, by a wake, by `discard-memory`, or by a delete, unlinks
 | `failed_precondition: failed precondition: machine action not allowed: cannot stop a machine that is hibernated: wait for the end of its wake. After a failed wake, drop the file with DiscardMemory` | A wake of the machine is pending, and its load did not start yet. | Wait for the wake, then stop the machine. If the wake fails, run `hopbox machine discard-memory box1`. |
 | `failed_precondition: failed precondition: the machine box1 is hibernated, not running. Start it first` | An exec, a file copy, or `hopbox connect` found the machine hibernated. | Run `hopbox machine wake box1`. |
 | `resource_exhausted: usage limit exceeded: ...` | The wake takes the org over a limit. | Stop another machine of the org, or ask an owner of the org for a higher limit. |
+| `resource_exhausted: usage limit exceeded: the saves of the org would write <bytes> bytes in 24 hours, and its daily budget is <limit>` | A hibernate passes the daily budget of saves of the org. The machine runs on. | Try again later, or ask an instance admin for a higher budget ([When a hibernate fails](#when-a-hibernate-fails)). |
+| `resource_exhausted: resource exhausted: the node of the machine box1 refused the save, so the machine runs on: the free disk of the node is below the floor of a save: ...` | The save leaves less free disk on the node than its floor. | Ask an instance admin to free disk on the node ([The memory file on the node](#the-memory-file-on-the-node)). |
 | `unavailable: no capacity: the node of the machine has too little free RAM to start it. Stop another machine, or retry later` | The node of the machine has no room for it now. | Retry later. |
 | `failed_precondition: failed precondition: the machine has no memory file` | `discard-memory` found no memory file, as after a wake that worked. | None. The machine has no memory file to drop. |
 | `failed_precondition: failed precondition: machine action not allowed: cannot discard the memory of a machine that is running, with the target running: only a machine with no microVM drops its memory file` | The machine runs. | Nothing to drop: a wake that worked dropped the file. |

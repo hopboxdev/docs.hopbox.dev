@@ -797,6 +797,8 @@ Saves the memory of a machine to a memory file on its node with `HibernateMachin
 Hibernated the machine box1 in 2.318s.
 ```
 
+A hibernate above the daily budget of saves of the org fails with `resource_exhausted`, and the machine runs on. So does a hibernate whose node has too little free disk for the save ([the machine API](/reference/machine-api/index.html.md#hibernatemachine)). The exit status is then 6. The CLI sends no retry, because the call reached the install.
+
 ### machine wake
 
 ```sh
@@ -1204,21 +1206,27 @@ JSON fields: `id`.
 hopbox org usage [ORG]
 ```
 
-Prints what the org uses, and its limits ([the org API](/reference/org-api/index.html.md#getorgusage)). The org is `ORG`, else the org of the command. RAM is in GiB, and disk is in GB, as the sizes of machines are.
+Prints what the org uses, and its limits ([the org API](/reference/org-api/index.html.md#getorgusage)). The org is `ORG`, else the org of the command. RAM is in GiB, and disk is in GB, as the sizes of machines are. Saved state is in GiB, rounded to 0.01, because a save counts the blocks that it holds.
 
 ```text
-RESOURCE       USED   LIMIT
-machines       0      3
-vcpus          0      6
-memory         0 GiB  24 GiB
-disk           0 GB   300 GB
-public urls           yes
-outbound smtp         no
+RESOURCE           USED   LIMIT
+machines           0      3
+vcpus              0      6
+memory             0 GiB  24 GiB
+disk               0 GB   300 GB
+stored state       0 GiB  100 GiB
+snapshots          0      10
+backups            0 GiB  100 GiB
+saves in 24 hours  0 GiB  1024 GiB
+public urls               yes
+outbound smtp             no
 ```
+
+The row `stored state` counts the memory files of the hibernated machines of the org. The row `saves in 24 hours` holds the bytes that the saves of the org wrote in the last 24 hours, and the daily budget. A hibernate above the budget fails ([machine hibernate](#machine-hibernate)). The rows `snapshots` and `backups` stay at 0 until hopbox makes snapshots and backups.
 
 The row `public urls` says whether the creator of a machine can make its URL public. The personal org of a limited account says `no` ([the org API](/reference/org-api/index.html.md#usage-limits)). The row `outbound smtp` says whether the machines reach TCP port 25. Only an instance admin opens it, for one org.
 
-JSON fields: `usage` and `limits`. Each has `machines`, `vcpus`, `memory_bytes`, and `disk_bytes`. `limits` also has `public_urls` and `outbound_smtp`.
+JSON fields: `usage` and `limits`. Each has `machines`, `vcpus`, `memory_bytes`, `disk_bytes`, `stored_state_bytes`, `snapshots`, and `backup_bytes`. `usage` also has `saved_bytes_last_day`. `limits` also has `saved_bytes_per_day`, `public_urls`, and `outbound_smtp`.
 
 ### org member list
 

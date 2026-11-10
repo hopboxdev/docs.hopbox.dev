@@ -1,6 +1,6 @@
 # The Firecracker driver
 
-> The Firecracker driver of the node role. It covers the unit, the jail, and the disk of each machine, and the caches of images and kernels. It also covers the pause, the save and the load of a hibernate, the files of a saved state, and the KVM tests.
+> The Firecracker driver of the node role. It covers the unit, the jail, and the disk of each machine, and the caches of images and kernels. It also covers the pause, the save and the load of a hibernate, the files of a saved state and their bytes, and the KVM tests.
 
 The Firecracker driver is the VMM driver of the node role ([the VMM driver interface](/reference/vmm/index.html.md)). It runs the microVM of each machine with Firecracker v1.17.0 under the jailer, the Firecracker tool that isolates each microVM process. Each microVM runs in a transient systemd unit of its own. A transient unit is a unit that a program starts through systemd, without a unit file. So when `hopboxd` restarts or upgrades, each microVM keeps running. The code is in `internal/node/vmm/firecracker`.
 
@@ -215,7 +215,7 @@ A `hopboxd` can end after step 9 and before the unit ends. The next `hopboxd` fi
 | `vmm` | string | The driver that saved the state: `firecracker`. |
 | `vmm_version` | string | The version of Firecracker, such as `v1.17.0`. |
 | `snapshot_format` | string | The snapshot format version of Firecracker at the save, such as `v12.0.0` ([Capabilities](#capabilities)). |
-| `bytes` | integer | The bytes of the blocks of the memory file: `st_blocks` times 512. |
+| `bytes` | integer | The bytes of the disk that the memory file and the `vmstate` file hold at the save ([The bytes of a saved state](#the-bytes-of-a-saved-state)). |
 | `saved_at` | string | The time of the save, in RFC 3339, UTC. |
 | `loads` | integer | The loads of this saved state so far, also those that failed. A new save starts at 0. |
 | `microcode` | string | The CPU microcode of the node at the save, or absent. The compatibility class does not hold it. It explains a load that fails after an update of the microcode. |
@@ -227,7 +227,19 @@ Example:
 {"vmm":"firecracker","vmm_version":"v1.17.0","snapshot_format":"v12.0.0","bytes":1073741824,"saved_at":"2026-11-08T10:12:03.52Z","loads":0,"microcode":"0xb4","clock_realtime":true}
 ```
 
-`Inspect` reports `Memory` true while `state/memory` exists, with the fields of `state.json` in `MemoryState` ([the VMM driver interface](/reference/vmm/index.html.md#driver)). The bytes come from the memory file itself. The driver can lack a good `state.json`: the file is missing or damaged, or it names no snapshot format. Then `Inspect` still reports the memory file, with its bytes and its time. The driver logs `the memory file of a machine has no readable state file`.
+`Inspect` reports `Memory` true while `state/memory` exists, with the fields of `state.json` in `MemoryState` ([the VMM driver interface](/reference/vmm/index.html.md#driver)). The bytes come from `state/memory` and `state/vmstate` themselves, not from `state.json`. The driver can lack a good `state.json`: the file is missing or damaged, or it names no snapshot format. Then `Inspect` still reports the memory file, with its bytes and its time. The driver logs `the memory file of a machine has no readable state file`.
+
+### The bytes of a saved state
+
+The driver counts the disk that a saved state holds with `savedstate.Bytes` of `internal/node/savedstate`. It counts each file of the state, `memory` and `vmstate`, and adds the two:
+
+1. It reads the extents of the file with the `FS_IOC_FIEMAP` call of Linux. Each extent is a range of the disk that the file holds. The count is the sum of their lengths, so a hole of a sparse file counts nothing. An extent whose place the kernel does not report yet, such as a delayed write, counts whole.
+2. A file system without `FIEMAP`, such as tmpfs, gives the blocks of the file instead: `st_blocks` times 512.
+3. A file that the driver cannot read in this way counts its blocks too.
+
+At a save, the driver counts the two files in the jail root, after Firecracker wrote them. `Inspect` counts them in `state/`. If neither file opens, it counts the blocks of `state/memory`.
+
+The package can also leave out the extents that a base file holds, so a reflink copy counts only its new blocks. A save of a hibernate has no base, and no caller passes one yet. Example: a machine has 8 GiB of RAM, and its guest touched 1 GiB. Its memory file has a size of 8 GiB, but holds about 1 GiB of disk. So its `bytes` are about 1 GiB, plus the small `vmstate` file.
 
 ### Load
 

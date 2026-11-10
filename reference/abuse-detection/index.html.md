@@ -1,6 +1,6 @@
 # Abuse detection
 
-> The detection of abuse inside hopboxd: its thresholds, its signals for each account, its leader job, and its notices.
+> The detection of abuse inside hopboxd: its thresholds, its signals for each account and for the saved state of each org, its leader job, and its notices.
 
 `hopboxd` detects signs of abuse for each account by itself, without Prometheus, as section 3.2 and the decisions Q150 to Q153 of the abuse plan describe. It watches the same signals as the alert rules of the monitoring bundle, but it names the account behind each one. The thresholds are part of the install config.
 
@@ -40,6 +40,9 @@ Each signal has a name, which the notices and the audit entries use. A signal of
 | `machine_burst` | An account made `abuse_machine_burst` or more machines in the last hour. | the audit action `machine.create` |
 | `url_churn` | An account changed the port or the visibility of machine URLs `abuse_url_churn` or more times in the last hour. | the audit actions `machine.set_url_port` and `machine.set_url_visibility` |
 | `new_account_public_url` | An account younger than `abuse_new_account_age` has a machine with a public URL that is not deleted. | the table `machines`, and `created_at` of the account |
+| `stored_state_near_limit` | The stored state of an org is 90% or more of its limit `stored_state_bytes`, and that limit is above 0 ([Domain rules](/reference/domain-rules/index.html.md#limits-of-saved-state)). | `stored_state_bytes` of the view `org_usage`, and the limit of the org |
+| `saved_bytes_near_budget` | The saves of an org in the last 24 hours are 90% or more of its daily budget `saved_bytes_per_day`. A budget of 0 starts the signal at the first byte. | `saved_bytes_last_day` of the view `org_usage`, and the limit of the org |
+| `saved_bytes_budget_refused` | The daily budget of an org refused a hibernate in the last 24 hours. It starts at any share of the budget. | `save_budget_refused_at` of the table `orgs`, which `HibernateMachine` sets at each refusal |
 
 A signal of a machine takes the lowest rate of the points in its window, as `min_over_time` of the rule. A point without two samples in its rate window, such as in a gap of a restart of the node, has no rate and does not count. So such a gap does not end the signal. As `present_over_time` of the rule, a rate must exist in the first part of the window: the first 15 minutes for the CPU, 5 minutes for the egress, and 3 minutes for the connections, or the whole window when it is shorter. With the defaults, a new machine at full CPU thus counts after about 1 hour and 46 minutes, and the rule fires after about 1 hour and 48 minutes: its first rate after 1 minute, its range of `present_over_time` after 106 minutes, and its 2 minutes of `for`. A machine without a sample of `hopbox_machine_info` in the last 3 minutes does not count, because it stopped or its node is gone.
 
@@ -47,17 +50,19 @@ The account of a machine is its creator. For a machine that an org API key made,
 
 Each run gives one detection for each signal and account. A detection of a machine signal names its machines, the worst first, at most 20, with the count of the others, and the org of each one. Its value is the worst value. A machine without a creator and without the account of its key gives a detection of its org. The value of a burst is its count, and the value of `new_account_public_url` is the count of public machines.
 
+The three signals of saved state are signals of an org, not of an account. Each run gives one detection for each such signal and org. Its value is the bytes of the org, and it keeps the limit of the org in bytes. The limit is the override of the org, or the default of its tier. A limit `stored_state_bytes` of 0 starts no signal. A hibernate never checks that limit, so each limited account that hibernates shows it otherwise. The 90% is fixed, and no setting of the install config changes it. Example: an org with the limit 100 GiB keeps 92 GiB of memory files, so `stored_state_near_limit` starts. The value of `saved_bytes_budget_refused` is the bytes of the saves of the last 24 hours. A loop of refused hibernates keeps the one signal active, so it gives one notice. The signal ends 24 hours after the last refusal, and a refusal after that starts a new signal and a new notice. So each org gets at most about one notice of refusals a day.
+
 ## Reads of each run
 
-Each run reads the thresholds, then three sources. The history of samples gives each family of a machine signal over the window of its own signal and the rate before it, plus 2 minutes, and `hopbox_machine_info` over the last 4 minutes. The longest read is 6 hours and 32 minutes, for the CPU with the longest `abuse_cpu_for`. The audit counts come from the table `audit_log`. The partial index `audit_log_abuse` holds only the five actions that the detection counts, by time ([Control store tables](/reference/control-store/index.html.md#audit_log)). So the count of the last hour reads only the rows of that hour and of those actions. The public machines of new accounts come from the partial index `machines_public` on the creator and the creator key of each machine with a public URL that is not deleted.
+Each run reads the thresholds, then four sources. The history of samples gives each family of a machine signal over the window of its own signal and the rate before it, plus 2 minutes, and `hopbox_machine_info` over the last 4 minutes. The longest read is 6 hours and 32 minutes, for the CPU with the longest `abuse_cpu_for`. The audit counts come from the table `audit_log`. The partial index `audit_log_abuse` holds only the five actions that the detection counts, by time ([Control store tables](/reference/control-store/index.html.md#audit_log)). So the count of the last hour reads only the rows of that hour and of those actions. The public machines of new accounts come from the partial index `machines_public` on the creator and the creator key of each machine with a public URL that is not deleted. The saved state comes from the view `org_usage` ([Control store tables](/reference/control-store/index.html.md#org_usage)). The run reads only the orgs with a memory file or a save in the last 24 hours. A machine signal leaves out each series of `hopbox_machine_info` with the state `saved`, because such a machine runs no microVM.
 
 ## The leader job
 
 The leader of the control role runs the detection every minute, as the leader job `abuse_detection` ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). A follower runs nothing. A run first checks the leader lease, and a leader that lost its lease reads and changes nothing. Then it reads the signals outside a transaction. Last, one short transaction checks the lease again and writes the changes. A run takes at most 30 s. A run that this timeout cuts counts as `failed` in `hopbox_leader_job_runs_total{job="abuse_detection"}` ([Metrics](/reference/metrics/index.html.md#metrics-of-the-leader)). Maintenance mode and the fence of the process pause the job, as they pause every leader job.
 
-A run compares the signals that it finds with the active signals of the table `abuse_signals` ([Control store tables](/reference/control-store/index.html.md#abuse_signals)):
+A run compares the signals that it finds with the active signals of the tables `abuse_signals` and `org_abuse_signals` ([Control store tables](/reference/control-store/index.html.md#abuse_signals)). The signals of an org live in `org_abuse_signals`, because the leader of a release before T05 lists every active row of `abuse_signals` and resolves each one that it does not find. Beside such a leader, as during a rolling upgrade, these signals thus stay active, and give no second notice:
 
-1. A signal of an account that has no active row starts. The run writes the audit entry `abuse.detect` and a row of `abuse_signals`, and gives each instance admin a notice of the kind `abuse`.
+1. A signal of an account that has no active row starts. The run writes the audit entry `abuse.detect` and a row of `abuse_signals`, or of `org_abuse_signals` for a signal of an org, and gives each instance admin a notice of the kind `abuse`.
 2. A signal that has an active row repeats. The run updates the value, the machines, and the time `updated_at` of the row. It writes no audit entry. An instance admin who got no notice of the signal yet, such as a new instance admin, gets one now.
 3. An active row that the run does not find ended. The run sets `resolved_at`, closes the notices of the signal for every instance admin, and writes the audit entry `abuse.resolve`.
 4. The run deletes the rows that ended more than 30 days ago.
@@ -68,12 +73,20 @@ Each start logs `an abuse signal started` at level info, with `signal`, `account
 
 ## Notices
 
-Each signal of an account has one notice for each instance admin while it is active. A repeat updates the notice, and the end closes it. The account is the target of the notice. A signal of an org without an account names the org.
+Each signal of an account has one notice for each instance admin while it is active. A repeat updates the notice, and the end closes it. The account is the target of the notice. A signal of an org without an account names the org, as "The org <org id>, whose machines have no account". A signal of saved state names the org as "The org <org id>".
 
 The summary of a notice gives the signal with its value at the last run, the threshold, and the window. For a machine signal, it names the machines. It ends with the time of the last run that found the signal. For example:
 
 ```text
 The account user1@example.org (<account id>): the machine box1 used 95% or more of the vCPUs, averaged over 30 minutes, for the last 2h0m0s. The threshold is 90%. Last seen at 2026-11-01T12:00:00Z. The notice closes by itself when the signal ends.
+```
+
+The summaries of the signals of saved state:
+
+```text
+The org <org id> keeps <bytes> bytes of stored state on the nodes, 90% or more of its limit of <limit> bytes. Memory files of hibernated machines count, and never refuse a hibernate.
+The org <org id> wrote <bytes> bytes of saves in the last 24 hours, 90% or more of its daily budget of <limit> bytes. A hibernate above the budget fails, and the machine runs on.
+The org <org id>: its daily budget of saves refused a hibernate in the last 24 hours. The org wrote <bytes> bytes of saves in the last 24 hours, and its daily budget is <limit> bytes. The machine runs on, and does not hibernate.
 ```
 
 The advice says that hopbox stops nothing by itself, that legitimate work can look the same, and how to suspend the account: the page Accounts of the Admin area, or `sudo hopboxd admin account suspend --account-id='<id>' --reason='TEXT'`. For an org without an account, it names `sudo hopboxd admin org suspend`. A dismiss closes the notice on the page of one instance admin only. The column `notified` of the signal keeps each instance admin who got the notice, so a repeat of the signal does not open a dismissed notice again.
@@ -82,7 +95,7 @@ The signals also share the list of the alerts of the monitoring bundle. While a 
 
 ## Email
 
-The detection emails the instance admins of each new signal while the install has no token of the alert webhook ([Metrics](/reference/metrics/index.html.md#alert-webhook)), which means that no Prometheus sends its alerts to `hopboxd` (Q152). With a token, the alerts of Prometheus reach the admins by their own email. The detection then emails only the signals that no alert rule of the monitoring bundle watches. Today that is only `new_account_public_url`, because a public URL of a new account can serve phishing within minutes. For the other signals, it makes the notices alone.
+The detection emails the instance admins of each new signal while the install has no token of the alert webhook ([Metrics](/reference/metrics/index.html.md#alert-webhook)), which means that no Prometheus sends its alerts to `hopboxd` (Q152). With a token, the alerts of Prometheus reach the admins by their own email. The detection then emails only the signals that no alert rule of the monitoring bundle watches. Today these are `new_account_public_url`, `stored_state_near_limit`, `saved_bytes_near_budget`, and `saved_bytes_budget_refused`. A public URL of a new account can serve phishing within minutes. No metric carries the saved state of an org, so no rule sees it. For the other signals, it makes the notices alone.
 
 Each run that starts signals that pass this rule sends one email to each email of each instance admin who got a notice of them. The email names the first 20 new signals, and counts the rest, as the email of a call of Alertmanager does (Q148). A repeat and an end send no email. The email goes out in the background after the commit, with the limits of the email of alerts. A stop of the control role waits for it, at most until the stop timeout. A run that ends while the control role stops sends no email, and logs `the control role stops, so the email of new abuse signals goes out to nobody` at level info, with `signals`. Its notices stay. A failed email writes the audit entry `admin_notice.mail_failed`, as for any notice.
 
@@ -105,7 +118,7 @@ hopbox stops nothing by itself. ...
 
 | Action | Actor | Target | Details |
 | --- | --- | --- | --- |
-| `abuse.detect` | `system` | `account` and its ID, or `org` and its ID for a signal without an account | `signal`, `measured` (the value at the start, such as `95%`), `threshold`, `window` for a signal with a window, and for a machine signal `machines` (the IDs), `machine_names`, `machine_orgs`, and `more_machines` when the signal has more than 20 machines. A signal of an org also has `org`. |
+| `abuse.detect` | `system` | `account` and its ID, or `org` and its ID for a signal without an account | `signal`, `measured` (the value at the start, such as `95%`), `threshold`, `window` for a signal with a window, and for a machine signal `machines` (the IDs), `machine_names`, `machine_orgs`, and `more_machines` when the signal has more than 20 machines. A signal of an org also has `org`. A signal of saved state has `measured` in bytes, `threshold` `90%`, `limit` (the limit of the org in bytes), and no `window`. |
 | `abuse.resolve` | `system` | the target of its `abuse.detect` | `signal`, `detect_entry` (the ID of the entry `abuse.detect`), and `started_at` |
 
 The audit log keeps both entries for good, also after the delete of the row of the signal.

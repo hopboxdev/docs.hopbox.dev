@@ -1,6 +1,6 @@
 # The node executor
 
-> The executor of each machine on its node: its actions, the guest link for exec and file copy, the restart policy, saved state, node-local state, logs, and metrics.
+> The executor of each machine on its node: its actions, the guest link for exec and file copy, the restart policy, saved state with the gate of a save, node-local state, logs, and metrics.
 
 The executor of a machine runs on the node of the machine. It is the only code that changes the microVM of the machine. It compares the target state that the control role sends with what the node holds, and it takes one action at a time. It reports each step of the current state back. [The executor protocol](/reference/executor-protocol/index.html.md) describes the messages. The code is in `internal/node/executor`, and it calls the VMM through the driver interface of `internal/node/vmm` ([the VMM driver interface](/reference/vmm/index.html.md)).
 
@@ -77,6 +77,9 @@ Each action has a timeout of 5 min (`DefaultActionTimeout`). An action that fail
 | `cannot stop a machine whose guest agent did not come up` | error | `err` |
 | `stopping the machine for its delete failed` | warn | `err`. The delete runs again 5 s later. |
 | `the VMM driver declares the capability snapshot but cannot snapshot` | error | `driver`. The hibernate runs again 5 s later. |
+| `no slot of a save freed in the action timeout` | warn | `err`, `saves` (the saves that hold a slot). The hibernate runs again 5 s later ([The gate of a save](#the-gate-of-a-save)). |
+| `cannot read the free disk for a save` | warn | `err`. The hibernate runs again 5 s later. |
+| `refused the save of a hibernate, because the node has too little free disk` | warn | `err`, `memory_bytes`. The executor reports the refusal, and tries again 5 s later. |
 | `hibernated the machine` | info | `bytes`, `vmm_version`, `snapshot_format`, `duration` |
 | `the memory file of the machine is whole, but its microVM did not end` | warn | `err`. The executor keeps the memory file, and the step runs again 5 s later. |
 | `the microVM of a saved machine ended` | info | The microVM of a save that wrapped `vmm.ErrSaved` ended. The next step reads the memory file again, and reports `hibernated`. |
@@ -223,13 +226,31 @@ A failure never deletes saved state. The executor follows the contract of [Domai
 
 ### Hibernate
 
-The save ends the microVM, so the executor first withdraws the guest link from `Manager.Guest`, and closes it, as for a pause. An exec or a file copy that runs ends with an error. Then it saves the microVM with `vmm.Snapshotter` ([the VMM driver interface](/reference/vmm/index.html.md#snapshotter-and-restorer)), from `running` or from `standby`. The machine frees its allocation, and the executor reports `hibernated` with `memory_state`: the VMM, its version, the snapshot format, the bytes, and the time of the save ([the executor protocol](/reference/executor-protocol/index.html.md#machinereport)). The executor times the save in `hopbox_vmm_save_seconds`.
+Before the save, the executor passes [the gate of a save](#the-gate-of-a-save). The save ends the microVM, so the executor then withdraws the guest link from `Manager.Guest`, and closes it, as for a pause. An exec or a file copy that runs ends with an error. Then it saves the microVM with `vmm.Snapshotter` ([the VMM driver interface](/reference/vmm/index.html.md#snapshotter-and-restorer)), from `running` or from `standby`. The machine frees its allocation, and the executor reports `hibernated` with `memory_state`: the VMM, its version, the snapshot format, the bytes, and the time of the save ([the executor protocol](/reference/executor-protocol/index.html.md#machinereport)). The bytes are the disk that the memory file and the VMM state file hold ([the Firecracker driver](/reference/firecracker-driver/index.html.md#the-bytes-of-a-saved-state)). The control role adds them to the daily budget of the org. The executor times the save in `hopbox_vmm_save_seconds`.
 
 A save that fails logs `hibernating the machine failed`, and runs again 5 s later. The microVM runs on as it was, running or paused, and an earlier memory file stays. A running microVM then has no guest link until a step attaches it again.
 
 A save can also write a whole memory file, but leave its microVM without an end. Its error then wraps `vmm.ErrSaved` ([the VMM driver interface](/reference/vmm/index.html.md#snapshotter-and-restorer)). The executor keeps the memory file as the newest state of the machine, and logs `the memory file of the machine is whole, but its microVM did not end`. The step runs again 5 s later, and only ends the microVM with `Instance.Stop`, because a second save replaces the memory file of the first. Once the microVM ended, the executor logs `ended the microVM of the saved machine`, and reports `hibernated` with the memory file. If the stop fails, it logs `the microVM of a saved machine did not end`, and tries again 5 s later. The microVM never runs again. Its later end has the exit reason `snapshot`, so it is no crash, and the restart policy does not apply. The executor logs `the microVM of a saved machine ended`, reads the memory file again, and reports `hibernated` with it.
 
 After a restart of `hopboxd`, `Inspect` tells the executor that the node keeps a memory file ([the VMM driver interface](/reference/vmm/index.html.md#driver)). A save can end just before the restart, and its report can get lost. So with the target `hibernated`, no microVM, and a memory file, the executor reports `hibernated` with the file. The record of the file can lack the VMM, its version, the snapshot format, or the time of the save. The report of `hibernated` then goes without `memory_state`.
+
+### The gate of a save
+
+A save writes up to the RAM of the machine to the disk of the node. That disk also holds the disks of the running machines. So each save passes two checks of `internal/node/savedstate` first, while the microVM runs on with its guest link:
+
+1. A slot. A node runs at most 4 saves at once (`savedstate.DefaultNodeSaves`), and at most 2 for each org (`savedstate.DefaultOrgSaves`). The node knows only its own saves, so the bound of an org holds on each node. A save above that waits for a slot, up to the action timeout. A spec with another target ends the wait. After the wait, the executor reads the target again, and a target other than `hibernated` saves nothing, so a start, a resume, or a delete during the wait never saves the machine. The executor then logs `the target of the machine changed while its save waited for a slot` at level info. If no slot frees in time, the executor logs `no slot of a save freed in the action timeout`, with `saves` and `reserved_bytes`, counts the action with the result `busy`, and tries again 5 s later. A save that gets its slot gets a whole action timeout from then. A stop of `hopboxd` and a loss of the lease still end it, and the microVM runs on.
+2. The free-space floor. The save needs the floor of the node free after it, and after the saves that hold a slot. Each slot reserves the size at worst of its save until the save ends, so saves at once never pass the floor together. The check runs under the lock of the slots. A save that does not fit beside the saves that hold a slot, but fits alone, waits for the end of one of them, and checks again. The free disk already lacks the part that a running save wrote, so a refusal there would count that part twice. Only a save that does not fit alone gets refused ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)). The size of the save at worst is the RAM of the machine. The free disk is that of the file system of `<data_dir>/machines`, from the blocks that a user other than root can take. Firecracker writes the memory file as the jail user of the machine. The floor in bytes is the larger of `vmm.save_free_bytes` and `vmm.save_free_percent` of the size of the file system.
+
+A save that the floor refuses never starts:
+
+1. The executor counts the refusal in `hopbox_saved_state_refusals_total{reason="disk_low"}`, counts the action in `hopbox_executor_actions_total` with the result `refused`, not `failed`, and logs `refused the save of a hibernate, because the node has too little free disk`.
+2. It reports the current state again, `running` or `standby`, with `save_refused` `SAVE_REFUSAL_DISK_LOW` and the reason in `error` ([the executor protocol](/reference/executor-protocol/index.html.md#machinereport)).
+3. The control role sets the target back to that state, so the machine runs on, and `HibernateMachine` fails ([the machine API](/reference/machine-api/index.html.md#hibernatemachine)).
+4. The executor tries again 5 s later. A control role of an older release ignores the refusal, so the target stays `hibernated`, and each try checks the floor again.
+
+The reason in `error` has the form `the free disk of the node is below the floor of a save: <free> bytes are free, the save takes up to <bytes>, and the floor is <floor>`. If the node cannot read the free disk, the executor logs `cannot read the free disk for a save`, and tries again 5 s later without a report. Example: a file system of 1 TiB has 120 GiB free. The default floor is the larger of 50 GiB and 10% of 1 TiB, so it is about 102 GiB. A save of a machine with 24 GiB of RAM leaves 96 GiB, so the node refuses it.
+
+The slots live in the memory of `hopboxd`. After a restart of `hopboxd` during a save, the executor attaches to the microVM, and a save that Firecracker still writes holds no slot, and reserves no bytes. A new save can then start beside it, and the floor counts the free disk without it. This gap lasts at most one save, and the floor still counts the bytes that the old save wrote already.
 
 ### The end of a wake
 
@@ -296,16 +317,18 @@ After a restart, the executor asks the driver for each machine of the state dir.
 | `hopbox_guest_links_down` | gauge | none | The machines whose microVM runs on the node without an authenticated guest link. A machine in standby does not count, because the executor closed its link on purpose. |
 | `hopbox_vmm_save_seconds` | histogram | `kind` | The duration of each save of the memory of a machine by the VMM driver, from the start of the call to its end. Only a save that worked counts. |
 | `hopbox_vmm_load_seconds` | histogram | `kind` | The duration of each load of saved memory by the VMM driver, until the microVM runs. The wait for the guest agent does not count. Only a load that worked counts. |
+| `hopbox_saved_state_refusals_total` | counter | `reason` | The saves of memory that the node refused ([The gate of a save](#the-gate-of-a-save)). |
 
 | Label | Values |
 | --- | --- |
 | `action` | `boot`, `wake`, `reboot`, `stop`, `delete`, `hibernate`, `pause`, and `resume`. Also `link`, `report`, `config`, `start_command`, `pull`, `drop_memory`, `discard_memory`, and `end_load`. |
 | `kind` of the saves | `hibernate`. The series starts at 0. |
 | `kind` of the loads | `wake`. The series starts at 0. |
-| `result` of the actions | `ok`, `failed`, or `canceled` for an action that ended with the loss of its lease |
+| `result` of the actions | `ok`, `failed`, or `canceled` for an action that ended with the loss of its lease. A `hibernate` also has `refused`, for a save that the free-space floor refused, and `busy`, for a save that got no slot in the action timeout ([The gate of a save](#the-gate-of-a-save)). Neither is a failure, so `HopboxExecutorFailures` does not count them. |
 | `phase` | `unit_start`, `vmm_ready`, `guest_link`, or `start_command` |
 | `machine` | The ID of the machine |
-| `reason` | `crash`, `guest_shutdown`, or `start_command_exit` |
+| `reason` of the restarts | `crash`, `guest_shutdown`, or `start_command_exit` |
+| `reason` of the refusals | `disk_low`: the save leaves less free disk than the floor. The series starts at 0. |
 | `result` of the handshakes | `ok`. `bad_proof` for a guest agent whose proof does not match the link key. `no_version` for a guest agent without a common version of the guest link. `error` for any other failure, such as a broken message, a timeout, or a guest agent that ends the call before its proof. |
 
 The histogram of the actions has the buckets 0.01, 0.05, 0.1, 0.5, 1, 2.5, 5, 10, 30, 60, 120, and 300 seconds. The histogram of the phases has the buckets 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, and 300 seconds. The histogram of the saves has the buckets 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, and 300 seconds. The histogram of the loads has the buckets 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, and 30 seconds.
@@ -346,6 +369,9 @@ A restart counts each time that the restart policy `always` starts the machine a
 | `LossWait` | 10 s | The wait before the end of a grant counts in `hopbox_executor_lease_losses_total`, for the disk transfers of a cold move ([Metrics](#metrics)). |
 | `MoveWindow` | 1 min | How long before the end of a grant the disk transfers that named its machine still make the end a move, and no loss ([Metrics](#metrics)). |
 | `WakeLinkTimeout` | 1 min | The wait for the guest agent after a wake. The executor then ends the microVM, reports `failed`, and keeps the memory file ([The end of a wake](#the-end-of-a-wake)). |
+| `SaveDir` | empty | A dir on the file system of the saved state. `hopboxd run` sets `<data_dir>/machines`. Empty checks no free-space floor ([The gate of a save](#the-gate-of-a-save)). |
+| `SaveFloor` | none | The free-space floor of a save, a `savedstate.Floor` with `Percent` and `Bytes`. `hopboxd run` sets it from `vmm.save_free_percent` and `vmm.save_free_bytes`. |
+| `NodeSaves`, `OrgSaves` | 4, 2 | The most saves at once on the node, and for each org on the node. |
 
 The `Manager` is the `Machines` of the agent of the node, `node.Agent.Machines`. The agent calls these methods:
 

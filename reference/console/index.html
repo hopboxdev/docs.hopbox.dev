@@ -243,7 +243,7 @@
 <tr>
 <td><code dir="auto">/orgs/&lt;org ID&gt;/settings</code></td>
 <td>yes</td>
-<td>The name, the usage and the limits of the org, and the leave and delete actions. The table of the usage also has the rows “Public URLs”, <code dir="auto">yes</code> or <code dir="auto">no</code>, and “Outbound TCP port 25”, <code dir="auto">open</code> or <code dir="auto">blocked</code>.</td>
+<td>The name, the usage and the limits of the org, and the leave and delete actions. The table of the usage has a row for each limit. The rows of the limits of saved state are “Stored state”, “Snapshots”, “Backups”, and “Saves in 24 hours”, in GiB. The text under the table says that memory files never block a hibernate, and that a hibernate above the budget of saves fails. The table also has the rows “Public URLs”, <code dir="auto">yes</code> or <code dir="auto">no</code>, and “Outbound TCP port 25”, <code dir="auto">open</code> or <code dir="auto">blocked</code>.</td>
 <td><code dir="auto">GetOrg</code>, <code dir="auto">UpdateOrg</code>, <code dir="auto">GetOrgUsage</code>, <code dir="auto">LeaveOrg</code>, <code dir="auto">DeleteOrg</code></td>
 </tr>
 <tr>
@@ -404,7 +404,8 @@
 </tr>
 </tbody>
 </table>
-<p>The button “Limits” opens the dialog “Limits of <name>”. It has the fields “Machines”, “vCPUs”, “RAM in GiB”, and “Disk in GB”, and two selects:</p>
+<p>The usage of a row gives each amount with its limit, such as “2 of 6 vCPUs, 8 GiB of 24 GiB RAM, 100 GB of 300 GB disk, 8 GiB of 100 GiB stored state, 8 GiB of 1024 GiB saved in 24 hours”.</p>
+<p>The button “Limits” opens the dialog “Limits of <name>”. It has the fields “Machines”, “vCPUs”, “RAM in GiB”, “Disk in GB”, “Stored state in GiB”, “Snapshots”, “Backups in GiB”, and “Saves in 24 hours, in GiB”, and two selects:</p>
 <table>
 <thead>
 <tr>
@@ -423,7 +424,7 @@
 </tr>
 </tbody>
 </table>
-<p>An empty field, or a choice “default”, takes the default of the install. The personal org of a limited account takes the limited defaults, and the dialog says so. The placeholder of an empty field shows its default. The line “The limits that apply now” gives the limits of the org. An example is “1 machine, 1 vCPU, 1 GiB RAM, 5 GB disk, public URLs: no, outbound TCP port 25: blocked”. The dialog also says two rules. A limit below the usage stops nothing, but the org starts no more machines. A machine takes a change of port 25 at its next start or reboot. The button “Set limits” calls <code dir="auto">SetOrgLimits</code> with the <code dir="auto">version</code> of the row (<a href="/reference/admin-api/#setorglimits">the admin API</a>).</p>
+<p>An empty field, or a choice “default”, takes the default of the install. The personal org of a limited account takes the limited defaults, and the dialog says so. The placeholder of an empty field shows its default. The line “The limits that apply now” gives the limits of the org. An example is “1 machine, 1 vCPU, 1 GiB RAM, 5 GB disk, 0 GiB stored state, 0 snapshots, 0 GiB backups, 20 GiB saved in 24 hours, public URLs: no, outbound TCP port 25: blocked”. The dialog also says two rules. A limit below the usage stops nothing, but the org starts no more machines. A machine takes a change of port 25 at its next start or reboot. The button “Set limits” calls <code dir="auto">SetOrgLimits</code> with the <code dir="auto">version</code> of the row (<a href="/reference/admin-api/#setorglimits">the admin API</a>).</p>
 <p>The section “Default limits” has two groups of fields:</p>
 <table>
 <thead>
@@ -435,11 +436,11 @@
 <tbody>
 <tr>
 <td>“Team orgs and personal orgs of full accounts”</td>
-<td>“Machines”, “vCPUs”, “RAM in GiB”, “Disk in GB”, “Public URLs”, and “Orgs of one full account, besides its personal org”</td>
+<td>“Machines”, “vCPUs”, “RAM in GiB”, “Disk in GB”, “Stored state in GiB”, “Snapshots”, “Backups in GiB”, “Saves in 24 hours, in GiB”, “Public URLs”, and “Orgs of one full account, besides its personal org”</td>
 </tr>
 <tr>
 <td>“Personal org of a limited account”</td>
-<td>“Machines”, “vCPUs”, “RAM in GiB”, “Disk in GB”, and “Public URLs”</td>
+<td>“Machines”, “vCPUs”, “RAM in GiB”, “Disk in GB”, “Stored state in GiB”, “Snapshots”, “Backups in GiB”, “Saves in 24 hours, in GiB”, and “Public URLs”</td>
 </tr>
 </tbody>
 </table>

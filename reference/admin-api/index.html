@@ -5514,7 +5514,7 @@
 </tr>
 </tbody>
 </table>
-<p>The message <code dir="auto">MachineUse</code> is what one running machine uses. A machine runs when its node served <code dir="auto">hopbox_machine_info</code> for it in the last 3 minutes.</p>
+<p>The message <code dir="auto">MachineUse</code> is what one running machine uses. A machine runs when its node served <code dir="auto">hopbox_machine_info</code> for it in the last 3 minutes. A series with the state <code dir="auto">saved</code>, of a hibernated machine, does not count (<a href="/reference/metrics/#metrics-of-the-machines">Metrics</a>).</p>
 <table>
 <thead>
 <tr>
@@ -6851,7 +6851,7 @@
 </tr>
 </tbody>
 </table>
-<p><code dir="auto">OrgLimits</code> and <code dir="auto">OrgUsage</code> have the fields <code dir="auto">machines</code> (int32), <code dir="auto">vcpus</code> (int32), <code dir="auto">memory_bytes</code> (int64), and <code dir="auto">disk_bytes</code> (int64), as in <a href="/reference/org-api/#orglimits-and-orgusage">the org API</a>. <code dir="auto">OrgLimits</code> also has the bools <code dir="auto">public_urls</code> and <code dir="auto">outbound_smtp</code>. <code dir="auto">OrgLimitOverrides</code> has the fields of <code dir="auto">OrgLimits</code>, each one <code dir="auto">optional</code>. A field that is not set takes the default of the install for the tier of the org. A limit of 0 allows nothing.</p>
+<p><code dir="auto">OrgLimits</code> and <code dir="auto">OrgUsage</code> have the fields <code dir="auto">machines</code> (int32), <code dir="auto">vcpus</code> (int32), <code dir="auto">memory_bytes</code> (int64), <code dir="auto">disk_bytes</code> (int64), <code dir="auto">stored_state_bytes</code> (int64), <code dir="auto">snapshots</code> (int32), and <code dir="auto">backup_bytes</code> (int64), as in <a href="/reference/org-api/#orglimits-and-orgusage">the org API</a>. <code dir="auto">OrgLimits</code> also has <code dir="auto">saved_bytes_per_day</code> (int64), the daily budget of saves, and the bools <code dir="auto">public_urls</code> and <code dir="auto">outbound_smtp</code>. <code dir="auto">OrgUsage</code> also has <code dir="auto">saved_bytes_last_day</code> (int64), the bytes of the saves of the last 24 hours. <code dir="auto">OrgLimitOverrides</code> has the fields of <code dir="auto">OrgLimits</code>, each one <code dir="auto">optional</code>. A field that is not set takes the default of the install for the tier of the org. A limit of 0 allows nothing.</p>
 <table>
 <thead>
 <tr>
@@ -6867,6 +6867,22 @@
 <tr>
 <td><code dir="auto">outbound_smtp</code></td>
 <td><code dir="auto">true</code> when the machines of the org reach TCP port 25 (<a href="/reference/node-network/#outbound-tcp-port-25">the node network</a>). No default opens it. Only the override of one org does. Each machine takes a change at its next start or reboot.</td>
+</tr>
+<tr>
+<td><code dir="auto">stored_state_bytes</code></td>
+<td>The most stored state that the nodes keep for the org, in bytes: memory files of hibernated machines, checkpoints, and snapshots. A hibernate never checks it. The default is 100 GiB, and 0 for the personal org of a limited account.</td>
+</tr>
+<tr>
+<td><code dir="auto">snapshots</code></td>
+<td>The most snapshots of the org. The default is 10, and 0 for the personal org of a limited account.</td>
+</tr>
+<tr>
+<td><code dir="auto">backup_bytes</code></td>
+<td>The most bytes of the backups of the org in object storage. The default is 100 GiB, and 0 for the personal org of a limited account.</td>
+</tr>
+<tr>
+<td><code dir="auto">saved_bytes_per_day</code></td>
+<td>The most bytes that the saves of the org write in 24 hours. A hibernate above it fails with <code dir="auto">resource_exhausted</code>, and the machine runs on (<a href="/reference/domain-rules/#limits-of-saved-state">Domain rules</a>). The default is 1 TiB, and 20 GiB for the personal org of a limited account.</td>
 </tr>
 </tbody>
 </table>
@@ -7044,7 +7060,7 @@
 </tr>
 <tr>
 <td>Audit entry</td>
-<td>action <code dir="auto">org.set_limits</code>, org the org, target kind <code dir="auto">org</code>. The details are <code dir="auto">machines</code>, <code dir="auto">vcpus</code>, <code dir="auto">memory_bytes</code>, <code dir="auto">disk_bytes</code>, <code dir="auto">public_urls</code>, and <code dir="auto">outbound_smtp</code>, then the same keys with the prefix <code dir="auto">old_</code>. Each value is a number, <code dir="auto">true</code>, <code dir="auto">false</code>, or <code dir="auto">default</code> for a limit without an override.</td>
+<td>action <code dir="auto">org.set_limits</code>, org the org, target kind <code dir="auto">org</code>. The details are <code dir="auto">machines</code>, <code dir="auto">vcpus</code>, <code dir="auto">memory_bytes</code>, <code dir="auto">disk_bytes</code>, <code dir="auto">stored_state_bytes</code>, <code dir="auto">snapshots</code>, <code dir="auto">backup_bytes</code>, <code dir="auto">saved_bytes_per_day</code>, <code dir="auto">public_urls</code>, and <code dir="auto">outbound_smtp</code>, then the same keys with the prefix <code dir="auto">old_</code>. Each value is a number, <code dir="auto">true</code>, <code dir="auto">false</code>, or <code dir="auto">default</code> for a limit without an override.</td>
 </tr>
 </tbody>
 </table>
@@ -7074,7 +7090,7 @@
 </tr>
 </tbody>
 </table>
-<p>The response <code dir="auto">SetOrgLimitsResponse</code> has the field <code dir="auto">org</code>. A limit below 0 gets <code dir="auto">invalid_argument</code>, for example <code dir="auto">invalid argument: invalid limit: the vCPU limit -1 is below 0</code>. An unknown org gets <code dir="auto">not_found</code>.</p>
+<p>The response <code dir="auto">SetOrgLimitsResponse</code> has the field <code dir="auto">org</code>. A limit below 0 gets <code dir="auto">invalid_argument</code>, for example <code dir="auto">invalid argument: invalid limit: the vCPU limit -1 is below 0</code>. The limits of saved state name themselves as <code dir="auto">the stored state limit</code>, <code dir="auto">the snapshot limit</code>, <code dir="auto">the backup limit</code>, and <code dir="auto">the daily save budget</code>. An unknown org gets <code dir="auto">not_found</code>. A new daily budget below the saves of the last 24 hours stops nothing. The org then hibernates no machine until its saves fit.</p>
 <div class="sl-heading-wrapper level-h3"><h3 id="getdefaultorglimits">GetDefaultOrgLimits</h3><a class="sl-anchor-link" href="#getdefaultorglimits"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “GetDefaultOrgLimits”</span></a></div>
 <p>Returns the limits of every org without an override. They live in the row of <code dir="auto">install_config</code> (<a href="/reference/control-store/#install_config">Control store tables</a>).</p>
 <table>
@@ -7116,12 +7132,12 @@
 <tr>
 <td><code dir="auto">limits</code></td>
 <td><code dir="auto">OrgLimits</code></td>
-<td>The default limits of each org, apart from the personal org of a limited account. A fresh install has 3 machines, 6 vCPUs, 24 GiB of RAM, 300 GB of disk, and <code dir="auto">public_urls</code> <code dir="auto">true</code>.</td>
+<td>The default limits of each org, apart from the personal org of a limited account. A fresh install has 3 machines, 6 vCPUs, 24 GiB of RAM, 300 GB of disk, 100 GiB of stored state, 10 snapshots, 100 GiB of backups, 1 TiB of saves a day, and <code dir="auto">public_urls</code> <code dir="auto">true</code>.</td>
 </tr>
 <tr>
 <td><code dir="auto">limited_limits</code></td>
 <td><code dir="auto">OrgLimits</code></td>
-<td>The default limits of the personal org of a limited account. A fresh install has 1 machine, 1 vCPU, 1 GiB of RAM, 5 GB of disk, and <code dir="auto">public_urls</code> <code dir="auto">false</code>.</td>
+<td>The default limits of the personal org of a limited account. A fresh install has 1 machine, 1 vCPU, 1 GiB of RAM, 5 GB of disk, 0 for stored state, snapshots, and backups, 20 GiB of saves a day, and <code dir="auto">public_urls</code> <code dir="auto">false</code>.</td>
 </tr>
 <tr>
 <td><code dir="auto">max_orgs_per_account</code></td>
@@ -7198,6 +7214,26 @@
 <td>The most disk of an org, in bytes, 0 or more.</td>
 </tr>
 <tr>
+<td><code dir="auto">stored_state_bytes</code></td>
+<td>optional int64</td>
+<td>The most stored state of an org, in bytes, 0 or more.</td>
+</tr>
+<tr>
+<td><code dir="auto">snapshots</code></td>
+<td>optional int32</td>
+<td>The most snapshots of an org, 0 or more.</td>
+</tr>
+<tr>
+<td><code dir="auto">backup_bytes</code></td>
+<td>optional int64</td>
+<td>The most bytes of the backups of an org, 0 or more.</td>
+</tr>
+<tr>
+<td><code dir="auto">saved_bytes_per_day</code></td>
+<td>optional int64</td>
+<td>The most bytes that the saves of an org write in 24 hours, 0 or more.</td>
+</tr>
+<tr>
 <td><code dir="auto">max_orgs_per_account</code></td>
 <td>optional int32</td>
 <td>The most orgs that a full account owns besides its personal org, 0 or more. A lower value deletes no org. It only refuses new orgs above it.</td>
@@ -7220,7 +7256,7 @@
 </tbody>
 </table>
 <p>A request that sets no limit gets <code dir="auto">invalid_argument</code> with the message <code dir="auto">invalid argument: the update sets no limit</code>. A request with <code dir="auto">limited.outbound_smtp</code> gets <code dir="auto">invalid_argument</code> with the message <code dir="auto">invalid argument: no default opens outbound TCP port 25. Open it for one org with SetOrgLimits</code>. The response <code dir="auto">SetDefaultOrgLimitsResponse</code> has the field <code dir="auto">defaults</code>.</p>
-<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="text"><code><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">$ sudo hopboxd admin org default-limits set --machines 5 --limited-disk-gb 10</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">machines  5</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">vcpus  6</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">memory_bytes  25769803776</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">disk_bytes  300000000000</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">public_urls  true</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">limited_machines  1</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">limited_vcpus  1</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">limited_memory_bytes  1073741824</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">limited_disk_bytes  10000000000</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">limited_public_urls  false</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">max_orgs_per_account  3</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">version  4</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">update_time  2026-10-16T15:50:02Z</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="$ sudo hopboxd admin org default-limits set --machines 5 --limited-disk-gb 10machines  5vcpus  6memory_bytes  25769803776disk_bytes  300000000000public_urls  truelimited_machines  1limited_vcpus  1limited_memory_bytes  1073741824limited_disk_bytes  10000000000limited_public_urls  falsemax_orgs_per_account  3version  4update_time  2026-10-16T15:50:02Z"><div></div></button></div></figure></div>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="text"><code><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">$ sudo hopboxd admin org default-limits set --machines 5 --limited-disk-gb 10</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">machines  5</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">vcpus  6</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">memory_bytes  25769803776</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">disk_bytes  300000000000</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">stored_state_bytes  107374182400</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">snapshots  10</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">backup_bytes  107374182400</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">saved_bytes_per_day  1099511627776</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">public_urls  true</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">limited_machines  1</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">limited_vcpus  1</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">limited_memory_bytes  1073741824</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">limited_disk_bytes  10000000000</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">limited_stored_state_bytes  0</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">limited_snapshots  0</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">limited_backup_bytes  0</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">limited_saved_bytes_per_day  21474836480</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">limited_public_urls  false</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">max_orgs_per_account  3</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">version  4</span></div></div><div class="ec-line"><div class="code"><span style="--0:#edeee8;--1:#0d0e0c">update_time  2026-10-16T15:50:02Z</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="$ sudo hopboxd admin org default-limits set --machines 5 --limited-disk-gb 10machines  5vcpus  6memory_bytes  25769803776disk_bytes  300000000000stored_state_bytes  107374182400snapshots  10backup_bytes  107374182400saved_bytes_per_day  1099511627776public_urls  truelimited_machines  1limited_vcpus  1limited_memory_bytes  1073741824limited_disk_bytes  10000000000limited_stored_state_bytes  0limited_snapshots  0limited_backup_bytes  0limited_saved_bytes_per_day  21474836480limited_public_urls  falsemax_orgs_per_account  3version  4update_time  2026-10-16T15:50:02Z"><div></div></button></div></figure></div>
 <div class="sl-heading-wrapper level-h2"><h2 id="machineservice">MachineService</h2><a class="sl-anchor-link" href="#machineservice"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “MachineService”</span></a></div>
 <p><code dir="auto">hopbox.admin.v1.MachineService</code> lets instance admins see the machines of every org, and stop, delete, or move any of them. This also works in a suspended org, for example to handle abuse. It never opens a shell in a machine and never reads its secrets. <a href="/reference/machine-api/">The machine API</a> covers the calls of the members of an org.</p>
 <p>The message <code dir="auto">Machine</code> of this service is a machine with the facts that only instance admins see:</p>

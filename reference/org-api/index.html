@@ -339,6 +339,46 @@
 <td>int64</td>
 <td>The disk of all machines together, in bytes.</td>
 </tr>
+<tr>
+<td><code dir="auto">stored_state_bytes</code></td>
+<td>int64</td>
+<td>The stored state that the nodes keep for the org, in bytes: memory files of hibernated machines, checkpoints, and snapshots. Today only memory files count.</td>
+</tr>
+<tr>
+<td><code dir="auto">snapshots</code></td>
+<td>int32</td>
+<td>The snapshots of the org. 0 in the usage until snapshots exist.</td>
+</tr>
+<tr>
+<td><code dir="auto">backup_bytes</code></td>
+<td>int64</td>
+<td>The backups of the org in object storage, in bytes. 0 in the usage until backups exist.</td>
+</tr>
+</tbody>
+</table>
+<p>The daily budget of saves has a field of its own in each message:</p>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">OrgLimits</code></td>
+<td><code dir="auto">saved_bytes_per_day</code></td>
+<td>int64</td>
+<td>The most bytes that the saves of the org write in 24 hours. A hibernate above it fails with <code dir="auto">resource_exhausted</code>, and the machine runs on.</td>
+</tr>
+<tr>
+<td><code dir="auto">OrgUsage</code></td>
+<td><code dir="auto">saved_bytes_last_day</code></td>
+<td>int64</td>
+<td>The bytes that the saves of the org wrote in the last 24 hours.</td>
+</tr>
 </tbody>
 </table>
 <p><code dir="auto">OrgLimits</code> also has two limits of yes or no:</p>
@@ -688,7 +728,7 @@
 </table>
 <p>The request <code dir="auto">GetOrgUsageRequest</code> has the field <code dir="auto">org_id</code>. The response <code dir="auto">GetOrgUsageResponse</code> has the fields <code dir="auto">usage</code>, an <code dir="auto">OrgUsage</code>, and <code dir="auto">limits</code>, an <code dir="auto">OrgLimits</code>.</p>
 <div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="sh"><code><div class="ec-line hb-command"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">browser </span><span style="--0:#B9BBB3;--1:#5C5E57">-d</span><span style="--0:#EDEEE8;--1:#0D0E0C"> </span><span style="--0:#B9BBB3;--1:#5C5E57">'{"orgId":"01a14565-a2df-75a1-9401-ed28dfa37fc4"}'</span><span style="--0:#EDEEE8;--1:#0D0E0C"> $API</span><span style="--0:#B9BBB3;--1:#5C5E57">/hopbox.v1.OrgService/GetOrgUsage</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="browser -d &#x27;{&quot;orgId&quot;:&quot;01a14565-a2df-75a1-9401-ed28dfa37fc4&quot;}&#x27; $API/hopbox.v1.OrgService/GetOrgUsage"><div></div></button></div></figure></div>
-<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="json"><code><div class="ec-line"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">{</span><span style="--0:#B9BBB3;--1:#5C5E57">"usage"</span><span style="--0:#EDEEE8;--1:#0D0E0C">:{},</span><span style="--0:#B9BBB3;--1:#5C5E57">"limits"</span><span style="--0:#EDEEE8;--1:#0D0E0C">:{</span><span style="--0:#B9BBB3;--1:#5C5E57">"machines"</span><span style="--1:#0D0E0C"><span style="--0:#EDEEE8">:</span><span style="--0:#C6EA2B">3</span><span style="--0:#EDEEE8">,</span></span><span style="--0:#B9BBB3;--1:#5C5E57">"vcpus"</span><span style="--1:#0D0E0C"><span style="--0:#EDEEE8">:</span><span style="--0:#C6EA2B">6</span><span style="--0:#EDEEE8">,</span></span><span style="--0:#B9BBB3;--1:#5C5E57">"memoryBytes"</span><span style="--0:#EDEEE8;--1:#0D0E0C">:</span><span style="--0:#B9BBB3;--1:#5C5E57">"25769803776"</span><span style="--0:#EDEEE8;--1:#0D0E0C">,</span><span style="--0:#B9BBB3;--1:#5C5E57">"diskBytes"</span><span style="--0:#EDEEE8;--1:#0D0E0C">:</span><span style="--0:#B9BBB3;--1:#5C5E57">"300000000000"</span><span style="--0:#EDEEE8;--1:#0D0E0C">,</span><span style="--0:#B9BBB3;--1:#5C5E57">"publicUrls"</span><span style="--1:#0D0E0C"><span style="--0:#EDEEE8">:</span><span style="--0:#C6EA2B">true</span><span style="--0:#EDEEE8">}}</span></span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="{&quot;usage&quot;:{},&quot;limits&quot;:{&quot;machines&quot;:3,&quot;vcpus&quot;:6,&quot;memoryBytes&quot;:&quot;25769803776&quot;,&quot;diskBytes&quot;:&quot;300000000000&quot;,&quot;publicUrls&quot;:true}}"><div></div></button></div></figure></div>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="json"><code><div class="ec-line"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">{</span><span style="--0:#B9BBB3;--1:#5C5E57">"usage"</span><span style="--0:#EDEEE8;--1:#0D0E0C">:{},</span><span style="--0:#B9BBB3;--1:#5C5E57">"limits"</span><span style="--0:#EDEEE8;--1:#0D0E0C">:{</span><span style="--0:#B9BBB3;--1:#5C5E57">"machines"</span><span style="--1:#0D0E0C"><span style="--0:#EDEEE8">:</span><span style="--0:#C6EA2B">3</span><span style="--0:#EDEEE8">,</span></span><span style="--0:#B9BBB3;--1:#5C5E57">"vcpus"</span><span style="--1:#0D0E0C"><span style="--0:#EDEEE8">:</span><span style="--0:#C6EA2B">6</span><span style="--0:#EDEEE8">,</span></span><span style="--0:#B9BBB3;--1:#5C5E57">"memoryBytes"</span><span style="--0:#EDEEE8;--1:#0D0E0C">:</span><span style="--0:#B9BBB3;--1:#5C5E57">"25769803776"</span><span style="--0:#EDEEE8;--1:#0D0E0C">,</span><span style="--0:#B9BBB3;--1:#5C5E57">"diskBytes"</span><span style="--0:#EDEEE8;--1:#0D0E0C">:</span><span style="--0:#B9BBB3;--1:#5C5E57">"300000000000"</span><span style="--0:#EDEEE8;--1:#0D0E0C">,</span><span style="--0:#B9BBB3;--1:#5C5E57">"storedStateBytes"</span><span style="--0:#EDEEE8;--1:#0D0E0C">:</span><span style="--0:#B9BBB3;--1:#5C5E57">"107374182400"</span><span style="--0:#EDEEE8;--1:#0D0E0C">,</span><span style="--0:#B9BBB3;--1:#5C5E57">"snapshots"</span><span style="--1:#0D0E0C"><span style="--0:#EDEEE8">:</span><span style="--0:#C6EA2B">10</span><span style="--0:#EDEEE8">,</span></span><span style="--0:#B9BBB3;--1:#5C5E57">"backupBytes"</span><span style="--0:#EDEEE8;--1:#0D0E0C">:</span><span style="--0:#B9BBB3;--1:#5C5E57">"107374182400"</span><span style="--0:#EDEEE8;--1:#0D0E0C">,</span><span style="--0:#B9BBB3;--1:#5C5E57">"savedBytesPerDay"</span><span style="--0:#EDEEE8;--1:#0D0E0C">:</span><span style="--0:#B9BBB3;--1:#5C5E57">"1099511627776"</span><span style="--0:#EDEEE8;--1:#0D0E0C">,</span><span style="--0:#B9BBB3;--1:#5C5E57">"publicUrls"</span><span style="--1:#0D0E0C"><span style="--0:#EDEEE8">:</span><span style="--0:#C6EA2B">true</span><span style="--0:#EDEEE8">}}</span></span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="{&quot;usage&quot;:{},&quot;limits&quot;:{&quot;machines&quot;:3,&quot;vcpus&quot;:6,&quot;memoryBytes&quot;:&quot;25769803776&quot;,&quot;diskBytes&quot;:&quot;300000000000&quot;,&quot;storedStateBytes&quot;:&quot;107374182400&quot;,&quot;snapshots&quot;:10,&quot;backupBytes&quot;:&quot;107374182400&quot;,&quot;savedBytesPerDay&quot;:&quot;1099511627776&quot;,&quot;publicUrls&quot;:true}}"><div></div></button></div></figure></div>
 <p>In the JSON codec, a field with its default value is left out, so a usage of 0 is <code dir="auto">{}</code>.</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="members">Members</h2><a class="sl-anchor-link" href="#members"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Members”</span></a></div>
 <div class="sl-heading-wrapper level-h3"><h3 id="listorgmembers">ListOrgMembers</h3><a class="sl-anchor-link" href="#listorgmembers"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “ListOrgMembers”</span></a></div>
@@ -1287,7 +1327,7 @@
 <div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="sh"><code><div class="ec-line hb-command"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">browser </span><span style="--0:#B9BBB3;--1:#5C5E57">-d</span><span style="--0:#EDEEE8;--1:#0D0E0C"> </span><span style="--0:#B9BBB3;--1:#5C5E57">'{"token":"vH_2434xeosR22NllAU0tHE8LoqC08ZYHX1JhHZK4UA"}'</span><span style="--0:#EDEEE8;--1:#0D0E0C"> $API</span><span style="--0:#B9BBB3;--1:#5C5E57">/hopbox.v1.OrgService/AcceptInvitation</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="browser -d &#x27;{&quot;token&quot;:&quot;vH_2434xeosR22NllAU0tHE8LoqC08ZYHX1JhHZK4UA&quot;}&#x27; $API/hopbox.v1.OrgService/AcceptInvitation"><div></div></button></div></figure></div>
 <div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="json"><code><div class="ec-line"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">{</span><span style="--0:#B9BBB3;--1:#5C5E57">"org"</span><span style="--0:#EDEEE8;--1:#0D0E0C">:{</span><span style="--0:#B9BBB3;--1:#5C5E57">"id"</span><span style="--0:#EDEEE8;--1:#0D0E0C">:</span><span style="--0:#B9BBB3;--1:#5C5E57">"01a14565-a2df-75a1-9401-ed28dfa37fc4"</span><span style="--0:#EDEEE8;--1:#0D0E0C">,</span><span style="--0:#B9BBB3;--1:#5C5E57">"name"</span><span style="--0:#EDEEE8;--1:#0D0E0C">:</span><span style="--0:#B9BBB3;--1:#5C5E57">"Team"</span><span style="--0:#EDEEE8;--1:#0D0E0C">,</span><span style="--0:#B9BBB3;--1:#5C5E57">"role"</span><span style="--0:#EDEEE8;--1:#0D0E0C">:</span><span style="--0:#B9BBB3;--1:#5C5E57">"ORG_ROLE_ADMIN"</span><span style="--0:#EDEEE8;--1:#0D0E0C">,</span><span style="--0:#B9BBB3;--1:#5C5E57">"version"</span><span style="--0:#EDEEE8;--1:#0D0E0C">:</span><span style="--0:#B9BBB3;--1:#5C5E57">"1"</span><span style="--0:#EDEEE8;--1:#0D0E0C">,</span><span style="--0:#B9BBB3;--1:#5C5E57">"createTime"</span><span style="--0:#EDEEE8;--1:#0D0E0C">:</span><span style="--0:#B9BBB3;--1:#5C5E57">"2026-10-16T15:47:31.166821Z"</span><span style="--0:#EDEEE8;--1:#0D0E0C">}}</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="{&quot;org&quot;:{&quot;id&quot;:&quot;01a14565-a2df-75a1-9401-ed28dfa37fc4&quot;,&quot;name&quot;:&quot;Team&quot;,&quot;role&quot;:&quot;ORG_ROLE_ADMIN&quot;,&quot;version&quot;:&quot;1&quot;,&quot;createTime&quot;:&quot;2026-10-16T15:47:31.166821Z&quot;}}"><div></div></button></div></figure></div>
 <div class="sl-heading-wrapper level-h2"><h2 id="usage-limits">Usage limits</h2><a class="sl-anchor-link" href="#usage-limits"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Usage limits”</span></a></div>
-<p>Each org has usage limits on machines, vCPUs, RAM, and disk, and the limits <code dir="auto">public_urls</code> and <code dir="auto">outbound_smtp</code> of yes or no. The install has two sets of default limits. The personal org of a limited account takes the limited set, and every other org takes the first set. An instance admin can change the defaults, and set limits for one org that replace the defaults (<a href="/reference/admin-api/#setorglimits">the admin API</a>).</p>
+<p>Each org has usage limits on machines, vCPUs, RAM, disk, and saved state. It also has the limits <code dir="auto">public_urls</code> and <code dir="auto">outbound_smtp</code> of yes or no. The install has two sets of default limits. The personal org of a limited account takes the limited set, and every other org takes the first set. An instance admin can change the defaults, and set limits for one org that replace the defaults (<a href="/reference/admin-api/#setorglimits">the admin API</a>).</p>
 <table>
 <thead>
 <tr>
@@ -1318,6 +1358,26 @@
 <td>5 GB (5000000000 bytes)</td>
 </tr>
 <tr>
+<td><code dir="auto">stored_state_bytes</code></td>
+<td>100 GiB (107374182400 bytes)</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code dir="auto">snapshots</code></td>
+<td>10</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code dir="auto">backup_bytes</code></td>
+<td>100 GiB (107374182400 bytes)</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code dir="auto">saved_bytes_per_day</code></td>
+<td>1 TiB (1099511627776 bytes)</td>
+<td>20 GiB (21474836480 bytes)</td>
+</tr>
+<tr>
 <td><code dir="auto">public_urls</code></td>
 <td>yes</td>
 <td>no</td>
@@ -1346,9 +1406,18 @@
 <td>vCPUs and RAM</td>
 <td>the machines whose target state is <code dir="auto">running</code> or <code dir="auto">standby</code></td>
 </tr>
+<tr>
+<td>Stored state</td>
+<td>the memory files of the machines that are not deleted</td>
+</tr>
+<tr>
+<td>Saves in 24 hours</td>
+<td>the bytes of the saves of the last 24 hours, also those of a deleted machine</td>
+</tr>
 </tbody>
 </table>
 <p>So a stopped machine keeps its disk and its place in the machine count, but frees its vCPUs and its RAM. A machine whose target is <code dir="auto">deleted</code> counts no more, also while its executor still deletes it. <code dir="auto">CreateMachine</code> and <code dir="auto">StartMachine</code> check the limits (<a href="/reference/machine-api/#usage-and-limits">the machine API</a>). A start adds only the vCPUs and the RAM of a machine that does not count already, so a start never counts a machine twice. A new limit below the usage stops nothing: the org then creates and starts no more machines until its usage fits.</p>
+<p>The limits of saved state never refuse a create, a start, or a wake. A hibernate checks only <code dir="auto">saved_bytes_per_day</code>, with the RAM of the machine as the size of the save (<a href="/reference/machine-api/#hibernatemachine">the machine API</a>). So a hibernated machine whose memory file passes <code dir="auto">stored_state_bytes</code> blocks nothing. A limited org can still hibernate its machine within its daily budget. Near 90% of <code dir="auto">stored_state_bytes</code> or of <code dir="auto">saved_bytes_per_day</code>, the instance admins get a notice (<a href="/reference/abuse-detection/#signals">Abuse detection</a>). Example: with the budget 20 GiB, an org that saved 15 GiB in the last 24 hours cannot hibernate a machine with 8 GiB of RAM. The call fails with <code dir="auto">usage limit exceeded: the saves of the org would write 24696061952 bytes in 24 hours, and its daily budget is 21474836480</code>.</p>
 <p><code dir="auto">SetMachineURLVisibility</code> checks <code dir="auto">public_urls</code> when it makes a URL public (<a href="/reference/machine-api/#setmachineurlvisibility">the machine API</a>). A URL that is public already stays public after a change of the limit or of the tier. Each machine reads <code dir="auto">outbound_smtp</code> at its next boot.</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="suspension">Suspension</h2><a class="sl-anchor-link" href="#suspension"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Suspension”</span></a></div>
 <p>An instance admin can suspend an org, for example to handle abuse. The calls are on the admin API (<a href="/reference/admin-api/#suspendorg">the admin API</a>). The members of the org see the suspension in <code dir="auto">GetOrg</code>. Its owners and admins see its audit entry in the audit log of the org.</p>

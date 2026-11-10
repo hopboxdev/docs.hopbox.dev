@@ -6746,6 +6746,34 @@ components:
             - "null"
           title: outbound_smtp
           description: outbound_smtp opens TCP port 25 for the machines of the org. A machine takes a change at its next start or reboot.
+        storedStateBytes:
+          type:
+            - string
+            - "null"
+          title: stored_state_bytes
+          format: int64
+          description: stored_state_bytes is the most stored state that the nodes keep for the org, in bytes, 0 or more.
+        snapshots:
+          type:
+            - integer
+            - "null"
+          title: snapshots
+          format: int32
+          description: snapshots is the most snapshots of the org, 0 or more.
+        backupBytes:
+          type:
+            - string
+            - "null"
+          title: backup_bytes
+          format: int64
+          description: backup_bytes is the most bytes of the backups of the org in object storage, 0 or more.
+        savedBytesPerDay:
+          type:
+            - string
+            - "null"
+          title: saved_bytes_per_day
+          format: int64
+          description: saved_bytes_per_day is the most bytes that the saves of the org write in 24 hours, 0 or more.
       title: OrgLimitOverrides
       additionalProperties: false
       description: |-
@@ -6782,6 +6810,30 @@ components:
           type: boolean
           title: outbound_smtp
           description: outbound_smtp is true when the machines of the org reach TCP port 25. No default opens it.
+        storedStateBytes:
+          type: string
+          title: stored_state_bytes
+          format: int64
+          description: |-
+            stored_state_bytes is the most stored state that the nodes keep for the org, in bytes: memory files of
+             hibernated machines, checkpoints, and snapshots. A hibernate never checks it.
+        snapshots:
+          type: integer
+          title: snapshots
+          format: int32
+          description: snapshots is the most snapshots of the org.
+        backupBytes:
+          type: string
+          title: backup_bytes
+          format: int64
+          description: backup_bytes is the most bytes of the backups of the org in object storage.
+        savedBytesPerDay:
+          type: string
+          title: saved_bytes_per_day
+          format: int64
+          description: |-
+            saved_bytes_per_day is the most bytes that the saves of the org write in 24 hours.
+             A hibernate above it fails with RESOURCE_EXHAUSTED, and the machine runs on.
       title: OrgLimits
       additionalProperties: false
       description: OrgLimits are usage limits. A limit of 0 allows nothing.
@@ -6808,6 +6860,26 @@ components:
           title: disk_bytes
           format: int64
           description: disk_bytes is the disk of all machines, in bytes.
+        storedStateBytes:
+          type: string
+          title: stored_state_bytes
+          format: int64
+          description: stored_state_bytes is the stored state that the nodes keep for the org, in bytes.
+        snapshots:
+          type: integer
+          title: snapshots
+          format: int32
+          description: snapshots counts the snapshots of the org.
+        backupBytes:
+          type: string
+          title: backup_bytes
+          format: int64
+          description: backup_bytes are the bytes of the backups of the org in object storage.
+        savedBytesLastDay:
+          type: string
+          title: saved_bytes_last_day
+          format: int64
+          description: saved_bytes_last_day are the bytes that the saves of the org wrote in the last 24 hours.
       title: OrgUsage
       additionalProperties: false
       description: OrgUsage is what an org uses of its limits.
@@ -7845,6 +7917,36 @@ components:
           description: |-
             limited holds the limits of the personal org of a limited account to change. A field that it leaves out
              keeps its value. Its outbound_smtp must stay unset, because no default opens TCP port 25.
+        storedStateBytes:
+          type:
+            - string
+            - "null"
+          title: stored_state_bytes
+          format: int64
+          description: stored_state_bytes is the most stored state of an org, in bytes, 0 or more. Leave it out to keep the value.
+        snapshots:
+          type:
+            - integer
+            - "null"
+          title: snapshots
+          format: int32
+          description: snapshots is the most snapshots of an org, 0 or more. Leave it out to keep the value.
+        backupBytes:
+          type:
+            - string
+            - "null"
+          title: backup_bytes
+          format: int64
+          description: backup_bytes is the most bytes of the backups of an org, 0 or more. Leave it out to keep the value.
+        savedBytesPerDay:
+          type:
+            - string
+            - "null"
+          title: saved_bytes_per_day
+          format: int64
+          description: |-
+            saved_bytes_per_day is the most bytes that the saves of an org write in 24 hours, 0 or more.
+             Leave it out to keep the value.
       title: SetDefaultOrgLimitsRequest
       additionalProperties: false
       description: SetDefaultOrgLimitsRequest holds the defaults to change.

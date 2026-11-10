@@ -47,7 +47,7 @@ A driver runs the microVMs of one node. Its microVMs run apart from `hopboxd`, s
 | --- | --- |
 | `VMM`, `VMMVersion` | The driver that saved the memory, and the version of its VMM, such as `firecracker` and `v1.17.0`. |
 | `SnapshotFormat` | The format version of the saved files, as `SnapshotFormat` returns it. |
-| `Bytes` | The bytes of the blocks of the memory file on the disk of the node. |
+| `Bytes` | The bytes of the disk of the node that the memory file and the VMM state hold, counted by their blocks ([the Firecracker driver](/reference/firecracker-driver/index.html.md#the-bytes-of-a-saved-state)). |
 | `SavedAt` | The time of the save. |
 | `Loads` | The loads of the saved state so far, also those that failed. |
 
@@ -119,7 +119,7 @@ A driver that keeps the disk of each machine in one file is a `vmm.Mover`. A col
 
 ## UsageReader
 
-A driver that reads what its microVMs use on the host is a `vmm.UsageReader`. The node serves these values as the [metrics of the machines](/reference/metrics/index.html.md#metrics-of-the-machines). A node whose driver is not a `UsageReader` serves none of them. The test driver is not one.
+A driver that reads what its microVMs use on the host is a `vmm.UsageReader`. The node serves these values as the [metrics of the machines](/reference/metrics/index.html.md#metrics-of-the-machines). A node whose driver is not a `UsageReader` serves none of these values. It still serves `hopbox_machine_info`, `hopbox_machine_vcpus`, and the series of saved state. The test driver is not one.
 
 | Interface | Method | Description |
 | --- | --- | --- |
@@ -143,6 +143,7 @@ A driver that reads what its microVMs use on the host is a `vmm.UsageReader`. Th
 | `LinkHungWake(id)` | Starts the guest agent of a running microVM whose wake `HangWakes` hung, as a guest that links late. |
 | `Loads(id)` | How many times the memory file of a machine loaded, also in wakes that failed. A new save and a drop start it at 0. |
 | `SetDelay(d)` | Makes each call wait `d` before it acts. A call whose context ends during the wait fails with the cause of the end. A stop then kills the microVM. |
+| `MostSavesAtOnce()` | The most saves that ran at once, of any machines of the driver. |
 | `Ops()` | The calls so far, in order. |
 | `Overlaps()` | Each call that ran while another call of the same machine ran. An executor must never cause one. |
 | `Guarded(id, pgid)` | Whether a watchdog of the running microVM of a machine guards the process group `pgid` (see below). |

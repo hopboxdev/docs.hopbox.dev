@@ -308,6 +308,18 @@
 <td>The guest kernel of the release. At each start, <code dir="auto">hopboxd run</code> adds it to the kernel cache (<a href="/reference/firecracker-driver/#the-kernel-cache">the Firecracker driver</a>). A missing file gives a warning, and the start goes on.</td>
 </tr>
 <tr>
+<td><code dir="auto">vmm.save_free_percent</code></td>
+<td>integer, 0 to 90</td>
+<td><code dir="auto">10</code></td>
+<td>The share of the file system of <code dir="auto">&lt;data_dir&gt;/machines</code>, in percent, that a save of the memory of a machine leaves free at least (<a href="/reference/executor/#the-gate-of-a-save">the node executor</a>). A save can fill the disk that the running machines write to. A save needs both floors free after it: this share and <code dir="auto">vmm.save_free_bytes</code>. Otherwise the node refuses the save, and the machine runs on. The free disk counts the blocks that a user other than root can take.</td>
+</tr>
+<tr>
+<td><code dir="auto">vmm.save_free_bytes</code></td>
+<td>integer, bytes, 0 or more</td>
+<td><code dir="auto">53687091200</code> (50 GiB)</td>
+<td>The bytes that a save leaves free at least on the same file system. A small node sets a lower value, as the test fleet does on its KVM nodes with <code dir="auto">536870912</code> (512 MiB) and <code dir="auto">vmm.save_free_percent</code> <code dir="auto">5</code>. A release before T05 refuses both keys as unknown keys, so set them only after the upgrade of the node, and remove them before a rollback.</td>
+</tr>
+<tr>
 <td><code dir="auto">network.nameservers</code></td>
 <td>array of IPv4 addresses</td>
 <td>empty</td>
@@ -340,6 +352,9 @@
 <p>The same server, with the resolvers of its machines:</p>
 <div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="toml"><code><div class="ec-line"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">roles = [</span><span style="--0:#B9BBB3;--1:#5C5E57">"control"</span><span style="--0:#EDEEE8;--1:#0D0E0C">, </span><span style="--0:#B9BBB3;--1:#5C5E57">"node"</span><span style="--0:#EDEEE8;--1:#0D0E0C">]</span></div></div><div class="ec-line"><div class="code">
 </div></div><div class="ec-line"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">[network]</span></div></div><div class="ec-line"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">nameservers = [</span><span style="--0:#B9BBB3;--1:#5C5E57">"213.186.33.99"</span><span style="--0:#EDEEE8;--1:#0D0E0C">, </span><span style="--0:#B9BBB3;--1:#5C5E57">"9.9.9.9"</span><span style="--0:#EDEEE8;--1:#0D0E0C">]</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="roles = [&quot;control&quot;, &quot;node&quot;][network]nameservers = [&quot;213.186.33.99&quot;, &quot;9.9.9.9&quot;]"><div></div></button></div></figure></div>
+<p>A small node whose data dir holds 16 GiB. The default floor of a save, 50 GiB, refuses every hibernate there, so the node sets its own:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="toml"><code><div class="ec-line"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">roles = [</span><span style="--0:#B9BBB3;--1:#5C5E57">"node"</span><span style="--0:#EDEEE8;--1:#0D0E0C">]</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">[vmm]</span></div></div><div class="ec-line"><div class="code"><span style="--1:#0D0E0C"><span style="--0:#EDEEE8">save_free_percent = </span><span style="--0:#C6EA2B">5</span></span></div></div><div class="ec-line"><div class="code"><span style="--1:#0D0E0C"><span style="--0:#EDEEE8">save_free_bytes = </span><span style="--0:#C6EA2B">536870912</span></span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="roles = [&quot;node&quot;][vmm]save_free_percent = 5save_free_bytes = 536870912"><div></div></button></div></figure></div>
 <p>A DNS server of the install. It enrolls with the control role at <code dir="auto">channel.control_urls</code>, and answers DNS on port 53 of one address:</p>
 <div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="toml"><code><div class="ec-line"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">roles = [</span><span style="--0:#B9BBB3;--1:#5C5E57">"dns"</span><span style="--0:#EDEEE8;--1:#0D0E0C">]</span></div></div><div class="ec-line"><div class="code">
 </div></div><div class="ec-line"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">[channel]</span></div></div><div class="ec-line"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">control_urls = [</span><span style="--0:#B9BBB3;--1:#5C5E57">"https://10.0.0.5:7443"</span><span style="--0:#EDEEE8;--1:#0D0E0C">]</span></div></div><div class="ec-line"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">labels = { zone = </span><span style="--0:#B9BBB3;--1:#5C5E57">"gra"</span><span style="--0:#EDEEE8;--1:#0D0E0C"> }</span></div></div><div class="ec-line"><div class="code">
@@ -550,6 +565,14 @@
 <tr>
 <td><code dir="auto">network.nameservers: &lt;address&gt; appears twice</code></td>
 <td>A resolver is in the list twice.</td>
+</tr>
+<tr>
+<td><code dir="auto">vmm.save_free_percent: &lt;n&gt; is not 0 to 90</code>, for example <code dir="auto">vmm.save_free_percent: 91 is not 0 to 90</code></td>
+<td>On a server with the node role, the share is below 0 or above 90.</td>
+</tr>
+<tr>
+<td><code dir="auto">vmm.save_free_bytes: &lt;n&gt; is below 0</code>, for example <code dir="auto">vmm.save_free_bytes: -1 is below 0</code></td>
+<td>On a server with the node role, the bytes are below 0. With a bad share too, only the error of the share shows.</td>
 </tr>
 <tr>
 <td><code dir="auto">network.nameservers: &lt;n&gt; resolvers, more than 3</code></td>

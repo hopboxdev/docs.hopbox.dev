@@ -173,12 +173,12 @@ The executor of the node moves the machine toward its target. The call waits for
 | --- | --- |
 | The machine reached what the call asked for. | `true` |
 | The current state turned `failed` after the change of the call. A machine that was `failed` before the call is on its way out of that state, so only a later failure counts. | `false` |
-| Another request set another target, for example a stop during the wait of a start. | `false` |
+| Another request set another target, for example a stop during the wait of a start. The control role sets another target too, for example after a refused save. | `false` |
 | 60 s passed, or the deadline of the call is 1 s away. | `false` |
 | The client canceled the call. | `false` |
 | The listener of the call stops, for example at a stop or an upgrade of `hopboxd`. | `false` |
 
-The wait wakes on each change event of the machine ([Change events](#change-events)), and reads the machine again every 2 s in any case. The machine in the response is the machine at the end of the wait. A wait that ends with `done` false is not an error: the call succeeds, and the machine goes on toward its target.
+The wait wakes on each change event of the machine ([Change events](#change-events)), and reads the machine again every 2 s in any case. The machine in the response is the machine at the end of the wait. A wait that ends with `done` false is not an error: the call succeeds, and the machine goes on toward its target. One case fails: a hibernate whose node refused the save ([HibernateMachine](#hibernatemachine)).
 
 | Call | `done` is `true` when |
 | --- | --- |
@@ -501,7 +501,7 @@ A machine can lose its standby: a node reboot, a crash, or a kill of its unit en
 
 ### HibernateMachine
 
-Saves the memory of a running machine, or of a machine in standby, to a memory file on its node. Then it ends the microVM, and waits until the machine is hibernated. A hibernated machine frees its vCPUs and RAM, so no limit refuses a hibernate. It still counts in the machine count and the disk of its org ([Usage and limits](#usage-and-limits)).
+Saves the memory of a running machine, or of a machine in standby, to a memory file on its node. Then it ends the microVM, and waits until the machine is hibernated. A hibernated machine frees its vCPUs and RAM. It still counts in the machine count and the disk of its org. Its memory file counts in the stored state of the org ([Usage and limits](#usage-and-limits)). Only the daily budget of saves, `saved_bytes_per_day`, refuses a hibernate.
 
 | Item | Value |
 | --- | --- |
@@ -514,8 +514,21 @@ The request `HibernateMachineRequest` names the machine. The response `Hibernate
 
 A hibernate closes the guest link of the machine first. So an exec, a file copy, or a web terminal that runs ends with an error. A hibernated machine has no route, so its URL and its SSH port refuse a connection. Milestone T06 of phase 3 makes a connection wake the machine. A save that fails keeps the machine as it was, and the node tries again ([the node executor](/reference/executor/index.html.md#hibernate)). The wait then ends after 60 s with `done` false.
 
+A call that changes the target checks the daily budget of the org under the lock of the org row. The save writes up to the RAM of the machine, so the check counts the RAM as the size of the save ([Domain rules](/reference/domain-rules/index.html.md#limits-of-saved-state)). The bytes of the saves of the last 24 hours plus the RAM must be at most `saved_bytes_per_day`. Otherwise the call fails, and the machine keeps its target. The refusal sets `save_budget_refused_at` of the org, outside the transaction of the call, and logs `the daily budget of saves refused a hibernate, so the machine runs on` at level warn, with `org` and `err`. The next run of the abuse detection gives each instance admin a notice of it ([Abuse detection](/reference/abuse-detection/index.html.md#signals)). A record that fails logs `cannot record the refusal of the daily budget of saves` at level warn, and the call still fails with the refusal.
+
+If the save leaves less free disk than the floor of the node, the node refuses it ([the node executor](/reference/executor/index.html.md#the-gate-of-a-save)). Then the machine runs on, or stays in standby:
+
+1. The node reports the current state again, with the refusal and its reason ([the executor protocol](/reference/executor-protocol/index.html.md#machinereport)).
+2. The control role sets the target back to that state, `running` or `standby`. It records the time and the reason of the refusal in the machine row ([Control store tables](/reference/control-store/index.html.md#machines)).
+3. It writes the audit entry `machine.save_refuse` with the actor `system`. Its details are `old_target` `hibernated`, `target` `running` or `standby`, `refused` `disk_low`, and `reason`, the words of the node.
+4. The wait of the call ends on the new target, and the call fails with the reason of the node.
+
+A refusal that the node reported before the call does not fail the call. A control process of an older release ignores the refusal, so the target stays `hibernated`, and the node tries the save again.
+
 | Error | Code |
 | --- | --- |
+| The daily budget of the org: `usage limit exceeded: the saves of the org would write <bytes> bytes in 24 hours, and its daily budget is <limit>` | `resource_exhausted` |
+| The node refused the save: `resource exhausted: the node of the machine <name> refused the save, so the machine runs on: <reason>`. The reason is the words of the node, for example `the free disk of the node is below the floor of a save: <free> bytes are free, the save takes up to <bytes>, and the floor is <floor>`. | `resource_exhausted` |
 | The target is not `running`, `standby`, or `hibernated`, for example `failed precondition: machine action not allowed: cannot hibernate a machine whose target state is stopped` | `failed_precondition` |
 | The current state is not `running`, `standby`, or `hibernated`, for example `failed precondition: machine action not allowed: cannot hibernate a machine that is starting` | `failed_precondition` |
 | The machine has a move that runs, in `stopping` or `pulling`: `failed precondition: the machine <name> moves to another node. Hibernate it after the move` | `failed_precondition` |
@@ -523,7 +536,7 @@ A hibernate closes the guest link of the machine first. So an exec, a file copy,
 | The driver of the node cannot save: `failed precondition: the node of the machine <name> runs hopboxd <version>, whose VMM driver cannot snapshot` | `failed_precondition` |
 | A control process of an older release is live: `failed precondition: the control process <process> knows the migrations up to <n>, and only a hopboxd that knows migration 73 hibernates machines. Upgrade it first`. Such a process takes a report of `hibernated` from a node, and drops its memory state. | `failed_precondition` |
 
-The check of the control processes, the move check, and the node checks run only for a call that changes the target.
+Only a call that changes the target runs these checks: the control processes, the move, the node, and the daily budget.
 
 ```sh
 browser -d '{"name":"box1"}' $API/hopbox.v1.MachineService/HibernateMachine
@@ -1071,8 +1084,10 @@ A machine counts in the usage of its org ([the org API](/reference/org-api/index
 | --- | --- |
 | Machines and disk | every machine whose target is not `deleted` |
 | vCPUs and RAM | the machines whose target is `running` or `standby` |
+| Stored state | the memory files of the machines whose target is not `deleted` |
+| Saves in 24 hours | the saves of the last 24 hours, also those of a deleted machine |
 
-`CreateMachine`, the start of a stopped machine, and `WakeMachine` check the limits under the lock of the org row. A hibernated machine holds no vCPUs and no RAM, so a hibernate needs no check. The other calls do not add to the usage, so they take only a shared lock of the org row ([Control store tables](/reference/control-store/index.html.md#orgs)). The limits that apply follow the tier of the org: the personal org of a limited account takes the limited defaults, and every other org the first defaults ([the org API](/reference/org-api/index.html.md#usage-limits)).
+`CreateMachine`, the start of a stopped machine, and `WakeMachine` check the limits under the lock of the org row. A hibernated machine holds no vCPUs and no RAM, so a hibernate checks only the daily budget of saves, under the same lock ([HibernateMachine](#hibernatemachine)). The other calls do not add to the usage, so they take only a shared lock of the org row ([Control store tables](/reference/control-store/index.html.md#orgs)). The limits that apply follow the tier of the org: the personal org of a limited account takes the limited defaults, and every other org the first defaults ([the org API](/reference/org-api/index.html.md#usage-limits)).
 
 ## Auto-delete
 
@@ -1080,13 +1095,14 @@ A machine with an auto-delete timeout goes after that time without use. The lead
 
 ## Audit entries
 
-The machine calls write these entries in the transaction of the change. Their org is the org of the machine, so its owners and admins read them with `ListAuditEntries` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#listauditentries)). The target kind is `machine`, and the target ID is the machine ID. Each entry has the detail `name`: the name of the machine before the change. The actor is the caller, except for the auto-delete, whose actor is `system`.
+The machine calls write these entries in the transaction of the change. Their org is the org of the machine, so its owners and admins read them with `ListAuditEntries` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#listauditentries)). The target kind is `machine`, and the target ID is the machine ID. Each entry has the detail `name`: the name of the machine before the change. The actor is the caller. The auto-delete, a lost standby, and a refused save have the actor `system`.
 
 | Action | Written by | Details besides `name` |
 | --- | --- | --- |
 | `machine.create` | `CreateMachine` | `size`, `image` (the digest), `shared` |
 | `machine.start` | `StartMachine`, and the report of a lost standby of a machine with the restart policy `always`, with the actor `system` | `old_target`, `retry`, `boot_again`. For a lost standby, `old_target` and `reason`. |
 | `machine.pause` | `PauseMachine` | `old_target` |
+| `machine.save_refuse` | A save that the node refused, with the actor `system` ([HibernateMachine](#hibernatemachine)) | `old_target`, `target`, `refused`, `reason` |
 | `machine.resume` | `ResumeMachine` | `old_target` |
 | `machine.hibernate` | `HibernateMachine` | `old_target` |
 | `machine.wake` | `WakeMachine` | `old_target` |

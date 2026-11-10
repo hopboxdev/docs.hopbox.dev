@@ -90,6 +90,16 @@ Each such change first locks the row of the org in `orgs`. Then it reads the rol
 | `vcpus` | int32 | The vCPUs of all machines together. |
 | `memory_bytes` | int64 | The RAM of all machines together, in bytes. |
 | `disk_bytes` | int64 | The disk of all machines together, in bytes. |
+| `stored_state_bytes` | int64 | The stored state that the nodes keep for the org, in bytes: memory files of hibernated machines, checkpoints, and snapshots. Today only memory files count. |
+| `snapshots` | int32 | The snapshots of the org. 0 in the usage until snapshots exist. |
+| `backup_bytes` | int64 | The backups of the org in object storage, in bytes. 0 in the usage until backups exist. |
+
+The daily budget of saves has a field of its own in each message:
+
+| Message | Field | Type | Description |
+| --- | --- | --- | --- |
+| `OrgLimits` | `saved_bytes_per_day` | int64 | The most bytes that the saves of the org write in 24 hours. A hibernate above it fails with `resource_exhausted`, and the machine runs on. |
+| `OrgUsage` | `saved_bytes_last_day` | int64 | The bytes that the saves of the org wrote in the last 24 hours. |
 
 `OrgLimits` also has two limits of yes or no:
 
@@ -243,7 +253,7 @@ browser -d '{"orgId":"01a14565-a2df-75a1-9401-ed28dfa37fc4"}' $API/hopbox.v1.Org
 ```
 
 ```json
-{"usage":{},"limits":{"machines":3,"vcpus":6,"memoryBytes":"25769803776","diskBytes":"300000000000","publicUrls":true}}
+{"usage":{},"limits":{"machines":3,"vcpus":6,"memoryBytes":"25769803776","diskBytes":"300000000000","storedStateBytes":"107374182400","snapshots":10,"backupBytes":"107374182400","savedBytesPerDay":"1099511627776","publicUrls":true}}
 ```
 
 In the JSON codec, a field with its default value is left out, so a usage of 0 is `{}`.
@@ -502,7 +512,7 @@ browser -d '{"token":"vH_2434xeosR22NllAU0tHE8LoqC08ZYHX1JhHZK4UA"}' $API/hopbox
 
 ## Usage limits
 
-Each org has usage limits on machines, vCPUs, RAM, and disk, and the limits `public_urls` and `outbound_smtp` of yes or no. The install has two sets of default limits. The personal org of a limited account takes the limited set, and every other org takes the first set. An instance admin can change the defaults, and set limits for one org that replace the defaults ([the admin API](/reference/admin-api/index.html.md#setorglimits)).
+Each org has usage limits on machines, vCPUs, RAM, disk, and saved state. It also has the limits `public_urls` and `outbound_smtp` of yes or no. The install has two sets of default limits. The personal org of a limited account takes the limited set, and every other org takes the first set. An instance admin can change the defaults, and set limits for one org that replace the defaults ([the admin API](/reference/admin-api/index.html.md#setorglimits)).
 
 | Limit | Default | Default of the personal org of a limited account |
 | --- | --- | --- |
@@ -510,6 +520,10 @@ Each org has usage limits on machines, vCPUs, RAM, and disk, and the limits `pub
 | vCPUs | 6 | 1 |
 | RAM | 24 GiB (25769803776 bytes) | 1 GiB (1073741824 bytes) |
 | Disk | 300 GB (300000000000 bytes) | 5 GB (5000000000 bytes) |
+| `stored_state_bytes` | 100 GiB (107374182400 bytes) | 0 |
+| `snapshots` | 10 | 0 |
+| `backup_bytes` | 100 GiB (107374182400 bytes) | 0 |
+| `saved_bytes_per_day` | 1 TiB (1099511627776 bytes) | 20 GiB (21474836480 bytes) |
 | `public_urls` | yes | no |
 | `outbound_smtp` | no | no |
 
@@ -519,8 +533,12 @@ The first defaults fit three machines of the size `default`. The limited default
 | --- | --- |
 | Machines and disk | every machine that is not deleted |
 | vCPUs and RAM | the machines whose target state is `running` or `standby` |
+| Stored state | the memory files of the machines that are not deleted |
+| Saves in 24 hours | the bytes of the saves of the last 24 hours, also those of a deleted machine |
 
 So a stopped machine keeps its disk and its place in the machine count, but frees its vCPUs and its RAM. A machine whose target is `deleted` counts no more, also while its executor still deletes it. `CreateMachine` and `StartMachine` check the limits ([the machine API](/reference/machine-api/index.html.md#usage-and-limits)). A start adds only the vCPUs and the RAM of a machine that does not count already, so a start never counts a machine twice. A new limit below the usage stops nothing: the org then creates and starts no more machines until its usage fits.
+
+The limits of saved state never refuse a create, a start, or a wake. A hibernate checks only `saved_bytes_per_day`, with the RAM of the machine as the size of the save ([the machine API](/reference/machine-api/index.html.md#hibernatemachine)). So a hibernated machine whose memory file passes `stored_state_bytes` blocks nothing. A limited org can still hibernate its machine within its daily budget. Near 90% of `stored_state_bytes` or of `saved_bytes_per_day`, the instance admins get a notice ([Abuse detection](/reference/abuse-detection/index.html.md#signals)). Example: with the budget 20 GiB, an org that saved 15 GiB in the last 24 hours cannot hibernate a machine with 8 GiB of RAM. The call fails with `usage limit exceeded: the saves of the org would write 24696061952 bytes in 24 hours, and its daily budget is 21474836480`.
 
 `SetMachineURLVisibility` checks `public_urls` when it makes a URL public ([the machine API](/reference/machine-api/index.html.md#setmachineurlvisibility)). A URL that is public already stays public after a change of the limit or of the tier. Each machine reads `outbound_smtp` at its next boot.
 

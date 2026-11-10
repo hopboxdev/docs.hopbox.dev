@@ -153,12 +153,18 @@ sudo hopboxd admin account block --email-domain=example.net --reason='abuse repo
 
 The Admin area has no shell and no file access for a machine. It never shows a secret or an env var of an org. An instance admin sees the metadata of an org, not its contents. The audit log of `org1` shows each of these actions to the owners of the org.
 
-To change the limits of one org, click "Limits" in its row. A field that you leave empty takes the default of the install. For the personal org of a limited account, that is the default of the tier `limited`. The row of such an org has the tag "limited". The dialog shows the limits that apply now, and it has two more choices:
+The row of each org shows its usage against its limits, also its stored state and its saves in 24 hours. To change the limits of one org, click "Limits" in its row. A field that you leave empty takes the default of the install. For the personal org of a limited account, that is the default of the tier `limited`. The row of such an org has the tag "limited". The dialog shows the limits that apply now. Four fields bound the saved state of the org:
+
+- "Stored state in GiB": the memory files of hibernated machines, and later checkpoints and snapshots. A hibernate never checks it.
+- "Snapshots" and "Backups in GiB": no snapshot or backup exists yet.
+- "Saves in 24 hours, in GiB": the daily budget of saves. A hibernate above it fails, and the machine runs on.
+
+The dialog also has two choices:
 
 - "Public URLs": "yes" lets the creator of a machine make its URL public, to anyone. "no" refuses a new public URL, and keeps each URL that is public already. The row then has the tag "no public URLs".
 - "Outbound TCP port 25": "open" lets the machines of the org send email to other mail servers. The default is "blocked". Open it only for an org that you trust. A machine takes a change of port 25 at its next start or reboot. The row of an org with port 25 open has the tag "port 25 open".
 
-The section "Default limits" sets those defaults, in two groups. "Team orgs and personal orgs of full accounts" holds the defaults of each org, apart from the personal org of a limited account. Its field "Orgs of one full account, besides its personal org" is the most orgs that a full account owns. A limited account owns no org. "Personal org of a limited account" holds the defaults of the tier `limited`: machines, vCPUs, RAM, disk, and public URLs. No default opens port 25. [The org API](/reference/org-api/index.html.md#usage-limits) gives the defaults of a fresh install.
+The section "Default limits" sets those defaults, in two groups. "Team orgs and personal orgs of full accounts" holds the defaults of each org, apart from the personal org of a limited account. Its field "Orgs of one full account, besides its personal org" is the most orgs that a full account owns. A limited account owns no org. "Personal org of a limited account" holds the defaults of the tier `limited`: machines, vCPUs, RAM, disk, the four limits of saved state, and public URLs. No default opens port 25. [The org API](/reference/org-api/index.html.md#usage-limits) gives the defaults of a fresh install.
 
 ## Approve or reject new accounts
 
@@ -313,15 +319,15 @@ The alert `Watchdog` never makes a notice. It always fires, for the outside chec
 
 ## Abuse signals
 
-`hopboxd` watches each account for the signals of abuse that the alerts of the monitoring bundle watch for the whole install: a machine at full CPU for hours, high egress, a scan of outbound connections, bursts of orgs, API keys, or machines, a churn of machine URLs, and a public URL of a new account ([Abuse detection](/reference/abuse-detection/index.html.md)). It needs no Prometheus. Each signal gives each instance admin one notice under the heading "Abuse signals" of the page "Notices". The notice names the account, and the machines or the org when the signal has them.
+`hopboxd` watches each account for the signals of abuse that the alerts of the monitoring bundle watch for the whole install: a machine at full CPU for hours, high egress, a scan of outbound connections, bursts of orgs, API keys, or machines, a churn of machine URLs, and a public URL of a new account ([Abuse detection](/reference/abuse-detection/index.html.md)). It also watches each org for saved state at 90% of its limit, and for saves at 90% of the budget of 24 hours. It needs no Prometheus. Each signal gives each instance admin one notice under the heading "Abuse signals" of the page "Notices". The notice names the account, and the machines or the org when the signal has them.
 
-The detection runs every minute. A repeat of the signal updates the notice. When the signal ends, the notice closes by itself, and the signal moves to the section "Resolved alerts" for 30 days. While a signal is active, the page "Overview" also lists it under "Needs your attention". Without a token of the alert webhook, each run with new signals also sends you one email. With a token, Prometheus emails you its alerts, so the detection emails you only a public URL of a new account, which no alert of Prometheus watches.
+The detection runs every minute. A repeat of the signal updates the notice. When the signal ends, the notice closes by itself, and the signal moves to the section "Resolved alerts" for 30 days. While a signal is active, the page "Overview" also lists it under "Needs your attention". Without a token of the alert webhook, each run with new signals also sends you one email. With a token, Prometheus emails you its alerts. The detection then emails you only the signals that no alert of Prometheus watches: a public URL of a new account, and the two signals of saved state.
 
 hopbox stops nothing by itself. Legitimate work, such as a build or an AI agent, can use a whole CPU for hours. To act on a notice, do these steps:
 
 1. Read the notice. It names the signal, its value, the threshold, and the account, such as `org_burst` for 6 orgs in one hour.
 2. Open the page "Audit log", and read the entries of the account ([Handle an abuse report](#handle-an-abuse-report)).
-3. For a machine signal, open the page "Machines", and find the machines that the notice names.
+3. For a machine signal, open the page "Machines", and find the machines that the notice names. For a signal of saved state, open the page "Orgs", and read the stored state and the saves in 24 hours in the row of the org. Raise its limits, or suspend the org if a loop of hibernates is abuse.
 4. If it is abuse, follow [Handle an abuse report](#handle-an-abuse-report): stop the machine, suspend the org, or suspend the account. Otherwise, dismiss the notice.
 
 To change a threshold, open the section "Abuse detection" of the page "Config", or run `sudo hopboxd admin config set` with an `--abuse-` flag ([hopboxd](/reference/hopboxd/index.html.md#admin-config-set)). For example, a team that builds all day can raise the CPU time before a notice:

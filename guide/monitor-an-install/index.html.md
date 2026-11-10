@@ -240,11 +240,11 @@ Open `http://127.0.0.1:3000` in a browser, and sign in as `admin`. The folder `h
 | hopbox D6 Nodes | The executor actions and boot phases, the lease losses, the guest links, the image caches, the cold moves with their pulls, and the state and restarts of `hopboxd.service` |
 | hopbox D7 Edge, DNS, and SSH | The requests of the edge, the requests to machines and the upstream errors, the routes, the connections against their limit, the refusals, the certificate, the DNS queries and zone serials, and the SSH front door |
 | hopbox D8 Network | The egress exits and uplinks, the traffic and dropped packets of the machines, the repairs of the node network, the mesh peers with their handshakes and traffic, and the host firewall |
-| hopbox D9 Memory | The machines in standby and hibernated, the machines by state, the failed wakes and resumes, the count and the p99 of pauses, resumes, hibernates, and wakes, and the p95 of the saves and loads of the VMM driver |
+| hopbox D9 Memory | The machines in standby and hibernated, the machines by state, the failed wakes and resumes, the count and the p99 of pauses, resumes, hibernates, and wakes, and the p95 of the saves and loads of the VMM driver. Also the saved state of the nodes, in all and by node and kind, and the saves that the nodes refused, by reason. |
 
 The same tunnel works for Prometheus on port 9090 and Alertmanager on port 9093.
 
-The panel "Machines by state" of D1 and "Machines per node" of D2 leave out the state `deleted`. "Moves by state" of D6 leaves out the state `done`. These counts stay until the sweep drops the row, so they set the scale and hide the live states.
+The panel "Running machines per node" of D3 leaves out the hibernated machines, whose series of `hopbox_machine_info` have the state `saved` ([Metrics](/reference/metrics/index.html.md#metrics-of-the-machines)). The panel "Machines by state" of D1 and "Machines per node" of D2 leave out the state `deleted`. "Moves by state" of D6 leaves out the state `done`. These counts stay until the sweep drops the row, so they set the scale and hide the live states.
 
 Each stat reads one value, at the end of the time range. It reads its series through a window of 45 seconds, about 3 scrapes. So one or two missed scrapes do not change it, and a series that ended loses its value within 45 seconds. The dashboards refresh once a minute, so the change can take up to one more minute to show. After an upgrade, the release stats of D1 can show both releases for those 45 seconds.
 
@@ -789,6 +789,10 @@ Warning. Machines ran on a node without an authenticated guest link for 5 minute
 ### HopboxWakesFailing
 
 Warning. Wakes or resumes of machines failed on a node for 10 minutes. Each machine keeps its memory, and its executor tries again. A machine in the state `standby` stays paused until a resume works. A machine whose wake failed is `failed`, and keeps its memory file. Its executor tries the wake again only with the restart policy `always`. Read the log of `hopboxd` on the node for `cannot run the machine again` ([the node executor](/reference/executor/index.html.md#standby)), and for `a machine action failed` with the error of the wake ([the node executor](/reference/executor/index.html.md#the-end-of-a-wake)). Read the journal of the unit of the machine too. A memory file that never wakes stays until its creator drops it ([Standby and hibernate](/guide/standby-and-hibernate/index.html.md#a-failed-wake)).
+
+### HopboxSavedStateDiskLow
+
+Warning. A node refused a save of the memory of a machine in the last 10 minutes. The save would leave less free disk than the floor of the node, `vmm.save_free_percent` and `vmm.save_free_bytes` ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)). The machine runs on, and its hibernate fails with `resource_exhausted`. The alert ends 10 minutes after the last refusal. Read the log of `hopboxd` on the node for `refused the save of a hibernate, because the node has too little free disk`, which names the free bytes and the floor ([the node executor](/reference/executor/index.html.md#the-gate-of-a-save)). Check the free disk of `<data_dir>/machines` with `df -h /var/lib/hopbox/machines`, and the panel "Saved state by kind" of D9. Free disk on the node, or move machines to another node. Lower the floor only on a small node whose disk holds less than the default of 50 GiB.
 
 ### HopboxGuestLinkProofFailed
 

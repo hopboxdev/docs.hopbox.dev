@@ -1463,6 +1463,11 @@ For an org, the service layer reads the role of the caller in the org before the
 <td>429</td>
 </tr>
 <tr>
+<td>A resource of the install that does not hold the request now, such as the free disk of the node of a save (<a href="/reference/machine-api/#hibernatemachine">the machine API</a>). The message starts with <code dir="auto">resource exhausted:</code>. A later call can succeed.</td>
+<td><code dir="auto">resource_exhausted</code></td>
+<td>429</td>
+</tr>
+<tr>
 <td>An object that another one holds already, such as an SSH key on an account. The message starts with <code dir="auto">already exists:</code>.</td>
 <td><code dir="auto">already_exists</code></td>
 <td>409</td>

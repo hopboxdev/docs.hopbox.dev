@@ -1,6 +1,6 @@
 # Control store tables
 
-> The tables of the control store, leases, leader election, change events, the audit log, idempotency keys, the install config, the tables of accounts, sign-ups, the block list, orgs, invitations, usage, sessions, sign-in links, and instance admins, the tables of pools, the install CA, the server registry, and enrollment tokens, the tables of sizes, images, machines, memory files of machines, machine names, SSH ports, and placements, and the tables of the DNS zone.
+> The tables of the control store, leases, leader election, change events, the audit log, idempotency keys, the install config, the tables of accounts, sign-ups, the block list, orgs, invitations, usage, sessions, sign-in links, and instance admins, the tables of pools, the install CA, the server registry, and enrollment tokens, the tables of sizes, images, machines, memory files of machines, records of saves, machine names, SSH ports, and placements, and the tables of the DNS zone.
 
 This page lists the tables of the control store and the Go packages that write them. The control store is the Postgres database of the control role. [The bundled Postgres](/reference/postgres/index.html.md) covers the bundled Postgres, the migration runner, and the advisory lock keys.
 
@@ -414,6 +414,14 @@ Migration `0006_install_config.sql`. The settings of the whole install. The tabl
 | `limited_org_max_memory_bytes` | `bigint` | `1073741824` (1 GiB) | The default RAM limit of that org, in bytes. 0 or more. |
 | `limited_org_max_disk_bytes` | `bigint` | `5000000000` (5 GB) | The default disk limit of that org, in bytes. 0 or more. |
 | `limited_org_public_urls` | `boolean` | `false` | Whether that org can make a machine URL public without an override. |
+| `org_max_stored_state_bytes` | `bigint` | `107374182400` (100 GiB) | The default limit of the saved state that the nodes keep for each org, in bytes ([Domain rules](/reference/domain-rules/index.html.md#limits-of-saved-state)). 0 or more. |
+| `org_max_snapshots` | `integer` | `10` | The default snapshot limit of each org. 0 or more. |
+| `org_max_backup_bytes` | `bigint` | `107374182400` (100 GiB) | The default limit of the backups of each org, in bytes. 0 or more. |
+| `org_max_saved_bytes_per_day` | `bigint` | `1099511627776` (1 TiB) | The default daily budget of the saves of each org, in bytes. 0 or more. |
+| `limited_org_max_stored_state_bytes` | `bigint` | `0` | The default limit of saved state of the personal org of a limited account. 0 or more. |
+| `limited_org_max_snapshots` | `integer` | `0` | The default snapshot limit of that org. 0 or more. |
+| `limited_org_max_backup_bytes` | `bigint` | `0` | The default backup limit of that org. 0 or more. |
+| `limited_org_max_saved_bytes_per_day` | `bigint` | `21474836480` (20 GiB) | The default daily budget of the saves of that org. 0 or more. |
 | `public_addresses` | `text[]` | `'{}'`, empty | The public addresses of the install: the IPv4 and IPv6 addresses at which the edge servers take traffic, in their order ([the admin API](/reference/admin-api/index.html.md#updateinstallconfig)). The zone of the DNS role points the domain at them ([the DNS role](/reference/dns/index.html.md#the-zone-of-the-install)). Never null. |
 | `acme_directory_url` | `text` | `https://acme-v02.api.letsencrypt.org/directory` | The ACME directory of the CA of the certificate of the install ([the certificate of the install](/reference/acme/index.html.md#settings)). It must start with `https://`. |
 | `acme_email` | `text` | empty | The contact email of the ACME account. It must be lowercase. |
@@ -442,7 +450,7 @@ Migration `0006_install_config.sql`. The settings of the whole install. The tabl
 | `created_at` | `timestamptz` | the time of the migration | When the migration made the row. |
 | `updated_at` | `timestamptz` | the time of the migration | The last change. |
 
-Migration `0011_smtp_config.sql` adds the `smtp_` columns, `0017_org_limits_and_suspension.sql` adds the `org_max_` columns and `max_orgs_per_account`, `0033_dns.sql` adds `public_addresses`, and `0034_acme.sql` adds the `acme_` columns. Migration `0035_oauth_sign_in.sql` adds the `github_` and `google_` columns, `0040_mail_transport.sql` adds `mail_transport`, `0044_maintenance.sql` adds `maintenance`, and `0045_control_processes.sql` adds `promoted_kek`. Migration `0062_sign_up_approval.sql` adds `sign_up_mode` and `sign_up_digest_at`. Its default gives `approval` to a new install and to an install that the migration upgrades. `hopboxd install` sets no mode. Migration `0063_limited_tier.sql` adds `org_public_urls` and the `limited_org_` columns. Migration `0065_grafana_url.sql` adds `grafana_url`, with `-- oldest_schema_version: 57`. Migration `0069_abuse_thresholds.sql` adds the `abuse_` columns, with a check on the bounds of each one, and `-- oldest_schema_version: 57`. It also adds the partial index `machines_public` on `machines (creator_account_id, creator_key_id)` for the machines with a public URL that are not deleted ([Abuse detection](/reference/abuse-detection/index.html.md#reads-of-each-run)). The service checks the same bounds first, and also that each duration is whole minutes. `SetDefaultOrgLimits` changes them ([the admin API](/reference/admin-api/index.html.md#setdefaultorglimits)), and adds 1 to the version. The admin API reads and changes the row ([the admin API](/reference/admin-api/index.html.md#installconfigservice)). A rewrap of the SMTP password changes only `smtp_password`, and keeps the version ([Sealing](/reference/sealing/index.html.md#rewrap)). `GetInstallInfo` returns the domain to every caller ([the API server](/reference/api/index.html.md#installservice)). A change of `domain` or `public_addresses` raises the serial in `dns_zone` in the same transaction ([dns_zone](#dns_zone)). The inputs of the ACME job are `domain`, `public_addresses`, and the `acme_` columns. A change of one of them publishes the change event `acme.config_changed` in the same transaction ([the certificate of the install](/reference/acme/index.html.md#settings)). A change of `maintenance` adds 1 to the version, and publishes the change event `install.maintenance_changed` in the same transaction.
+Migration `0011_smtp_config.sql` adds the `smtp_` columns, `0017_org_limits_and_suspension.sql` adds the `org_max_` columns and `max_orgs_per_account`, `0033_dns.sql` adds `public_addresses`, and `0034_acme.sql` adds the `acme_` columns. Migration `0035_oauth_sign_in.sql` adds the `github_` and `google_` columns, `0040_mail_transport.sql` adds `mail_transport`, `0044_maintenance.sql` adds `maintenance`, and `0045_control_processes.sql` adds `promoted_kek`. Migration `0062_sign_up_approval.sql` adds `sign_up_mode` and `sign_up_digest_at`. Its default gives `approval` to a new install and to an install that the migration upgrades. `hopboxd install` sets no mode. Migration `0063_limited_tier.sql` adds `org_public_urls` and the `limited_org_` columns. Migration `0074_saved_state_limits.sql` adds the 8 columns of saved state, with a check of 0 or more on each one, and `-- oldest_schema_version: 57`. A `hopboxd` of schema version 57 to 73 never reads them, and its `SetDefaultOrgLimits` keeps them as they are. Migration `0065_grafana_url.sql` adds `grafana_url`, with `-- oldest_schema_version: 57`. Migration `0069_abuse_thresholds.sql` adds the `abuse_` columns, with a check on the bounds of each one, and `-- oldest_schema_version: 57`. It also adds the partial index `machines_public` on `machines (creator_account_id, creator_key_id)` for the machines with a public URL that are not deleted ([Abuse detection](/reference/abuse-detection/index.html.md#reads-of-each-run)). The service checks the same bounds first, and also that each duration is whole minutes. `SetDefaultOrgLimits` changes them ([the admin API](/reference/admin-api/index.html.md#setdefaultorglimits)), and adds 1 to the version. The admin API reads and changes the row ([the admin API](/reference/admin-api/index.html.md#installconfigservice)). A rewrap of the SMTP password changes only `smtp_password`, and keeps the version ([Sealing](/reference/sealing/index.html.md#rewrap)). `GetInstallInfo` returns the domain to every caller ([the API server](/reference/api/index.html.md#installservice)). A change of `domain` or `public_addresses` raises the serial in `dns_zone` in the same transaction ([dns_zone](#dns_zone)). The inputs of the ACME job are `domain`, `public_addresses`, and the `acme_` columns. A change of one of them publishes the change event `acme.config_changed` in the same transaction ([the certificate of the install](/reference/acme/index.html.md#settings)). A change of `maintenance` adds 1 to the version, and publishes the change event `install.maintenance_changed` in the same transaction.
 
 ## accounts
 
@@ -550,6 +558,11 @@ Migrations `0008_orgs.sql`, `0017_org_limits_and_suspension.sql`, and `0061_acco
 | `max_vcpus` | `integer`, can be null | The vCPU limit of this org, or null for the default. |
 | `max_memory_bytes` | `bigint`, can be null | The RAM limit of this org, in bytes, or null for the default. |
 | `max_disk_bytes` | `bigint`, can be null | The disk limit of this org, in bytes, or null for the default. |
+| `max_stored_state_bytes` | `bigint`, can be null | The limit of the stored state that the nodes keep for this org, in bytes, or null for the default of the tier of the org. 0 or more. Migration `0074`. |
+| `max_snapshots` | `integer`, can be null | The snapshot limit of this org, or null for the default. 0 or more. Migration `0074`. |
+| `max_backup_bytes` | `bigint`, can be null | The backup limit of this org, in bytes, or null for the default. 0 or more. Migration `0074`. |
+| `save_budget_refused_at` | `timestamptz`, can be null | The last hibernate of this org that its daily budget refused, or null. The signal `saved_bytes_budget_refused` reads it ([Abuse detection](/reference/abuse-detection/index.html.md#signals)). Migration `0074`. |
+| `max_saved_bytes_per_day` | `bigint`, can be null | The daily budget of the saves of this org, in bytes, or null for the default. 0 or more. Migration `0074`. |
 | `public_urls` | `boolean`, can be null | Whether a creator can make a machine URL of this org public, or null for the default of the tier of the org. Migration `0063`. |
 | `outbound_smtp` | `boolean`, can be null | `true` opens TCP port 25 for the machines of this org from their next start or reboot ([the node network](/reference/node-network/index.html.md#outbound-tcp-port-25)). Null and `false` keep it closed. Migration `0063`. |
 | `suspended_at` | `timestamptz`, can be null | The start of the suspension of the org. Null for an org that is not suspended ([the org API](/reference/org-api/index.html.md#suspension)). |
@@ -577,7 +590,7 @@ The lock order is the account row, then the org row, then the rows of the resour
 - `SetAccountTier` locks the row of the account with `FOR UPDATE`, then the row of its personal org with `FOR NO KEY UPDATE` (`LockOrg`). A create or a start of a machine in that org holds the same lock of the org while it reads the tier of the org and checks the limits ([the admin API](/reference/admin-api/index.html.md#setaccounttier)).
 - `SetVar` writes a row that names the account of the caller. So it takes the key lock of that account before the org lock. `DeleteVar` takes only the org lock ([env_vars](#env_vars)).
 - The `OrgResource` methods run while their caller holds these locks ([the org API](/reference/org-api/index.html.md#what-a-member-leaves-behind)). The machine methods lock the machine rows of the org with `FOR UPDATE`, in the order of their IDs.
-- A change of a machine outside them follows the same order. It takes the key lock of an account first: the creator account of the machine, or the account of the caller for a create. Then it takes the org row, then the machine row with `FOR UPDATE`. A change that adds to the usage of the org, or to the names that it holds in reservation, takes the org row with `FOR NO KEY UPDATE` (`LockOrg`): `CreateMachine`, `StartMachine`, and `RenameMachine`. So two usage checks, or two checks of the cap of reserved names, in one org never pass together. Every other change of a machine takes `FOR SHARE` (`LockOrgShare`), so changes of different machines of one org run at the same time. Both locks read the suspension of the org, and wait for a suspension in progress.
+- A change of a machine outside them follows the same order. It takes the key lock of an account first: the creator account of the machine, or the account of the caller for a create. Then it takes the org row, then the machine row with `FOR UPDATE`. A change that adds to the usage of the org, or to the names that it holds in reservation, takes the org row with `FOR NO KEY UPDATE` (`LockOrg`): `CreateMachine`, `StartMachine`, and `RenameMachine`. `HibernateMachine` takes it too, for the check of the daily budget of saves. So two usage checks, or two checks of the cap of reserved names, in one org never pass together. Every other change of a machine takes `FOR SHARE` (`LockOrgShare`), so changes of different machines of one org run at the same time. Both locks read the suspension of the org, and wait for a suspension in progress.
 - A rename locks the rows of the old name and the new name in `machine_names` after the machine row, in the order of the names. So two renames that swap two names never deadlock. A claim of a name in a create takes its row after the org row too.
 - A placement locks the row of its server in `servers` last, after the org row ([Placement](/reference/placement/index.html.md#the-steps-of-a-placement)). The start of a stopped machine does the same, after the machine row. So the full order is the account key, the org row, the machine rows, the name rows, then the server row.
 
@@ -594,8 +607,11 @@ Migration `0017_org_limits_and_suspension.sql`. A view with one row per org: wha
 | `vcpus` | `integer` | The vCPUs of the machines whose target state is `running` or `standby`. |
 | `memory_bytes` | `bigint` | The RAM of the machines whose target state is `running` or `standby`, in bytes. |
 | `disk_bytes` | `bigint` | The disk of the machines whose target state is not `deleted`, in bytes. |
+| `stored_state_bytes` | `bigint` | The `bytes` of the memory files of the machines whose target state is not `deleted`, from [machine_memory_states](#machine_memory_states). Migration `0074`. |
+| `pending_save_bytes` | `bigint` | The RAM of the machines with the target `hibernated` and no memory file yet, whose saves wait or run on their nodes. The check of a save counts them at this worst size (Q211). Migration `0074`. |
+| `saved_bytes_last_day` | `bigint` | The `bytes` of the saves of the org in the last 24 hours, from [saved_state_writes](#saved_state_writes). Migration `0074`. |
 
-Migration `0028_machines.sql` replaces the view with `CREATE OR REPLACE VIEW`. The view sums the rows of `machines` of each org, as the table says. A machine counts with the numbers of its size that it copied at its create. An org without machines gets 0 for each column. `CREATE OR REPLACE VIEW` refuses a column of another type, and `sum` of an `integer` gives a `bigint`. So the view casts each sum back to the type of its column, such as `coalesce(sum(m.vcpus), 0)::integer`, and keeps the columns of migration `0017`.
+Migration `0028_machines.sql` replaces the view with `CREATE OR REPLACE VIEW`. The view sums the rows of `machines` of each org, as the table says. A machine counts with the numbers of its size that it copied at its create. An org without machines gets 0 for each column. `CREATE OR REPLACE VIEW` refuses a column of another type, and `sum` of an `integer` gives a `bigint`. So the view casts each sum back to the type of its column, such as `coalesce(sum(m.vcpus), 0)::integer`, and keeps the columns of migration `0017`. Migration `0074_saved_state_limits.sql` replaces the view in the same way, and adds its two columns after the older ones.
 
 ## org_invitations
 
@@ -802,7 +818,7 @@ The primary key is `(account_id, audit_entry_id)`. The index `admin_notices_audi
 
 ## abuse_signals
 
-Migration `0070_abuse_signals.sql`. One row for each start of a signal of the detection of abuse, for one account, or for one org whose machine has no account ([Abuse detection](/reference/abuse-detection/index.html.md#notices)). The row stays after the end of the signal for 30 days, so the console lists it.
+Migration `0070_abuse_signals.sql`. One row for each start of a signal of the detection of abuse, for one account, or for one org ([Abuse detection](/reference/abuse-detection/index.html.md#notices)). The signal of an org is a signal of a machine without an account, or a signal of saved state. The row stays after the end of the signal for 30 days, so the console lists it.
 
 | Column | Type | Description |
 | --- | --- | --- |
@@ -810,7 +826,7 @@ Migration `0070_abuse_signals.sql`. One row for each start of a signal of the de
 | `signal` | `text` | The signal, such as `cpu_sustained` ([Abuse detection](/reference/abuse-detection/index.html.md#signals)). A check refuses another value. |
 | `account_id` | `uuid`, can be null | The account of the signal. It has no foreign key, so the row keeps the ID after a delete of the account, as the audit log does. |
 | `org_id` | `uuid`, can be null | The org of a signal without an account. A check keeps exactly one of `account_id` and `org_id`. |
-| `value` | `double precision` | The worst value of the last run: a share of the vCPUs, bytes per second, connections per second, or a count. |
+| `value` | `double precision` | The worst value of the last run: a share of the vCPUs, bytes per second, connections per second, a count, or bytes of saved state. |
 | `machines` | `jsonb` | The machines of the signal, the worst first, at most 20: a list of objects with `id`, `name`, `org_id`, and `value`. `[]` for a burst. |
 | `more_machines` | `integer` | The count of the other machines. |
 | `started_at` | `timestamptz` | The run that started the signal. |
@@ -819,6 +835,8 @@ Migration `0070_abuse_signals.sql`. One row for each start of a signal of the de
 | `notified` | `uuid[]` | The instance admins who got a notice of the signal. A run gives a notice to each other instance admin, and adds them. A dismiss does not remove an admin, so the notice stays dismissed. |
 
 Migration `0070_abuse_signals.sql` also makes the view `alert_list`.
+
+Migration `0074_saved_state_limits.sql` adds the table `org_abuse_signals`, with the same columns, for the signals of an org: `stored_state_near_limit`, `saved_bytes_near_budget`, and `saved_bytes_budget_refused` ([Abuse detection](/reference/abuse-detection/index.html.md#the-leader-job)). A check keeps `account_id` null and `org_id` set. The leader of a release before T05 lists only the active rows of `abuse_signals`, and resolves each one that it does not find, so it never resolves these. The unique partial index `org_abuse_signals_active` on `(signal, org_id)` keeps one active row for each signal and org, and `org_abuse_signals_resolved` lists the rows that ended. The queries of this release read the rows of both tables together, and each write by the ID of a signal changes the row of either table.
 
 The unique partial index `abuse_signals_active` on `(signal, coalesce(account_id, org_id))` keeps one active row for each signal and account. The partial index `abuse_signals_resolved` lists the rows that ended, for their delete after 30 days. The migration has the line `-- oldest_schema_version: 57`. A `hopboxd` of schema version 57 to 69 never reads the table. It lists a notice of the kind `abuse` with the summary of an unknown action.
 
@@ -834,7 +852,7 @@ Migration `0070_abuse_signals.sql`. A view that joins the alerts of Alertmanager
 | `starts_at` | `timestamptz` | The start of the alert or of the signal. |
 | `resolved_at` | `timestamptz`, can be null | The end, or null while it fires. |
 
-The service reads the entries of the view, then the rows of each kind by their audit entry.
+The service reads the entries of the view, then the rows of each kind by their audit entry. Migration `0074_saved_state_limits.sql` adds the view `alert_entries`: the rows of `alert_list`, and the rows of `org_abuse_signals` with the kind `abuse`. This release reads `alert_entries` in place of `alert_list`, so a release before T05 lists no signal of an org.
 ## alerts
 
 Migration `0068_alert_notices.sql`. One row for each firing of an alert of the monitoring bundle ([the admin API](/reference/admin-api/index.html.md#notices-of-alerts)). The alert webhook writes it ([Metrics](/reference/metrics/index.html.md#alert-webhook)). A repeat of the alert updates the row, and the end of the alert sets `resolved_at`. The row of an alert that ended stays for 30 days, so the page Notices of the console still shows it. Each end of an alert deletes the rows that ended more than 30 days before. The audit entries `alert.fire` and `alert.resolve` keep the history for good.
@@ -1347,6 +1365,8 @@ Migration `0028_machines.sql`. One row per machine ([the machine API](/reference
 | `last_activity_at` | `timestamptz` | the time of the insert | The last use: inbound traffic, an exec, a copy, an SSH session, a start, a wake, or a new auto-delete timeout. The auto-delete job reads it. |
 | `state_changed_at` | `timestamptz` | the time of the insert | The last change of `current_state`. |
 | `delete_requested_at` | `timestamptz`, can be null | none | The first request for the target `deleted`. |
+| `save_refused_at` | `timestamptz`, can be null | null | Migration `0074_saved_state_limits.sql`. The time of the last save that the node of the machine refused, such as for its free-space floor ([the executor protocol](/reference/executor-protocol/index.html.md#what-the-control-role-does)). Null before the first refusal. `HibernateMachine` reads it to fail with the reason ([the machine API](/reference/machine-api/index.html.md#hibernatemachine)). |
+| `save_refused` | `text` | empty | Migration `0074`. The reason of the last refused save: the `error` of the report, at most 512 bytes. Without an error, the name of the refusal, such as `disk_low`. |
 | `version` | `bigint` | `1` | The row version. Each change of a request or a report adds 1. A change of an env var or a secret that reaches the machine adds 1 too, because the env is part of its spec. The specs of the executor protocol carry it, so the executor keeps the newest one. |
 | `created_at` | `timestamptz` | the time of the insert | When the machine was made. |
 | `updated_at` | `timestamptz` | the time of the insert | The last change of a request or a report. |
@@ -1380,7 +1400,7 @@ Migration `0073_machine_memory_states.sql`, with `oldest_schema_version` 57. One
 | `vmm` | `text` | none | The VMM driver that saved the memory, such as `firecracker`. |
 | `vmm_version` | `text` | none | The version of the VMM, such as `v1.17.0`. |
 | `snapshot_format` | `text` | none | The format version of the saved files, such as `v12.0.0`. |
-| `bytes` | `bigint` | none | The bytes of the blocks of the memory file on the disk of the node. 0 or more. |
+| `bytes` | `bigint` | none | The bytes of the disk of the node that the memory file and the VMM state file hold, from their blocks ([the Firecracker driver](/reference/firecracker-driver/index.html.md#the-bytes-of-a-saved-state)). 0 or more. The sum of the rows of an org is its stored state ([org_usage](#org_usage)). |
 | `saved_at` | `timestamptz` | none | The time of the save. |
 | `recorded_at` | `timestamptz` | the time of the insert | The last write of the row. |
 
@@ -1393,6 +1413,23 @@ Migration `0073_machine_memory_states.sql`, with `oldest_schema_version` 57. One
 | `DiscardMemory` | ended, in the transaction of the call |
 
 The machine API reads the table for `memory_saved` ([the machine API](/reference/machine-api/index.html.md#messages)). A cold move refuses a machine with a row, and so does a drain ([Cold move](/reference/cold-move/index.html.md#start-of-a-move)). `DiscardMemory` refuses a machine without one.
+
+## saved_state_writes
+
+Migration `0074_saved_state_limits.sql`, with `oldest_schema_version` 57. One row for each save that a node reported, so the daily budget of an org sums the saves of the last 24 hours ([Domain rules](/reference/domain-rules/index.html.md#limits-of-saved-state)). A step of a report to `hibernated` with `memory_state` writes the row ([the executor protocol](/reference/executor-protocol/index.html.md#what-the-control-role-does)). A `hopboxd` of schema version 57 to 73 never reads the table. It knows no hibernate, so it records no save.
+
+| Column | Type | Description |
+| --- | --- | --- |
+| `org_id` | `uuid` | The org of the machine at the save. A delete of the org deletes the row. |
+| `machine_id` | `uuid` | The machine. It has no foreign key, so a delete of the machine keeps the bytes that it wrote in the budget. |
+| `kind` | `text` | The kind of the save. A check allows only `hibernate`. |
+| `bytes` | `bigint` | The `bytes` of the `memory_state` of the report. 0 or more. |
+| `saved_at` | `timestamptz` | The `saved_at` of the `memory_state` of the report, by the clock of the node. |
+| `recorded_at` | `timestamptz` | The time of the control store at the report. The window of the budget and the sweep read it, so a clock of a node that is off moves neither. |
+
+The primary key is `(machine_id, saved_at)`. A repeated report of one save names the same machine and time, so it adds no row. The index `saved_state_writes_org` on `(org_id, recorded_at)` serves the sum of an org, and the index `saved_state_writes_recorded_at` serves the sweep. The sweep of machines deletes the rows recorded more than 48 hours ago, twice the window of the budget ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)).
+
+Example: a machine of `org1` hibernates twice, with saves recorded at 10:00 and at 16:00 by the clock of the control store, and each save holds 8 GiB. At 20:00 the org has 16 GiB in `saved_bytes_last_day`. At 10:01 the next day, only the save of 16:00 counts, so it has 8 GiB.
 
 ## machine_names
 

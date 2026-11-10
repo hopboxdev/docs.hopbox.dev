@@ -131,10 +131,10 @@ as user2 -d "{\"orgId\":\"$ORG\"}" $API/hopbox.v1.OrgService/GetOrgUsage
 ```
 
 ```json
-{"usage":{},"limits":{"machines":3,"vcpus":6,"memoryBytes":"25769803776","diskBytes":"300000000000","publicUrls":true}}
+{"usage":{},"limits":{"machines":3,"vcpus":6,"memoryBytes":"25769803776","diskBytes":"300000000000","storedStateBytes":"107374182400","snapshots":10,"backupBytes":"107374182400","savedBytesPerDay":"1099511627776","publicUrls":true}}
 ```
 
-The org has no machines yet, so it uses nothing. The limits are the defaults of the install: 3 machines, 6 vCPUs, 24 GiB of RAM, 300 GB of disk, and public URLs. Outbound TCP port 25 stays closed, so `outboundSmtp` is left out. The personal org of a limited account has other defaults: 1 machine, 1 vCPU, 1 GiB of RAM, 5 GB of disk, and no public URL ([the org API](/reference/org-api/index.html.md#usage-limits)).
+The org has no machines yet, so it uses nothing. The limits are the defaults of the install: 3 machines, 6 vCPUs, 24 GiB of RAM, 300 GB of disk, and public URLs. The org also keeps up to 100 GiB of stored state, 10 snapshots, and 100 GiB of backups. Its saves write up to 1 TiB in 24 hours. Outbound TCP port 25 stays closed, so `outboundSmtp` is left out. The personal org of a limited account has other defaults: 1 machine, 1 vCPU, 1 GiB of RAM, 5 GB of disk, and no public URL. It keeps no saved state, snapshot, or backup, and its saves write up to 20 GiB in 24 hours ([the org API](/reference/org-api/index.html.md#usage-limits)). A hibernate checks only the budget of 24 hours, so a limited account still hibernates its machine.
 
 ## Manage the orgs as the operator
 
@@ -165,15 +165,25 @@ machines	0/10
 vcpus	0/6
 memory_bytes	0/68719476736
 disk_bytes	0/300000000000
+stored_state_bytes	0/107374182400
+snapshots	0/10
+backup_bytes	0/107374182400
+saved_bytes_per_day	0/1099511627776
 public_urls	true
 outbound_smtp	false
 version	2
 ```
 
+The org hibernates many machines, and needs a larger budget of saves. Set it in whole GiB, and give the other overrides again:
+
+```sh
+admin org set-limits --org-id $ORG --machines 10 --memory-gib 64 --saved-gib-per-day 2048
+```
+
 The org needs to send mail to other mail servers, for example from a mail server of its own. Open outbound TCP port 25 for its machines, and give the other overrides again. Each machine of the org takes the change at its next start or reboot:
 
 ```sh
-admin org set-limits --org-id $ORG --machines 10 --memory-gib 64 --outbound-smtp
+admin org set-limits --org-id $ORG --machines 10 --memory-gib 64 --saved-gib-per-day 2048 --outbound-smtp
 ```
 
 Change the defaults of every other org with `admin org default-limits set`, for example `--machines 5`. The flags with the prefix `--limited-` change the defaults of the personal org of a limited account, for example `--limited-disk-gb 10`. Each new org brings its own limits, so a full account owns at most 3 orgs besides its personal org on a fresh install, and a limited account owns none. Change that cap with `admin org default-limits set --max-orgs-per-account N`.

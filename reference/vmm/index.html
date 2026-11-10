@@ -227,7 +227,7 @@
 </tr>
 <tr>
 <td><code dir="auto">Bytes</code></td>
-<td>The bytes of the blocks of the memory file on the disk of the node.</td>
+<td>The bytes of the disk of the node that the memory file and the VMM state hold, counted by their blocks (<a href="/reference/firecracker-driver/#the-bytes-of-a-saved-state">the Firecracker driver</a>).</td>
 </tr>
 <tr>
 <td><code dir="auto">SavedAt</code></td>
@@ -437,7 +437,7 @@
 </tbody>
 </table>
 <div class="sl-heading-wrapper level-h2"><h2 id="usagereader">UsageReader</h2><a class="sl-anchor-link" href="#usagereader"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “UsageReader”</span></a></div>
-<p>A driver that reads what its microVMs use on the host is a <code dir="auto">vmm.UsageReader</code>. The node serves these values as the <a href="/reference/metrics/#metrics-of-the-machines">metrics of the machines</a>. A node whose driver is not a <code dir="auto">UsageReader</code> serves none of them. The test driver is not one.</p>
+<p>A driver that reads what its microVMs use on the host is a <code dir="auto">vmm.UsageReader</code>. The node serves these values as the <a href="/reference/metrics/#metrics-of-the-machines">metrics of the machines</a>. A node whose driver is not a <code dir="auto">UsageReader</code> serves none of these values. It still serves <code dir="auto">hopbox_machine_info</code>, <code dir="auto">hopbox_machine_vcpus</code>, and the series of saved state. The test driver is not one.</p>
 <table>
 <thead>
 <tr>
@@ -513,6 +513,10 @@
 <tr>
 <td><code dir="auto">SetDelay(d)</code></td>
 <td>Makes each call wait <code dir="auto">d</code> before it acts. A call whose context ends during the wait fails with the cause of the end. A stop then kills the microVM.</td>
+</tr>
+<tr>
+<td><code dir="auto">MostSavesAtOnce()</code></td>
+<td>The most saves that ran at once, of any machines of the driver.</td>
 </tr>
 <tr>
 <td><code dir="auto">Ops()</code></td>

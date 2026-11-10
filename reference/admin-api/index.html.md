@@ -2106,7 +2106,7 @@ The message `SamplePoint` is one value of a trend:
 | `time` | `google.protobuf.Timestamp` | The end of the step of the value. |
 | `value` | double | The value. |
 
-The message `MachineUse` is what one running machine uses. A machine runs when its node served `hopbox_machine_info` for it in the last 3 minutes.
+The message `MachineUse` is what one running machine uses. A machine runs when its node served `hopbox_machine_info` for it in the last 3 minutes. A series with the state `saved`, of a hibernated machine, does not count ([Metrics](/reference/metrics/index.html.md#metrics-of-the-machines)).
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -2553,12 +2553,16 @@ The message `Org` holds the metadata of one org:
 | `version` | int64 | The version of the org ([the org API](/reference/org-api/index.html.md#org)). |
 | `create_time` | `google.protobuf.Timestamp` | The creation time of the org. |
 
-`OrgLimits` and `OrgUsage` have the fields `machines` (int32), `vcpus` (int32), `memory_bytes` (int64), and `disk_bytes` (int64), as in [the org API](/reference/org-api/index.html.md#orglimits-and-orgusage). `OrgLimits` also has the bools `public_urls` and `outbound_smtp`. `OrgLimitOverrides` has the fields of `OrgLimits`, each one `optional`. A field that is not set takes the default of the install for the tier of the org. A limit of 0 allows nothing.
+`OrgLimits` and `OrgUsage` have the fields `machines` (int32), `vcpus` (int32), `memory_bytes` (int64), `disk_bytes` (int64), `stored_state_bytes` (int64), `snapshots` (int32), and `backup_bytes` (int64), as in [the org API](/reference/org-api/index.html.md#orglimits-and-orgusage). `OrgLimits` also has `saved_bytes_per_day` (int64), the daily budget of saves, and the bools `public_urls` and `outbound_smtp`. `OrgUsage` also has `saved_bytes_last_day` (int64), the bytes of the saves of the last 24 hours. `OrgLimitOverrides` has the fields of `OrgLimits`, each one `optional`. A field that is not set takes the default of the install for the tier of the org. A limit of 0 allows nothing.
 
 | `OrgLimits` field | Description |
 | --- | --- |
 | `public_urls` | `true` when a creator can make a machine URL of the org public ([the edge role](/reference/edge/index.html.md#private-machine-urls)). The default is `true` for an org, and `false` for the personal org of a limited account. |
 | `outbound_smtp` | `true` when the machines of the org reach TCP port 25 ([the node network](/reference/node-network/index.html.md#outbound-tcp-port-25)). No default opens it. Only the override of one org does. Each machine takes a change at its next start or reboot. |
+| `stored_state_bytes` | The most stored state that the nodes keep for the org, in bytes: memory files of hibernated machines, checkpoints, and snapshots. A hibernate never checks it. The default is 100 GiB, and 0 for the personal org of a limited account. |
+| `snapshots` | The most snapshots of the org. The default is 10, and 0 for the personal org of a limited account. |
+| `backup_bytes` | The most bytes of the backups of the org in object storage. The default is 100 GiB, and 0 for the personal org of a limited account. |
+| `saved_bytes_per_day` | The most bytes that the saves of the org write in 24 hours. A hibernate above it fails with `resource_exhausted`, and the machine runs on ([Domain rules](/reference/domain-rules/index.html.md#limits-of-saved-state)). The default is 1 TiB, and 20 GiB for the personal org of a limited account. |
 
 ### ListOrgs
 
@@ -2623,7 +2627,7 @@ Replaces the limit overrides of one org. A limit that the request leaves out tak
 | Procedure | `/hopbox.admin.v1.OrgService/SetOrgLimits` |
 | Policy action | `org.set_limits`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
 | Idempotent option | no. A second call sets the same overrides again. |
-| Audit entry | action `org.set_limits`, org the org, target kind `org`. The details are `machines`, `vcpus`, `memory_bytes`, `disk_bytes`, `public_urls`, and `outbound_smtp`, then the same keys with the prefix `old_`. Each value is a number, `true`, `false`, or `default` for a limit without an override. |
+| Audit entry | action `org.set_limits`, org the org, target kind `org`. The details are `machines`, `vcpus`, `memory_bytes`, `disk_bytes`, `stored_state_bytes`, `snapshots`, `backup_bytes`, `saved_bytes_per_day`, `public_urls`, and `outbound_smtp`, then the same keys with the prefix `old_`. Each value is a number, `true`, `false`, or `default` for a limit without an override. |
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -2631,7 +2635,7 @@ Replaces the limit overrides of one org. A limit that the request leaves out tak
 | `limit_overrides` | `OrgLimitOverrides` | The new overrides. Each field is 0 or more. |
 | `expected_version` | optional int64 | The `version` of the org that the caller read. If the org has another version now, the call fails with `aborted` and changes nothing. |
 
-The response `SetOrgLimitsResponse` has the field `org`. A limit below 0 gets `invalid_argument`, for example `invalid argument: invalid limit: the vCPU limit -1 is below 0`. An unknown org gets `not_found`.
+The response `SetOrgLimitsResponse` has the field `org`. A limit below 0 gets `invalid_argument`, for example `invalid argument: invalid limit: the vCPU limit -1 is below 0`. The limits of saved state name themselves as `the stored state limit`, `the snapshot limit`, `the backup limit`, and `the daily save budget`. An unknown org gets `not_found`. A new daily budget below the saves of the last 24 hours stops nothing. The org then hibernates no machine until its saves fit.
 
 ### GetDefaultOrgLimits
 
@@ -2648,8 +2652,8 @@ The request `GetDefaultOrgLimitsRequest` has no fields. The response `GetDefault
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `limits` | `OrgLimits` | The default limits of each org, apart from the personal org of a limited account. A fresh install has 3 machines, 6 vCPUs, 24 GiB of RAM, 300 GB of disk, and `public_urls` `true`. |
-| `limited_limits` | `OrgLimits` | The default limits of the personal org of a limited account. A fresh install has 1 machine, 1 vCPU, 1 GiB of RAM, 5 GB of disk, and `public_urls` `false`. |
+| `limits` | `OrgLimits` | The default limits of each org, apart from the personal org of a limited account. A fresh install has 3 machines, 6 vCPUs, 24 GiB of RAM, 300 GB of disk, 100 GiB of stored state, 10 snapshots, 100 GiB of backups, 1 TiB of saves a day, and `public_urls` `true`. |
+| `limited_limits` | `OrgLimits` | The default limits of the personal org of a limited account. A fresh install has 1 machine, 1 vCPU, 1 GiB of RAM, 5 GB of disk, 0 for stored state, snapshots, and backups, 20 GiB of saves a day, and `public_urls` `false`. |
 | `max_orgs_per_account` | int32 | The most orgs that a full account owns besides its personal org ([the org API](/reference/org-api/index.html.md#createorg)). A limited account owns none. The default is 3 on a fresh install. Migration 0063 keeps the value of an install that has accounts, which is 10 from before. |
 | `version` | int64 | The version of the whole install config ([GetInstallConfig](#getinstallconfig)). |
 | `update_time` | `google.protobuf.Timestamp` | The time of the last change of the install config. |
@@ -2671,6 +2675,10 @@ Changes the limits of every org without an override, and returns them. A limit t
 | `vcpus` | optional int32 | The most vCPUs of an org, 0 or more. |
 | `memory_bytes` | optional int64 | The most RAM of an org, in bytes, 0 or more. |
 | `disk_bytes` | optional int64 | The most disk of an org, in bytes, 0 or more. |
+| `stored_state_bytes` | optional int64 | The most stored state of an org, in bytes, 0 or more. |
+| `snapshots` | optional int32 | The most snapshots of an org, 0 or more. |
+| `backup_bytes` | optional int64 | The most bytes of the backups of an org, 0 or more. |
+| `saved_bytes_per_day` | optional int64 | The most bytes that the saves of an org write in 24 hours, 0 or more. |
 | `max_orgs_per_account` | optional int32 | The most orgs that a full account owns besides its personal org, 0 or more. A lower value deletes no org. It only refuses new orgs above it. |
 | `public_urls` | optional bool | Whether an org can make a machine URL public. |
 | `limited` | `OrgLimitOverrides` | The limits of the personal org of a limited account to change. A field that it leaves out keeps its value. Its `outbound_smtp` must stay unset. |
@@ -2684,11 +2692,19 @@ machines	5
 vcpus	6
 memory_bytes	25769803776
 disk_bytes	300000000000
+stored_state_bytes	107374182400
+snapshots	10
+backup_bytes	107374182400
+saved_bytes_per_day	1099511627776
 public_urls	true
 limited_machines	1
 limited_vcpus	1
 limited_memory_bytes	1073741824
 limited_disk_bytes	10000000000
+limited_stored_state_bytes	0
+limited_snapshots	0
+limited_backup_bytes	0
+limited_saved_bytes_per_day	21474836480
 limited_public_urls	false
 max_orgs_per_account	3
 version	4

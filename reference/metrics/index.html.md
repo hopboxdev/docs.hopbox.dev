@@ -176,7 +176,7 @@ Each control process counts these events itself, so the sum over the control pro
 | `action` | The action of the audit entry, such as `org.create`, `api_key.create`, `machine.create`, or `machine.set_url_port` |
 | `actor_kind` | `anonymous`, `session`, `cli_token`, `member_key`, `org_key`, `admin_key`, `local_root`, `server`, `ssh_key`, `control`, or `system` |
 | `limit` of `hopbox_rate_limited_total` | `sign_in_links`: the sign-in links of an email or of a client. `device_sign_ins`: the device sign-ins of a client, and the device sign-ins that wait for an approval. `device_codes`: the wrong codes of the device approvals of an account. `oauth_starts`: the sign-ins with GitHub and Google of a client and of the install. `oauth_callbacks`: the callbacks of a client in one control process. `invitations`: the invitations of an org, of the install, of an inviter, and to an email ([the admin API](/reference/admin-api/index.html.md#invitationservice)). `machine_url_codes`: the machine URL codes of a browser. `grafana_codes`: the codes of the Grafana host of a console session ([the edge role](/reference/edge/index.html.md#the-grafana-host)). `account_creations`: the new accounts of a client address in a day ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#limits-of-new-accounts)). `pending_cap`: the first sign-ins that the cap of 50 pending accounts refused. `sign_up_notes`: the changes of the note of a pending account in an hour ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#setsignupnote)). |
-| `limit` of `hopbox_limit_refusals_total` | `machines`, `vcpus`, `memory`, and `disk`: the usage limits of the org. `public_urls`: a change of a machine URL to public in an org without public URLs ([the machine API](/reference/machine-api/index.html.md#setmachineurlvisibility)). `orgs`: the orgs that one account owns (`max_orgs_per_account`), and each `CreateOrg` of a limited account. |
+| `limit` of `hopbox_limit_refusals_total` | `machines`, `vcpus`, `memory`, and `disk`: the usage limits of the org. `public_urls`: a change of a machine URL to public in an org without public URLs ([the machine API](/reference/machine-api/index.html.md#setmachineurlvisibility)). `orgs`: the orgs that one account owns (`max_orgs_per_account`), and each `CreateOrg` of a limited account. `stored_state`, `snapshots`, `backups`, and `saved_bytes_per_day`: the limits of saved state ([Domain rules](/reference/domain-rules/index.html.md#limits-of-saved-state)). Today only `saved_bytes_per_day` refuses a call, a hibernate. |
 | `kind` of `hopbox_api_key_creations_total` | `member`, `org`, or `admin` |
 | `lifetime` | `30d`, `90d`, `365d`, or `custom` for a key with a custom expiry |
 | `kind` of `hopbox_mail_sends_total` | `magic_link`: a sign-in link. `email_link`: the link that adds an email to an account. `invitation`: the link of an org invitation. `admin_notice`: an admin notice. `digest`: the digest of new pending accounts. `approval`: the email to a person whose account an instance admin approved. |
@@ -482,6 +482,7 @@ The executors of a node count their actions, and what happens to their machines 
 | `hopbox_guest_links_down` | gauge | none | The machines whose microVM runs on the node without an authenticated guest link. A boot counts until its guest agent connects. A machine that runs before its first spec after a restart of `hopboxd` does not count. A machine in standby does not count, because the node closed its link on purpose. |
 | `hopbox_vmm_save_seconds` | histogram | `kind` | The duration of each save of the memory of a machine by the VMM driver that worked, by kind: `hibernate`. The series starts at 0. |
 | `hopbox_vmm_load_seconds` | histogram | `kind` | The duration of each load of saved memory by the VMM driver that worked, until the microVM runs, by kind: `wake`. The wait for the guest agent does not count. The series starts at 0. |
+| `hopbox_saved_state_refusals_total` | counter | `reason` | The saves of memory that the node refused, by reason: `disk_low`, for a save that leaves less free disk than the floor of `vmm.save_free_percent` and `vmm.save_free_bytes` ([the node executor](/reference/executor/index.html.md#the-gate-of-a-save)). The series starts at 0. `HopboxSavedStateDiskLow` fires on it. |
 
 The catalog names the phases and the results in words, so these label values stand for them:
 
@@ -511,7 +512,7 @@ A server with the node role serves what its running machines use. At each scrape
 
 | Metric | Type | Labels | Description |
 | --- | --- | --- | --- |
-| `hopbox_machine_info` | gauge | `machine`, `name`, `org`, `size`, `vcpus`, `memory_bytes`, `disk_bytes` | 1 for each machine that runs on the node. It is the only series that links a machine to its org, by org ID. A query joins it to the other series on `machine`. |
+| `hopbox_machine_info` | gauge | `machine`, `name`, `org`, `size`, `vcpus`, `memory_bytes`, `disk_bytes`, `state` | 1 for each machine that runs on the node, with `state` `running`. Also 1 with `state` `saved` for each machine whose saved state the node keeps without a microVM, such as a hibernated machine. It is the only series that links a machine to its org, by org ID. A query joins it to the other series on `machine`. A count of the running machines leaves out `state="saved"`. |
 | `hopbox_machine_vcpus` | gauge | `machine` | The vCPUs of the size of the machine, the value of the label `vcpus` of `hopbox_machine_info`. A query divides the CPU time by it, because PromQL cannot read a label as a number. |
 | `hopbox_machine_cpu_seconds_total` | counter | `machine` | The CPU time of the machine since its boot, from `usage_usec` of `cpu.stat`. It starts from zero at each boot. |
 | `hopbox_machine_memory_bytes` | gauge | `machine` | The host RAM that the machine holds, from `memory.current`. |
@@ -522,6 +523,8 @@ A server with the node role serves what its running machines use. At each scrape
 | `hopbox_machine_disk_written_bytes_total` | counter | `machine` | The bytes that the machine wrote to the block devices of the node since its boot, from `wbytes` of `io.stat`. Only the device of the file system of `<data_dir>/machines` counts. |
 | `hopbox_machines_cpu_seconds_total` | counter | none | The CPU time of every machine of the node, from `cpu.stat` of the slice. |
 | `hopbox_machines_memory_bytes` | gauge | none | The host RAM of every machine of the node, from `memory.current` of the slice. |
+| `hopbox_machine_saved_state_bytes` | gauge | `machine` | The bytes of the disk of the node that the saved state of the machine holds: its memory file and its VMM state ([the Firecracker driver](/reference/firecracker-driver/index.html.md#the-bytes-of-a-saved-state)). A hibernated machine has it, and so does a machine during its wake, until the node drops the file. |
+| `hopbox_saved_state_bytes` | gauge | `kind` | The bytes of the disk of the node that the saved state of all its machines holds, by kind: `memory`, the memory files of hibernated machines. The series is there also at 0. |
 
 | Label | Values |
 | --- | --- |
@@ -530,25 +533,30 @@ A server with the node role serves what its running machines use. At each scrape
 | `org` | The ID of the org of the machine, or empty for a machine whose org is gone |
 | `size` | The name of the size of the machine, such as `default` |
 | `vcpus`, `memory_bytes`, `disk_bytes` | The vCPUs, the RAM in bytes, and the disk in bytes of the size |
+| `state` of `hopbox_machine_info` | `running`: the microVM of the machine runs on the node. `saved`: the node keeps the saved state of the machine, and runs no microVM of it. |
+| `kind` of `hopbox_saved_state_bytes` | `memory` |
 
 The four counters of pressure, OOM kills, and disk IO start from zero at each boot, because each boot gets a new cgroup. A host can lack their files, and then the node serves none of these series. `cpu.pressure` needs a kernel with PSI on, and a kernel that boots with `psi=0` has none. `io.stat` needs the io controller, which the unit of each machine turns on with `IOAccounting` ([the Firecracker driver](/reference/firecracker-driver/index.html.md#the-unit-of-a-machine)). A machine that booted before this release has no `io.stat` until its next boot. `io.stat` lists each device that the IO of the cgroup reached. A RAID or a device mapper passes each IO on to its member disks, which list it again. So the node reads only the line of the device of the file system of `<data_dir>/machines`, such as `9:3` for `/dev/md3`. A file system without a device of its own, such as btrfs, has no such line, and its disk IO stays at 0. A file that the node cannot read leaves its series out of that scrape.
 
-A machine that runs before its first spec after a restart of `hopboxd` has no `hopbox_machine_info` and no `hopbox_machine_vcpus` until the spec arrives. A read that fails leaves its series out of that scrape, and the other series stay. For example, a machine can stop between the list of the machines and the read of its cgroup. The slice has no cgroup before the first machine runs in it, so the node totals are absent then.
+Some drivers read no use of the machines, such as the test driver ([the VMM driver interface](/reference/vmm/index.html.md#usagereader)). Their nodes still serve `hopbox_machine_info`, `hopbox_machine_vcpus`, and the two series of saved state. A machine with saved state and no microVM has only two series in this section: `hopbox_machine_info` with `state` `saved`, and `hopbox_machine_saved_state_bytes`. A machine that runs before its first spec after a restart of `hopboxd` has no `hopbox_machine_info` and no `hopbox_machine_vcpus` until the spec arrives. A read that fails leaves its series out of that scrape, and the other series stay. For example, a machine can stop between the list of the machines and the read of its cgroup. The slice has no cgroup before the first machine runs in it, so the node totals are absent then.
 
-Each running machine has up to 9 series in this section. A running machine with network also has 8 series in [Metrics of the node network](#metrics-of-the-node-network), and a machine without network has none of them. A machine that restarted also has a series of `hopbox_machine_restarts_total` for each reason ([Metrics of the executors](#metrics-of-the-executors)). So a node with N running machines, each with network, serves about 17 × N + 2 series of the machines. The owner accepted about 17 series for each running machine on 2026-11-01: 1,000 machines give about 17,000 series, which take about 57 MB of RAM in Prometheus (Q129).
+Each running machine has up to 9 series in this section. A running machine with network also has 8 series in [Metrics of the node network](#metrics-of-the-node-network), and a machine without network has none of them. A machine that restarted also has a series of `hopbox_machine_restarts_total` for each reason ([Metrics of the executors](#metrics-of-the-executors)). A hibernated machine has 2 series. So a node with N running machines, each with network, and H hibernated machines serves about 17 × N + 2 × H + 3 series of the machines. The owner accepted about 17 series for each running machine on 2026-11-01: 1,000 machines give about 17,000 series, which take about 57 MB of RAM in Prometheus (Q129).
 
 ```sh
-curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_machines?_(info|vcpus|cpu|memory|disk_bytes)'
+curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(machines?_(info|vcpus|cpu|memory|disk_bytes|saved_state)|saved_state_bytes)'
 ```
 
 ```text
 hopbox_machine_cpu_seconds_total{machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b"} 812.4
 hopbox_machine_disk_bytes{machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b"} 3.81e+09
-hopbox_machine_info{disk_bytes="100000000000",machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b",memory_bytes="8589934592",name="box1",org="0193a5b2-0000-7000-8000-000000000001",size="default",vcpus="2"} 1
+hopbox_machine_info{disk_bytes="100000000000",machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b",memory_bytes="8589934592",name="box1",org="0193a5b2-0000-7000-8000-000000000001",size="default",state="running",vcpus="2"} 1
+hopbox_machine_info{disk_bytes="100000000000",machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7e",memory_bytes="8589934592",name="box2",org="0193a5b2-0000-7000-8000-000000000001",size="default",state="saved",vcpus="2"} 1
 hopbox_machine_memory_bytes{machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b"} 2.15e+09
+hopbox_machine_saved_state_bytes{machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7e"} 2.147483648e+09
 hopbox_machine_vcpus{machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b"} 2
 hopbox_machines_cpu_seconds_total 812.4
 hopbox_machines_memory_bytes 2.15e+09
+hopbox_saved_state_bytes{kind="memory"} 2.147483648e+09
 ```
 
 ## Metrics of the image cache
@@ -861,4 +869,4 @@ A gap in the samples at the start of the range, such as maintenance mode, change
 
 The series of a machine merge across the processes of a restart of `hopboxd` and across the nodes of a move, by the label `machine`, and so do the node totals of a server. A series cuts the samples of the series that began before it from its first sample to its last, so the old and the new node of a move never alternate. A move back to an earlier node keeps the samples after the return. The CPU time of a machine comes from its cgroup, which outlives a restart of `hopboxd`, so its series goes on. A share of CPU over 30 minutes or an hour shows only when the samples of the machine cover the whole window. A machine that started 10 minutes ago has a share of 5 minutes only.
 
-The history keeps no other family. It drops the labels that multiply the rows of a family, such as `procedure`, so its size grows with the running machines and not with the API calls. Only the families of a process with the control role reach the history. A server with the node role alone writes no sample, so its machines are missing from the Machines page, as from the Prometheus of the monitoring bundle until Q121.
+The history keeps the series of `hopbox_machine_info` with `state` `saved` too. The machines that run, for the console and for the detection of abuse, leave them out. The history keeps no other family. It drops the labels that multiply the rows of a family, such as `procedure`, so its size grows with the running machines and not with the API calls. Only the families of a process with the control role reach the history. A server with the node role alone writes no sample, so its machines are missing from the Machines page, as from the Prometheus of the monitoring bundle until Q121.
