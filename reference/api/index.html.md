@@ -42,7 +42,7 @@ Every call passes these steps, in this order:
 1. **Request ID.** The server makes a new UUIDv7 for each HTTP request. It puts the ID in the response header `Hopbox-Request-Id`, in the logs of the call, and in the audit entries of the call. The server never takes an ID from the client, so an ID always names one request.
 2. **Metrics and access log.** After the call ends, the server counts it in the metrics ([Metrics](/reference/metrics/index.html.md#metrics-of-the-api)) and writes one log record ([Logs](#logs)).
 3. **Error mapping.** The server turns each error into a Connect error with a code ([Errors](#errors)).
-4. **Default deadline.** A unary call whose client sent no deadline gets a deadline of 30 s. A lifecycle call of a machine gets 61 s instead (`api.LifecycleTimeout`), so its wait of up to 60 s fits ([the machine API](/reference/machine-api/index.html.md#the-wait)). These calls are `StartMachine`, `StopMachine`, `PauseMachine`, `ResumeMachine`, `RebootMachine`, `RenameMachine`, and `DeleteMachine` of `hopbox.v1.MachineService`, and `StopMachine` and `DeleteMachine` of `hopbox.admin.v1.MachineService`. A deadline from the client stays as it is, longer or shorter. The client sends a deadline with the header `Connect-Timeout-Ms` or `grpc-timeout`. A stream gets no default deadline.
+4. **Default deadline.** A unary call whose client sent no deadline gets a deadline of 30 s. A lifecycle call of a machine gets 61 s instead (`api.LifecycleTimeout`), so its wait of up to 60 s fits ([the machine API](/reference/machine-api/index.html.md#the-wait)). These calls are `StartMachine`, `StopMachine`, `PauseMachine`, `ResumeMachine`, `HibernateMachine`, `WakeMachine`, `DiscardMemory`, `RebootMachine`, `RenameMachine`, and `DeleteMachine` of `hopbox.v1.MachineService`, and `StopMachine` and `DeleteMachine` of `hopbox.admin.v1.MachineService`. A deadline from the client stays as it is, longer or shorter. The client sends a deadline with the header `Connect-Timeout-Ms` or `grpc-timeout`. A stream gets no default deadline.
 5. **Maintenance mode.** In maintenance mode, the server refuses each call that can change the install ([Maintenance mode](#maintenance-mode)).
 6. **Request gate.** The gate names the caller of the call ([Request gate](#request-gate)).
 7. **Idempotency.** A method with the option `(hopbox.v1.idempotent)` runs once for each idempotency key ([Idempotency keys](#idempotency-keys)).
@@ -206,16 +206,19 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `machine.list_sizes` | `MachineService.ListMachineSizes` | the install | `session`, `cli_token`, `member_key`, `org_key` |
 | `machine.start` | `MachineService.StartMachine` | the machine | the creator of the machine, as a caller that acts in its org. For a shared machine, every caller that acts in the org. |
 | `machine.resume` | `MachineService.ResumeMachine` | the machine | as for `machine.start` |
+| `machine.wake` | `MachineService.WakeMachine` | the machine | as for `machine.start` |
 | `machine.reboot` | `MachineService.RebootMachine` | the machine | as for `machine.start` |
 | `machine.rename` | `MachineService.RenameMachine` | the machine | as for `machine.start` |
 | `machine.update` | `MachineService.UpdateMachine` | the machine | as for `machine.start` |
 | `machine.stop` | `MachineService.StopMachine` | the machine | as for `machine.get` |
 | `machine.pause` | `MachineService.PauseMachine` | the machine | as for `machine.get` |
+| `machine.hibernate` | `MachineService.HibernateMachine` | the machine | as for `machine.get` |
 | `machine.delete` | `MachineService.DeleteMachine` | the machine | as for `machine.get` |
 | `machine.share` | `MachineService.ShareMachine` | the machine | the creator of the machine, in its org: the account of a `session`, a `cli_token`, or a `member_key`, or the `org_key` that made it |
 | `machine.unshare` | `MachineService.UnshareMachine` | the machine | as for `machine.share` |
 | `machine.set_url_port` | `MachineService.SetMachineURLPort` | the machine | as for `machine.share` |
 | `machine.set_url_visibility` | `MachineService.SetMachineURLVisibility` | the machine | as for `machine.share` |
+| `machine.discard_memory` | `MachineService.DiscardMemory` | the machine | as for `machine.share` |
 | `machine.exec` | `MachineService.Exec`, `Upload`, `Download`, `StreamMachineLogs`, and the WebSocket `/api/ws/exec` | the machine | as for `machine.start` |
 | `machine.ssh` | an SSH connection through the front door, in `EdgeService.AuthorizeSSH` ([the SSH front door](/reference/ssh-front-door/index.html.md#who-opens-a-machine)) | the machine | an `ssh_key` of an account that uses the machine, as for `machine.exec`. No other caller kind. |
 | `machine.open_url` | `GET /auth/machine`, and `EdgeService.AuthorizeMachineRequest` for the account of a token ([the edge role](/reference/edge/index.html.md#private-machine-urls)) | the machine | a `session` of an account that uses the machine, as for `machine.start`. No other caller kind. |

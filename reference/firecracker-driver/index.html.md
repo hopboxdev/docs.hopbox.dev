@@ -1,6 +1,6 @@
 # The Firecracker driver
 
-> The Firecracker driver of the node role. It covers the unit, the jail, and the disk of each machine, the caches of images and kernels, and the KVM tests.
+> The Firecracker driver of the node role. It covers the unit, the jail, and the disk of each machine, and the caches of images and kernels. It also covers the pause, the save and the load of a hibernate, the files of a saved state, and the KVM tests.
 
 The Firecracker driver is the VMM driver of the node role ([the VMM driver interface](/reference/vmm/index.html.md)). It runs the microVM of each machine with Firecracker v1.17.0 under the jailer, the Firecracker tool that isolates each microVM process. Each microVM runs in a transient systemd unit of its own. A transient unit is a unit that a program starts through systemd, without a unit file. So when `hopboxd` restarts or upgrades, each microVM keeps running. The code is in `internal/node/vmm/firecracker`.
 
@@ -8,7 +8,7 @@ The Firecracker driver is the VMM driver of the node role ([the VMM driver inter
 
 ## Capabilities
 
-The driver declares the capability `pause`. It boots, stops, attaches to, pauses, resumes, and deletes machines. Snapshot, restore, and fork come in later milestones of phase 3. Standby needs Firecracker 1.17.0, or 1.16.2 and later, because 1.16.0 and 1.16.1 can block vsock traffic after a pause. The release bundle holds 1.17.0, and the driver does not read the version.
+The driver declares the capabilities `pause`, `snapshot`, and `restore`. It boots, stops, attaches to, pauses, resumes, hibernates, wakes, and deletes machines ([Hibernate and wake](#hibernate-and-wake)). Fork and migrate come in later milestones of phase 3. Standby needs Firecracker 1.17.0, or 1.16.2 and later, because 1.16.0 and 1.16.1 can block vsock traffic after a pause. The release bundle holds 1.17.0, and the driver does not read the version.
 
 `SnapshotFormat` runs `firecracker --snapshot-version` once, with at most 5 s, and returns the version that it prints, such as `v12.0.0`. The compatibility class of the node holds it ([the control channel](/reference/control-channel/index.html.md#compatibility-class)).
 
@@ -20,10 +20,17 @@ The driver declares the capability `pause`. It boots, stops, attaches to, pauses
 | --- | --- | --- | --- |
 | `<data_dir>/machines/<id>/disk.raw` | the jail user of the machine | 0600 | The disk of the machine. See [Disks](#disks). |
 | `<data_dir>/machines/<id>/machine.json` | root | 0600 | The jail ID of the machine, as `{"jail_id":1879048192}`. |
+| `<data_dir>/machines/<id>/state/` | root | 0700 | The saved state of a hibernate. Only a hibernated machine, and a machine whose wake did not end, has it. See [Hibernate and wake](#hibernate-and-wake). |
+| `.../state/memory` | root | 0600 | The memory file: the RAM of the guest at the save. The name stands only for a whole file. |
+| `.../state/vmstate` | root | 0600 | The state of the microVM at the save: its vCPUs and its devices. |
+| `.../state/state.json` | root | 0600 | The record of the saved state. See [The record of a saved state](#the-record-of-a-saved-state). |
+| `.../state/disk.raw` | root | 0600 | The reflink copy of the disk that the first load of the saved state makes. |
 | `<data_dir>/jail/firecracker/<id>/root/` | the jail user | 0700 | The root of the jail. The jailed Firecracker sees it as `/`. |
 | `.../root/firecracker` | the jail user | 0755 | The copy of Firecracker that the jailer makes at each boot. A running microVM keeps its copy, so an upgrade does not change it. |
 | `.../root/vmlinux` | root | 0644 | The guest kernel, as a hard link to the kernel cache. |
 | `.../root/rootfs` | the jail user | 0600 | The disk, as a hard link to `disk.raw`. |
+| `.../root/memory`, `.../root/vmstate` | the jail user | 0600 | The reflink copies of the memory file and of `vmstate` that a load reads. Firecracker maps the memory copy. A boot removes them. |
+| `.../root/memory.new`, `.../root/vmstate.new` | the jail user, then root | 0600 | The files that a save writes, before it moves them into `state/`. A failed save removes them. |
 | `.../root/run/firecracker.socket` | the jail user | socket | The API socket of Firecracker. |
 | `.../root/v.sock` | the jail user | socket | The vsock device socket. Firecracker listens on it. |
 | `.../root/v.sock_10240` | root | 0666 socket | The guest link socket. The executor listens on it, and Firecracker gives it each connection of the guest agent to vsock port 10240 ([Guest link](/reference/guest-link/index.html.md#transport)). Only root and the jail user can enter the jail dir, so the socket is open to every user. |
@@ -162,7 +169,98 @@ Each machine has a tap device, a virtual network device of Linux, in the network
 
 `PUT /mmds` works on a paused microVM. So the executor gives the microVM its new link key before the resume, and the guest never runs without it.
 
-Firecracker can apply a call whose answer gets lost. So after a failed `Pause` or `Resume`, the driver reads the state with `GET /`, and `Instance.Paused` gives that state. A state that the driver cannot read counts as paused, because a resume of a running microVM succeeds, but a guest link to a paused guest never comes up. The error of the call then wraps `vmm.ErrStateUnknown`, and the executor pauses again before it reports `standby` ([the node executor](/reference/executor/index.html.md#standby)).
+Firecracker can apply a call whose answer gets lost. So after a failed `Pause` or `Resume`, the driver reads the state with `GET /`, and `Instance.Paused` gives that state. A state that the driver cannot read counts as paused. A resume of a running microVM succeeds, but a guest link to a paused guest never comes up. The error of the call then wraps `vmm.ErrStateUnknown`, and the executor pauses again before it reports `standby` ([the node executor](/reference/executor/index.html.md#standby)).
+
+## Hibernate and wake
+
+A hibernate saves the RAM of the guest to the memory file of the machine, and ends its microVM. A wake loads that file into a new microVM. Both run in the jail of the machine, with its jail user. The memory file holds the secrets of the machine in plain bytes. Only root and the jail user can read it, through the dirs of mode 0700 and the files of mode 0600. An operator puts `<data_dir>` on an encrypted block device for more ([Standby and hibernate](/guide/standby-and-hibernate/index.html.md#the-memory-file-on-the-node)).
+
+### Save
+
+`Snapshot` runs these steps:
+
+1. It reads the state of the microVM with `GET /`. A running microVM pauses first. A paused one, as in standby, stays paused.
+2. It reads the guest RAM with `GET /machine-config`, and builds two limits from the size of the machine, as the unit of a boot does ([The unit of a machine](#the-unit-of-a-machine)). The limit of a boot is the RAM plus 256 MiB. The limit of a save is the limit of a boot plus the RAM. The driver never reads the limit of the cgroup, so a limit that a killed save left raised does not add up at the next save. If the call fails, the save fails.
+3. It reads the snapshot format of Firecracker, and removes the files of an earlier failed save from the jail root.
+4. It sets the `MemoryMax` of the unit to the limit of a save until the unit ends, through systemd. The page cache of the memory file that Firecracker writes counts in the unit. A guest that touched all its RAM leaves no room for it below the limit of a boot, and the kernel then ends Firecracker. On a failure, the driver logs `cannot give the unit room for the page cache of a save`, and the save goes on. The owner decided this rule in Q202. Only the page cache of the save uses the extra room, and the anon memory of the unit does not grow. So placement does not count the raise ([Placement](/reference/placement/index.html.md#what-a-node-uses)). The host reclaims that page cache once the write ends. The KVM test `TestKVMSaveRoom` measures it ([Tests](#tests)). For that test, the driver can also raise the limit by a set size instead of the RAM. It can also ask the kernel to reclaim the clean page cache of the unit before the save, through `memory.reclaim` of its cgroup, in steps of 64 MiB. A save runs no reclaim by default. The reclaim asks for no more than the clean page cache. The kernel answers `EAGAIN` to a step that frees less than it asks, and that ends the reclaim. The driver writes `memory.reclaim` with plain system calls, because on `EAGAIN` the Go `os.File` waits for the file to become writable, and a cgroup file never signals that. In CI, that wait held a save for more than 20 minutes. If the driver cannot read `memory.stat` of the unit, it logs `cannot read the memory of the unit before a save`, and the save goes on. If a step of the reclaim fails, the driver logs `the kernel reclaimed less than the clean page cache of the unit before a save`, and the save goes on.
+5. It sends `PUT /snapshot/create` with `snapshot_type` `Full`, `snapshot_path` `/vmstate.new`, and `mem_file_path` `/memory.new`. Firecracker writes both files into the jail root, and syncs them to the disk before it answers. The call has no timeout of its own, because the write of a large RAM takes long. The action timeout of the executor bounds it ([the node executor](/reference/executor/index.html.md#actions)).
+6. It reads the CPU microcode of the node. On a failure, it logs a warning and saves an empty value.
+7. It reads the clock source of the host, `/sys/devices/system/clocksource/clocksource0/current_clocksource`. See [The guest clock after a load](#the-guest-clock-after-a-load).
+8. It takes both files from the jail. The jail user can still write the jail root, so the driver opens each file with `O_NOFOLLOW`, and works only through that descriptor. It refuses a symbolic link and any other file that is not a regular file. It also refuses a file of another owner than the jail user, and a file with more than one link. Through the descriptor, it gives the file to root with mode 0600.
+9. It moves both files into `state/`. It removes the memory file and the disk copy of an older saved state first. Then it moves `vmstate`, writes `state.json`, and moves `memory` last. After each rename, it checks that the new name holds the file that it took in step 8. If the name holds another file, the driver removes that name, and the save fails. It syncs the dir after each step. So the name `memory` always stands for one whole saved state or for none, also after a kill of `hopboxd`.
+10. It ends the unit with `SIGKILL`, and waits at most 10 s for the end of Firecracker. The exit reason is `snapshot` ([the VMM driver interface](/reference/vmm/index.html.md#instance)).
+
+A failure in steps 2 to 9 before `memory` has its name removes the files of the save from the jail root. It also sets the `MemoryMax` of the unit to the limit of a boot, from the size of the machine, and not to the value before the save. It resumes a microVM that ran before step 1, and a paused microVM stays paused. A memory file of an earlier save stays, unless the failure came during step 9, after the move began. The error starts with `firecracker: save machine <id>:`.
+
+Once `memory` has its name, the file is the newest state of the machine, so the save never resumes the microVM. The microVM stays paused until its unit ends.
+
+| Failure after `memory` has its name | What the save does |
+| --- | --- |
+| The last sync of `state/` fails | It logs `the memory file of a save is in place, but the last sync of its dir failed`, and goes on with step 10. |
+| The stop of the unit fails | It returns the `MemoryState` of the file, with the error `firecracker: end machine <id> after its save: vmm: the memory file of the save is whole: <cause>`. |
+| Firecracker does not end within 10 s | It returns the `MemoryState` of the file, with the error `firecracker: machine <id> still runs after its save: vmm: the memory file of the save is whole`. |
+
+Both errors wrap `vmm.ErrSaved` ([the VMM driver interface](/reference/vmm/index.html.md#snapshotter-and-restorer)). The executor then keeps the memory file, and takes the later end of the microVM for no crash ([the node executor](/reference/executor/index.html.md#saved-state)).
+
+A microVM whose save is whole saves nothing again. A new `Snapshot` of it only ends its unit, as in step 10, and returns the `MemoryState` that `state.json` records. It logs `ended the microVM of a saved machine` with `saved_at`. A `Stop` of it sends no shutdown to the guest, and kills the unit at once, with the exit reason `snapshot`. A `Resume` of it lets the guest run past its save, so the driver logs `resumed a microVM after its save, so its memory file is older than the guest` as a warning. The exit reason is then no longer `snapshot`, and the executor drops the memory file once the guest agent links.
+
+A `hopboxd` can end after step 9 and before the unit ends. The next `hopboxd` finds the unit running and the memory file in place. `Attach` then compares `saved_at` of `state.json` with the start of the main process of the unit, which systemd gives as `ExecMainStartTimestamp`. A load starts its unit after the save that it loads, so only a save of this unit is newer than the start. For such a save, the instance counts as saved, and `Attach` logs `attached to a microVM whose save is whole` with `unit` and `saved_at`. So its end has the reason `snapshot`, and the executor reports `hibernated`, not `stopped` or `failed`.
+
+### The record of a saved state
+
+`state.json` describes the saved state. The driver writes it through a temp file, a sync, and a rename, so a crash leaves the old content or the new one.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `vmm` | string | The driver that saved the state: `firecracker`. |
+| `vmm_version` | string | The version of Firecracker, such as `v1.17.0`. |
+| `snapshot_format` | string | The snapshot format version of Firecracker at the save, such as `v12.0.0` ([Capabilities](#capabilities)). |
+| `bytes` | integer | The bytes of the blocks of the memory file: `st_blocks` times 512. |
+| `saved_at` | string | The time of the save, in RFC 3339, UTC. |
+| `loads` | integer | The loads of this saved state so far, also those that failed. A new save starts at 0. |
+| `microcode` | string | The CPU microcode of the node at the save, or absent. The compatibility class does not hold it. It explains a load that fails after an update of the microcode. |
+| `clock_realtime` | bool | Whether the clock source of the host at the save was `tsc`. |
+
+Example:
+
+```json
+{"vmm":"firecracker","vmm_version":"v1.17.0","snapshot_format":"v12.0.0","bytes":1073741824,"saved_at":"2026-11-08T10:12:03.52Z","loads":0,"microcode":"0xb4","clock_realtime":true}
+```
+
+`Inspect` reports `Memory` true while `state/memory` exists, with the fields of `state.json` in `MemoryState` ([the VMM driver interface](/reference/vmm/index.html.md#driver)). The bytes come from the memory file itself. The driver can lack a good `state.json`: the file is missing or damaged, or it names no snapshot format. Then `Inspect` still reports the memory file, with its bytes and its time. The driver logs `the memory file of a machine has no readable state file`.
+
+### Load
+
+`Restore` runs these steps:
+
+1. It checks the size of the machine as a boot does. It refuses a machine whose unit runs, and resets the failed state of an old unit.
+2. It refuses a machine without `state/memory` or `state/vmstate`, with `firecracker: machine <id> has no saved state to load: no <file>`.
+3. It refuses a saved state of another snapshot format than this Firecracker, with `firecracker: the saved state of machine <id> has the snapshot format <format>, and this Firecracker loads <format>`.
+4. It adds 1 to `loads` in `state.json`, before the load.
+5. At the first load of the saved state, it makes `state/disk.raw`, a reflink copy of the disk. At each later load, it puts that copy back over the disk, so the disk matches the memory again. A saved state gets its copy only after its count, and a load runs only after the copy. So a saved state without a copy never ran.
+6. It fills the jail with the disk. A load needs no kernel. Then it puts reflink copies of `memory` and `vmstate` into the jail root. It opens each copy with `O_NOFOLLOW`, and refuses a file that is not a regular file. Through that descriptor, it gives the copy to the jail user with mode 0600. So a link in the place of a copy changes no other file.
+7. It makes and connects the tap device, and starts a new unit in the same jail, with the same `MemoryMax` as a boot.
+8. It waits for the API socket, and sends these calls:
+
+| API call | Body |
+| --- | --- |
+| `PUT /snapshot/load` | `snapshot_path` `/vmstate`. `mem_backend` with `backend_type` `File` and `backend_path` `/memory`. `track_dirty_pages` false, and `resume_vm` false. `network_overrides` with the tap device of the machine for `eth0`. `clock_realtime` as `state.json` says. |
+| `PUT /mmds` | `{"hopbox": {"guest_link_key": "<64 hex characters>"}}`, the new link key of the wake |
+| `PATCH /vm` | `{"state": "Resumed"}` |
+
+The `File` backend loads the memory lazily: Firecracker maps the memory copy, and the guest reads each page from it at its first use. So a load reads no memory, and damaged bytes in the file do not fail it. The pages of the file sit in the page cache of the unit. Its `MemoryMax` is the RAM plus 256 MiB, and the kernel reclaims the clean pages. The guest gets its new link key before it runs.
+
+`Restore` keeps every file of `state/`. A failure after the start of the unit stops the unit and removes the tap device. The error starts with `firecracker: load the saved state of machine <id>:`. The executor drops the files only after the guest agent of the wake linked ([the node executor](/reference/executor/index.html.md#saved-state)).
+
+### The guest clock after a load
+
+With `clock_realtime` true, Firecracker sets the wall clock of the guest at the load. KVM puts the wall clock into the saved state only on a host with the clock source `tsc`. Firecracker refuses `clock_realtime` for a state without it. So a save on another clock source records `clock_realtime` false, and logs `the clock source of the host is not tsc, so a load of this save keeps the guest clock of the save`. A load of such a state keeps the guest clock of the save. Milestone T04 of phase 3 sets the clock after a load. The owner decided this rule on 2026-11-08, as Q201. ks has the clock source `tsc`, so a save on ks records `clock_realtime` true. The CI runner has another clock source, so a save there records `clock_realtime` false.
+
+### Drop of the memory file
+
+`DropMemory` removes `state/memory` first, then the rest of `state/` with the disk copy, then the copies in the jail root, and syncs the machine dir. A microVM that maps its copy runs on, because the blocks stay until Firecracker ends. A machine without a memory file succeeds. A drop is an unlink, so the bytes can stay on the disk of the node until it reuses the blocks.
+
+`DiscardMemory` serves the call `DiscardMemory` ([the machine API](/reference/machine-api/index.html.md#discardmemory)). It refuses a machine whose unit runs, with `firecracker: machine <id> runs, so its memory file stays`. When `state/disk.raw` exists, it puts that copy back over the disk as a reflink, syncs the machine dir, and logs `put the disk of the save back before the discard of its memory file`. So the next boot starts from the disk of the save, not from a disk that a failed wake changed. A saved state without a disk copy never ran, so its disk is the disk of the save already. Then `DiscardMemory` drops the saved state as `DropMemory` does. A failed copy fails with `firecracker: put the disk of the save of machine <id> back: <cause>`, and keeps the saved state.
 
 ## Stop
 
@@ -189,7 +287,7 @@ A unit keeps the properties of the boot that started it. So a microVM that a rel
 
 ## Exit reasons
 
-The driver watches the main process of the unit with a pidfd, a file descriptor of a process. When the process ends, it asks systemd why. A stop that starts during that wait still counts as a stop of the driver. A poll of the pidfd that fails with `EINTR` runs again at once, and one that fails with `ENOMEM` runs again after 10 ms, then after twice as long each time, up to 1 s. Any other error of the poll ends the watch, and systemd then says why the unit ended.
+The driver watches the main process of the unit with a pidfd, a file descriptor of a process. When the process ends, it asks systemd why. A stop that starts during that wait still counts as a stop of the driver. A poll of the pidfd that fails with `EINTR` runs again at once. A poll that fails with `ENOMEM` runs again after 10 ms, then after twice as long each time, up to 1 s. Any other error of the poll ends the watch, and systemd then says why the unit ended.
 
 | What ended the process | Unit after the end | Root file system | Exit reason |
 | --- | --- | --- | --- |
@@ -207,7 +305,7 @@ The driver resets the failed state of the unit, so the name is free for the next
 
 ## Attach after a restart or an upgrade
 
-After a restart of `hopboxd`, the executor asks the driver for each machine of its node-local state ([the node executor](/reference/executor/index.html.md#node-local-state)). `Inspect` reports a machine as running while its unit is `active`, `activating`, `deactivating`, `reloading`, or `refreshing`. `Inspect` and `Attach` then ask the API of Firecracker for the state of the microVM. For a microVM that runs, `Attach` watches the main process of the unit again. The executor then gives the microVM a new link key through `PUT /mmds`, and the guest agent connects again. For a microVM in the state `Paused`, `Instance.Paused` returns true, and the executor leaves the guest paused while the target of the machine is `standby` ([the node executor](/reference/executor/index.html.md#standby)).
+After a restart of `hopboxd`, the executor asks the driver for each machine of its node-local state ([the node executor](/reference/executor/index.html.md#node-local-state)). `Inspect` reports a machine as running while its unit is `active`, `activating`, `deactivating`, `reloading`, or `refreshing`. `Inspect` and `Attach` then ask the API of Firecracker for the state of the microVM. For a microVM that runs, `Attach` watches the main process of the unit again. The executor then gives the microVM a new link key through `PUT /mmds`, and the guest agent connects again. For a microVM in the state `Paused`, `Instance.Paused` returns true. The executor then leaves the guest paused while the target of the machine is `standby` ([the node executor](/reference/executor/index.html.md#standby)).
 
 A microVM in the state `Not started` comes from a boot that `hopboxd` left before `InstanceStart`. Its link key went with that `hopboxd`. So `Attach` kills its unit and returns `vmm.ErrNotRunning`, and the executor boots the machine again.
 
@@ -215,7 +313,7 @@ An upgrade changes the files of `vmm.firecracker` and `vmm.kernel`. A running mi
 
 ## Delete
 
-`Delete` refuses a machine whose unit runs. It resets a failed unit, removes the tap device, the jail dir, and the machine dir with the disk. The machine dir also holds the partial copy of a pull, which goes with it. The jail ID of the machine is then free.
+`Delete` refuses a machine whose unit runs. It resets a failed unit, removes the tap device, the jail dir, and the machine dir with the disk. The machine dir also holds the partial copy of a pull and the saved state in `state/`, which go with it. The jail ID of the machine is then free.
 
 ## Logs
 
@@ -225,6 +323,7 @@ Every record has `component=firecracker`.
 | --- | --- | --- |
 | `booted a microVM` | info | `machine`, `unit`, `jail_id`, `tap`, `duration` |
 | `attached to a microVM` | info | `machine`, `unit`, `state` |
+| `attached to a microVM whose save is whole` | info | `machine`, `unit`, `saved_at` |
 | `stopping a microVM that never started` | warn | `machine`, `unit` |
 | `made the disk of a machine as a reflink copy of its image` | info | `machine`, `image` |
 | `unpacked the disk of an image` | info | `digest`, `duration` |
@@ -237,7 +336,23 @@ Every record has `component=firecracker`.
 | `the guest did not shut down in time, so the microVM gets killed` | warn | `machine`, `timeout` |
 | `paused a microVM` | info | `machine`, `duration` |
 | `resumed a microVM` | info | `machine`, `duration` |
+| `resumed a microVM after its save, so its memory file is older than the guest` | warn | `machine` |
 | `cannot read the state of a microVM after a failed call, so it counts as paused` | warn | `machine`, `err` |
+| `saved a microVM to its memory file` | info | `machine`, `duration`, `save_duration` (the call `PUT /snapshot/create`), `bytes`, `snapshot_format`, `vmm_version`, `microcode`, `paused_before` |
+| `cannot read the CPU microcode for a save` | warn | `machine`, `err` |
+| `the clock source of the host is not tsc, so a load of this save keeps the guest clock of the save` | warn | `machine`, `clock_source` |
+| `cannot resume a microVM after a failed save` | error | `machine`, `err` |
+| `ended the microVM of a saved machine` | info | `machine`, `saved_at` |
+| `cannot give the unit room for the page cache of a save` | warn | `machine`, `err` |
+| `cannot read the memory of the unit before a save` | warn | `machine`, `err` |
+| `the kernel reclaimed less than the clean page cache of the unit before a save` | info | `machine`, `left`, `err` |
+| `the memory file of a save is in place, but the last sync of its dir failed` | warn | `machine`, `err` |
+| `cannot set the MemoryMax of a unit back after a failed save` | warn | `machine`, `err` |
+| `cannot remove a file of a save` | warn | `machine`, `file`, `err` |
+| `loaded a microVM from its memory file` | info | `machine`, `unit`, `jail_id`, `tap`, `load` (the count of loads), `load_duration` (the call `PUT /snapshot/load`), `duration`, `snapshot_format`, `saved_at` |
+| `dropped the memory file of a machine` | info | `machine` |
+| `put the disk of the save back before the discard of its memory file` | info | `machine` |
+| `the memory file of a machine has no readable state file` | warn | `machine`, `err` |
 | `cannot stop the unit of a failed boot` | error | `machine`, `unit`, `err` |
 | `the machine boots without network` | warn | `machine`, `address`, `network` |
 | `cannot remove the tap device of a machine` | warn | `machine`, `err` |
@@ -248,7 +363,7 @@ Every record has `component=firecracker`.
 
 `hopboxd stop-guest` logs to the journal of the unit of the machine, at level info ([hopboxd](/reference/hopboxd/index.html.md#stop-guest)). For a stop of a running guest, it logs `asking the guest to shut down` and then `the guest shut down`. On a failure, it prints the error and exits with status 1, for example `firecracker: the guest did not shut down within 30s`.
 
-The driver serves the metrics of its image cache ([Metrics](/reference/metrics/index.html.md#metrics-of-the-image-cache)). The executor counts each boot, stop, and delete ([the node executor](/reference/executor/index.html.md#metrics)). The driver times the phases `unit_start` and `vmm_ready` of each boot, and the executor serves them ([the VMM driver interface](/reference/vmm/index.html.md#driver)). The driver is a `vmm.UsageReader`: it reads what each microVM uses from the cgroup of its unit, and the node serves these values as the [metrics of the machines](/reference/metrics/index.html.md#metrics-of-the-machines). It reads `cpu.stat` and `memory.current`, and also `cpu.pressure`, `memory.events`, and `io.stat` when the cgroup has them. From `io.stat`, it reads only the device of the file system of `MachinesDir`.
+The driver serves the metrics of its image cache ([Metrics](/reference/metrics/index.html.md#metrics-of-the-image-cache)). The executor counts each boot, stop, and delete ([the node executor](/reference/executor/index.html.md#metrics)). The driver times the phases `unit_start` and `vmm_ready` of each boot, and the executor serves them ([the VMM driver interface](/reference/vmm/index.html.md#driver)). The driver is a `vmm.UsageReader`: it reads what each microVM uses from the cgroup of its unit, and the node serves these values as the [metrics of the machines](/reference/metrics/index.html.md#metrics-of-the-machines). It reads `cpu.stat` and `memory.current`. When the cgroup has them, it also reads `cpu.pressure`, `memory.events`, and `io.stat`. From `io.stat`, it reads only the device of the file system of `MachinesDir`.
 
 ## Go API
 
@@ -285,15 +400,19 @@ The driver serves the metrics of its image cache ([Metrics](/reference/metrics/i
 | `SnapshotFormat(ctx)` | The snapshot format version of Firecracker. |
 | `Close()` | Closes the connection to systemd. A later call makes a new one. `hopboxd run` calls it after the stop of the unit `machines`. |
 
-The function `firecracker.StopGuest(ctx, sock, pid, timeout)` is the body of `hopboxd stop-guest`. It resumes a paused guest, sends `SendCtrlAltDel` to the API socket `sock`, and waits for the end of the process `pid`, at most for `timeout`. A `pid` of 0 returns at once.
+The function `firecracker.StopGuest(ctx, sock, pid, timeout)` is the body of `hopboxd stop-guest`. It resumes a paused guest, and sends `SendCtrlAltDel` to the API socket `sock`. Then it waits for the end of the process `pid`, at most for `timeout`. A `pid` of 0 returns at once.
 
-The methods of `vmm.Driver` follow [the VMM driver interface](/reference/vmm/index.html.md#driver). The driver needs Linux. On another system, `Inspect`, `Boot`, `Attach`, `Pause`, `Resume`, and `Delete` fail with `firecracker: the driver runs only on Linux`.
+The methods of `vmm.Driver` follow [the VMM driver interface](/reference/vmm/index.html.md#driver), and so do `Snapshot`, `Restore`, `DropMemory`, and `DiscardMemory` ([the VMM driver interface](/reference/vmm/index.html.md#snapshotter-and-restorer)). The driver needs Linux. On another system, each of these methods fails with `firecracker: the driver runs only on Linux`: `Inspect`, `Boot`, `Attach`, `Pause`, `Resume`, `Snapshot`, `Restore`, `DropMemory`, `DiscardMemory`, and `Delete`.
 
 ## Tests
 
-`make test` runs the unit tests of the driver on any system: the config checks, the names, the API client against a fake Firecracker, the image cache, the kernel cache, and the jail IDs. `make test-linux` runs them on Linux too.
+`make test` runs the unit tests of the driver on any system: the config checks, the names, the API client against a fake Firecracker, the image cache, the kernel cache, and the jail IDs. They also cover the files of a saved state. The tests read and write `state.json`, and stop a save between two of its steps. They check the count of loads and the disk copy, and the refusal of another snapshot format. They check the API calls of a load, the drop, `Inspect` with a damaged `state.json`, and the clock source. A save must refuse a link and a file of another owner in the jail root. A swap of a name after its rename must fail the save. `DiscardMemory` must put the disk copy back. `make test-linux` runs them on Linux too, with a save that fails and puts the microVM back as it was.
 
-`make test-kvm` runs the KVM tests. Each machine of these tests has at most 1 GiB of RAM, because the host of the CI runner also runs other services. `TestKVMLifecycle` boots the default image with the real guest agent and checks the unit, the jail user, the cgroup, the tap device, and the disk. Then it restarts the driver and attaches, stops, and boots from the kept disk. It reboots and powers off from inside, which must give `shutdown`. A kernel panic and a kill of Firecracker must give `crash`. It checks `ExecStop`, `Before`, and `TimeoutStopUSec` of the unit. Then the guest turns its writeback off and writes a file without a sync, and `systemctl stop` stops the unit. That must give `shutdown`, and the file must be there at the next boot. Then the stop helper is `/bin/false`, as after a rollback. A reboot from inside must still give `shutdown`, and the unit must not end failed. A stop of the unit must then give `crash`, with a root file system in use. It also attaches to a microVM that never started, and deletes the machine. It pauses a guest that holds a process and data in RAM, restarts the driver, attaches, and resumes. The process, the data, and the boot ID must stay. It stops a paused guest, also through `systemctl stop`, and the root file system must end clean, with no lost file. A kill of a paused guest must give `crash`. `TestKVMFailedBoot` checks that a failed boot leaves no unit and no tap device. `TestKVMSystemdConnection` checks that the connection to systemd outlives the call that made it. `TestKVMEndToEnd` of `internal/control` runs a single-host install. It adds the size `kvm`, with 1 GiB of RAM, and makes a machine of that size through the API, runs exec, stops and starts it, upgrades `hopboxd` with the microVM running, and deletes it. It also pauses the machine through the API, reads `hopbox_guest_links_down` for 30 s, resumes, and logs the time to the first exec. It restarts `hopboxd` in standby and stops a machine in standby. A kill of the unit in standby, and a restart of `hopboxd` with no microVM, must each end at the target of the restart policy. It also checks the node network with a second machine ([the node network](/reference/node-network/index.html.md#tests)). The KVM tests run in a network namespace of their own.
+`TestKVMHibernate` hibernates and wakes a guest that holds a process and data in RAM. The process keeps its PID, and the data stays. `state.json` must record `clock_realtime` as the clock source of the host says, and the test logs that clock source. A truncated memory file fails the load and keeps every file. Damaged bytes in the memory file do not fail the load. A later load puts the disk copy back. A guest that writes its whole RAM after a wake is not killed. A save then starts with a raised limit that a killed save left, and the test fails it during `PUT /snapshot/create`. The limit during the save must be the RAM plus 256 MiB plus the RAM, and the limit after it must be the limit of a boot. Then the test kills `hopboxd` at five points of a save: before each of its three renames, during `PUT /snapshot/create`, and after the rename of `memory`, before the end of the unit. A hook of the driver parks the save at the point for good, so the killed save runs no step of a failure. A new driver must find a paused microVM or a whole memory file. Its save must succeed with the limit of a save. After the rename of `memory`, the new driver must save nothing again: it only ends the unit, and the microVM ends with the reason `snapshot`. A wake must keep the process and the data, with the limit of a boot. A hibernate from standby, then a delete, removes the saved state.
+
+`TestKVMSaveRoom` measures the room of a save for Q202. A guest writes all but 96 MiB of its free memory into a tmpfs, and then the driver saves it. The test logs the memory of the unit before and during the save, the highest `memory.current` and `memory.stat` that it saw, and the lines of the kernel log about memory. It measures a guest that never woke and a woken guest. For each, it saves with a raise by the RAM, with the limit of a boot, after a reclaim of the clean page cache, and with a raise by only the excess that the save with the raise by the RAM used. The saves with the raise by the RAM must pass. The others only log: a subtest whose name starts with `measure` passes also when its save fails, so its PASS line in CI proves that the measure ran, not that the save worked. A save that runs for 3 minutes fails the test, and the test kills its unit. If the save still runs one minute later, the test ends the run.
+
+`make test-kvm` runs the KVM tests. Each machine of these tests has at most 1 GiB of RAM, because the host of the CI runner also runs other services. `TestKVMLifecycle` boots the default image with the real guest agent and checks the unit, the jail user, the cgroup, the tap device, and the disk. Then it restarts the driver and attaches, stops, and boots from the kept disk. It reboots and powers off from inside, which must give `shutdown`. A kernel panic and a kill of Firecracker must give `crash`. It checks `ExecStop`, `Before`, and `TimeoutStopUSec` of the unit. Then the guest turns its writeback off and writes a file without a sync, and `systemctl stop` stops the unit. That must give `shutdown`, and the file must be there at the next boot. Then the stop helper is `/bin/false`, as after a rollback. A reboot from inside must still give `shutdown`, and the unit must not end failed. A stop of the unit must then give `crash`, with a root file system in use. It also attaches to a microVM that never started, and deletes the machine. It pauses a guest that holds a process and data in RAM, restarts the driver, attaches, and resumes. The process, the data, and the boot ID must stay. It stops a paused guest, also through `systemctl stop`, and the root file system must end clean, with no lost file. A kill of a paused guest must give `crash`. `TestKVMFailedBoot` checks that a failed boot leaves no unit and no tap device. `TestKVMSystemdConnection` checks that the connection to systemd outlives the call that made it. `TestKVMEndToEnd` of `internal/control` runs a single-host install. It adds the size `kvm`, with 1 GiB of RAM, and makes a machine of that size through the API. It runs exec, stops and starts the machine, upgrades `hopboxd` with the microVM running, and deletes the machine. It also pauses the machine through the API, reads `hopbox_guest_links_down` for 30 s, resumes, and logs the time to the first exec. It restarts `hopboxd` in standby and stops a machine in standby. A kill of the unit in standby, and a restart of `hopboxd` with no microVM, must each end at the target of the restart policy. It hibernates and wakes the machine through the API, also across a restart of `hopboxd`, and logs the time to the first exec. A stop of `hopboxd` during a save must leave a machine that runs, or a whole memory file. A truncated memory file, and damaged bytes in it, must fail the wake and keep the file. An admin move and a cold drain must refuse the machine after that. A later wake must run from the disk copy, and `DiscardMemory` must drop the file, so the next start boots from the disk. It also checks the node network with a second machine ([the node network](/reference/node-network/index.html.md#tests)). The KVM tests run in a network namespace of their own.
 
 | Variable of `make test-kvm` | Default | Description |
 | --- | --- | --- |

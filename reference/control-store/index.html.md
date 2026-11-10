@@ -1,6 +1,6 @@
 # Control store tables
 
-> The tables of the control store, leases, leader election, change events, the audit log, idempotency keys, the install config, the tables of accounts, sign-ups, the block list, orgs, invitations, usage, sessions, sign-in links, and instance admins, the tables of pools, the install CA, the server registry, and enrollment tokens, the tables of sizes, images, machines, machine names, SSH ports, and placements, and the tables of the DNS zone.
+> The tables of the control store, leases, leader election, change events, the audit log, idempotency keys, the install config, the tables of accounts, sign-ups, the block list, orgs, invitations, usage, sessions, sign-in links, and instance admins, the tables of pools, the install CA, the server registry, and enrollment tokens, the tables of sizes, images, machines, memory files of machines, machine names, SSH ports, and placements, and the tables of the DNS zone.
 
 This page lists the tables of the control store and the Go packages that write them. The control store is the Postgres database of the control role. [The bundled Postgres](/reference/postgres/index.html.md) covers the bundled Postgres, the migration runner, and the advisory lock keys.
 
@@ -1340,10 +1340,11 @@ Migration `0028_machines.sql`. One row per machine ([the machine API](/reference
 | `url_visibility` | `text` | `private` | `private` or `public`. |
 | `ssh_port` | `integer` | none | The SSH port of the machine, 10000 to 30000. `ssh_ports` holds it. |
 | `server_id` | `uuid`, can be null | none | The node of the machine, a row of `servers`. The create sets it from the placement. |
-| `reboot_generation` | `bigint` | `0` | The number of boots that requests asked for. A reboot, a rename of a running machine, and a start of a failed machine add 1. A start of a stopped machine with the restart policy `never` adds 1 too. |
+| `reboot_generation` | `bigint` | `0` | The number of boots that requests asked for. A reboot, a rename of a running machine, and a start of a failed machine add 1. A start of a stopped machine with the restart policy `never` adds 1 too. So does `DiscardMemory`. |
+| `discard_memory_generation` | `bigint` | `0` | Migration `0073_machine_memory_states.sql`. The `reboot_generation` that the last `DiscardMemory` set, or 0 ([the machine API](/reference/machine-api/index.html.md#discardmemory)). The call raises `reboot_generation` and sets both columns to the new value in one write. The spec carries it to the node ([the executor protocol](/reference/executor-protocol/index.html.md#machinespec)), which drops only a memory file that a boot below it saved. So an old request never drops the file of a later hibernate. A `hopboxd` of schema version 57 to 72 never reads it. |
 | `skipped_env` | `integer` | `0` | Migration `0032_machine_skipped_env.sql`. The count of env values that the guest agent of the running machine left out, from the last report of `running` ([the executor protocol](/reference/executor-protocol/index.html.md#machinereport)). 0 or more. |
 | `current_reboot_generation` | `bigint` | `0` | The boot generation of the last report of the executor. It never goes down. The executor boots with `reboot_generation`, so a lower value than `reboot_generation` means a pending boot (`reboot_pending` in the API). So a request can tell that its boot ran. |
-| `last_activity_at` | `timestamptz` | the time of the insert | The last use: inbound traffic, an exec, a copy, an SSH session, a start, or a new auto-delete timeout. The auto-delete job reads it. |
+| `last_activity_at` | `timestamptz` | the time of the insert | The last use: inbound traffic, an exec, a copy, an SSH session, a start, a wake, or a new auto-delete timeout. The auto-delete job reads it. |
 | `state_changed_at` | `timestamptz` | the time of the insert | The last change of `current_state`. |
 | `delete_requested_at` | `timestamptz`, can be null | none | The first request for the target `deleted`. |
 | `version` | `bigint` | `1` | The row version. Each change of a request or a report adds 1. A change of an env var or a secret that reaches the machine adds 1 too, because the env is part of its spec. The specs of the executor protocol carry it, so the executor keeps the newest one. |
@@ -1366,7 +1367,32 @@ The table has three checks across its columns:
 | `machines_auto_delete` | `last_activity_at`, where `auto_delete_seconds` is more than 0 and the target is not `deleted` | The auto-delete job. |
 | `machines_purge` | `delete_requested_at`, where `current_state` is `deleted` | The sweep that drops the rows of deleted machines. |
 
-The leader drops a row whose `current_state` is `deleted` once its `delete_requested_at` is 7 days old. The delete cascades to its rows in `machine_names`, `ssh_ports`, `placements`, and `route_records`. The same sweep then deletes its lease.
+The leader drops a row whose `current_state` is `deleted` once its `delete_requested_at` is 7 days old. The delete cascades to its rows in `machine_names`, `ssh_ports`, `placements`, `route_records`, and `machine_memory_states`. The same sweep then deletes its lease.
+
+## machine_memory_states
+
+Migration `0073_machine_memory_states.sql`, with `oldest_schema_version` 57. One row for each machine whose node keeps a memory file of it, after a hibernate. The reports of the executor write the row ([the executor protocol](/reference/executor-protocol/index.html.md#what-the-control-role-does)). A `hopboxd` of schema version 57 to 72 never reads the table. It knows no hibernate, so its nodes never report a memory file. But a node dials any live control process ([the control channel](/reference/control-channel/index.html.md#control-urls)), so such a process can take the report of `hibernated` of a newer node, and drop its memory state. So `HibernateMachine`, `WakeMachine`, and `DiscardMemory` refuse while such a process is live ([the machine API](/reference/machine-api/index.html.md#hibernatemachine)), and a repeated report of `hibernated` writes a row that is missing ([the executor protocol](/reference/executor-protocol/index.html.md#what-the-control-role-does)).
+
+| Column | Type | Default | Description |
+| --- | --- | --- | --- |
+| `machine_id` | `uuid`, primary key | none | The machine, a row of `machines`. A delete of the machine row deletes the row. |
+| `server_id` | `uuid` | none | The node that keeps the file, a row of `servers`. |
+| `vmm` | `text` | none | The VMM driver that saved the memory, such as `firecracker`. |
+| `vmm_version` | `text` | none | The version of the VMM, such as `v1.17.0`. |
+| `snapshot_format` | `text` | none | The format version of the saved files, such as `v12.0.0`. |
+| `bytes` | `bigint` | none | The bytes of the blocks of the memory file on the disk of the node. 0 or more. |
+| `saved_at` | `timestamptz` | none | The time of the save. |
+| `recorded_at` | `timestamptz` | the time of the insert | The last write of the row. |
+
+| Event | Row |
+| --- | --- |
+| A step of the report to `hibernated`, with `memory_state` | written, or replaced for a new save |
+| A step of the report to `hibernated`, without `memory_state` | written, or replaced, with what the control role knows. `vmm`, `vmm_version`, and `snapshot_format` are empty, and `bytes` is 0. `saved_at` is the time of the report. So a cold move still refuses the machine. |
+| A step of the report to `running` or `deleted` | ended. After a wake, the executor reports `running` only after the handshake of the guest agent. |
+| A step of the report to `failed` or `stopped` | kept. A failed wake keeps the memory file. A step from `hibernated` to `stopped` is refused while the row exists ([the executor protocol](/reference/executor-protocol/index.html.md#what-the-control-role-does)). |
+| `DiscardMemory` | ended, in the transaction of the call |
+
+The machine API reads the table for `memory_saved` ([the machine API](/reference/machine-api/index.html.md#messages)). A cold move refuses a machine with a row, and so does a drain ([Cold move](/reference/cold-move/index.html.md#start-of-a-move)). `DiscardMemory` refuses a machine without one.
 
 ## machine_names
 

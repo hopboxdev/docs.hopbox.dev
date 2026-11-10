@@ -24,7 +24,7 @@ A machine is always in one current state. It also has a target state, which is t
 
 A new machine starts with the current state `pending` and the target state `running`.
 
-Milestone T21 of phase 3 changes the meaning of `deleted` for backups. While the org lives, a delete by a user keeps the backups of the machine until their retention ends, with an undo for the same org, which milestones T21 and T22 build. A leave of the creator, and the delete of an org or an account, remove them at once. The owner decided this on 2026-11-06, in Q189.
+Milestone T21 of phase 3 changes the meaning of `deleted` for backups. While the org lives, a delete by a user keeps the backups of the machine until the end of their retention. The same org gets an undo, which milestones T21 and T22 build. A leave of the creator, and the delete of an org or an account, remove them at once. The owner decided this on 2026-11-06, in Q189.
 
 ## Steps between current states
 
@@ -36,15 +36,16 @@ Only the executor of a machine changes its current state. Each step goes from on
 | `starting` | `running`, `stopped`, `failed` |
 | `running` | `starting`, `standby`, `hibernated`, `stopped`, `failed`, `moving`, `deleted` |
 | `standby` | `running`, `hibernated`, `stopped`, `failed`, `moving`, `deleted` |
-| `hibernated` | `starting`, `failed`, `moving`, `deleted` |
+| `hibernated` | `starting`, `stopped`, `failed`, `moving`, `deleted` |
 | `stopped` | `starting`, `moving`, `deleted` |
-| `failed` | `starting`, `stopped`, `deleted` |
+| `failed` | `starting`, `stopped`, `hibernated`, `deleted` |
 | `moving` | `running`, `standby`, `hibernated`, `stopped`, `failed` |
 | `deleted` | none |
 
 These rules shape the table:
 
-- A hibernated machine never goes straight to `stopped`. That step drops the memory file, and only a delete removes saved state.
+- A hibernated machine goes straight to `stopped` only after `DiscardMemory`, once its node dropped the memory file ([Hibernated machines keep their memory file](#hibernated-machines-keep-their-memory-file)). The control role accepts that step only once the control store has no row of the memory file. Otherwise, it refuses the report with `failed precondition: machine state step not allowed: from hibernated to stopped while the memory file of the machine stays. Only DiscardMemory allows it` ([the executor protocol](/reference/executor-protocol/index.html.md#what-the-control-role-does)). No failure drops saved state.
+- A failed machine goes back to `hibernated` after a canceled wake: the target went back to `hibernated` during the wake, by a suspension ([Org suspension](#org-suspension)) or by `HibernateMachine`, and the load failed. The step needs the memory file of the wake. The control role accepts it only while it records the memory file, and refuses it otherwise with `failed precondition: machine state step not allowed: from failed to hibernated without a memory file of the machine`. The owner decided this on 2026-11-09, in Q207.
 - A machine in `starting` or `moving` first ends its action. Then it can go to `deleted`.
 - `deleted` is the end. No step leaves it.
 - Every other state can reach `deleted`.
@@ -61,43 +62,59 @@ A lifecycle action only sets the target state. The executor then moves the curre
 | `reboot` | `running` | `running` | unchanged |
 | `pause` | `running` or `standby` | `running` or `standby` | `standby` |
 | `resume` | `standby` | any | `running` |
-| `hibernate` | `running`, `standby`, or `hibernated` | any | `hibernated` |
+| `hibernate` | `running`, `standby`, or `hibernated` | `running`, `standby`, or `hibernated`. Only these states step to `hibernated` ([Steps between current states](#steps-between-current-states)). A hibernated current state keeps a repeated call a success. | `hibernated` |
 | `wake` | `hibernated` | any | `running` |
-| `rename` | any target except `deleted` | any. `CheckRename(target, current)` then refuses a new name when the target or the current state is `standby`. | unchanged. A rename reboots a running machine. |
+| `rename` | any target except `deleted` | any. Then `CheckRename(target, current)` refuses a new name for a target or a current state of `standby` or `hibernated` (see below). | unchanged. A rename reboots a running machine. |
 | `delete` | any target except `deleted` | any | `deleted` |
 | `fork` | `running` | `running` | unchanged. The fork is a new machine. |
 | `checkpoint` | `running` | `running` | unchanged |
 | `restore` | `running`, `standby`, or `stopped` | any state except `hibernated`, `moving`, and `deleted` | `running` |
+| `discard_memory` | only these pairs of target and current state: `hibernated` and `hibernated`, `running` and `failed`, `stopped` and `failed`, `stopped` and `stopped` | the current state of the pair | `stopped` |
 
-No action works on a machine whose target is `deleted`. The error is `machine action not allowed: cannot <action> a machine that is being deleted`.
+No action works on a machine whose target is `deleted`. The error is `machine action not allowed: cannot <action> a machine that is being deleted`. For `discard_memory`, the error says `discard the memory of` in place of `<action>`.
+
+`discard_memory` takes only the pairs in which no microVM of the machine runs or starts: a hibernated machine, and a machine that is down after a failed wake. Any other pair gets the error `machine action not allowed: cannot discard the memory of a machine that is <current>, with the target <target>: only a machine with no microVM drops its memory file`. `Apply` checks only the states. The machine API also needs a memory file of the machine ([the machine API](/reference/machine-api/index.html.md#discardmemory)).
+
+An action whose current state is not allowed gets the error `machine action not allowed: cannot <action> a machine that is <current>`. For example, a hibernate of a machine in `stopped` gets `machine action not allowed: cannot hibernate a machine that is stopped`.
+
+A rename reboots a running machine, and a machine in standby or hibernated takes no reboot. So `CheckRename` refuses a new name for such a machine, also on its way in or out of either state. The errors are `machine action not allowed: cannot rename a machine in standby: resume it first` and `machine action not allowed: cannot rename a hibernated machine: wake it first`. Q200 and Q203 set this rule. A rename to the name that the machine has already still succeeds ([the machine API](/reference/machine-api/index.html.md#renamemachine)).
 
 An action that asks for the target that the machine already has succeeds and changes nothing. For example, `stop` on a machine with the target `stopped` succeeds.
 
 ## Hibernated machines keep their memory file
 
-Only a delete drops the memory file of a hibernated machine. So a machine with the target `hibernated` refuses `stop` and `restore` with the error `machine action not allowed: cannot <action> a hibernated machine: wake it first`. To stop or restore it, wake it first.
+Only a delete or `DiscardMemory` drops the memory file of a hibernated machine. So a machine with the target `hibernated` refuses `stop` and `restore` with the error `machine action not allowed: cannot <action> a hibernated machine: wake it first`. To stop or restore it, wake it first, or drop its memory file with `DiscardMemory`.
 
-Milestone T03 of phase 3 adds the explicit call `DiscardMemory`, for the creator. It drops the memory file with an audit entry, and the next start boots from the disk. Until T03, the rules of this section hold as written. The owner decided this on 2026-11-06, in Q192.
+`DiscardMemory` is an explicit call of the creator of the machine, with the action `discard_memory` ([the machine API](/reference/machine-api/index.html.md#discardmemory)). It drops the memory file with an audit entry, and sets the target `stopped`. The next start boots from the disk. The owner decided this on 2026-11-06, in Q192. The end of a wake also drops the file: once the guest agent of the woken machine linked, the file has done its work ([the node executor](/reference/executor/index.html.md#saved-state)).
 
 A wake can be pending: the target is `running`, but the current state is still `hibernated`. Then `restore` waits for the wake to end, because a restore replaces the memory file that the wake needs. The error is `machine action not allowed: cannot restore a machine that is hibernated`.
 
+A stop waits for the wake too, because the node keeps the memory file of a hibernated machine and never steps it to `stopped`. While the current state is `hibernated` and the control store records the memory file, `stop` gets `machine action not allowed: cannot stop a machine that is hibernated: wait for the end of its wake. After a failed wake, drop the file with DiscardMemory`. Once the load runs, the current state is `starting`, and a stop works as for a machine that boots. The owner decided this on 2026-11-09, in Q206.
+
 Other paths follow the same rule:
 
-- An admin stop of a hibernated machine gets the same error, and the machine stays hibernated.
-- `delete` is the only action that drops a memory file.
+- An admin stop of a hibernated machine gets the same error, and the machine stays hibernated. An admin stop during a pending wake gets the error of a stop during a wake.
+- `delete` and `discard_memory` are the only actions that drop a memory file.
 
 ### Org suspension
 
 An instance admin can suspend an org ([the org API](/reference/org-api/index.html.md#suspension)). A suspension stops the machines of the org, and blocks the actions that make a machine run or make a new one. It leaves a hibernated machine hibernated. It blocks the wake of the machine until the org is active again. It never stops the machine, because a stop is not allowed for a hibernated machine.
 
-The suspend of an account suspends its personal org and each org that it owns alone, by the same rules ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). In its other orgs, it stops the private machines of the account, and leaves a hibernated one hibernated.
+A suspension also cancels a wake that is pending or failed. For each machine with the target `running` and a memory file, it sets the target back to `hibernated`, with the audit entry `machine.hibernate` and the details `old_target`, `reason`, and `wake` `canceled`. A load that runs on the node goes on:
 
-`Action.CheckSuspended()` gives the rule for each lifecycle action. A blocked action gets the error `org suspended: an instance admin suspended the org, so it cannot <action> a machine`.
+- If the guest agent links, the node drops the memory file, reports `running`, and then saves the machine again, because the target is `hibernated`.
+- If the load fails, the node keeps the memory file and the disk copy, and steps the machine from `failed` back to `hibernated`.
+
+So the machine ends hibernated with a whole memory file in each case, and the suspension blocks its wake. The owner decided this on 2026-11-09, in Q207.
+
+The suspend of an account suspends its personal org and each org that it owns alone, by the same rules ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). In its other orgs, it stops the private machines of the account, leaves a hibernated one hibernated, and cancels a pending or failed wake in the same way.
+
+`Action.CheckSuspended()` gives the rule for each lifecycle action. A blocked action gets the error `org suspended: an instance admin suspended the org, so it cannot <action> a machine`. For `discard_memory`, the error says `discard the memory of` in place of `<action>`.
 
 | Action | In a suspended org |
 | --- | --- |
 | `create`, `start`, `reboot`, `resume`, `wake`, `fork`, `restore` | blocked |
-| `delete` | blocked |
+| `delete`, `discard_memory` | blocked, because a suspension keeps the data of the org |
 | `stop`, `pause`, `hibernate`, `rename`, `checkpoint` | allowed |
 
 Exec, file copy, SSH, and the machine URLs are blocked too. Exec and file copy check the suspension of the org now ([the machine API](/reference/machine-api/index.html.md#suspension)). The machine URLs check it now: the edge answers `403` ([the edge role](/reference/edge/index.html.md#routing)). SSH checks it now: the SSH front door refuses every key, and ends the open connections of the org ([the SSH front door](/reference/ssh-front-door/index.html.md#checks-of-an-open-connection)).
@@ -118,10 +135,10 @@ The rule holds for the members of the org. Instance admins can stop or delete a 
 
 The executor follows this rule ([the node executor](/reference/executor/index.html.md#saved-state)). A wake can fail. The machine then has the target `running` and the current state `failed`.
 
-1. The executor keeps the memory file. A failure never deletes saved state.
+1. The executor keeps the memory file. A failure never deletes saved state. A wake whose guest agent does not link within 60 s of the load fails too, and the file stays.
 2. `stop` is still allowed. It sets the target `stopped`, and the executor makes the step `failed` to `stopped`. The memory file stays.
-3. A later `start` of the machine first retries the wake from the kept memory file. Only after that wake succeeds does the machine run.
-4. Only `delete` drops the memory file.
+3. A later `start` of the machine first retries the wake from the kept memory file. Only after that wake succeeds does the machine run. The executor drops the file once the guest agent of that wake linked.
+4. Only `delete` and `discard_memory` drop the memory file of a machine that did not wake. `discard_memory` takes the machine in `failed` with the target `running` or `stopped`, and in `stopped` with the target `stopped`.
 
 ## Restart policy
 
@@ -298,7 +315,7 @@ A fresh install has two sizes:
 | `default` | 2 | 8 GiB | 100 GB, sparse | `DefaultSize`: a create without a size, apart from the personal org of a limited account |
 | `tiny` | 1 | 1 GiB | 5 GB, sparse | `TinySize`: a create without a size in the personal org of a limited account. It fits `LimitedOrgLimits`. |
 
-`DefaultSizeFor(tier)` returns the name of the size of a create without a size in an org of the tier. Migration 0063 adds `tiny` only when no size has the name, so a size `tiny` that an operator made before keeps its values. Neither size retires.
+`DefaultSizeFor(tier)` returns the name of the size of a create without a size in an org of the tier. Migration 0063 adds `tiny` for a missing name only. So a size `tiny` that an operator made before keeps its values. Neither size retires.
 
 An instance admin adds other sizes, and retires them, with the admin API ([the admin API](/reference/admin-api/index.html.md#sizeservice)). An operator size can also name a pool and labels, which become the placement filters of its machines ([Placement](/reference/placement/index.html.md#hard-filters)).
 
@@ -320,7 +337,7 @@ hopbox compares emails in one form, so `Ann@Example.org` and `ann@example.org` n
 - It takes only one plain address, without a display name or angle brackets.
 - It has a local part, an `@`, and a domain. A domain in brackets, such as `[127.0.0.1]`, is refused.
 - It has at most 254 characters.
-- Its domain has an ASCII form of IDNA, by the lookup profile of UTS 46 that takes `--` at the third and fourth place of a label. So `user1@ab--cd.example` and `user1@r3---sn-abc.googlevideo.com` pass. `user7@a_b.example.net`, `user7@xn--zz.example`, and a domain with a zero width joiner are refused. The block list compares a domain in this form ([Block list entries](#block-list-entries)), so a domain without it could pass a block of one of its parent domains.
+- Its domain has an ASCII form of IDNA, by the lookup profile of UTS 46. That profile takes `--` at the third and fourth place of a label. So `user1@ab--cd.example` and `user1@r3---sn-abc.googlevideo.com` pass. `user7@a_b.example.net`, `user7@xn--zz.example`, and a domain with a zero width joiner are refused. The block list compares a domain in this form ([Block list entries](#block-list-entries)). Without this rule, a domain can pass a block of one of its parent domains.
 
 | Email | Result |
 | --- | --- |

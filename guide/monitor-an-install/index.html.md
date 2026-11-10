@@ -240,7 +240,7 @@ Open `http://127.0.0.1:3000` in a browser, and sign in as `admin`. The folder `h
 | hopbox D6 Nodes | The executor actions and boot phases, the lease losses, the guest links, the image caches, the cold moves with their pulls, and the state and restarts of `hopboxd.service` |
 | hopbox D7 Edge, DNS, and SSH | The requests of the edge, the requests to machines and the upstream errors, the routes, the connections against their limit, the refusals, the certificate, the DNS queries and zone serials, and the SSH front door |
 | hopbox D8 Network | The egress exits and uplinks, the traffic and dropped packets of the machines, the repairs of the node network, the mesh peers with their handshakes and traffic, and the host firewall |
-| hopbox D9 Memory | The machines in standby and hibernated, the machines by state, the failed wakes and resumes, and the count and the p99 of pauses, resumes, hibernates, and wakes |
+| hopbox D9 Memory | The machines in standby and hibernated, the machines by state, the failed wakes and resumes, the count and the p99 of pauses, resumes, hibernates, and wakes, and the p95 of the saves and loads of the VMM driver |
 
 The same tunnel works for Prometheus on port 9090 and Alertmanager on port 9093.
 
@@ -788,7 +788,7 @@ Warning. Machines ran on a node without an authenticated guest link for 5 minute
 
 ### HopboxWakesFailing
 
-Warning. Wakes or resumes of machines failed on a node for 10 minutes. Each machine keeps its memory, and its executor tries again. A machine in the state `standby` stays paused until a resume works. Read the log of `hopboxd` on the node for `cannot run the machine again` ([the node executor](/reference/executor/index.html.md#standby)), and the journal of the unit of the machine.
+Warning. Wakes or resumes of machines failed on a node for 10 minutes. Each machine keeps its memory, and its executor tries again. A machine in the state `standby` stays paused until a resume works. A machine whose wake failed is `failed`, and keeps its memory file. Its executor tries the wake again only with the restart policy `always`. Read the log of `hopboxd` on the node for `cannot run the machine again` ([the node executor](/reference/executor/index.html.md#standby)), and for `a machine action failed` with the error of the wake ([the node executor](/reference/executor/index.html.md#the-end-of-a-wake)). Read the journal of the unit of the machine too. A memory file that never wakes stays until its creator drops it ([Standby and hibernate](/guide/standby-and-hibernate/index.html.md#a-failed-wake)).
 
 ### HopboxGuestLinkProofFailed
 

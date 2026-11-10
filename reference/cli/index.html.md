@@ -334,7 +334,7 @@ last used      2026-10-21T10:52:07Z
 created        2026-10-21T10:52:07Z
 ```
 
-A machine on its way to another state shows both states, such as `stopped, on its way to running`. The line `reboot pending  yes` shows while a reboot waits. The line `skipped env vars  <count>` shows the env vars that the guest agent left out. While the install has no domain, the URL is `-`. `auto-delete` shows the timeout, such as `after 168h0m0s without use`.
+A machine on its way to another state shows both states, such as `stopped, on its way to running`. The line `reboot pending  yes` shows while a reboot waits. The line `skipped env vars  <count>` shows the env vars that the guest agent left out. The line `memory file  yes` shows while the node keeps a memory file of the machine, after a hibernate or a wake that failed. While the install has no domain, the URL is `-`. `auto-delete` shows the timeout, such as `after 168h0m0s without use`.
 
 The JSON object of a machine:
 
@@ -361,6 +361,7 @@ The JSON object of a machine:
 | `ssh_alias` | string | The alias of the machine in the managed SSH block, such as `box1.hop` ([SSH files](#ssh-files)). |
 | `reboot_pending` | bool | Whether a reboot waits. |
 | `skipped_env_vars` | number | The count of env vars that the guest agent left out. |
+| `memory_saved` | bool | Whether the node keeps a memory file of the machine ([the machine API](/reference/machine-api/index.html.md#machine)). |
 | `last_activity_time` | string or null | The last use, for the auto-delete timeout. |
 | `state_change_time` | string or null | The last change of the state. |
 | `delete_request_time` | string or null | The time of the delete request. |
@@ -513,6 +514,9 @@ At the prompt itself, the keys Ctrl-C and Ctrl-D are keys, not signals. A SIGINT
 | [`machine stop`](#machine-stop) | Stops a machine, and waits until it stops. |
 | [`machine pause`](#machine-pause) | Puts a running machine in standby, and waits for it. |
 | [`machine resume`](#machine-resume) | Takes a machine out of standby, and waits until it runs. |
+| [`machine hibernate`](#machine-hibernate) | Saves the memory of a machine to a file on its node, and waits for it. |
+| [`machine wake`](#machine-wake) | Loads a hibernated machine from its memory file, and waits until it runs. |
+| [`machine discard-memory`](#machine-discard-memory) | Drops the memory file of a machine that does not run, and stops it. |
 | [`machine reboot`](#machine-reboot) | Boots a running machine again, and waits for the new boot. |
 | [`machine rename`](#machine-rename) | Gives a machine a new name. |
 | [`machine delete`](#machine-delete), `machine rm` | Deletes a machine and its disk. |
@@ -747,7 +751,7 @@ Starts a stopped machine with `StartMachine`, and waits until it runs.
 Started the machine box1 in 1.204s.
 ```
 
-The install waits for the machine for up to 60 s ([the machine API](/reference/machine-api/index.html.md#the-wait)). If the machine is not there at the end of the wait, the command fails with status 6: `the machine <name> is not <state> after <time>. It is <state>. hopbox machine show <name> shows its state later`. The machine keeps its target, so it can still get there. The commands `machine stop`, `machine pause`, `machine resume`, `machine reboot`, `machine rename`, and `machine delete` work in the same way.
+The install waits for the machine for up to 60 s ([the machine API](/reference/machine-api/index.html.md#the-wait)). If the machine is not there at the end of the wait, the command fails with status 6: `the machine <name> is not <state> after <time>. It is <state>. hopbox machine show <name> shows its state later`. The machine keeps its target, so it can still get there. The commands `machine stop`, `machine pause`, `machine resume`, `machine hibernate`, `machine wake`, `machine discard-memory`, `machine reboot`, `machine rename`, and `machine delete` work in the same way.
 
 JSON fields of each of these commands: `machine`, the machine object, `duration_seconds`, how long the call took, and `done`, which is always `true`.
 
@@ -775,7 +779,53 @@ A pause ends each exec and each terminal of the machine. An exec, a file copy, a
 hopbox machine resume MACHINE
 ```
 
-Takes a machine out of standby with `ResumeMachine`, and waits until it runs. The guest goes on from where it was. The command prints `Resumed the machine <name> in <time>.`
+Takes a machine out of standby with `ResumeMachine`, and waits until it runs. The guest goes on from where it was.
+
+```text
+Resumed the machine box1 in 0.231s.
+```
+
+### machine hibernate
+
+```sh
+hopbox machine hibernate MACHINE
+```
+
+Saves the memory of a machine to a memory file on its node with `HibernateMachine`, and waits for it. The machine runs or is in standby. The microVM then ends, and the machine frees its vCPUs and RAM. A hibernate ends each exec and each terminal of the machine. See [Standby and hibernate](/guide/standby-and-hibernate/index.html.md#hibernate-a-machine).
+
+```text
+Hibernated the machine box1 in 2.318s.
+```
+
+### machine wake
+
+```sh
+hopbox machine wake MACHINE
+```
+
+Loads a hibernated machine from its memory file with `WakeMachine`, and waits until it runs. The guest goes on from where it was. A wake takes the checks of a start: the limits of the org and the room of the node. A wake that fails ends the wait early. The command then fails with status 6, with the state `failed` in the message, and the memory file stays ([the machine API](/reference/machine-api/index.html.md#wakemachine)).
+
+```text
+Woke the machine box1 in 0.912s.
+```
+
+### machine discard-memory
+
+```sh
+hopbox machine discard-memory MACHINE [--yes]
+```
+
+Drops the memory file of a machine with `DiscardMemory`, and waits until the machine is stopped. The programs of the machine and their data in RAM end. The node puts the disk of the save back, and the next start boots from that disk. The machine must have no microVM: it is hibernated, or its wake failed ([the machine API](/reference/machine-api/index.html.md#discardmemory)). Only the creator of the machine can drop the file.
+
+```text
+Dropped the memory file of the machine box1 in 0.415s.
+```
+
+Before the drop, the CLI asks on stderr: `Drop the memory file of the machine <name>? Its programs and their data in RAM end, and its next start boots from its disk. [y/N]`. The question works as for [machine delete](#machine-delete): only `y` or `yes` drops the file, and another answer fails with `nothing changed`, status 5. Without a terminal, or with `--json`, the command needs `--yes`, or it fails with status 80.
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-y`, `--yes` | `false` | Drops the file without the question. |
 
 ### machine reboot
 
@@ -793,7 +843,7 @@ hopbox machine rename MACHINE NAME
 
 Gives a machine the new name `NAME` with `RenameMachine`. A running machine reboots, and the command waits for the new boot. The old name stays reserved for the org for 7 days. The CLI moves the machine to its new alias in the managed SSH block. A taken name fails with status 5, as at [new](#new).
 
-A machine in standby refuses a new name with `cannot rename a machine in standby: resume it first`. Run `hopbox machine resume` first.
+A machine in standby refuses a new name with `cannot rename a machine in standby: resume it first`. Run `hopbox machine resume` first. A hibernated machine refuses a new name with `cannot rename a hibernated machine: wake it first`. Run `hopbox machine wake` first.
 
 ### machine delete
 

@@ -1216,7 +1216,7 @@ Suspends an account, for example to handle abuse. The call deletes nothing. In i
 1. It sets the state of the account to `suspended`, with the reason and the time.
 2. It deletes every session and every CLI sign-in of the account ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md), [CLI tokens, API keys, admin API keys, and SSH keys](/reference/credentials/index.html.md#cli-tokens)). So the private machine URLs of those sessions stop too ([Control store tables](/reference/control-store/index.html.md#the-event-edgeaccess_changed)).
 3. It suspends the personal org of the account, and each org in which the account is the only owner, with the same reason. An org that is suspended already keeps its suspension and its reason. Each org that the call suspends stops its machines, as for [SuspendOrg](#suspendorg). The column `suspended_with_account` of the org names the account ([Control store tables](/reference/control-store/index.html.md#orgs)).
-4. In each other org of the account, it sets the target `stopped` on each private machine of the account. A shared machine keeps running, because the org uses it. A hibernated machine stays hibernated.
+4. In each other org of the account, it sets the target `stopped` on each private machine of the account. A shared machine keeps running, because the org uses it. A hibernated machine stays hibernated, and a pending or failed wake goes back to `hibernated` ([Domain rules](/reference/domain-rules/index.html.md#org-suspension)). While the account is suspended, such a private machine does not wake: `WakeMachine` fails with `failed_precondition` ([the machine API](/reference/machine-api/index.html.md#wakemachine)).
 
 While the account is suspended, these rules hold:
 
@@ -2594,7 +2594,7 @@ Suspends an org, for example to handle abuse ([the org API](/reference/org-api/i
 | `org_id` | string | The UUID of the org. |
 | `reason` | string | The reason, which the members of the org see. At most 256 characters, without control characters. The server drops the spaces around it. |
 
-The call stops the resources of the org in its transaction, through `OrgSuspending` ([the org API](/reference/org-api/index.html.md#what-a-member-leaves-behind)). It sets the target `stopped` on each machine of the org, except a hibernated one. Each machine that it changes gets an entry `machine.stop` with the detail `reason` (`org suspended`). The response `SuspendOrgResponse` has the field `org`, the `Org` after the change.
+The call stops the resources of the org in its transaction, through `OrgSuspending` ([the org API](/reference/org-api/index.html.md#what-a-member-leaves-behind)). It sets the target `stopped` on each machine of the org, except a hibernated one. A machine with the target `running` and a memory file gets the target `hibernated` back, so its wake ends ([Domain rules](/reference/domain-rules/index.html.md#org-suspension)). Each machine that it stops gets an entry `machine.stop` with the detail `reason` (`org suspended`). Each wake that it ends gets an entry `machine.hibernate` with the details `reason` and `wake` (`canceled`). The response `SuspendOrgResponse` has the field `org`, the `Org` after the change.
 
 | Error | Code |
 | --- | --- |
@@ -2730,7 +2730,7 @@ The response `ListMachinesResponse` has the fields `machines`, a repeated `Machi
 
 ### StopMachine
 
-Sets the target of any machine to `stopped`, and waits for it for up to 60 s. It works as `StopMachine` of the public API ([the machine API](/reference/machine-api/index.html.md#stopmachine)), also in a suspended org. A hibernated machine refuses the stop with `failed_precondition` and the message `failed precondition: machine action not allowed: cannot stop a hibernated machine: wake it first`.
+Sets the target of any machine to `stopped`, and waits for it for up to 60 s. It works as `StopMachine` of the public API ([the machine API](/reference/machine-api/index.html.md#stopmachine)), also in a suspended org. A hibernated machine refuses the stop with `failed_precondition` and the message `failed precondition: machine action not allowed: cannot stop a hibernated machine: wake it first`. During a pending wake, the message is `failed precondition: machine action not allowed: cannot stop a machine that is hibernated: wait for the end of its wake. After a failed wake, drop the file with DiscardMemory` (Q206).
 
 | Item | Value |
 | --- | --- |

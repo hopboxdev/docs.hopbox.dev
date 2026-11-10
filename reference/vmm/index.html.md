@@ -18,7 +18,7 @@ This release has two drivers. The Firecracker driver of `internal/node/vmm/firec
 | fork | `vmm.CapFork` | a new microVM from the state of another | none yet |
 | migrate | `vmm.CapMigrate` | a move of a microVM to another node | none yet |
 
-The Firecracker driver declares pause. The node names the capabilities of its driver in each heartbeat ([the control channel](/reference/control-channel/index.html.md#heartbeat)). So placement and the API can decide by them without a call to a driver.
+The Firecracker driver declares pause, snapshot, and restore. The node names the capabilities of its driver in each heartbeat ([the control channel](/reference/control-channel/index.html.md#heartbeat)). So placement and the API can decide by them without a call to a driver.
 
 ## Driver
 
@@ -40,7 +40,18 @@ A driver runs the microVMs of one node. Its microVMs run apart from `hopboxd`, s
 | `Disk` | The disk of the machine exists. |
 | `Running` | The microVM runs, also while it is paused. |
 | `Paused` | The microVM is paused in RAM. |
-| `Memory` | A memory file of a hibernate is kept. Only `Delete` drops it. Milestone T03 of phase 3 adds the explicit call `DiscardMemory`, which also drops it (Q192, decided by the owner on 2026-11-06). |
+| `Memory` | A memory file of a hibernate is kept, also after a wake that failed. Only `Delete`, `Restorer.DropMemory`, and `Restorer.DiscardMemory` drop it. |
+| `MemoryState` | What the kept memory file holds, as a `vmm.MemoryState`, while `Memory` is true. |
+
+| `MemoryState` field | Description |
+| --- | --- |
+| `VMM`, `VMMVersion` | The driver that saved the memory, and the version of its VMM, such as `firecracker` and `v1.17.0`. |
+| `SnapshotFormat` | The format version of the saved files, as `SnapshotFormat` returns it. |
+| `Bytes` | The bytes of the blocks of the memory file on the disk of the node. |
+| `SavedAt` | The time of the save. |
+| `Loads` | The loads of the saved state so far, also those that failed. |
+
+The executor reports these fields with `hibernated`, apart from `Loads` ([the executor protocol](/reference/executor-protocol/index.html.md#machinereport)).
 
 `Boot` holds the `Machine` and the link key of the boot:
 
@@ -51,7 +62,7 @@ A driver runs the microVMs of one node. Its microVMs run apart from `hopboxd`, s
 | `Image` | The image: its digest, its URL, and the SHA-256 of its kernel and of its disk ([the executor protocol](/reference/executor-protocol/index.html.md#machinespec)). |
 | `Address` | The IPv4 address of the machine on its node, from the network of the spec, or the zero `netip.Addr` for a machine without one. A driver with a network device for each machine connects the device to the node network with it ([the node network](/reference/node-network/index.html.md)). |
 | `LinkKey` | The link key of this boot, 32 random bytes. The driver puts it in the metadata service of the microVM, never on the kernel command line. |
-| `OnPhase` | A func that gets the duration of each phase of the boot that the driver times, or nil. A driver calls `Boot.Phase(phase, took)` once for each phase: `vmm.PhaseUnitStart` (`unit_start`) from the start of the boot until the process of the VMM runs, then `vmm.PhaseVMMReady` (`vmm_ready`) until the VMM answers and started the microVM. The executor serves them in `hopbox_executor_boot_phase_seconds` ([the node executor](/reference/executor/index.html.md#metrics)). `Restore` times no phase. |
+| `OnPhase` | A func that gets the duration of each phase of the boot that the driver times, or nil. A driver calls `Boot.Phase(phase, took)` once for each phase. `vmm.PhaseUnitStart` (`unit_start`) runs from the start of the boot until the process of the VMM runs. Then `vmm.PhaseVMMReady` (`vmm_ready`) runs until the VMM answers and started the microVM. The executor serves them in `hopbox_executor_boot_phase_seconds` ([the node executor](/reference/executor/index.html.md#metrics)). `Restore` times no phase. |
 
 ## Instance
 
@@ -62,7 +73,9 @@ A driver runs the microVMs of one node. Its microVMs run apart from `hopboxd`, s
 | `Done()` | A channel that closes once the microVM stopped, for any reason. |
 | `Exit()` | Why the microVM stopped, once `Done` closed. |
 | `Stop(ctx)` | Stops the microVM, and returns once `Done` closed. The driver first asks the guest to shut down, and it resumes a paused guest for that. At the end of `ctx`, it ends the microVM. A stopped microVM succeeds. |
+| `Kill(ctx)` | Ends the microVM at once, with no resume and no shutdown of the guest, and returns once `Done` closed. The exit reason is `stopped`. The executor ends a load that a restart of `hopboxd` cut before its resume with it, so the guest never runs. A stopped microVM succeeds. |
 | `Paused()` | Whether the microVM is paused in RAM. |
+| `Saved()` | Whether the save of the microVM is whole, also for a microVM that a new `hopboxd` attached to after the save. Such a microVM never runs again, and its end has the reason `snapshot`. |
 | `SetLinkKey(ctx, key)` | Puts a new link key in the metadata service. The executor calls it after an attach, because the key of a boot lives only in memory. |
 
 | Exit reason | Go value | Meaning |
@@ -78,15 +91,23 @@ A driver with the capability pause is a `vmm.Pauser`. Both calls are safe to run
 
 | Interface | Method | Description |
 | --- | --- | --- |
-| `vmm.Pauser` | `Pause(ctx, inst)` | Pauses the vCPUs of a running microVM. Its memory stays in the RAM of the node. The executor closes the guest link first, because a paused guest answers no keepalive ([Guest link](/reference/guest-link/index.html.md#transport)). After a call that fails, `Instance.Paused` gives the state that the driver read from the VMM, because a call can fail after the VMM applied it. A state that the driver cannot read counts as paused, and the error then wraps `vmm.ErrStateUnknown`. So the caller resumes such a guest, or pauses it again, and never takes it for paused. |
+| `vmm.Pauser` | `Pause(ctx, inst)` | Pauses the vCPUs of a running microVM. Its memory stays in the RAM of the node. The executor closes the guest link first, because a paused guest answers no keepalive ([Guest link](/reference/guest-link/index.html.md#transport)). A call can fail after the VMM applied it. So after a call that fails, `Instance.Paused` gives the state that the driver read from the VMM. A state that the driver cannot read counts as paused, and the error then wraps `vmm.ErrStateUnknown`. So the caller resumes such a guest, or pauses it again, and never takes it for paused. |
 | `vmm.Pauser` | `Resume(ctx, inst)` | Runs a paused microVM again. The executor first gives it a new link key with `Instance.SetLinkKey`, and serves a new guest link. |
 
 ## Snapshotter and Restorer
 
 | Interface | Method | Description |
 | --- | --- | --- |
-| `vmm.Snapshotter` | `Snapshot(ctx, inst)` | Saves the memory and the state of a running microVM to the memory file of the machine, and stops the microVM. |
-| `vmm.Restorer` | `Restore(ctx, Boot)` | Boots a machine from its memory file, with a new link key. A failure keeps the memory file, and leaves no microVM of the machine running. A success drops the memory file. |
+| `vmm.Snapshotter` | `Snapshot(ctx, inst)` | Saves the memory and the state of a running or paused microVM to the memory file of the machine. Then it stops the microVM with the exit reason `snapshot`. It returns the `MemoryState` of the new file. The memory file appears whole or not at all. A new file replaces the one before it, and the old file goes before the new one gets its name. An error that wraps `vmm.ErrSaved` comes with the `MemoryState` of a whole file. The microVM then ends later, with the exit reason `snapshot`. A new `Snapshot` or a `Stop` of that instance only ends the microVM, with the exit reason `snapshot`, and saves nothing again. On any other error, the microVM runs or stays paused as before, and no new memory file exists. |
+| `vmm.Restorer` | `Restore(ctx, Boot)` | Boots a machine from its memory file, with a new link key. It counts the load first. The first load of a saved state makes a copy of each disk. Each later load puts that copy back, so the memory and the disks match. `Restore` keeps the memory file, because a load succeeds without a read of the memory. A failure keeps every file, and leaves no microVM of the machine running. |
+| `vmm.Restorer` | `DropMemory(ctx, id)` | Drops the memory file of a machine and the disk copies of its saved state. The executor calls it after the guest agent of a wake linked ([the node executor](/reference/executor/index.html.md#saved-state)). A microVM that maps the file runs on. A machine without a memory file succeeds. |
+| `vmm.Restorer` | `DiscardMemory(ctx, id)` | Drops the saved state of a machine that does not run, for the call `DiscardMemory` ([the machine API](/reference/machine-api/index.html.md#discardmemory)). A running machine refuses. It first puts the disk copy of the saved state back over the disk. So the next boot starts from the disk of the save, not from a disk that a failed wake changed. This is the default of Q205. A machine without a memory file succeeds. |
+
+| Error | Go value | Meaning |
+| --- | --- | --- |
+| `vmm: the memory file of the save is whole` | `vmm.ErrSaved` | A save wrote a whole memory file, but its microVM did not end. The caller keeps the memory file, and never runs the microVM again. |
+
+A wake runs only after a load. So only the guest link proves that the memory file holds the guest, and the file stays until the guest agent of the wake linked.
 
 ## Mover
 
@@ -102,7 +123,7 @@ A driver that reads what its microVMs use on the host is a `vmm.UsageReader`. Th
 
 | Interface | Method | Description |
 | --- | --- | --- |
-| `vmm.UsageReader` | `Usage(id)` | The CPU time and the host RAM of the microVM of a running machine and of its VMM, as a `vmm.Usage`. It fails for a machine that does not run. A `vmm.Usage` also holds the CPU pressure, the OOM kills, and the bytes of disk IO, each valid only when its field `Has...` is true. |
+| `vmm.UsageReader` | `Usage(id)` | The CPU time and the host RAM of the microVM of a running machine and of its VMM, as a `vmm.Usage`. It fails for a machine that does not run. A `vmm.Usage` also holds the CPU pressure, the OOM kills, and the bytes of disk IO. When the field `Has...` of a value is false, that value is not valid. |
 | | `TotalUsage()` | The same values for every microVM of the node together. |
 | | `DiskUsage(id)` | The bytes of the blocks that the disk of a machine holds on the node. |
 
@@ -113,7 +134,14 @@ A driver that reads what its microVMs use on the host is a `vmm.UsageReader`. Th
 | Method | Description |
 | --- | --- |
 | `Crash(id)`, `Shutdown(id)` | Ends the running microVM of a machine as a crash, or as a shutdown from inside. |
-| `FailBoots(err)`, `FailWakes(err)` | Makes each boot or wake fail with `err`, until the next call with nil. |
+| `FailBoots(err)`, `FailWakes(err)` | Makes each boot or wake fail with `err`, until the next call with nil. A wake that fails still counts its load. |
+| `FailSnapshots(err)`, `FailDrops(err)` | Makes each save, or each drop of a memory file, fail with `err`, until the next call with nil. After a failed save, the microVM runs on, and an earlier memory file stays. `FailDrops` also fails each `DiscardMemory`. |
+| `SaveWithoutAnEnd(on)` | With true, each save keeps its memory file, as a save whose unit did not end in time. The save then fails with an error that wraps `vmm.ErrSaved`. The guest agent stops at once, and the microVM ends 200 ms later with the exit reason `snapshot`. With false, saves end their microVM again. |
+| `SaveThatEndsAtAStop(on)` | With true, each save keeps its memory file, and fails with an error that wraps `vmm.ErrSaved`. The microVM ends only at a `Stop` or at a new `Snapshot`, each with the exit reason `snapshot`. |
+| `FailStops(err)` | Makes each `Stop` fail with `err`, and the microVM run on, until the next call with nil. |
+| `HangWakes(hang)` | With true, each wake runs a microVM whose guest agent never links, as a memory file with damaged bytes does. With false, wakes link again. |
+| `LinkHungWake(id)` | Starts the guest agent of a running microVM whose wake `HangWakes` hung, as a guest that links late. |
+| `Loads(id)` | How many times the memory file of a machine loaded, also in wakes that failed. A new save and a drop start it at 0. |
 | `SetDelay(d)` | Makes each call wait `d` before it acts. A call whose context ends during the wait fails with the cause of the end. A stop then kills the microVM. |
 | `Ops()` | The calls so far, in order. |
 | `Overlaps()` | Each call that ran while another call of the same machine ran. An executor must never cause one. |
@@ -121,6 +149,10 @@ A driver that reads what its microVMs use on the host is a `vmm.UsageReader`. Th
 | `Boots(id)`, `Status(id)`, `Root(id)` | How many times a machine booted, what the driver holds of it, and the dir of the `/etc` of its guest. |
 | `DiskPath(id)` | The disk file of a machine, `<dir>/disks/<id>/disk.raw`: a sparse file of the disk size that the first boot makes, at least 1 MiB. The guest agent of the driver never writes to it, so a test of a cold move writes its data. `Delete` removes its dir. |
 | `Close()` | Ends every microVM, at the end of a test. |
+
+A `Stop` of a paused microVM records the call `resume_for_stop` in `Ops()`, because the Firecracker driver runs a paused guest for its shutdown. `Kill` records `kill`, with no resume.
+
+The test driver keeps a disk copy as the Firecracker driver does. The first load of a saved state copies the disk to `disk-copy.raw` beside it, and keeps the holes of the sparse file. A later load puts the copy back over the disk. `DiscardMemory` puts the copy back and drops the memory file. `DropMemory` and a new save remove the copy.
 
 The guest agent starts each command, exec or start command, in a process group of its own. So a Ctrl-C in the terminal does not reach the command. A killed test binary also skips `Close()`.
 

@@ -58,6 +58,8 @@ A machine uses its vCPUs and its RAM on its node in these cases:
 
 A stopped, hibernated, or failed machine whose target is `stopped` or `hibernated` uses nothing. A machine whose target is `deleted` uses its vCPUs and RAM until its microVM stops.
 
+A save for a hibernate raises the `MemoryMax` of the unit by the RAM of the machine until the unit ends ([the Firecracker driver](/reference/firecracker-driver/index.html.md#save)). Placement does not count that raise, because only the page cache of the save uses it, and the host reclaims that page cache. The owner decided this in Q202.
+
 A placement that runs in another transaction counts too. The try of step 5 locks the server row and reads the usage again in a new statement. A second placement on the same server waits for that lock. When it gets the lock, the first create committed, and the new statement sees its machine. So two creates at the same time never pass the room check of one server together.
 
 ## Score
@@ -114,6 +116,8 @@ The error wraps `placement.ErrNoCapacity`. The API maps it to `unavailable` ([th
 ## Start of a stopped machine
 
 The disk of a machine lives on its node, so a start never moves the machine. Only a cold move takes a machine and its disk to another node ([Cold move](/reference/cold-move/index.html.md)), and the next start checks the room on the new node. The start of a machine whose target is `stopped` checks the room on its own node with the same rules: the vCPUs with an overcommit of 2, and the RAM without overcommit ([the machine API](/reference/machine-api/index.html.md#startmachine)). It locks the server row with `FOR NO KEY UPDATE`, and counts every other machine of the node as in [What a node uses](#what-a-node-uses). It checks no other filter: a cordoned or unresponsive node keeps its machines. For a machine on a decommissioned node, a start skips the check.
+
+A wake checks the room on the node of the machine in the same way, with the same messages ([the machine API](/reference/machine-api/index.html.md#wakemachine)). A hibernated machine holds no vCPUs and no RAM. Its memory file lives on its node, so a wake never moves the machine either.
 
 | Case | Code | Message |
 | --- | --- | --- |

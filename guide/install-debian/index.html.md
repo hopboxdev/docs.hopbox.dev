@@ -173,6 +173,8 @@ sudo hopboxd upgrade --rollback
 
 Before a rollback to a release without standby, resume each machine in standby ([Standby and hibernate](/guide/standby-and-hibernate/index.html.md)). Such a release has no resume call.
 
+Before a rollback to a release without hibernate, wake each hibernated machine ([Standby and hibernate](/guide/standby-and-hibernate/index.html.md#wake-a-machine)). Such a release has no wake call, and it refuses a stop of a hibernated machine. So only a delete reaches such a machine there.
+
 A rollback cannot undo a schema migration of the newer release. Each migration names the oldest release that runs with it. If the newer release applied a migration that does not allow the previous release, the rollback stops before the switch, and the newer release keeps running. The error starts with `the control store has the schema migration`. Upgrade to a release that knows the migrations instead ([hopboxd](/reference/hopboxd/index.html.md#upgrade)).
 
 v0.1.0 runs only on a store whose migrations it knows. So a rollback from v0.2.0 to v0.1.0 stops with that error. A rollback from a later release, such as v0.3.0, to v0.2.0 works when the migrations of v0.3.0 allow v0.2.0. Then `readlink /opt/hopbox/current` prints `releases/v0.2.0`, and `readlink /opt/hopbox/previous` prints `releases/v0.3.0`. A second rollback goes forward again.

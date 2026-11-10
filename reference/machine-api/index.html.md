@@ -9,7 +9,7 @@ The service `hopbox.v1.MachineService` of the public API creates, reads, and cha
 | `CreateMachine` | Makes a machine and places it on a node. |
 | `GetMachine`, `ListMachines`, `WatchMachines` | Read the machines that the caller sees, once or as a stream of changes. |
 | `ListMachineSizes` | Reads the sizes that a machine can have. |
-| `StartMachine`, `StopMachine`, `PauseMachine`, `ResumeMachine`, `RebootMachine`, `RenameMachine`, `DeleteMachine` | Set the target state of a machine, then wait for it ([Lifecycle calls](#lifecycle-calls)). |
+| `StartMachine`, `StopMachine`, `PauseMachine`, `ResumeMachine`, `HibernateMachine`, `WakeMachine`, `DiscardMemory`, `RebootMachine`, `RenameMachine`, `DeleteMachine` | Set the target state of a machine, then wait for it ([Lifecycle calls](#lifecycle-calls)). |
 | `ShareMachine`, `UnshareMachine` | Open a private machine to the whole org, or make it private again. |
 | `UpdateMachine` | Changes the restart policy, the start command, or the auto-delete timeout. |
 | `SetMachineURLPort`, `SetMachineURLVisibility` | Change the port that the URL of a machine reaches, and who can open the URL. |
@@ -52,9 +52,9 @@ The creator of a machine is the account that made it, or the org key that made i
 | Call | The creator | A member, on a shared machine | A member, on a private machine of another | An org admin or owner, on a private machine of another |
 | --- | --- | --- | --- | --- |
 | `GetMachine`, and the machine in `ListMachines` and `WatchMachines` | yes | yes | no, `not_found` | yes |
-| `StopMachine`, `PauseMachine`, `DeleteMachine` | yes | yes | no, `not_found` | yes |
-| `StartMachine`, `ResumeMachine`, `RebootMachine`, `RenameMachine`, `UpdateMachine` | yes | yes | no, `not_found` | no, `permission_denied` |
-| `ShareMachine`, `UnshareMachine`, `SetMachineURLPort`, `SetMachineURLVisibility` | yes | no, `permission_denied` | no, `not_found` | no, `permission_denied` |
+| `StopMachine`, `PauseMachine`, `HibernateMachine`, `DeleteMachine` | yes | yes | no, `not_found` | yes |
+| `StartMachine`, `ResumeMachine`, `WakeMachine`, `RebootMachine`, `RenameMachine`, `UpdateMachine` | yes | yes | no, `not_found` | no, `permission_denied` |
+| `ShareMachine`, `UnshareMachine`, `SetMachineURLPort`, `SetMachineURLVisibility`, `DiscardMemory` | yes | no, `permission_denied` | no, `not_found` | no, `permission_denied` |
 | `Exec`, `Upload`, `Download`, `StreamMachineLogs`, and the WebSocket of exec (action `machine.exec`) | yes | yes | no, `not_found` | no, `permission_denied` |
 
 These rules hold for each caller that acts in the org of the machine:
@@ -96,6 +96,7 @@ The API listener resolves session cookies, CLI tokens, and API keys ([the API se
 | `ssh_port` | int32 | The SSH port of the machine on the edge servers, 10000 to 30000. It never changes. |
 | `reboot_pending` | bool | `true` while a boot that a request asked for did not run yet, and the target is `running`. A machine with another target has no pending boot. For example, a stop that comes before the boot of a start ends it. |
 | `skipped_env_vars` | int32 | The count of env vars and secrets that the guest agent of the running machine left out, because their names break its rules ([the env var API](/reference/vars-api/index.html.md#names-and-values)). 0 is the normal case. |
+| `memory_saved` | bool | `true` while the node of the machine keeps a memory file of it: after a hibernate, and after a wake that failed. The control store records the file ([Control store tables](/reference/control-store/index.html.md#machine_memory_states)). A wake that works and `DiscardMemory` end it. |
 | `last_activity_time` | `google.protobuf.Timestamp` | The last use of the machine, for the auto-delete timeout ([Auto-delete](#auto-delete)). |
 | `state_change_time` | `google.protobuf.Timestamp` | The time of the last change of the current state. |
 | `delete_request_time` | `google.protobuf.Timestamp` | The time of the delete request. Unset for a machine whose target is not `deleted`. |
@@ -153,7 +154,7 @@ The edge servers serve the URL of a machine ([the edge role](/reference/edge/ind
 
 ## Lifecycle calls
 
-`StartMachine`, `StopMachine`, `PauseMachine`, `ResumeMachine`, `RebootMachine`, `RenameMachine`, and `DeleteMachine` are the lifecycle calls. Each one takes these steps:
+`StartMachine`, `StopMachine`, `PauseMachine`, `ResumeMachine`, `HibernateMachine`, `WakeMachine`, `DiscardMemory`, `RebootMachine`, `RenameMachine`, and `DeleteMachine` are the lifecycle calls. Each one takes these steps:
 
 1. It checks the policy, then its input.
 2. It locks the rows in the order of [Control store tables](/reference/control-store/index.html.md#orgs): the key lock of the creator account, the org row, then the machine row. It checks the policy again under the locks, because the role or the machine can change in between.
@@ -185,6 +186,9 @@ The wait wakes on each change event of the machine ([Change events](#change-even
 | `StopMachine` | the current state is `stopped` |
 | `PauseMachine` | the current state is `standby` |
 | `ResumeMachine` | the current state is `running`, after the handshake of the guest agent on its new guest link |
+| `HibernateMachine` | the current state is `hibernated` |
+| `WakeMachine` | the current state is `running`, after the handshake of the guest agent of the wake |
+| `DiscardMemory` | the current state is `stopped`. The node drops the memory file before it reports `stopped` from `hibernated`, and before the next boot. |
 | `RebootMachine` | the current state is `running`, and the new boot runs: `reboot_pending` is `false` |
 | `RenameMachine` | the new boot runs, for a machine whose current and target state are both `running`. Any other rename has no wait, and returns `done` `true` at once. |
 | `DeleteMachine` | the current state is `deleted` |
@@ -400,6 +404,8 @@ A start is allowed for a machine whose target is `stopped` or `running`. A start
 
 A start of a machine whose current state is `failed` also asks for a new boot, as a reboot does. So the executor tries again, even with the target `running` already. For example, it retries a wake from the kept memory file ([Domain rules](/reference/domain-rules/index.html.md#executor-contract-after-a-failed-wake)). The call then waits for that new boot.
 
+A start of a machine with a memory file wakes it. So the start takes the node checks of [WakeMachine](#wakemachine): the node must name the feature `hibernate`, and its driver must have the capability `restore`. This is the default of Q204, which the owner decided on 2026-11-08.
+
 A start of a machine with the restart policy `never` whose current state and target are both `stopped` also asks for a new boot. After a shutdown from inside, the executor keeps such a machine down until a new request ([the node executor](/reference/executor/index.html.md#restart-policy)). The control role sends a spec with the state of the machine at the time of the send. So when a start comes soon after the shutdown, the executor can get the target `running` again, and never the target `stopped`. The new boot request tells the executor to boot the machine. `reboot_pending` is `true` until that boot runs. A second start finds the target `running`, and asks for no other boot.
 
 A start that changes the machine also counts as a use of the machine. It sets `last_activity_time` to now.
@@ -410,6 +416,7 @@ A start that changes the machine also counts as a use of the machine. It sets `l
 | A suspended org: `failed precondition: org suspended: an instance admin suspended the org, so it cannot start a machine` | `failed_precondition` |
 | The org is at a limit, for example `usage limit exceeded: the org would use 8 vCPUs, and its limit is 6` | `resource_exhausted` |
 | The node of the machine has no room: `no capacity: the node of the machine has too few free vCPUs to start it. Stop another machine, or retry later`, or the same with `too little free RAM` | `unavailable` |
+| A machine with a memory file, on a node without the feature or the capability, with the messages of `WakeMachine` | `failed_precondition` |
 
 ### StopMachine
 
@@ -426,7 +433,8 @@ The request `StopMachineRequest` names the machine. The response `StopMachineRes
 
 | Error | Code |
 | --- | --- |
-| The target is `hibernated`: `failed precondition: machine action not allowed: cannot stop a hibernated machine: wake it first` ([Domain rules](/reference/domain-rules/index.html.md#hibernated-machines-keep-their-memory-file)) | `failed_precondition` |
+| The target is `hibernated`: `failed precondition: machine action not allowed: cannot stop a hibernated machine: wake it first` ([Domain rules](/reference/domain-rules/index.html.md#hibernated-machines-keep-their-memory-file)). To stop it without a wake, its creator drops the memory file with [DiscardMemory](#discardmemory). | `failed_precondition` |
+| A wake is pending: the current state is `hibernated`, and the node keeps the memory file. `failed precondition: machine action not allowed: cannot stop a machine that is hibernated: wait for the end of its wake. After a failed wake, drop the file with DiscardMemory` ([Domain rules](/reference/domain-rules/index.html.md#hibernated-machines-keep-their-memory-file)). Q206 decided it. | `failed_precondition` |
 | The target is `deleted` | `failed_precondition` |
 
 ```sh
@@ -456,7 +464,7 @@ Puts a running machine in standby, and waits until it is there. The memory of th
 
 The request `PauseMachineRequest` names the machine. The response `PauseMachineResponse` has the fields `machine`, `duration`, and `done`. A pause is allowed in a suspended org.
 
-A pause closes the guest link of the machine. So an exec, a file copy, or a web terminal that runs ends with an error. The machine has no route while it is in standby, so its URL and its SSH port refuse a connection, as for a machine that does not run. Milestone T06 of phase 3 makes a connection resume the machine.
+A pause closes the guest link of the machine. So an exec, a file copy, or a web terminal that runs ends with an error. The machine has no route while it is in standby. So its URL and its SSH port refuse a connection, as for a machine that does not run. Milestone T06 of phase 3 makes a connection resume the machine.
 
 | Error | Code |
 | --- | --- |
@@ -490,6 +498,107 @@ The request `ResumeMachineRequest` names the machine. The response `ResumeMachin
 | The node of the machine lacks the feature or the capability, with the messages of `PauseMachine` | `failed_precondition` |
 
 A machine can lose its standby: a node reboot, a crash, or a kill of its unit ends its RAM. The target then follows its restart policy, `running` for `always` and `stopped` for `never` ([the node executor](/reference/executor/index.html.md#a-lost-standby)). So after a reboot of the node, a call of `ResumeMachine` finds another target and fails.
+
+### HibernateMachine
+
+Saves the memory of a running machine, or of a machine in standby, to a memory file on its node. Then it ends the microVM, and waits until the machine is hibernated. A hibernated machine frees its vCPUs and RAM, so no limit refuses a hibernate. It still counts in the machine count and the disk of its org ([Usage and limits](#usage-and-limits)).
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.v1.MachineService/HibernateMachine` |
+| Policy action | `machine.hibernate`: those who use the machine, and the org admins and owners, as for `StopMachine` |
+| Idempotent option | no. A second call finds the target `hibernated`, and changes nothing. |
+| Audit entry | action `machine.hibernate`, target kind `machine`, details `name` and `old_target` |
+
+The request `HibernateMachineRequest` names the machine. The response `HibernateMachineResponse` has the fields `machine`, `duration`, and `done`. A hibernate is allowed in a suspended org. The response has `memory_saved` `true` once the node reported the file.
+
+A hibernate closes the guest link of the machine first. So an exec, a file copy, or a web terminal that runs ends with an error. A hibernated machine has no route, so its URL and its SSH port refuse a connection. Milestone T06 of phase 3 makes a connection wake the machine. A save that fails keeps the machine as it was, and the node tries again ([the node executor](/reference/executor/index.html.md#hibernate)). The wait then ends after 60 s with `done` false.
+
+| Error | Code |
+| --- | --- |
+| The target is not `running`, `standby`, or `hibernated`, for example `failed precondition: machine action not allowed: cannot hibernate a machine whose target state is stopped` | `failed_precondition` |
+| The current state is not `running`, `standby`, or `hibernated`, for example `failed precondition: machine action not allowed: cannot hibernate a machine that is starting` | `failed_precondition` |
+| The machine has a move that runs, in `stopping` or `pulling`: `failed precondition: the machine <name> moves to another node. Hibernate it after the move` | `failed_precondition` |
+| The node of the machine runs an older release: `failed precondition: the node of the machine <name> runs hopboxd <version>, whose heartbeats name no feature hibernate. An instance admin must upgrade the node first` | `failed_precondition` |
+| The driver of the node cannot save: `failed precondition: the node of the machine <name> runs hopboxd <version>, whose VMM driver cannot snapshot` | `failed_precondition` |
+| A control process of an older release is live: `failed precondition: the control process <process> knows the migrations up to <n>, and only a hopboxd that knows migration 73 hibernates machines. Upgrade it first`. Such a process takes a report of `hibernated` from a node, and drops its memory state. | `failed_precondition` |
+
+The check of the control processes, the move check, and the node checks run only for a call that changes the target.
+
+```sh
+browser -d '{"name":"box1"}' $API/hopbox.v1.MachineService/HibernateMachine
+```
+
+### WakeMachine
+
+Loads a hibernated machine from its memory file, and waits until it runs. The guest goes on from where it was, so the boot ID stays, and the start command does not run again. The guest agent gets a new link key and a new guest link. The node drops the memory file once the guest agent linked ([the node executor](/reference/executor/index.html.md#the-end-of-a-wake)).
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.v1.MachineService/WakeMachine` |
+| Policy action | `machine.wake`: those who use the machine, as for `StartMachine` |
+| Idempotent option | no. A second call fails with `failed_precondition`, because the target is `running` then. |
+| Audit entry | action `machine.wake`, target kind `machine`, details `name` and `old_target` |
+
+The request `WakeMachineRequest` names the machine. The response `WakeMachineResponse` has the fields `machine`, `duration`, and `done`. A wake counts as a use for the auto-delete timeout. A hibernated machine holds no vCPUs and no RAM, so a wake takes the checks of a start: the usage limits of the org, and the room on the node of the machine ([StartMachine](#startmachine)). A wake needs the node of the machine, because its memory file lives there.
+
+A suspension of the org or of the creator cancels a pending wake. It sets the target back to `hibernated`, and the machine stays hibernated with its memory file ([Domain rules](/reference/domain-rules/index.html.md#org-suspension)). A wait for the wake then ends with `done` false. A wake that fails sets the current state `failed`, and the wait ends with `done` false. The machine keeps the target `running` and its memory file, and `memory_saved` stays `true`. The restart policy then decides: with `always`, the node tries the wake again after a backoff. With `never`, the machine stays `failed` until a start. A start of the failed machine tries the wake again ([StartMachine](#startmachine)). A stop keeps the file too. To boot from the disk instead, the creator calls [DiscardMemory](#discardmemory). [Standby and hibernate](/guide/standby-and-hibernate/index.html.md#a-failed-wake) shows what to do.
+
+| Error | Code |
+| --- | --- |
+| The target is not `hibernated`: `failed precondition: machine action not allowed: cannot wake a machine whose target state is running` | `failed_precondition` |
+| A suspended org: `failed precondition: org suspended: an instance admin suspended the org, so it cannot wake a machine` | `failed_precondition` |
+| A private machine whose creator an instance admin suspended: `failed precondition: an instance admin suspended the creator of the private machine <name>, so it does not wake` | `failed_precondition` |
+| The org is at a limit, with the message of `StartMachine` | `resource_exhausted` |
+| The node of the machine has no room, with the message of `StartMachine` | `unavailable` |
+| The node of the machine runs an older release: `failed precondition: the node of the machine <name> runs hopboxd <version>, whose heartbeats name no feature hibernate. An instance admin must upgrade the node first` | `failed_precondition` |
+| The driver of the node cannot load: `failed precondition: the node of the machine <name> runs hopboxd <version>, whose VMM driver cannot restore` | `failed_precondition` |
+| A control process of an older release is live: `failed precondition: the control process <process> knows the migrations up to <n>, and only a hopboxd that knows migration 73 hibernates machines. Upgrade it first`. Such a process takes a report of `hibernated` from a node, and drops its memory state. | `failed_precondition` |
+
+```sh
+browser -d '{"name":"box1"}' $API/hopbox.v1.MachineService/WakeMachine
+```
+
+### DiscardMemory
+
+Drops the memory file of a machine with no microVM, and sets its target to `stopped`. It waits until the machine is stopped. The programs of the machine and their data in RAM end. The node first puts the disk of the save back. So the next start boots from that disk, not from a disk that a failed wake changed. This is the default of Q205, which the owner decided on 2026-11-08. Use it for a machine whose wake fails, or to stop a hibernated machine without a wake. The owner decided on this call on 2026-11-06, in Q192.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.v1.MachineService/DiscardMemory` |
+| Policy action | `machine.discard_memory`: the creator of the machine only, as for `ShareMachine`. The call ends the state of a run of the machine for good. |
+| Idempotent option | no. A second call fails with `failed_precondition`, because the machine has no memory file then. |
+| Audit entry | action `machine.discard_memory`, target kind `machine`, details `name` and `old_target` |
+
+The request `DiscardMemoryRequest` names the machine. The response `DiscardMemoryResponse` has the fields `machine`, `duration`, and `done`.
+
+The call works only in these states, where no microVM of the machine runs or starts ([Domain rules](/reference/domain-rules/index.html.md#lifecycle-actions)):
+
+| Target | Current state | Case |
+| --- | --- | --- |
+| `hibernated` | `hibernated` | a hibernated machine |
+| `running` | `failed` | a wake that failed |
+| `stopped` | `failed` | a wake that failed, then a stop |
+| `stopped` | `stopped` | a wake that failed, then a stop that ended |
+
+In one transaction, the call adds 1 to the reboot generation of the machine, and names that generation in `discard_memory_generation` ([Control store tables](/reference/control-store/index.html.md#machines)). It ends the row of the memory file, so `memory_saved` turns `false` at once. The node drops the file that a boot below that generation saved, before any other step ([the node executor](/reference/executor/index.html.md#discardmemory)). So an old request never drops the file of a later hibernate. The node puts the disk copy of the saved state back over the disk before the drop ([the Firecracker driver](/reference/firecracker-driver/index.html.md#drop-of-the-memory-file)). The drop is an unlink, and the bytes can stay on the disk of the node until it reuses the blocks.
+
+For a machine that is `stopped` already, the wait ends at once with `done` `true`, before the node drops the file. The node drops it at its next step, and then reports `stopped` with the discard generation ([the node executor](/reference/executor/index.html.md#discardmemory)). Until that report, `MoveMachine` and a drain refuse the machine, because its disk can still be the one that a failed wake changed ([Cold move](/reference/cold-move/index.html.md)).
+
+| Error | Code |
+| --- | --- |
+| Another pair of target and current state, for example `failed precondition: machine action not allowed: cannot discard the memory of a machine that is running, with the target running: only a machine with no microVM drops its memory file` | `failed_precondition` |
+| The target is `deleted`: `failed precondition: machine action not allowed: cannot discard the memory of a machine that is being deleted` | `failed_precondition` |
+| A suspended org: `failed precondition: org suspended: an instance admin suspended the org, so it cannot discard the memory of a machine` | `failed_precondition` |
+| The node keeps no memory file of the machine: `failed precondition: the machine has no memory file` | `failed_precondition` |
+| The node of the machine runs an older release: `failed precondition: the node of the machine <name> runs hopboxd <version>, whose heartbeats name no feature hibernate. An instance admin must upgrade the node first` | `failed_precondition` |
+| The driver of the node cannot load: `failed precondition: the node of the machine <name> runs hopboxd <version>, whose VMM driver cannot restore`. The drop of the file needs the interface of the capability `restore`. | `failed_precondition` |
+| A caller that is not the creator ([Who can do what](#who-can-do-what)) | `permission_denied`. A member on a private machine of another gets `not_found`. |
+| A control process of an older release is live: `failed precondition: the control process <process> knows the migrations up to <n>, and only a hopboxd that knows migration 73 hibernates machines. Upgrade it first`. Such a process takes a report of `hibernated` from a node, and drops its memory state. | `failed_precondition` |
+
+```sh
+browser -d '{"name":"box1"}' $API/hopbox.v1.MachineService/DiscardMemory
+```
 
 ### RebootMachine
 
@@ -527,7 +636,11 @@ Gives a machine a new name. The old name stays reserved for the org for 7 days, 
 
 The response `RenameMachineResponse` has the fields `machine`, `duration`, and `done`. A rename to the name that the machine has already changes nothing, and returns `done` `true` at once. A rename is allowed in a suspended org.
 
-A machine in standby refuses a new name, because a rename reboots a running machine, and a machine in standby takes no reboot. The refusal covers each machine whose current state or target is `standby`, so also a pause or a resume in progress. A rename to the name that the machine has already stays a success, in each of these states. The owner decided this on 2026-11-07, in Q200.
+A machine in standby refuses a new name, because a rename reboots a running machine, and a machine in standby takes no reboot. The refusal covers each machine whose current state or target is `standby`, so also a pause or a resume in progress. The owner decided this on 2026-11-07, in Q200.
+
+A hibernated machine refuses a new name by the same rule, because a wake runs no reboot either. Without the rule, the guest keeps its old host name after the wake. The refusal covers each machine whose current state or target is `hibernated`, so also a hibernate or a wake in progress. This is the default of Q203, which the owner decided on 2026-11-08.
+
+A rename to the name that the machine has already stays a success, in each of these states.
 
 An org holds at most 100 names in reservation (`domain.MaxNameReservations`): the old names of renames and the names of deleted machines, for 7 days each. A rename while the org holds 100 fails, so renames cannot hold back names from other orgs without end. A delete always reserves its name, also beyond 100.
 
@@ -540,6 +653,7 @@ Two renames that swap the names of two machines at the same time lock both name 
 | The org holds 100 reserved names: `usage limit exceeded: the org holds 100 reserved machine names, the most that it can hold. A name stays reserved for 7 days after its rename or delete` | `resource_exhausted` |
 | The target is `deleted` | `failed_precondition` |
 | The current state or the target is `standby`: `failed precondition: machine action not allowed: cannot rename a machine in standby: resume it first` | `failed_precondition` |
+| The current state or the target is `hibernated`: `failed precondition: machine action not allowed: cannot rename a hibernated machine: wake it first` | `failed_precondition` |
 
 ### DeleteMachine
 
@@ -554,9 +668,9 @@ Sets the target of a machine to `deleted`, and waits until its executor deleted 
 
 The request `DeleteMachineRequest` names the machine. The response `DeleteMachineResponse` has the fields `machine`, `duration`, and `done`. The machine has `delete_request_time`.
 
-A delete is allowed from any target but `deleted`. It is the only action that drops the memory file of a hibernated machine ([Domain rules](/reference/domain-rules/index.html.md#hibernated-machines-keep-their-memory-file)), until milestone T03 of phase 3 adds `DiscardMemory` (Q192). The leader drops the row of the machine 7 days after the delete request, once its executor deleted it ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)).
+A delete is allowed from any target but `deleted`. A delete and [DiscardMemory](#discardmemory) are the only calls that drop the memory file of a hibernated machine ([Domain rules](/reference/domain-rules/index.html.md#hibernated-machines-keep-their-memory-file)). The leader drops the row of the machine 7 days after the delete request, once its executor deleted it ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)).
 
-Milestone T21 of phase 3 adds backups. A delete by a user then keeps the backups of the machine until their retention ends, with an undo for the same org, which milestones T21 and T22 build. The owner decided this on 2026-11-06, in Q189.
+Milestone T21 of phase 3 adds backups. A delete by a user then keeps the backups of the machine until the end of their retention. The same org gets an undo, which milestones T21 and T22 build. The owner decided this on 2026-11-06, in Q189.
 
 | Error | Code |
 | --- | --- |
@@ -937,9 +1051,9 @@ An instance admin can suspend an org ([the org API](/reference/org-api/index.htm
 
 | Call | In a suspended org |
 | --- | --- |
-| `CreateMachine`, `StartMachine`, `ResumeMachine`, `RebootMachine` | blocked, with `failed_precondition` and the message `failed precondition: org suspended: an instance admin suspended the org, so it cannot <action> a machine` |
-| `DeleteMachine` | blocked, because a suspension keeps the data of the org |
-| `StopMachine`, `PauseMachine`, `RenameMachine` | allowed |
+| `CreateMachine`, `StartMachine`, `ResumeMachine`, `WakeMachine`, `RebootMachine` | blocked, with `failed_precondition` and the message `failed precondition: org suspended: an instance admin suspended the org, so it cannot <action> a machine` |
+| `DeleteMachine`, `DiscardMemory` | blocked, because a suspension keeps the data of the org |
+| `StopMachine`, `PauseMachine`, `HibernateMachine`, `RenameMachine` | allowed |
 | `GetMachine`, `ListMachines`, `WatchMachines`, `ListMachineSizes`, `ShareMachine`, `UnshareMachine`, `UpdateMachine`, `SetMachineURLPort`, `SetMachineURLVisibility`, `StreamMachineLogs` | allowed |
 | `Exec`, `Upload`, `Download` | blocked, with `failed_precondition` and the message `failed precondition: org suspended: an instance admin suspended the org of the machine`. A suspension also ends the open ones ([How a stream ends](#how-a-stream-ends)). |
 
@@ -958,11 +1072,11 @@ A machine counts in the usage of its org ([the org API](/reference/org-api/index
 | Machines and disk | every machine whose target is not `deleted` |
 | vCPUs and RAM | the machines whose target is `running` or `standby` |
 
-`CreateMachine` and the start of a stopped machine check the limits under the lock of the org row. The other calls do not add to the usage, so they take only a shared lock of the org row ([Control store tables](/reference/control-store/index.html.md#orgs)). The limits that apply follow the tier of the org: the personal org of a limited account takes the limited defaults, and every other org the first defaults ([the org API](/reference/org-api/index.html.md#usage-limits)).
+`CreateMachine`, the start of a stopped machine, and `WakeMachine` check the limits under the lock of the org row. A hibernated machine holds no vCPUs and no RAM, so a hibernate needs no check. The other calls do not add to the usage, so they take only a shared lock of the org row ([Control store tables](/reference/control-store/index.html.md#orgs)). The limits that apply follow the tier of the org: the personal org of a limited account takes the limited defaults, and every other org the first defaults ([the org API](/reference/org-api/index.html.md#usage-limits)).
 
 ## Auto-delete
 
-A machine with an auto-delete timeout goes after that time without use. The leader checks every minute ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). The use is `last_activity_time`. Today these set it: the create, each start that changes the machine, and each update with a new auto-delete timeout. The access calls set it too: each `Exec`, `Upload`, `Download`, and `StreamMachineLogs` at its start, and then every 30 s while it runs ([How a stream ends](#how-a-stream-ends)). SSH sessions set it, and so does inbound traffic: each heartbeat of the node names the machines with inbound traffic ([the node network](/reference/node-network/index.html.md#inbound-traffic-as-a-use)). An SSH session calls `Service.TouchMachine` of `internal/service` after its own policy check. `TouchMachine` writes at most once a minute for each machine, and does not change the `version` of the machine. So `last_activity_time` can be up to a minute older than the last use. The job deletes a machine only once `last_activity_time` is older than its timeout plus 1 minute (`service.TouchInterval`). So a machine that someone used within its timeout always stays. The job reads the idle machines in pages of 100, in the order of their last use. It goes on after a machine that fails, so a few bad machines never hold back the others. The job deletes the machine as `DeleteMachine` does, so its name and its SSH port stay reserved for 7 days. It skips the machines of a suspended org. Its audit entry has the actor `system`.
+A machine with an auto-delete timeout goes after that time without use. The leader checks every minute ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). The use is `last_activity_time`. Today these set it: the create, each start that changes the machine, each resume, each wake, and each update with a new auto-delete timeout. The access calls set it too: each `Exec`, `Upload`, `Download`, and `StreamMachineLogs` at its start, and then every 30 s while it runs ([How a stream ends](#how-a-stream-ends)). SSH sessions set it, and so does inbound traffic: each heartbeat of the node names the machines with inbound traffic ([the node network](/reference/node-network/index.html.md#inbound-traffic-as-a-use)). An SSH session calls `Service.TouchMachine` of `internal/service` after its own policy check. `TouchMachine` writes at most once a minute for each machine, and does not change the `version` of the machine. So `last_activity_time` can be up to a minute older than the last use. The job deletes a machine only once `last_activity_time` is older than its timeout plus 1 minute (`service.TouchInterval`). So a machine that someone used within its timeout always stays. The job reads the idle machines in pages of 100, in the order of their last use. It goes on after a machine that fails, so a few bad machines never hold back the others. The job deletes the machine as `DeleteMachine` does, so its name and its SSH port stay reserved for 7 days. It skips the machines of a suspended org. Its audit entry has the actor `system`.
 
 ## Audit entries
 
@@ -974,7 +1088,10 @@ The machine calls write these entries in the transaction of the change. Their or
 | `machine.start` | `StartMachine`, and the report of a lost standby of a machine with the restart policy `always`, with the actor `system` | `old_target`, `retry`, `boot_again`. For a lost standby, `old_target` and `reason`. |
 | `machine.pause` | `PauseMachine` | `old_target` |
 | `machine.resume` | `ResumeMachine` | `old_target` |
-| `machine.stop` | `StopMachine`, the report of a lost standby of a machine with the restart policy `never`, with the actor `system`, and `SuspendOrg` and `SuspendAccount` of the admin API for each machine that they stop | `old_target`, and `reason` for a stop of the admin API. The reason is `org suspended` in an org that the call suspends, and `account suspended` for a private machine of the account in another org. |
+| `machine.hibernate` | `HibernateMachine` | `old_target` |
+| `machine.wake` | `WakeMachine` | `old_target` |
+| `machine.discard_memory` | `DiscardMemory` | `old_target` |
+| `machine.stop` | `StopMachine`. Also the report of a lost standby of a machine with the restart policy `never`, with the actor `system`. Also `SuspendOrg` and `SuspendAccount` of the admin API for each machine that they stop. | `old_target`, and `reason` for a stop of the admin API. The reason is `org suspended` in an org that the call suspends, and `account suspended` for a private machine of the account in another org. |
 | `machine.reboot` | `RebootMachine` | none |
 | `machine.rename` | `RenameMachine` | `old_name`, `new_name` |
 | `machine.delete` | `DeleteMachine`, the calls of [What a member leaves behind](/reference/org-api/index.html.md#what-a-member-leaves-behind), and the auto-delete | `reason` for a delete by hopbox or by another call. It is `member left` (`LeaveOrg`, `RemoveOrgMember`, `DeleteAccount`), `org deleted` (`DeleteOrg`, `DeleteAccount` for the personal org), or `auto-delete`. The auto-delete adds `auto_delete_timeout` and `last_activity_at` (RFC 3339, UTC). |

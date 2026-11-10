@@ -8634,6 +8634,12 @@ components:
           title: skipped_env_vars
           format: int32
           description: skipped_env_vars is the count of env vars and secrets that the guest agent of the running machine left out, because their names break its rules.
+        memorySaved:
+          type: boolean
+          title: memory_saved
+          description: |-
+            memory_saved is true while the node keeps a memory file of the machine: after a hibernate, and after a
+             wake that failed. DiscardMemory drops it.
       title: Machine
       additionalProperties: false
       description: Machine is a machine as its users see it.

@@ -983,6 +983,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.v1.DeleteMachineResponse'
+  /hopbox.v1.MachineService/DiscardMemory:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: DiscardMemory
+      description: |-
+        DiscardMemory drops the memory file of a machine with no microVM, such as one whose wake fails, and
+         sets its target to stopped. The next start boots from its disk. Only its creator can call it.
+      operationId: hopbox.v1.MachineService.DiscardMemory
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.DiscardMemoryRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.DiscardMemoryResponse'
   /hopbox.v1.MachineService/Download: {}
   /hopbox.v1.MachineService/Exec: {}
   /hopbox.v1.MachineService/GetMachine:
@@ -1024,6 +1065,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.v1.GetMachineResponse'
+  /hopbox.v1.MachineService/HibernateMachine:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: HibernateMachine
+      description: |-
+        HibernateMachine saves the memory of a running machine or a machine in standby to a memory file on
+         its node, ends its microVM, and waits for it. A hibernated machine no longer counts its vCPUs and RAM.
+      operationId: hopbox.v1.MachineService.HibernateMachine
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.HibernateMachineRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.HibernateMachineResponse'
   /hopbox.v1.MachineService/ListMachineSizes:
     post:
       tags:
@@ -1189,8 +1271,9 @@ paths:
       summary: RenameMachine
       description: |-
         RenameMachine gives a machine a new name. The old name stays reserved for the org for 7 days.
-         A rename reboots a running machine, and then waits for the new boot. A machine in standby, or on
-         its way in or out of it, refuses a new name with failed_precondition: resume it first.
+         A rename reboots a running machine, and then waits for the new boot. A machine in standby or
+         hibernated, or on its way in or out of either, refuses a new name with failed_precondition:
+         resume or wake it first.
       operationId: hopbox.v1.MachineService.RenameMachine
       parameters:
         - name: Connect-Protocol-Version
@@ -1541,6 +1624,47 @@ paths:
               schema:
                 $ref: '#/components/schemas/hopbox.v1.UpdateMachineResponse'
   /hopbox.v1.MachineService/Upload: {}
+  /hopbox.v1.MachineService/WakeMachine:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: WakeMachine
+      description: |-
+        WakeMachine loads a hibernated machine from its memory file, and waits until it runs and its guest
+         agent connected. A wake takes the checks of a start: the limits of the org and the room of the node.
+      operationId: hopbox.v1.MachineService.WakeMachine
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.WakeMachineRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.WakeMachineResponse'
   /hopbox.v1.MachineService/WatchMachines: {}
   /hopbox.v1.OrgService/AcceptInvitation:
     post:
@@ -3082,6 +3206,61 @@ components:
         - DEVICE_AUTHORIZATION_STATE_SLOW_DOWN
         - DEVICE_AUTHORIZATION_STATE_APPROVED
       description: DeviceAuthorizationState is the answer of a poll.
+    hopbox.v1.DiscardMemoryRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      title: DiscardMemoryRequest
+      description: DiscardMemoryRequest names one machine.
+    hopbox.v1.DiscardMemoryResponse:
+      type: object
+      properties:
+        machine:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Machine'
+          title: machine
+          description: machine is the machine at the end of the wait.
+        duration:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: duration
+          description: duration is how long the call took, the wait included.
+        done:
+          type: boolean
+          title: done
+          description: |-
+            done is true when the machine is stopped at the end of the wait. The node drops the memory file before
+             it reports stopped from hibernated, and before the next boot.
+      title: DiscardMemoryResponse
+      additionalProperties: false
+      description: DiscardMemoryResponse holds the machine after the wait.
     hopbox.v1.DownloadInfo:
       type: object
       properties:
@@ -3607,6 +3786,59 @@ components:
       title: GetOrgUsageResponse
       additionalProperties: false
       description: GetOrgUsageResponse holds the usage and the limits.
+    hopbox.v1.HibernateMachineRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      title: HibernateMachineRequest
+      description: HibernateMachineRequest names one machine.
+    hopbox.v1.HibernateMachineResponse:
+      type: object
+      properties:
+        machine:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Machine'
+          title: machine
+          description: machine is the machine at the end of the wait.
+        duration:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: duration
+          description: duration is how long the call took, the wait included.
+        done:
+          type: boolean
+          title: done
+          description: done is true when the machine is hibernated at the end of the wait.
+      title: HibernateMachineResponse
+      additionalProperties: false
+      description: HibernateMachineResponse holds the machine after the wait.
     hopbox.v1.Invitation:
       type: object
       properties:
@@ -4071,6 +4303,12 @@ components:
           title: skipped_env_vars
           format: int32
           description: skipped_env_vars is the count of env vars and secrets that the guest agent of the running machine left out, because their names break its rules.
+        memorySaved:
+          type: boolean
+          title: memory_saved
+          description: |-
+            memory_saved is true while the node keeps a memory file of the machine: after a hibernate, and after a
+             wake that failed. DiscardMemory drops it.
       title: Machine
       additionalProperties: false
       description: Machine is a machine as its users see it.
@@ -5662,6 +5900,59 @@ components:
       title: VerifyMagicLinkResponse
       additionalProperties: false
       description: VerifyMagicLinkResponse names the account of the new session, or the account that the link added the email to.
+    hopbox.v1.WakeMachineRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      title: WakeMachineRequest
+      description: WakeMachineRequest names one machine.
+    hopbox.v1.WakeMachineResponse:
+      type: object
+      properties:
+        machine:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Machine'
+          title: machine
+          description: machine is the machine at the end of the wait.
+        duration:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: duration
+          description: duration is how long the call took, the wait included.
+        done:
+          type: boolean
+          title: done
+          description: done is true when the machine runs at the end of the wait.
+      title: WakeMachineResponse
+      additionalProperties: false
+      description: WakeMachineResponse holds the machine after the wait.
     hopbox.v1.WatchMachinesRequest:
       type: object
       properties:
