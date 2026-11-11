@@ -318,23 +318,25 @@ A command names a machine by its name, such as `box1`, or by its UUID. A text in
 `machine show` prints a machine in this form:
 
 ```text
-id             01a15e16-fe58-74f1-a778-d1350c527612
-name           box1
-org            01a14a7c-813f-7a1c-946b-db123b23c342
-state          running
-size           default (2 vCPU, 8 GiB RAM, 100 GB disk)
-image          default (sha256:0f3c...)
-shared         no
-url            https://box1.example.com (private, port 8000)
-ssh            ssh box1.hop (port 10001)
-restart        always
-start command  -
-auto-delete    off
-last used      2026-10-21T10:52:07Z
-created        2026-10-21T10:52:07Z
+id              01a15e16-fe58-74f1-a778-d1350c527612
+name            box1
+org             01a14a7c-813f-7a1c-946b-db123b23c342
+state           running
+size            default (2 vCPU, 8 GiB RAM, 100 GB disk)
+image           default (sha256:0f3c...)
+shared          no
+url             https://box1.example.com (private, port 8000)
+ssh             ssh box1.hop (port 10001)
+restart         always
+start command   -
+auto-standby    off
+auto-hibernate  after 4h0m0s without inbound traffic
+auto-delete     off
+last used       2026-10-21T10:52:07Z
+created         2026-10-21T10:52:07Z
 ```
 
-A machine on its way to another state shows both states, such as `stopped, on its way to running`. The line `reboot pending  yes` shows while a reboot waits. The line `skipped env vars  <count>` shows the env vars that the guest agent left out. The line `memory file  yes` shows while the node keeps a memory file of the machine, after a hibernate or a wake that failed. While the install has no domain, the URL is `-`. `auto-delete` shows the timeout, such as `after 168h0m0s without use`.
+A machine on its way to another state shows both states, such as `stopped, on its way to running`. The line `reboot pending  yes` shows while a reboot waits. The line `skipped env vars  <count>` shows the env vars that the guest agent left out. The line `memory file  yes` shows while the node keeps a memory file of the machine, after a hibernate or a wake that failed. While the install has no domain, the URL is `-`. `auto-delete` shows the timeout, such as `after 168h0m0s without use`. `auto-standby` and `auto-hibernate` show the idle timers, such as `after 4h0m0s without inbound traffic`, or `off` ([the machine API](/reference/machine-api/index.html.md#idle-timers)).
 
 The JSON object of a machine:
 
@@ -354,6 +356,8 @@ The JSON object of a machine:
 | `restart_policy` | string | `always` or `never`. |
 | `start_command` | string | The start command, or empty. |
 | `auto_delete_timeout_seconds` | number or null | The auto-delete timeout in seconds. `null` means off. |
+| `auto_standby_timeout_seconds` | number or null | The auto-standby timeout in seconds. `null` means off. |
+| `auto_hibernate_timeout_seconds` | number or null | The auto-hibernate timeout in seconds. `null` means off. |
 | `url` | string | `https://<name>.<domain>`, or empty while the install has no domain. |
 | `url_port` | number | The port in the machine that the URL reaches. |
 | `url_visibility` | string | `private` or `public`. |
@@ -362,14 +366,14 @@ The JSON object of a machine:
 | `reboot_pending` | bool | Whether a reboot waits. |
 | `skipped_env_vars` | number | The count of env vars that the guest agent left out. |
 | `memory_saved` | bool | Whether the node keeps a memory file of the machine ([the machine API](/reference/machine-api/index.html.md#machine)). |
-| `last_activity_time` | string or null | The last use, for the auto-delete timeout. |
+| `last_activity_time` | string or null | The last use, for the auto-delete timeout and the idle timers. |
 | `state_change_time` | string or null | The last change of the state. |
 | `delete_request_time` | string or null | The time of the delete request. |
 | `version` | number | The version of the machine. |
 | `create_time` | string | The creation time. |
 | `update_time` | string | The time of the last change by a request. |
 
-A timeout of the CLI, such as `--auto-delete`, has one of three forms: `off`, a Go duration such as `12h`, or days such as `7d`. The API takes 1 minute to 365 days.
+A timeout of the CLI, such as `--auto-delete` or `--auto-hibernate`, has one of three forms: `off`, a Go duration such as `12h`, or days such as `7d`. `0` is `off` too. The API takes 1 minute to 365 days.
 
 ## The prompt
 
@@ -522,7 +526,7 @@ At the prompt itself, the keys Ctrl-C and Ctrl-D are keys, not signals. A SIGINT
 | [`machine delete`](#machine-delete), `machine rm` | Deletes a machine and its disk. |
 | [`machine share`](#machine-share) | Opens a machine to the whole org. |
 | [`machine unshare`](#machine-unshare) | Makes a shared machine private to its creator again. |
-| [`machine update`](#machine-update) | Changes the restart policy, the start command, or the auto-delete timeout. |
+| [`machine update`](#machine-update) | Changes the restart policy, the start command, or a timeout: auto-delete, auto-standby, or auto-hibernate. |
 | [`machine sizes`](#machine-sizes) | Lists the sizes that a machine can have. |
 | [`url port`](#url-port) | Sets the port in the machine that its URL reaches. |
 | [`url public`](#url-public) | Lets anyone open the URL of a machine. |
@@ -577,6 +581,8 @@ Makes a machine in the org of the command with `CreateMachine` ([the machine API
 | `--restart=POLICY` | `always` | The restart policy: `always` or `never`. |
 | `--start-command=CMD` | none | A command that the machine runs as `user` after each boot. |
 | `--auto-delete=TIMEOUT` | `off` | Deletes the machine after this time without use. |
+| `--auto-standby=TIMEOUT` | `off` | Puts the running machine in standby after this time without inbound traffic. |
+| `--auto-hibernate=TIMEOUT` | `4h`, the default of the install | Hibernates the machine after this time without inbound traffic. Use `off` for a job that uses only the CPU and gets no inbound traffic ([the machine API](/reference/machine-api/index.html.md#idle-timers)). |
 | `--wait=DURATION` | `5m` | The longest wait until the machine runs. `0` prints the new machine at once, in the state `pending`. |
 
 JSON: the machine object of [Machines in commands](#machines-in-commands).
@@ -880,7 +886,7 @@ Makes a shared machine private to its creator again with `UnshareMachine`, and p
 ### machine update
 
 ```sh
-hopbox machine update MACHINE [--restart=POLICY] [--start-command=CMD] [--auto-delete=TIMEOUT]
+hopbox machine update MACHINE [--restart=POLICY] [--start-command=CMD] [--auto-delete=TIMEOUT] [--auto-standby=TIMEOUT] [--auto-hibernate=TIMEOUT]
 ```
 
 Changes the config of a machine with `UpdateMachine`, and prints the machine. A flag that you leave out keeps its value. Without a flag, the command fails with status 80.
@@ -890,6 +896,8 @@ Changes the config of a machine with `UpdateMachine`, and prints the machine. A 
 | `--restart=POLICY` | The new restart policy: `always` or `never`. |
 | `--start-command=CMD` | The new start command. An empty value removes it. The machine runs it from its next boot. |
 | `--auto-delete=TIMEOUT` | The new auto-delete timeout, or `off`. A new timeout counts from now. |
+| `--auto-standby=TIMEOUT` | The new auto-standby timeout, or `off`. A new timeout counts from now. |
+| `--auto-hibernate=TIMEOUT` | The new auto-hibernate timeout, or `off`. A new timeout counts from now. |
 
 ### machine sizes
 

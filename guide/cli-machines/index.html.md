@@ -31,20 +31,22 @@ hopbox new box1
 The CLI makes the machine, and waits until it runs. Then it prints the machine:
 
 ```text
-id             01a15e16-fe58-74f1-a778-d1350c527612
-name           box1
-org            01a14a7c-813f-7a1c-946b-db123b23c342
-state          running
-size           default (2 vCPU, 8 GiB RAM, 100 GB disk)
-image          default (sha256:0f3c...)
-shared         no
-url            https://box1.example.com (private, port 8000)
-ssh            ssh box1.hop (port 10001)
-restart        always
-start command  -
-auto-delete    off
-last used      2026-10-21T10:52:07Z
-created        2026-10-21T10:52:07Z
+id              01a15e16-fe58-74f1-a778-d1350c527612
+name            box1
+org             01a14a7c-813f-7a1c-946b-db123b23c342
+state           running
+size            default (2 vCPU, 8 GiB RAM, 100 GB disk)
+image           default (sha256:0f3c...)
+shared          no
+url             https://box1.example.com (private, port 8000)
+ssh             ssh box1.hop (port 10001)
+restart         always
+start command   -
+auto-standby    off
+auto-hibernate  after 4h0m0s without inbound traffic
+auto-delete     off
+last used       2026-10-21T10:52:07Z
+created         2026-10-21T10:52:07Z
 ```
 
 The first machine of an image on a node takes about 25 s, because the node unpacks the image first. To get the new machine at once, give `--wait 0`. If the machine does not run within 5 minutes, the command fails with status 6. The machine stays in both cases.

@@ -9064,6 +9064,21 @@ components:
           description: |-
             memory_saved is true while the node keeps a memory file of the machine: after a hibernate, and after a
              wake that failed. DiscardMemory drops it.
+        autoStandbyTimeout:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: auto_standby_timeout
+          description: |-
+            auto_standby_timeout is the time without inbound traffic after which a running machine goes to standby.
+             Unset is off. Like the auto-delete timeout, it counts from last_activity_time, 1 to 2 minutes late.
+        autoHibernateTimeout:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: auto_hibernate_timeout
+          description: |-
+            auto_hibernate_timeout is the time without inbound traffic after which the machine hibernates, from running
+             or from standby. Unset is off. Like the auto-delete timeout, it counts from last_activity_time, 1 to 2
+             minutes late.
       title: Machine
       additionalProperties: false
       description: Machine is a machine as its users see it.

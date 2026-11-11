@@ -279,6 +279,7 @@ These metrics show the leader lease, the jobs of the leader, and the state of ea
 | `hopbox_maintenance` | gauge | none | 1 while the install is in maintenance mode, and 0 otherwise. Only the leader serves it, also while maintenance mode pauses its jobs ([the API server](/reference/api/index.html.md#maintenance-mode)). |
 | `hopbox_leader_job_runs_total` | counter | `job`, `result` | The runs of each leader job that ended, by `result`: `ok`, or `failed` for a run that logged a failure. A run that the end of the jobs cut does not count. Each series starts at 0. |
 | `hopbox_leader_job_last_success_seconds` | gauge | `job` | The Unix time of the last run of the job that worked. The leader serves it while its jobs run, after the first run of the job that worked. At the end of the term, and while maintenance mode or the fence pauses the jobs, the series go away. |
+| `hopbox_machines_idled_total` | counter | `action` | The machines that the idle timers moved in the terms of this control process as the leader, by `action`: `standby` or `hibernate` ([the machine API](/reference/machine-api/index.html.md#idle-timers)). A machine counts when its change commits. Each series starts at 0. The sum over the control processes is the count of the install. |
 
 | `job` | Runs |
 | --- | --- |
@@ -286,6 +287,7 @@ These metrics show the leader lease, the jobs of the leader, and the state of ea
 | `pending_expiry` | With each sweep: the delete of the pending accounts older than 30 days ([Sessions, cookies, and sign-in links](/reference/sessions/index.html.md#pending-accounts)). |
 | `unresponsive` | Every 5 s, 20 s after the start of the jobs: the mark of silent servers as unresponsive. |
 | `auto_delete` | Every minute: the delete of the machines that nobody used for their auto-delete timeout. |
+| `idle_timers` | Every minute, after `auto_delete`: the idle timers, which put machines in standby and hibernate them ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). |
 | `moves` | Every 2 s: the steps of the cold moves ([Cold move](/reference/cold-move/index.html.md)). |
 | `drains`, `removals` | Every 5 s: the steps of the drains and of the removals of the node role. |
 | `sign_up_digest` | At the start of the jobs, then every minute: the digest of new pending accounts. |

@@ -460,20 +460,22 @@ hopbox new box1
 The CLI makes the machine, and waits until it runs. Then it prints the machine:
 
 ```text
-id             01a15e16-fe58-74f1-a778-d1350c527612
-name           box1
-org            01a14a7c-813f-7a1c-946b-db123b23c342
-state          running
-size           default (2 vCPU, 8 GiB RAM, 100 GB disk)
-image          default (sha256:0f3c...)
-shared         no
-url            https://box1.example.com (private, port 8000)
-ssh            ssh box1.hop (port 10001)
-restart        always
-start command  -
-auto-delete    off
-last used      2026-10-21T10:52:07Z
-created        2026-10-21T10:52:07Z
+id              01a15e16-fe58-74f1-a778-d1350c527612
+name            box1
+org             01a14a7c-813f-7a1c-946b-db123b23c342
+state           running
+size            default (2 vCPU, 8 GiB RAM, 100 GB disk)
+image           default (sha256:0f3c...)
+shared          no
+url             https://box1.example.com (private, port 8000)
+ssh             ssh box1.hop (port 10001)
+restart         always
+start command   -
+auto-standby    off
+auto-hibernate  after 4h0m0s without inbound traffic
+auto-delete     off
+last used       2026-10-21T10:52:07Z
+created         2026-10-21T10:52:07Z
 ```
 
 The first machine of an image on a node takes about 25 s, because the node unpacks the image first. To get the new machine at once, give `--wait 0`. If the machine does not run within 5 minutes, the command fails with status 6. The machine stays in both cases.
@@ -5606,17 +5608,17 @@ ssh -J root@edge1.example.org -L 3000:127.0.0.1:3000 root@control1.example.org
 
 Open `http://127.0.0.1:3000` in a browser, and sign in as `admin`. The folder `hopbox` holds the nine dashboards:
 
-| Dashboard                    | Content                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| hopbox D1 Overview           | Targets down, firing alerts, nodes, running machines, the host firewall, the time until the certificate ends, API errors, executor failures, the memory of `hopboxd`, the units of `hopboxd run` that do not run, and the releases of `hopboxd`                                                                                                                                                                                                               |
-| hopbox D2 Capacity           | vCPUs, RAM, and disk per node and for the install, allocated against capacity, and the CPU and RAM of each host                                                                                                                                                                                                                                                                                                                                               |
-| hopbox D3 Machines           | The top 10 machines by CPU share, RAM, disk, egress, inbound traffic, and new outbound connections. Each line shows the name of the machine and the ID of its org.                                                                                                                                                                                                                                                                                            |
-| hopbox D4 Accounts and abuse | New accounts, orgs, API keys, machines, and URL changes in the last hour, from the recording rules that the alerts read. Also accounts by state, rate limits, org limits, and audit actions.                                                                                                                                                                                                                                                                  |
-| hopbox D5 Control plane      | The leader, the fence, the API calls with their error share and p99, the leader jobs with their failures and the time since their last success, the pool and the errors of the control store, the change events, the bundled Postgres, the control channels, the enrollments, the emails, and ACME. The row “Postgres” needs [postgres_exporter](#add-postgres_exporter).                                                                                     |
-| hopbox D6 Nodes              | The executor actions and boot phases, the lease losses, the guest links, the image caches, the cold moves with their pulls, and the state and restarts of `hopboxd.service`                                                                                                                                                                                                                                                                                   |
-| hopbox D7 Edge, DNS, and SSH | The requests of the edge, the requests to machines and the upstream errors, the routes, the connections against their limit, the refusals, the certificate, the DNS queries and zone serials, and the SSH front door                                                                                                                                                                                                                                          |
-| hopbox D8 Network            | The egress exits and uplinks, the traffic and dropped packets of the machines, the repairs of the node network, the mesh peers with their handshakes and traffic, and the host firewall                                                                                                                                                                                                                                                                       |
-| hopbox D9 Memory             | The machines in standby and hibernated, the machines by state, the failed wakes and resumes, the count and the p99 of pauses, resumes, hibernates, and wakes, the p95 of the saves and loads of the VMM driver. Also the saved state of the nodes, in all and by node and kind, and the saves that the nodes refused, by reason. Also the wakes that the edges start for connections with the held connections, and the p95 of the wait of a held connection. |
+| Dashboard                    | Content                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| hopbox D1 Overview           | Targets down, firing alerts, nodes, running machines, the host firewall, the time until the certificate ends, API errors, executor failures, the memory of `hopboxd`, the units of `hopboxd run` that do not run, and the releases of `hopboxd`                                                                                                                                                                                                                                                                                               |
+| hopbox D2 Capacity           | vCPUs, RAM, and disk per node and for the install, allocated against capacity, and the CPU and RAM of each host                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| hopbox D3 Machines           | The top 10 machines by CPU share, RAM, disk, egress, inbound traffic, and new outbound connections. Each line shows the name of the machine and the ID of its org.                                                                                                                                                                                                                                                                                                                                                                            |
+| hopbox D4 Accounts and abuse | New accounts, orgs, API keys, machines, and URL changes in the last hour, from the recording rules that the alerts read. Also accounts by state, rate limits, org limits, and audit actions.                                                                                                                                                                                                                                                                                                                                                  |
+| hopbox D5 Control plane      | The leader, the fence, the API calls with their error share and p99, the leader jobs with their failures and the time since their last success, the pool and the errors of the control store, the change events, the bundled Postgres, the control channels, the enrollments, the emails, and ACME. The row “Postgres” needs [postgres_exporter](#add-postgres_exporter).                                                                                                                                                                     |
+| hopbox D6 Nodes              | The executor actions and boot phases, the lease losses, the guest links, the image caches, the cold moves with their pulls, and the state and restarts of `hopboxd.service`                                                                                                                                                                                                                                                                                                                                                                   |
+| hopbox D7 Edge, DNS, and SSH | The requests of the edge, the requests to machines and the upstream errors, the routes, the connections against their limit, the refusals, the certificate, the DNS queries and zone serials, and the SSH front door                                                                                                                                                                                                                                                                                                                          |
+| hopbox D8 Network            | The egress exits and uplinks, the traffic and dropped packets of the machines, the repairs of the node network, the mesh peers with their handshakes and traffic, and the host firewall                                                                                                                                                                                                                                                                                                                                                       |
+| hopbox D9 Memory             | The machines in standby and hibernated, the machines by state, the failed wakes and resumes, the count and the p99 of pauses, resumes, hibernates, and wakes, the p95 of the saves and loads of the VMM driver. Also the saved state of the nodes, in all and by node and kind, and the saves that the nodes refused, by reason. Also the wakes that the edges start for connections with the held connections, and the p95 of the wait of a held connection. Also the machines that the idle timers put in standby or hibernated, by action. |
 
 The same tunnel works for Prometheus on port 9090 and Alertmanager on port 9093.
 
@@ -7538,6 +7540,38 @@ A wake that fails can leave a guest that ran from the memory file. The next wake
 
 If the step fails in the guest, the machine runs anyway. The node logs `the guest agent failed the randomness step, so the next link asks for it again` at level error, and counts the failure in `hopbox_guest_randomness_steps_total{result="failed"}`. Each new guest link of the machine asks for the step again, also after a restart of `hopboxd`, until the guest agent reports it. A guest agent of v0.2.0-rc.1 or older cannot do this step, and the guest kernel then reseeds only through VMGenID.
 
+## Idle timers put a machine to sleep by themselves
+
+Each machine has two idle timers. After its auto-standby timeout without inbound traffic, a running machine goes to standby. After its auto-hibernate timeout without inbound traffic, a machine hibernates, from running or from standby. A new machine hibernates after 4 hours without inbound traffic, and has no auto-standby, as on boxd. A machine from before the upgrade to the release with the timers has both timers off.
+
+Inbound traffic is a request of the URL, an SSH session, an exec, a file copy, or a terminal. An open connection counts for as long as it is open. CPU use does not count. So a machine that only runs a job, such as a build or a crawler, with no inbound traffic, goes to sleep after its timeout, and the job stops with it.
+
+If a machine runs such a job, turn its auto-hibernate timer off. Run this command on your computer:
+
+```sh
+hopbox machine update box1 --auto-hibernate=off
+```
+
+To put a machine in standby after 30 minutes without inbound traffic, and hibernate it after 2 hours, run this command:
+
+```sh
+hopbox machine update box1 --auto-standby=30m --auto-hibernate=2h
+```
+
+A new timer counts from the time of the change. `hopbox machine show box1` shows both timers on the lines `auto-standby` and `auto-hibernate`. To set the timers at the create, give the same flags to `hopbox new`. In the console, the section Idle timers of a machine sets both, in minutes, with 0 for off.
+
+The timers act 1 to 2 minutes after their time, because hopbox records a use at most once a minute, and checks the timers once a minute. The audit log of the org holds an entry `machine.pause` or `machine.hibernate` with the actor `system` and the reason `auto-standby` or `auto-hibernate`. A connection brings the machine back, as after a pause or a hibernate by hand ([A connection brings the machine back](#a-connection-brings-the-machine-back)).
+
+A timer does not act in these cases:
+
+* The org is suspended.
+* The machine moves to another node.
+* The node of the machine cannot pause or save. On a node that can pause but not save, only the auto-standby timer acts. The auto-hibernate timer does nothing there.
+* A control process of the install runs a release before hibernate. Only the auto-standby timer acts until that process is upgraded.
+* An edge server of the install runs an older release. The timers wait until each edge server is upgraded.
+
+A hibernate of a timer takes the checks of `hopbox machine hibernate` ([When a hibernate fails](#when-a-hibernate-fails)). If the daily budget of saves or the free disk of the node refuses it, the machine runs on, and the timer counts again from the refusal.
+
 ## A connection brings the machine back
 
 You do not need to resume or wake a machine by hand. A connection that passes its check of access brings the machine back:
@@ -7569,6 +7603,10 @@ A wake on a connection takes the checks of `hopbox machine wake`: the limits of 
 The URL and the SSH session wait for at most 30 s. A machine that does not run by then gets the same answers, with the reason `it did not wake within 30s. Retry`.
 
 An open connection keeps its machine awake: an SSH session, a terminal, an exec, or an open request of the URL, such as a WebSocket. A session that you forget holds the RAM of the machine on its node. Close the sessions that you do not use.
+
+If an idle timer puts a machine in standby or hibernates it while it has an open connection at an edge server, hopbox brings it back within about 5 s. This covers a timer that acts in the seconds between a new connection and the first report of that connection. The audit entry `machine.resume` or `machine.wake` then has the actor `system` and the reason `open_connection`.
+
+A pause or a hibernate by you, by an API key, or by an admin wins over an open connection. The machine stays in standby or hibernated, and the open session waits. This is also true when an idle timer put the machine to sleep first: a pause of a machine in standby, or a hibernate of a hibernated machine, keeps it asleep. A new connection still resumes or wakes the machine, as after any pause.
 
 ## A failed wake
 

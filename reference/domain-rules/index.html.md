@@ -238,6 +238,15 @@ The auto-delete timeout is the time without use after which hopbox deletes a mac
 | 0, or 1 minute to 365 days | `invalid machine config: the auto-delete timeout <d> is not 0 and not 1m0s to 8760h0m0s` |
 | A whole number of seconds | `invalid machine config: the auto-delete timeout <d> is not a whole number of seconds` |
 
+## Idle timers
+
+The auto-standby timeout is the time without inbound traffic after which a running machine goes to standby. The auto-hibernate timeout is the time without inbound traffic after which a machine hibernates. Each one has the rules of the auto-delete timeout, and 0 turns it off. A new machine gets auto-standby off and auto-hibernate after 4 hours (`DefaultAutoHibernateTimeout`). `ValidateAutoStandbyTimeout` and `ValidateAutoHibernateTimeout` check these rules, with the name `auto-standby` or `auto-hibernate` in the error:
+
+| Rule | Error |
+| --- | --- |
+| 0, or 1 minute to 365 days | `invalid machine config: the auto-hibernate timeout <d> is not 0 and not 1m0s to 8760h0m0s` |
+| A whole number of seconds | `invalid machine config: the auto-hibernate timeout <d> is not a whole number of seconds` |
+
 ## Install domain
 
 The install domain is the domain of the whole install, such as `example.com`. An instance admin sets it through the admin API ([the admin API](/reference/admin-api/index.html.md#installconfigservice)). `ValidateInstallDomain` checks these rules:

@@ -11,7 +11,7 @@ The service `hopbox.v1.MachineService` of the public API creates, reads, and cha
 | `ListMachineSizes` | Reads the sizes that a machine can have. |
 | `StartMachine`, `StopMachine`, `PauseMachine`, `ResumeMachine`, `HibernateMachine`, `WakeMachine`, `DiscardMemory`, `RebootMachine`, `RenameMachine`, `DeleteMachine` | Set the target state of a machine, then wait for it ([Lifecycle calls](#lifecycle-calls)). |
 | `ShareMachine`, `UnshareMachine` | Open a private machine to the whole org, or make it private again. |
-| `UpdateMachine` | Changes the restart policy, the start command, or the auto-delete timeout. |
+| `UpdateMachine` | Changes the restart policy, the start command, or a timeout: auto-delete, auto-standby, or auto-hibernate. |
 | `SetMachineURLPort`, `SetMachineURLVisibility` | Change the port that the URL of a machine reaches, and who can open the URL. |
 | `Exec`, `Upload`, `Download`, `StreamMachineLogs` | Run a command in a machine, copy files in and out, and read its log ([Access calls](#access-calls)). The WebSocket `/api/ws/exec` carries the same exec for the console. |
 
@@ -97,7 +97,9 @@ The API listener resolves session cookies, CLI tokens, and API keys ([the API se
 | `reboot_pending` | bool | `true` while a boot that a request asked for did not run yet, and the target is `running`. A machine with another target has no pending boot. For example, a stop that comes before the boot of a start ends it. |
 | `skipped_env_vars` | int32 | The count of env vars and secrets that the guest agent of the running machine left out, because their names break its rules ([the env var API](/reference/vars-api/index.html.md#names-and-values)). 0 is the normal case. |
 | `memory_saved` | bool | `true` while the node of the machine keeps a memory file of it: after a hibernate, and after a wake that failed. The control store records the file ([Control store tables](/reference/control-store/index.html.md#machine_memory_states)). A wake that works and `DiscardMemory` end it. |
-| `last_activity_time` | `google.protobuf.Timestamp` | The last use of the machine, for the auto-delete timeout ([Auto-delete](#auto-delete)). |
+| `auto_standby_timeout` | `google.protobuf.Duration` | The time without inbound traffic after which a running machine goes to standby. Unset means off ([Idle timers](#idle-timers)). |
+| `auto_hibernate_timeout` | `google.protobuf.Duration` | The time without inbound traffic after which the machine hibernates, from running or from standby. Unset means off ([Idle timers](#idle-timers)). |
+| `last_activity_time` | `google.protobuf.Timestamp` | The last use of the machine, for the auto-delete timeout and the idle timers ([Auto-delete](#auto-delete)). |
 | `state_change_time` | `google.protobuf.Timestamp` | The time of the last change of the current state. |
 | `delete_request_time` | `google.protobuf.Timestamp` | The time of the delete request. Unset for a machine whose target is not `deleted`. |
 | `version` | int64 | The version of the machine. It starts at 1 and grows by 1 with each change of the machine. A request makes such a change. A report of its executor makes one too. So does a new count of skipped env values. So does a change of an env var or a secret that reaches the machine. |
@@ -227,8 +229,10 @@ The request `CreateMachineRequest` has these fields:
 | `restart_policy` | `RestartPolicy` | `RESTART_POLICY_ALWAYS` | The restart policy. |
 | `start_command` | string | empty | A command that the guest agent runs after each boot ([Domain rules](/reference/domain-rules/index.html.md#start-command)). |
 | `auto_delete_timeout` | `google.protobuf.Duration` | unset, off | Deletes the machine after this time without use: 0 for off, or 1 minute to 365 days in whole seconds ([Domain rules](/reference/domain-rules/index.html.md#auto-delete-timeout)). The delete comes 1 to 2 minutes after this time from the last recorded use. A use is recorded at most once a minute, and the job runs once a minute ([Auto-delete](#auto-delete)). |
+| `auto_standby_timeout` | `google.protobuf.Duration` | unset, off | Puts the running machine in standby after this time without inbound traffic: 0 for off, or 1 minute to 365 days in whole seconds ([Idle timers](#idle-timers)). |
+| `auto_hibernate_timeout` | `google.protobuf.Duration` | unset, 4 hours | Hibernates the machine after this time without inbound traffic: 0 for off, or 1 minute to 365 days in whole seconds ([Idle timers](#idle-timers)). A zero duration turns it off. |
 
-The response `CreateMachineResponse` has the field `machine`, the new `Machine`. A new machine has the URL port 8000, the visibility `private`, and `shared` `false`. A machine that an org key makes has `shared` `true`.
+The response `CreateMachineResponse` has the field `machine`, the new `Machine`. A new machine has the URL port 8000, the visibility `private`, `shared` `false`, no auto-standby, and an auto-hibernate timeout of 4 hours. A machine that an org key makes has `shared` `true`.
 
 The call takes these steps in one transaction:
 
@@ -247,7 +251,7 @@ A create that fails at any step leaves nothing behind: no machine, no name, no p
 
 | Error | Code |
 | --- | --- |
-| A bad name, start command, or auto-delete timeout, for example `invalid argument: invalid machine config: the start command holds a NUL byte` | `invalid_argument` |
+| A bad name, start command, or timeout, for example `invalid argument: invalid machine config: the start command holds a NUL byte` | `invalid_argument` |
 | A name that looks like a credential, such as `xoxb-` with 10 more digits: `invalid argument: invalid name: the machine name looks like a credential. A machine name is public: it is in the machine URL, in DNS, and in the audit log. Pick another name` ([Domain rules](/reference/domain-rules/index.html.md#machine-names)) | `invalid_argument` |
 | An unknown size: `invalid argument: the install has no size "<size>"` | `invalid_argument` |
 | A retired size: `invalid argument: the size "<size>" is retired and takes no new machine. Pick another size` | `invalid_argument` |
@@ -992,14 +996,14 @@ A machine that an org key made has no creator account, so no account can own it 
 
 ### UpdateMachine
 
-Changes the restart policy, the start command, or the auto-delete timeout of a machine. A field that the request leaves out keeps its value. The executor applies a new restart policy at once, and a new start command at the next boot ([the node executor](/reference/executor/index.html.md#the-guest-link)).
+Changes the restart policy, the start command, or a timeout of a machine: auto-delete, auto-standby, or auto-hibernate. A field that the request leaves out keeps its value. The executor applies a new restart policy at once, and a new start command at the next boot ([the node executor](/reference/executor/index.html.md#the-guest-link)).
 
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.v1.MachineService/UpdateMachine` |
 | Policy action | `machine.update`: those who use the machine |
 | Idempotent option | no. A second call with the same request changes nothing. |
-| Audit entry | action `machine.update`, target kind `machine`, details `name` and one detail for each field of the request. `restart_policy` is the new policy. `start_command_changed` is `true` or `false`. `auto_delete_timeout` is the new timeout as Go writes a duration, for example `1h0m0s`, or `0s` for off. The entry never holds the start command. |
+| Audit entry | action `machine.update`, target kind `machine`, details `name` and one detail for each field of the request. `restart_policy` is the new policy. `start_command_changed` is `true` or `false`. `auto_delete_timeout`, `auto_standby_timeout`, and `auto_hibernate_timeout` are the new timeouts as Go writes a duration, for example `1h0m0s`, or `0s` for off. The entry never holds the start command. |
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -1007,9 +1011,11 @@ Changes the restart policy, the start command, or the auto-delete timeout of a m
 | `restart_policy` | `RestartPolicy` | The new restart policy. `RESTART_POLICY_UNSPECIFIED` keeps it. |
 | `start_command` | optional string | The new start command. Leave it out to keep it. An empty string removes it. |
 | `auto_delete_timeout` | `google.protobuf.Duration` | The new auto-delete timeout. Leave it out to keep it. A zero duration turns it off. |
+| `auto_standby_timeout` | `google.protobuf.Duration` | The new auto-standby timeout. Leave it out to keep it. A zero duration turns it off. |
+| `auto_hibernate_timeout` | `google.protobuf.Duration` | The new auto-hibernate timeout. Leave it out to keep it. A zero duration turns it off. |
 | `expected_version` | optional int64 | The `version` of the machine that the caller read. If the machine has another version now, the call fails with `aborted` and changes nothing. The version also grows without a request, for example at each report of the executor or after an env change. So a call can fail with `aborted` although no other request came in between. Read the machine again and retry. |
 
-The response `UpdateMachineResponse` has the field `machine`. A new auto-delete timeout counts from the time of the update: the call sets `last_activity_time` to now. So a new timeout never deletes a machine at once for its idle time before the update. An update is allowed in a suspended org.
+The response `UpdateMachineResponse` has the field `machine`. A new timeout counts from the time of the update: the call sets `last_activity_time` to now. So a new timeout never deletes a machine, or puts it to sleep, at once for its idle time before the update. The owner decided this on 2026-11-11, in Q232. All three timeouts count from `last_activity_time`, so a new idle timer also starts the count of the auto-delete timeout again. An update is allowed in a suspended org.
 
 | Error | Code |
 | --- | --- |
@@ -1081,7 +1087,7 @@ The machine URLs of a suspended org are blocked too: the edge answers `403`, and
 
 The suspend of an account suspends its personal org and each org that it owns alone ([the admin API](/reference/admin-api/index.html.md#suspendaccount)). In each other org, it sets the target `stopped` on the private machines of the account, and leaves a hibernated one hibernated. Such an org is not suspended, so the rules of the table do not apply there. A private machine stays stopped until its creator starts it again.
 
-Instance admins can stop and delete any machine of a suspended org through the admin API ([the admin API](/reference/admin-api/index.html.md#machineservice)). The auto-delete job of the leader skips the machines of a suspended org.
+Instance admins can stop and delete any machine of a suspended org through the admin API ([the admin API](/reference/admin-api/index.html.md#machineservice)). The auto-delete job and the idle timers of the leader skip the machines of a suspended org.
 
 ## Usage and limits
 
@@ -1098,21 +1104,43 @@ A machine counts in the usage of its org ([the org API](/reference/org-api/index
 
 ## Auto-delete
 
-A machine with an auto-delete timeout goes after that time without use. The leader checks every minute ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). The use is `last_activity_time`. Today these set it: the create, each start that changes the machine, each resume, each wake, and each update with a new auto-delete timeout. The access calls set it too: each `Exec`, `Upload`, `Download`, and `StreamMachineLogs` at its start, and then every 30 s while it runs ([How a stream ends](#how-a-stream-ends)). SSH sessions set it, and so does inbound traffic: each heartbeat of the node names the machines with inbound traffic ([the node network](/reference/node-network/index.html.md#inbound-traffic-as-a-use)). Each heartbeat of an edge server names the machines with connections that it holds or keeps open after their check of access, and those count too ([the edge role](/reference/edge/index.html.md#wake-on-connect)). An SSH session calls `Service.TouchMachine` of `internal/service` after its own policy check. `TouchMachine` writes at most once a minute for each machine, and does not change the `version` of the machine. So `last_activity_time` can be up to a minute older than the last use. The job deletes a machine only once `last_activity_time` is older than its timeout plus 1 minute (`service.TouchInterval`). So a machine that someone used within its timeout always stays. The job reads the idle machines in pages of 100, in the order of their last use. It goes on after a machine that fails, so a few bad machines never hold back the others. The job deletes the machine as `DeleteMachine` does, so its name and its SSH port stay reserved for 7 days. It skips the machines of a suspended org. Its audit entry has the actor `system`.
+A machine with an auto-delete timeout goes after that time without use. The leader checks every minute ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). The use is `last_activity_time`. Today these set it: the create, each start that changes the machine, each resume, each wake, and each update with a new timeout. The access calls set it too: each `Exec`, `Upload`, `Download`, and `StreamMachineLogs` at its start, and then every 30 s while it runs ([How a stream ends](#how-a-stream-ends)). SSH sessions set it, and so does inbound traffic: each heartbeat of the node names the machines with inbound traffic ([the node network](/reference/node-network/index.html.md#inbound-traffic-as-a-use)). Each heartbeat of an edge server names the machines with connections that it holds or keeps open after their check of access, and those count too ([the edge role](/reference/edge/index.html.md#wake-on-connect)). An SSH session calls `Service.TouchMachine` of `internal/service` after its own policy check. `TouchMachine` writes at most once a minute for each machine, and does not change the `version` of the machine. So `last_activity_time` can be up to a minute older than the last use. The job deletes a machine only once `last_activity_time` is older than its timeout plus 1 minute (`service.TouchInterval`). So a machine that someone used within its timeout always stays. The job reads the idle machines in pages of 100, in the order of their last use. It goes on after a machine that fails, so a few bad machines never hold back the others. The job deletes the machine as `DeleteMachine` does, so its name and its SSH port stay reserved for 7 days. It skips the machines of a suspended org. Its audit entry has the actor `system`.
+
+## Idle timers
+
+A machine has two idle timers, as on boxd. The auto-standby timeout puts a running machine in standby. The auto-hibernate timeout hibernates a machine, from running or from standby. Each one counts from `last_activity_time`, as the auto-delete timeout does ([Auto-delete](#auto-delete)). An idle machine gets no inbound traffic. CPU use does not count.
+
+| Timeout | Default for a new machine | Values |
+| --- | --- | --- |
+| `auto_standby_timeout` | off | 0 for off, or 1 minute to 365 days in whole seconds |
+| `auto_hibernate_timeout` | 4 hours | 0 for off, or 1 minute to 365 days in whole seconds |
+
+A machine that existed before the upgrade to the release with the timers has both timeouts off, so the upgrade puts no machine to sleep. The owner decided this in Q182. Its owner turns them on with `UpdateMachine`. A machine with a job that uses only the CPU, and gets no inbound traffic, needs the auto-hibernate timeout 0.
+
+A leader job applies the timers every minute ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). A running machine whose `last_activity_time` is older than its auto-standby timeout plus 1 minute goes to standby, as with `PauseMachine`. A machine, running or in standby, whose `last_activity_time` is older than its auto-hibernate timeout plus 1 minute hibernates, as with `HibernateMachine`. A machine past both timeouts hibernates. So the step comes 1 to 2 minutes after the timeout, as the auto-delete does. Each step takes the checks of its call: the node must name the feature and have the capability, and a hibernate checks the daily budget of saves. On a node that can pause but not save, only the auto-standby timer acts. The auto-hibernate timer does nothing there. While a live control process runs a release before hibernate, the job hibernates no machine, and only the auto-standby timer acts. The job checks this once per run, so such a refusal holds back no machine that can go to standby. A connection brings the machine back, as after a call ([the edge role](/reference/edge/index.html.md#wake-on-connect)). A heartbeat of an edge that names a machine with an open connection also sets its target back to `running`, with the checks of `WakeForConnection`, if an idle timer put it in standby or hibernated ([the edge role](/reference/edge/index.html.md#wake-on-connect)). A pause or a hibernate by a user, an API key, or another actor stays: a sleep by hand wins over an open connection. That holds also for a pause of a machine that the auto-standby timer put in standby, and for a hibernate of a machine that the auto-hibernate timer hibernated. Such a call changes no target and writes no audit entry, but the heartbeats then leave the machine asleep. The owner decided this on 2026-11-11, in Q233.
+
+The job skips these machines:
+
+- A machine of a suspended org.
+- A machine with a move, or with a memory file. In this release, the control role ends the memory file row at each report of `running`, and a machine goes to standby only from `running`. So today a machine that runs or is in standby has no such row, and the check holds only a machine whose row is out of step with its state. A move of a standby machine with its RAM, planned for T23 of the phase 3 plan, can change this.
+- A machine on its way to another state, and a machine whose target is not `running` or `standby`.
+- Each machine, while a server with the role `edge` names no feature `wake-on-connect`. The heartbeats of such an edge name no open connection, so an open session there keeps no machine awake. The owner decided this on 2026-11-11, in Q231.
+
+An open connection at an edge, an SSH session, an exec, and a file copy each count as a use, so they keep the machine awake ([Auto-delete](#auto-delete)). A save that the free-space floor of the node or the daily budget of saves refuses leaves the machine as it was. Its auto-hibernate timeout then counts again from the refusal, so the job tries such a machine once per timeout, not every minute. The owner decided this on 2026-11-11, in Q230. A refusal of the daily budget also gives the instance admins a notice ([HibernateMachine](#hibernatemachine)). Each step writes the audit entry of its call with the actor `system` ([Audit entries](#audit-entries)).
 
 ## Audit entries
 
-The machine calls write these entries in the transaction of the change. Their org is the org of the machine, so its owners and admins read them with `ListAuditEntries` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#listauditentries)). The target kind is `machine`, and the target ID is the machine ID. Each entry has the detail `name`: the name of the machine before the change. The actor is the caller. The auto-delete, a lost standby, and a refused save have the actor `system`.
+The machine calls write these entries in the transaction of the change. Their org is the org of the machine, so its owners and admins read them with `ListAuditEntries` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#listauditentries)). The target kind is `machine`, and the target ID is the machine ID. Each entry has the detail `name`: the name of the machine before the change. The actor is the caller. The auto-delete, the idle timers, a lost standby, and a refused save have the actor `system`.
 
 | Action | Written by | Details besides `name` |
 | --- | --- | --- |
 | `machine.create` | `CreateMachine` | `size`, `image` (the digest), `shared` |
 | `machine.start` | `StartMachine`, and the report of a lost standby of a machine with the restart policy `always`, with the actor `system` | `old_target`, `retry`, `boot_again`. For a lost standby, `old_target` and `reason`. |
-| `machine.pause` | `PauseMachine` | `old_target` |
+| `machine.pause` | `PauseMachine`, and the auto-standby timeout with the actor `system` ([Idle timers](#idle-timers)) | `old_target`. For the timer, also `reason` (`auto-standby`), `timeout`, and `last_activity_at` (RFC 3339, UTC). |
 | `machine.save_refuse` | A save that the node refused, with the actor `system` ([HibernateMachine](#hibernatemachine)) | `old_target`, `target`, `refused`, `reason` |
-| `machine.resume` | `ResumeMachine`, also for an access call. A connection at an edge writes it with the actor `system` ([the edge role](/reference/edge/index.html.md#edgeservicewakeforconnection)). | `old_target`, and `channel` for a connection: `ssh`, `private_url`, or `public_url` |
-| `machine.hibernate` | `HibernateMachine` | `old_target` |
-| `machine.wake` | `WakeMachine`, also for an access call. A connection at an edge writes it with the actor `system`. | `old_target`, and `channel` for a connection |
+| `machine.resume` | `ResumeMachine`, also for an access call. A connection at an edge writes it with the actor `system` ([the edge role](/reference/edge/index.html.md#edgeservicewakeforconnection)). | `old_target`, and `channel` for a connection: `ssh`, `private_url`, or `public_url`. A heartbeat of an edge that names the machine with an open connection, after an idle timer put it to sleep, writes `reason` (`open_connection`) instead of `channel`. |
+| `machine.hibernate` | `HibernateMachine`, and the auto-hibernate timeout with the actor `system` | `old_target`. For the timer, also `reason` (`auto-hibernate`), `timeout`, and `last_activity_at`. |
+| `machine.wake` | `WakeMachine`, also for an access call. A connection at an edge writes it with the actor `system`. | `old_target`, and `channel` for a connection, or `reason` (`open_connection`) for a heartbeat of an edge, as for `machine.resume` |
 | `machine.discard_memory` | `DiscardMemory` | `old_target` |
 | `machine.stop` | `StopMachine`. Also the report of a lost standby of a machine with the restart policy `never`, with the actor `system`. Also `SuspendOrg` and `SuspendAccount` of the admin API for each machine that they stop. | `old_target`, and `reason` for a stop of the admin API. The reason is `org suspended` in an org that the call suspends, and `account suspended` for a private machine of the account in another org. |
 | `machine.reboot` | `RebootMachine` | none |
@@ -1120,7 +1148,7 @@ The machine calls write these entries in the transaction of the change. Their or
 | `machine.delete` | `DeleteMachine`, the calls of [What a member leaves behind](/reference/org-api/index.html.md#what-a-member-leaves-behind), and the auto-delete | `reason` for a delete by hopbox or by another call. It is `member left` (`LeaveOrg`, `RemoveOrgMember`, `DeleteAccount`), `org deleted` (`DeleteOrg`, `DeleteAccount` for the personal org), or `auto-delete`. The auto-delete adds `auto_delete_timeout` and `last_activity_at` (RFC 3339, UTC). |
 | `machine.share` | `ShareMachine` | `shared` (`true`) |
 | `machine.unshare` | `UnshareMachine` | `shared` (`false`) |
-| `machine.update` | `UpdateMachine` | `restart_policy`, `start_command_changed`, and `auto_delete_timeout`, each one only for a field that the request sets |
+| `machine.update` | `UpdateMachine` | `restart_policy`, `start_command_changed`, `auto_delete_timeout`, `auto_standby_timeout`, and `auto_hibernate_timeout`, each one only for a field that the request sets |
 | `machine.set_url_port` | `SetMachineURLPort` | `url_port`, `old_url_port`, `url_visibility`, `old_url_visibility` |
 | `machine.set_url_visibility` | `SetMachineURLVisibility` | the same as `machine.set_url_port` |
 

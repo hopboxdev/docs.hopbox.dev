@@ -1589,7 +1589,9 @@ paths:
       tags:
         - hopbox.v1.MachineService
       summary: UpdateMachine
-      description: UpdateMachine changes the restart policy, the start command, or the auto-delete timeout of a machine.
+      description: |-
+        UpdateMachine changes the restart policy, the start command, or a timeout of a machine: auto-delete, auto-standby,
+         or auto-hibernate.
       operationId: hopbox.v1.MachineService.UpdateMachine
       parameters:
         - name: Connect-Protocol-Version
@@ -3051,6 +3053,20 @@ components:
             auto_delete_timeout deletes the machine after this time without use: 1 minute to 365 days.
              The delete comes 1 to 2 minutes after this time from the last recorded use.
              Leave it unset to keep the machine.
+        autoStandbyTimeout:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: auto_standby_timeout
+          description: |-
+            auto_standby_timeout puts the running machine in standby after this time without inbound traffic:
+             1 minute to 365 days. Leave it unset or zero for off, the default.
+        autoHibernateTimeout:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: auto_hibernate_timeout
+          description: |-
+            auto_hibernate_timeout hibernates the machine after this time without inbound traffic: 1 minute to
+             365 days. Leave it unset for the default of 4 hours. A zero duration turns it off.
       title: CreateMachineRequest
       additionalProperties: false
       description: CreateMachineRequest asks for a new machine.
@@ -4309,6 +4325,21 @@ components:
           description: |-
             memory_saved is true while the node keeps a memory file of the machine: after a hibernate, and after a
              wake that failed. DiscardMemory drops it.
+        autoStandbyTimeout:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: auto_standby_timeout
+          description: |-
+            auto_standby_timeout is the time without inbound traffic after which a running machine goes to standby.
+             Unset is off. Like the auto-delete timeout, it counts from last_activity_time, 1 to 2 minutes late.
+        autoHibernateTimeout:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: auto_hibernate_timeout
+          description: |-
+            auto_hibernate_timeout is the time without inbound traffic after which the machine hibernates, from running
+             or from standby. Unset is off. Like the auto-delete timeout, it counts from last_activity_time, 1 to 2
+             minutes late.
       title: Machine
       additionalProperties: false
       description: Machine is a machine as its users see it.
@@ -5660,6 +5691,16 @@ components:
             - $ref: '#/components/schemas/google.protobuf.Duration'
           title: auto_delete_timeout
           description: auto_delete_timeout is the new auto-delete timeout. A zero duration turns it off.
+        autoStandbyTimeout:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: auto_standby_timeout
+          description: auto_standby_timeout is the new auto-standby timeout. A zero duration turns it off.
+        autoHibernateTimeout:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: auto_hibernate_timeout
+          description: auto_hibernate_timeout is the new auto-hibernate timeout. A zero duration turns it off.
         expectedVersion:
           type:
             - string

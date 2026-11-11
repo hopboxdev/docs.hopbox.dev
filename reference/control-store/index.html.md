@@ -1360,6 +1360,9 @@ Migration `0028_machines.sql`. One row per machine ([the machine API](/reference
 | `restart_policy` | `text` | none | `always` or `never` ([Domain rules](/reference/domain-rules/index.html.md#restart-policy)). |
 | `start_command` | `text` | empty | The start command, or empty. |
 | `auto_delete_seconds` | `bigint` | `0` | The auto-delete timeout in seconds. 0 is off. 0 or more. |
+| `auto_standby_seconds` | `bigint` | `0` | Migration `0076_idle_timers.sql`, with `oldest_schema_version` 57. The auto-standby timeout in seconds ([the machine API](/reference/machine-api/index.html.md#idle-timers)). 0 is off. 0 or more. |
+| `auto_hibernate_seconds` | `bigint` | `0` | Migration `0076`. The auto-hibernate timeout in seconds. 0 is off. 0 or more. The default 0 gives no timer to a machine that exists at the upgrade, as Q182 decided. A create of this release writes 14400, 4 hours. A create of a `hopboxd` of schema version 57 to 75 takes the default 0, because it never reads the two columns. |
+| `slept_by` | `text` | empty | Migration `0076`. The idle timer that set the target `standby` or `hibernated`: `auto-standby` or `auto-hibernate`. Empty for a target that another actor set. A `PauseMachine` or a `HibernateMachine` of another actor that finds that target already also clears it, in the same transaction. A heartbeat of an edge brings back only a machine with a timer here, so a pause or a hibernate by hand stays with an open connection, as the owner decided in Q233. The trigger `machines_slept_by_reset` clears it ([Triggers of machines](#triggers-of-machines)). |
 | `url_port` | `integer` | `8000` | The port in the machine that its URL reaches, 1 to 65535. |
 | `url_visibility` | `text` | `private` | `private` or `public`. |
 | `ssh_port` | `integer` | none | The SSH port of the machine, 10000 to 30000. `ssh_ports` holds it. |
@@ -1368,7 +1371,7 @@ Migration `0028_machines.sql`. One row per machine ([the machine API](/reference
 | `discard_memory_generation` | `bigint` | `0` | Migration `0073_machine_memory_states.sql`. The `reboot_generation` that the last `DiscardMemory` set, or 0 ([the machine API](/reference/machine-api/index.html.md#discardmemory)). The call raises `reboot_generation` and sets both columns to the new value in one write. The spec carries it to the node ([the executor protocol](/reference/executor-protocol/index.html.md#machinespec)), which drops only a memory file that a boot below it saved. So an old request never drops the file of a later hibernate. A `hopboxd` of schema version 57 to 72 never reads it. |
 | `skipped_env` | `integer` | `0` | Migration `0032_machine_skipped_env.sql`. The count of env values that the guest agent of the running machine left out, from the last report of `running` ([the executor protocol](/reference/executor-protocol/index.html.md#machinereport)). 0 or more. |
 | `current_reboot_generation` | `bigint` | `0` | The boot generation of the last report of the executor. It never goes down. The executor boots with `reboot_generation`, so a lower value than `reboot_generation` means a pending boot (`reboot_pending` in the API). So a request can tell that its boot ran. |
-| `last_activity_at` | `timestamptz` | the time of the insert | The last use: inbound traffic, an exec, a copy, an SSH session, a start, a wake, or a new auto-delete timeout. The auto-delete job reads it. |
+| `last_activity_at` | `timestamptz` | the time of the insert | The last use: inbound traffic, an exec, a copy, an SSH session, a start, a wake, or a new timeout. The auto-delete job reads it, and so do the idle timers. |
 | `state_changed_at` | `timestamptz` | the time of the insert | The last change of `current_state`. |
 | `delete_requested_at` | `timestamptz`, can be null | none | The first request for the target `deleted`. |
 | `save_refused_at` | `timestamptz`, can be null | null | Migration `0074_saved_state_limits.sql`. The time of the last save that the node of the machine refused, such as for its free-space floor ([the executor protocol](/reference/executor-protocol/index.html.md#what-the-control-role-does)). Null before the first refusal. `HibernateMachine` reads it to fail with the reason ([the machine API](/reference/machine-api/index.html.md#hibernatemachine)). |
@@ -1391,7 +1394,12 @@ The table has three checks across its columns:
 | `machines_name` | `name` | The lookup by name. |
 | `machines_server` | `server_id`, where it is set | What a node uses ([Placement](/reference/placement/index.html.md#what-a-node-uses)). |
 | `machines_auto_delete` | `last_activity_at`, where `auto_delete_seconds` is more than 0 and the target is not `deleted` | The auto-delete job. |
+| `machines_idle_timers` | `last_activity_at`, where `auto_standby_seconds` or `auto_hibernate_seconds` is more than 0 and the target is `running` or `standby`. Migration `0076`. | The idle timers. |
 | `machines_purge` | `delete_requested_at`, where `current_state` is `deleted` | The sweep that drops the rows of deleted machines. |
+
+### Triggers of machines
+
+The trigger `machines_slept_by_reset` of migration `0076` runs the function `machines_slept_by_reset` before each `UPDATE` of `machines.target_state` that changes the value. It sets `slept_by` to empty. So each later change of the target clears the mark of an idle timer, also from a `hopboxd` of schema version 57 to 75, which never writes the column. The idle job sets `slept_by` after its change of the target, in the same transaction. A pause or a hibernate whose target is there already changes no target, so it clears `slept_by` itself.
 
 The leader drops a row whose `current_state` is `deleted` once its `delete_requested_at` is 7 days old. The delete cascades to its rows in `machine_names`, `ssh_ports`, `placements`, `route_records`, and `machine_memory_states`. The same sweep then deletes its lease.
 

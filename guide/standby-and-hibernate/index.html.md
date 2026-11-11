@@ -168,6 +168,38 @@ A wake that fails can leave a guest that ran from the memory file. The next wake
 
 If the step fails in the guest, the machine runs anyway. The node logs `the guest agent failed the randomness step, so the next link asks for it again` at level error, and counts the failure in `hopbox_guest_randomness_steps_total{result="failed"}`. Each new guest link of the machine asks for the step again, also after a restart of `hopboxd`, until the guest agent reports it. A guest agent of v0.2.0-rc.1 or older cannot do this step, and the guest kernel then reseeds only through VMGenID.
 
+## Idle timers put a machine to sleep by themselves
+
+Each machine has two idle timers. After its auto-standby timeout without inbound traffic, a running machine goes to standby. After its auto-hibernate timeout without inbound traffic, a machine hibernates, from running or from standby. A new machine hibernates after 4 hours without inbound traffic, and has no auto-standby, as on boxd. A machine from before the upgrade to the release with the timers has both timers off.
+
+Inbound traffic is a request of the URL, an SSH session, an exec, a file copy, or a terminal. An open connection counts for as long as it is open. CPU use does not count. So a machine that only runs a job, such as a build or a crawler, with no inbound traffic, goes to sleep after its timeout, and the job stops with it.
+
+If a machine runs such a job, turn its auto-hibernate timer off. Run this command on your computer:
+
+```sh
+hopbox machine update box1 --auto-hibernate=off
+```
+
+To put a machine in standby after 30 minutes without inbound traffic, and hibernate it after 2 hours, run this command:
+
+```sh
+hopbox machine update box1 --auto-standby=30m --auto-hibernate=2h
+```
+
+A new timer counts from the time of the change. `hopbox machine show box1` shows both timers on the lines `auto-standby` and `auto-hibernate`. To set the timers at the create, give the same flags to `hopbox new`. In the console, the section Idle timers of a machine sets both, in minutes, with 0 for off.
+
+The timers act 1 to 2 minutes after their time, because hopbox records a use at most once a minute, and checks the timers once a minute. The audit log of the org holds an entry `machine.pause` or `machine.hibernate` with the actor `system` and the reason `auto-standby` or `auto-hibernate`. A connection brings the machine back, as after a pause or a hibernate by hand ([A connection brings the machine back](#a-connection-brings-the-machine-back)).
+
+A timer does not act in these cases:
+
+- The org is suspended.
+- The machine moves to another node.
+- The node of the machine cannot pause or save. On a node that can pause but not save, only the auto-standby timer acts. The auto-hibernate timer does nothing there.
+- A control process of the install runs a release before hibernate. Only the auto-standby timer acts until that process is upgraded.
+- An edge server of the install runs an older release. The timers wait until each edge server is upgraded.
+
+A hibernate of a timer takes the checks of `hopbox machine hibernate` ([When a hibernate fails](#when-a-hibernate-fails)). If the daily budget of saves or the free disk of the node refuses it, the machine runs on, and the timer counts again from the refusal.
+
 ## A connection brings the machine back
 
 You do not need to resume or wake a machine by hand. A connection that passes its check of access brings the machine back:
@@ -199,6 +231,10 @@ A wake on a connection takes the checks of `hopbox machine wake`: the limits of 
 The URL and the SSH session wait for at most 30 s. A machine that does not run by then gets the same answers, with the reason `it did not wake within 30s. Retry`.
 
 An open connection keeps its machine awake: an SSH session, a terminal, an exec, or an open request of the URL, such as a WebSocket. A session that you forget holds the RAM of the machine on its node. Close the sessions that you do not use.
+
+If an idle timer puts a machine in standby or hibernates it while it has an open connection at an edge server, hopbox brings it back within about 5 s. This covers a timer that acts in the seconds between a new connection and the first report of that connection. The audit entry `machine.resume` or `machine.wake` then has the actor `system` and the reason `open_connection`.
+
+A pause or a hibernate by you, by an API key, or by an admin wins over an open connection. The machine stays in standby or hibernated, and the open session waits. This is also true when an idle timer put the machine to sleep first: a pause of a machine in standby, or a hibernate of a hibernated machine, keeps it asleep. A new connection still resumes or wakes the machine, as after any pause.
 
 ## A failed wake
 
