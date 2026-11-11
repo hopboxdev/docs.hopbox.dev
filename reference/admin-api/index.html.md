@@ -374,6 +374,102 @@ Removes the SMTP config and its password, so the install sends no more sign-in l
 
 The request `ClearSMTPConfigRequest` has no fields. The response `ClearSMTPConfigResponse` has the field `config`, the empty `SMTPConfig` with the new version.
 
+### ObjectStorageConfig
+
+The message `ObjectStorageConfig` holds the bucket of the backups of the install, without its secret key ([Object storage](/reference/object-storage/index.html.md#the-config-of-an-install)). Object storage is optional. Without it, a backup fails with `failed_precondition`, and every other feature works.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `endpoint` | string | The https URL of the S3 server, such as `https://s3.gra.io.cloud.ovh.net`. It is empty when the install has no object storage. |
+| `region` | string | The region of the signature, such as `gra`. |
+| `bucket` | string | The name of the bucket, such as `bucket1`. |
+| `access_key_id` | string | The S3 access key ID. |
+| `secret_key_set` | bool | `true` for a config with a secret key. The API never returns the secret key. |
+| `ca_certificates` | string | The PEM certificates that the install trusts beside the roots of the system, or empty. |
+| `version` | int64 | The version of the whole install config ([GetInstallConfig](#getinstallconfig)). |
+| `update_time` | `google.protobuf.Timestamp` | The time of the last change of the install config. |
+
+### GetObjectStorageConfig
+
+Returns the object storage config of the install, without its secret key.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.InstallConfigService/GetObjectStorageConfig` |
+| Policy action | `object_storage_config.get`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no |
+| Audit entry | action `object_storage_config.get`, no target |
+
+The request `GetObjectStorageConfigRequest` has no fields. The response `GetObjectStorageConfigResponse` has the field `config`, an `ObjectStorageConfig`.
+
+### SetObjectStorageConfig
+
+Checks a bucket, then replaces the object storage config with it, and returns the config. The secret key is sealed with the current key-encryption key ([Sealing](/reference/sealing/index.html.md#places)). `hopboxd admin config object-storage set` calls it ([hopboxd](/reference/hopboxd/index.html.md#admin-config-object-storage-set)).
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.InstallConfigService/SetObjectStorageConfig` |
+| Policy action | `object_storage_config.set`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no. A second call with the same request checks the bucket and sets the same values again. |
+| Audit entry | action `object_storage_config.set`, no target. The details are `endpoint`, `region`, `bucket`, `access_key_id`, `old_endpoint`, `old_bucket`, `secret_key_changed` (`true` or `false`), and `ca_certificates_changed` (`true` or `false`). They never hold the secret key. The call tells the instance admins ([Notices to instance admins](#notices-to-instance-admins)). |
+
+The request `SetObjectStorageConfigRequest` has these fields:
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `endpoint` | string | none, required | The https URL of the S3 server, without a path ([Object storage](/reference/object-storage/index.html.md#fields)). A plain `http` URL fails. |
+| `region` | string | none, required | The region of the signature: 1 to 63 lowercase letters, digits, and dashes. |
+| `bucket` | string | none, required | The name of the bucket. |
+| `access_key_id` | string | none, required | The S3 access key ID. |
+| `secret_key` | optional string | the secret key that is set now | The S3 secret key. Leave it out to keep the secret key that is set now. That works only for the same endpoint, bucket, and access key ID. |
+| `ca_certificates` | optional string | the certificates that are set now | PEM certificates to trust beside the roots of the system, at most 64 KiB. An empty string removes them. Leave the field out to keep them. |
+| `expected_version` | optional int64 | none | The `version` of the install config that the caller read. If the install config has another version now, the call fails with `aborted` and changes nothing. |
+
+Before it changes anything, the control process that takes the call checks the new config ([The check](#checkobjectstorage)). A failed check changes nothing, and its message names the cause. The check runs outside the transaction. So if another call changes the object storage config during the check, the call fails with `aborted` and the message `conflict: the object storage config changed during the check. Read it again`.
+
+The response `SetObjectStorageConfigResponse` has the field `config`, an `ObjectStorageConfig`. These errors can occur:
+
+| Code | Message | Cause |
+| --- | --- | --- |
+| `invalid_argument` | `invalid argument: invalid object storage config: ...` | A field breaks a rule of [Object storage](/reference/object-storage/index.html.md#fields), such as `the endpoint "http://s3.example.org" is plain http. hopbox sends the credentials and the data only over https`. |
+| `invalid_argument` | `invalid argument: a new endpoint, bucket, or access key ID needs the secret key again` | The request has no secret key, and the install has no secret key for this endpoint, bucket, and access key ID. |
+| `failed_precondition` | `failed precondition: the keyring has no key-encryption key to seal or open the value. Run hopboxd admin kek rotate to make the first one` | The keyring has no key-encryption key. The call reaches no bucket. |
+| `failed_precondition` | `failed precondition: the check of the bucket failed: object storage: ... Nothing changed` | The check failed, and the config must change first, such as a wrong key, a missing bucket, a wrong region, a certificate that is not trusted, or a host that does not resolve. |
+| `unavailable` | `unavailable: the check of the bucket failed: object storage: ... Nothing changed` | The check got no answer, or the server failed, such as on a cut link, at a closed port, or after a timeout. A later call can succeed. |
+| `aborted` | `conflict: the install config is at version 5, not 4. Read it again` | `expected_version` is old. |
+
+### ClearObjectStorageConfig
+
+Removes the object storage config and its secret key, so the install makes no more backups. The bucket and its objects stay at the provider.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.InstallConfigService/ClearObjectStorageConfig` |
+| Policy action | `object_storage_config.clear`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no. A second call removes nothing, and succeeds. |
+| Audit entry | action `object_storage_config.clear`, no target, details `old_endpoint` and `old_bucket`. The call tells the instance admins. |
+
+The request `ClearObjectStorageConfigRequest` has the field `expected_version`, as in `SetObjectStorageConfigRequest`. The response `ClearObjectStorageConfigResponse` has the field `config`, the empty `ObjectStorageConfig` with the new version.
+
+### CheckObjectStorage
+
+Checks the saved config against its bucket. The control process that takes the call writes one object of 64 random bytes under the key `hopbox-check/<random>`, reads it back, compares it, and deletes it. So the check proves the endpoint, the certificate, the region, the bucket, both keys, and the rights to write, read, and delete. `SetObjectStorageConfig` runs the same check on the new config. The check takes at most 25 s: 20 s for the write and the read, and 5 s for the delete, with 3 attempts of each request ([Object storage](/reference/object-storage/index.html.md#the-check)).
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.InstallConfigService/CheckObjectStorage` |
+| Policy action | `object_storage_config.check`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no. Each call writes and deletes a new object. |
+| Audit entry | action `object_storage_config.check`, no target, details `endpoint`, `bucket`, and `result`: `ok`, or the kind of the error, such as `secret_key` or `unreachable` ([Object storage](/reference/object-storage/index.html.md#errors)) |
+
+The request `CheckObjectStorageRequest` has no fields. The response `CheckObjectStorageResponse` has the field `config`, the `ObjectStorageConfig` that the check used, and `duration`, a `google.protobuf.Duration` of the whole check. Maintenance mode lets the call through, because it changes no setting of the install.
+
+| Code | Message | Cause |
+| --- | --- | --- |
+| `failed_precondition` | `failed precondition: this install has no object storage, so it makes no backups. An instance admin sets it with hopboxd admin config object-storage set, or on the page Config of the Admin area` | The install has no object storage. |
+| `failed_precondition` | `failed precondition: the check of the bucket failed: object storage: ...` | The config must change first, as for `SetObjectStorageConfig`. |
+| `unavailable` | `unavailable: the check of the bucket failed: object storage: ...` | No answer, or the server failed. |
+
 ### OAuthClient
 
 The message `OAuthClient` holds the client of one sign-in provider, without its secret ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#config)). The enum `SignInProvider` names the provider:
@@ -836,6 +932,7 @@ Some calls leave something that lasts after the session that made them. For exam
 | `DeleteAccount` ([the sign-in, account, and audit API](/reference/auth-api/index.html.md#deleteaccount)) | When the account is an instance admin (Q106). Otherwise a stolen session can remove an admin in silence, as with a revoke. The notice comes before the delete, so each email of the deleted account gets the copy of the actor. The audit entry `account.delete` then has the detail `instance_admin` set to `true`. |
 | `SetSMTPConfig` and `ClearSMTPConfig` | Always. |
 | `SetOAuthClient` and `ClearOAuthClient` | Always. |
+| `SetObjectStorageConfig` and `ClearObjectStorageConfig` | Always. A stolen session can point the backups at a bucket of an attacker. |
 | `UpdateInstallConfig` | When it changes `domain`, `acme_directory_url`, `acme_email`, `acme_terms_agreed`, `mail_transport`, or `sign_up_mode`. The transport decides whether the install uses the SMTP server. The domain decides where the console and every link of the install go, and the ACME settings decide which CA issues the certificate of the install (Q106). A stolen session can set the sign-up mode `open`, which lets each new person act at once (Q109). The advice of a change of the mode is `sudo hopboxd admin config set --sign-up-mode='<old mode>'`. A change of `public_addresses` alone tells nobody. `hopboxd admin config set` and `hopboxd install --domain` call `UpdateInstallConfig`, so their changes tell the instance admins too. |
 
 A notice is the audit entry of the call. In the transaction of the call, each instance admin other than the actor gets an open notice in the table `admin_notices` ([Control store tables](/reference/control-store/index.html.md#admin_notices)). The banner of the console and the Admin area show the open notices ([Console](/reference/console/index.html.md#admin-area)), and `ListAdminNotices` returns them. `hopboxd admin` has no command for them, because root has no account and so no notices.
@@ -850,7 +947,7 @@ The email has these parts:
 - How to undo it: the page of the Admin area and the `hopboxd admin` command. For an action of a session, also how to revoke the role of its account, which closes the admin API to each session of the account at once. For a new sign-in method, the command `hopboxd admin account sign-in-method remove` with the IDs of the account and of the method. A method that joined at a sign-in through a verified email had no session before, so its advice says to revoke the role first, because the holder of that email can sign in again. Each value in a command of the advice is in POSIX single quotes, and each `'` in it is written as `'\''`. So a POSIX shell, such as sh, bash, or zsh, reads each value as one word, also a value with shell code in it, such as an ACME directory URL with `$(...)` in its query. In another shell, such as tcsh, these quotes are not safe, so run the command in sh, bash, or zsh. A delete is final, so its advice says to read the audit log for the other actions of the deleted account. The advice of an admin delete by an admin API key gives the command that revokes the key. The advice of a suspend gives the page Accounts of the Admin area and `hopboxd admin account unsuspend`. The advice of an unsuspend gives the same page and `hopboxd admin account suspend`.
 - The link to `/admin/notices`, or for the copy of the actor, a line that says why the actor gets it. A change of the domain names both domains in place of the link.
 
-The email and the notice never hold a secret: no admin key, no client secret, and no SMTP password. They hold only the facts of the audit entry, which never holds a secret value either.
+The email and the notice never hold a secret: no admin key, no client secret, no SMTP password, and no secret key of the object storage. They hold only the facts of the audit entry, which never holds a secret value either.
 
 A change of the mail config sends its email the way that the install sent mail before the change, and the new way only when that fails. The changes of the mail config are `SetSMTPConfig`, `ClearSMTPConfig`, and a change of `mail_transport`. So a new SMTP server that an attacker sets does not swallow the notice of its own change. A change of `domain` also sends its email the old way first. Each email of the change names the old domain in its first line and its subject, also when it goes the new way after the old way failed. The email of a first domain names the new domain there, because the install had no domain before. It has no link to `/admin/notices`, because the console at the old domain no longer answers, and a link to the new domain can lead to a domain that an attacker set. In place of the link, it says that the console moved from the old domain to the new one. It tells the reader to check the change first, and then to type the new domain in the browser. Some mail clients make the name of the new domain clickable, so the email asks for the check before the reader opens it. A domain set on an install without one gets the same line with `none` as the old domain, so no email links to a domain that the actor just set. It has no old value to set back. So its advice gives `sudo hopboxd admin config set --domain=DOMAIN`, with the domain of the install in place of `DOMAIN`.
 

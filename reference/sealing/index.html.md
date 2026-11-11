@@ -32,7 +32,7 @@ The code gives each kind of place its own Go type. The linter (`exhaustruct_v5` 
 | Type | Fields | Used for |
 | --- | --- | --- |
 | `OrgSecret` | `Org`, `Scope`, `Owner`, `Name` | A secret of an org. `Scope` is `shared`, `private`, or `all`. `Owner` is the account that owns a `private` value. It must be the nil UUID for `shared` and `all`. |
-| `InstallSecret` | `Name` | A value of the install that no org owns. Examples are the SMTP password, the client secret of a sign-in provider, and the key of the install CA. The key of the install CA uses the name `install_ca.key`, in the table `install_ca` ([Control store tables](/reference/control-store/index.html.md#install_ca)). |
+| `InstallSecret` | `Name` | A value of the install that no org owns. Examples are the SMTP password, the client secret of a sign-in provider, the secret key of the object storage, and the key of the install CA. The key of the install CA uses the name `install_ca.key`, in the table `install_ca` ([Control store tables](/reference/control-store/index.html.md#install_ca)). |
 
 These columns of the control store hold sealed values:
 
@@ -42,6 +42,7 @@ These columns of the control store hold sealed values:
 | `install_config.smtp_password` | `InstallSecret{Name: "smtp.password"}` ([SMTP config](/reference/smtp/index.html.md#password)) |
 | `install_config.github_client_secret` | `InstallSecret{Name: "oauth.github.client_secret"}` ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#config)) |
 | `install_config.google_client_secret` | `InstallSecret{Name: "oauth.google.client_secret"}` ([Sign-in with GitHub and Google](/reference/oauth/index.html.md#config)) |
+| `install_config.object_storage_secret_key` | `InstallSecret{Name: "object_storage.secret_key"}`: the S3 secret key of the object storage ([Object storage](/reference/object-storage/index.html.md#the-secret-key)) |
 | `acme_account.sealed_key` | `InstallSecret{Name: "acme_account.key"}`: the PKCS #8 key of the ACME account ([the certificate of the install](/reference/acme/index.html.md#where-the-certificate-lives)) |
 | `install_certificate.sealed_key` | `InstallSecret{Name: "install_certificate.key"}`: the PKCS #8 key of the certificate of the install ([the certificate of the install](/reference/acme/index.html.md#where-the-certificate-lives)) |
 | `ssh_front_door_keys.sealed_host_key` | `InstallSecret{Name: "ssh_host.key"}`: the PKCS #8 Ed25519 host key of the SSH front door ([the SSH front door](/reference/ssh-front-door/index.html.md#keys)) |

@@ -273,6 +273,13 @@ Click "Revoke" in the row of a key to end it. Every call with the key then fails
 
 The page never shows the password, and the API never returns it. The page says only whether a password is set. Leave the field "Password" empty to keep the password that is set now. The section "Sign-in with GitHub and Google" works the same for the client secret of each app ([Sign in with GitHub and Google](/guide/github-google-sign-in/index.html.md)).
 
+## Set the bucket of the backups
+
+1. Open the page "Config", section "Object storage".
+2. Type the endpoint, the region, the bucket, the access key ID, and the secret key, and click "Save the object storage".
+
+The page first checks the bucket: the control server writes, reads, and deletes one small object. A failed check changes nothing, and the page shows its cause, such as `the signature does not match, so the secret key is wrong`. Leave the field "Secret key" empty to keep the secret key that is set now. The page empties that field after each save, also after a failed one, so type the key again for the next try. For a server with a private CA, paste its PEM certificates in the field "CA certificates". Click "Check the bucket" to check it again later. [Give an install a bucket for backups](/guide/backups/index.html.md) sets up the bucket at the provider.
+
 ## Change the domain
 
 1. Open the page "Config", section "Domain".
@@ -290,6 +297,7 @@ Some actions last after the session that did them:
 - a new sign-in method of an instance admin
 - the suspend, the unsuspend, or the delete of an instance admin account
 - a change of the SMTP server, of the mail transport, or of the domain
+- a change or the removal of the object storage
 - a change of the ACME settings, of the sign-up mode, or of the GitHub or Google app
 
 If another caller does one of them, you get a notice in the console and an email ([the admin API](/reference/admin-api/index.html.md#notices-to-instance-admins)). The email goes to each email of your account, also when the SMTP server just changed. The email of a new domain names the old domain and the new one, and has no link, because the console at the old domain no longer answers. Some mail clients make the new domain clickable. Check the change first, then type the new domain in your browser yourself and open the page "Notices". If you do one of them yourself, you get a copy of the email, and no notice in the console.

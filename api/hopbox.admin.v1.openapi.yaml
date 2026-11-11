@@ -772,6 +772,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.RegisterImageResponse'
+  /hopbox.admin.v1.InstallConfigService/CheckObjectStorage:
+    post:
+      tags:
+        - hopbox.admin.v1.InstallConfigService
+      summary: CheckObjectStorage
+      description: |-
+        CheckObjectStorage writes, reads, and deletes one small object with the saved config, and names the cause of a
+         failure.
+      operationId: hopbox.admin.v1.InstallConfigService.CheckObjectStorage
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.CheckObjectStorageRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.CheckObjectStorageResponse'
   /hopbox.admin.v1.InstallConfigService/ClearAlertToken:
     post:
       tags:
@@ -852,6 +893,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.ClearOAuthClientResponse'
+  /hopbox.admin.v1.InstallConfigService/ClearObjectStorageConfig:
+    post:
+      tags:
+        - hopbox.admin.v1.InstallConfigService
+      summary: ClearObjectStorageConfig
+      description: |-
+        ClearObjectStorageConfig removes the object storage of the install and its secret key, so the install makes no
+         more backups.
+      operationId: hopbox.admin.v1.InstallConfigService.ClearObjectStorageConfig
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.ClearObjectStorageConfigRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.ClearObjectStorageConfigResponse'
   /hopbox.admin.v1.InstallConfigService/ClearSMTPConfig:
     post:
       tags:
@@ -971,6 +1053,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.GetOAuthConfigResponse'
+  /hopbox.admin.v1.InstallConfigService/GetObjectStorageConfig:
+    post:
+      tags:
+        - hopbox.admin.v1.InstallConfigService
+      summary: GetObjectStorageConfig
+      description: GetObjectStorageConfig returns the object storage of the install, without its secret key.
+      operationId: hopbox.admin.v1.InstallConfigService.GetObjectStorageConfig
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.GetObjectStorageConfigRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.GetObjectStorageConfigResponse'
   /hopbox.admin.v1.InstallConfigService/GetSMTPConfig:
     post:
       tags:
@@ -1135,6 +1256,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.admin.v1.SetOAuthClientResponse'
+  /hopbox.admin.v1.InstallConfigService/SetObjectStorageConfig:
+    post:
+      tags:
+        - hopbox.admin.v1.InstallConfigService
+      summary: SetObjectStorageConfig
+      description: |-
+        SetObjectStorageConfig replaces the object storage of the install. The control process first writes, reads,
+         and deletes one small object with the new config, and a failure changes nothing. The secret key is sealed with
+         the current key-encryption key.
+      operationId: hopbox.admin.v1.InstallConfigService.SetObjectStorageConfig
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.admin.v1.SetObjectStorageConfigRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.admin.v1.SetObjectStorageConfigResponse'
   /hopbox.admin.v1.InstallConfigService/SetSMTPConfig:
     post:
       tags:
@@ -4334,6 +4497,26 @@ components:
       title: Certificate
       additionalProperties: false
       description: Certificate describes the certificate of the install for its domain and the wildcard of the domain.
+    hopbox.admin.v1.CheckObjectStorageRequest:
+      type: object
+      title: CheckObjectStorageRequest
+      additionalProperties: false
+      description: CheckObjectStorageRequest has no fields.
+    hopbox.admin.v1.CheckObjectStorageResponse:
+      type: object
+      properties:
+        config:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.ObjectStorageConfig'
+          title: config
+        duration:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: duration
+          description: duration is how long the check took.
+      title: CheckObjectStorageResponse
+      additionalProperties: false
+      description: CheckObjectStorageResponse holds the config that the check used.
     hopbox.admin.v1.ClearAlertTokenRequest:
       type: object
       title: ClearAlertTokenRequest
@@ -4389,6 +4572,31 @@ components:
       title: ClearOAuthClientResponse
       additionalProperties: false
       description: ClearOAuthClientResponse holds the empty client.
+    hopbox.admin.v1.ClearObjectStorageConfigRequest:
+      type: object
+      properties:
+        expectedVersion:
+          type:
+            - string
+            - "null"
+          title: expected_version
+          format: int64
+          description: |-
+            expected_version is the version of the install config that the caller read.
+             If the config has another version now, the call fails with ABORTED and changes nothing.
+      title: ClearObjectStorageConfigRequest
+      additionalProperties: false
+      description: ClearObjectStorageConfigRequest names the version that the caller read.
+    hopbox.admin.v1.ClearObjectStorageConfigResponse:
+      type: object
+      properties:
+        config:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.ObjectStorageConfig'
+          title: config
+      title: ClearObjectStorageConfigResponse
+      additionalProperties: false
+      description: ClearObjectStorageConfigResponse holds the empty object storage config.
     hopbox.admin.v1.ClearSMTPConfigRequest:
       type: object
       title: ClearSMTPConfigRequest
@@ -5291,6 +5499,21 @@ components:
       title: GetOAuthConfigResponse
       additionalProperties: false
       description: GetOAuthConfigResponse holds one client for each provider, GitHub first.
+    hopbox.admin.v1.GetObjectStorageConfigRequest:
+      type: object
+      title: GetObjectStorageConfigRequest
+      additionalProperties: false
+      description: GetObjectStorageConfigRequest has no fields.
+    hopbox.admin.v1.GetObjectStorageConfigResponse:
+      type: object
+      properties:
+        config:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.ObjectStorageConfig'
+          title: config
+      title: GetObjectStorageConfigResponse
+      additionalProperties: false
+      description: GetObjectStorageConfigResponse holds the object storage config.
     hopbox.admin.v1.GetOverviewRequest:
       type: object
       title: GetOverviewRequest
@@ -6635,6 +6858,48 @@ components:
       title: OAuthClient
       additionalProperties: false
       description: OAuthClient is the OAuth client of one sign-in provider, without its secret.
+    hopbox.admin.v1.ObjectStorageConfig:
+      type: object
+      properties:
+        endpoint:
+          type: string
+          title: endpoint
+          description: |-
+            endpoint is the https URL of the S3 server, such as "https://s3.gra.io.cloud.ovh.net". It is empty when the
+             install has no object storage.
+        region:
+          type: string
+          title: region
+          description: region is the region of the signature, such as "gra".
+        bucket:
+          type: string
+          title: bucket
+          description: bucket is the name of the bucket.
+        accessKeyId:
+          type: string
+          title: access_key_id
+          description: access_key_id is the S3 access key ID.
+        secretKeySet:
+          type: boolean
+          title: secret_key_set
+          description: secret_key_set is true when the config has a secret key. The API never returns the secret key.
+        caCertificates:
+          type: string
+          title: ca_certificates
+          description: ca_certificates holds PEM certificates that the install trusts beside the roots of the system, or is empty.
+        version:
+          type: string
+          title: version
+          format: int64
+          description: version is the version of the whole install config.
+        updateTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: update_time
+          description: update_time is the time of the last change of the install config.
+      title: ObjectStorageConfig
+      additionalProperties: false
+      description: ObjectStorageConfig is the bucket of the backups of the install, without its secret key.
     hopbox.admin.v1.Org:
       type: object
       properties:
@@ -8034,6 +8299,63 @@ components:
       title: SetOAuthClientResponse
       additionalProperties: false
       description: SetOAuthClientResponse holds the client after the change.
+    hopbox.admin.v1.SetObjectStorageConfigRequest:
+      type: object
+      properties:
+        endpoint:
+          type: string
+          title: endpoint
+          description: endpoint is the https URL of the S3 server, without a path. A plain http URL fails.
+        region:
+          type: string
+          title: region
+          description: region is the region of the signature, 1 to 63 lowercase letters, digits, and dashes.
+        bucket:
+          type: string
+          title: bucket
+          description: bucket is the name of the bucket.
+        accessKeyId:
+          type: string
+          title: access_key_id
+          description: access_key_id is the S3 access key ID.
+        secretKey:
+          type:
+            - string
+            - "null"
+          title: secret_key
+          description: |-
+            secret_key is the S3 secret key. Leave it out to keep the secret key that is set now. That works only for the
+             same endpoint, bucket, and access key ID.
+        caCertificates:
+          type:
+            - string
+            - "null"
+          title: ca_certificates
+          description: |-
+            ca_certificates holds PEM certificates to trust beside the roots of the system. Leave it out to keep the
+             certificates that are set now. An empty string removes them.
+        expectedVersion:
+          type:
+            - string
+            - "null"
+          title: expected_version
+          format: int64
+          description: |-
+            expected_version is the version of the install config that the caller read.
+             If the config has another version now, the call fails with ABORTED and changes nothing.
+      title: SetObjectStorageConfigRequest
+      additionalProperties: false
+      description: SetObjectStorageConfigRequest holds the whole new object storage config.
+    hopbox.admin.v1.SetObjectStorageConfigResponse:
+      type: object
+      properties:
+        config:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.admin.v1.ObjectStorageConfig'
+          title: config
+      title: SetObjectStorageConfigResponse
+      additionalProperties: false
+      description: SetObjectStorageConfigResponse holds the object storage config after the change.
     hopbox.admin.v1.SetOrgLimitsRequest:
       type: object
       properties:

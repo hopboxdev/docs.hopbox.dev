@@ -49,6 +49,10 @@ hopboxd --log-level=debug version
 | `admin config oauth get` | Prints the GitHub and Google clients for sign-in, without their secrets, with the redirect URIs. `admin config oauth` alone does the same. |
 | `admin config oauth set` | Sets the client of one sign-in provider. |
 | `admin config oauth clear` | Removes the client of one sign-in provider. |
+| `admin config object-storage get` | Prints the object storage config, without its secret key. |
+| `admin config object-storage set` | Checks a bucket, then makes it the object storage of the install. |
+| `admin config object-storage clear` | Removes the object storage config. |
+| `admin config object-storage check` | Writes, reads, and deletes one small object in the bucket, and names the cause of a failure. |
 | `admin config alert-token set` | Makes the token of the alert webhook, and writes it to the file that Alertmanager reads. |
 | `admin config alert-token clear` | Removes the token of the alert webhook. |
 | `admin certificate get` | Prints the certificate of the install, without its key, and the state of the ACME job. |
@@ -1006,6 +1010,92 @@ Removes the client of one provider and its secret, so nobody can start a sign-in
 | --- | --- | --- | --- |
 | `--expected-version` | int | none | As for `admin config oauth set`. |
 | `--json` | bool | `false` | Prints one JSON object. |
+
+### admin config object-storage get
+
+```sh
+hopboxd admin config object-storage get [--json]
+```
+
+Prints the object storage config, without its secret key ([Object storage](/reference/object-storage/index.html.md#the-config-of-an-install)). It calls `GetObjectStorageConfig` ([the admin API](/reference/admin-api/index.html.md#getobjectstorageconfig)). The text output has one line for each field: the name, a tab, and the value. The fields are `endpoint`, `region`, `bucket`, `access_key_id`, `secret_key_set`, `ca_certificates`, `version`, and `update_time`. The text form of `ca_certificates` is the number of certificates, such as `1 certificate`, or `none`. An install without object storage prints an empty endpoint.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--json` | bool | `false` | Prints one JSON object with the same fields. `ca_certificates` holds the PEM text. |
+
+### admin config object-storage set
+
+```sh
+hopboxd admin config object-storage set --endpoint=URL --region=REGION --bucket=BUCKET --access-key-id=ID
+  [--secret-key-stdin] [--ca-file=PATH | --clear-ca] [--expected-version=N] [--json]
+```
+
+Checks the bucket, then makes it the object storage of the install, and prints the config as `admin config object-storage get` does. It calls `SetObjectStorageConfig` ([the admin API](/reference/admin-api/index.html.md#setobjectstorageconfig)). The check writes, reads, and deletes one small object, and a failed check changes nothing ([Object storage](/reference/object-storage/index.html.md#the-check)). Without `--secret-key-stdin`, the secret key that is set now stays.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--endpoint` | URL | none, required | The https URL of the S3 server, without a path, such as `https://s3.gra.io.cloud.ovh.net`. |
+| `--region` | string | none, required | The region of the bucket, such as `gra`. Use `us-east-1` for a server without regions. |
+| `--bucket` | string | none, required | The name of the bucket. |
+| `--access-key-id` | string | none, required | The S3 access key ID. |
+| `--secret-key-stdin` | bool | `false` | Reads the secret key from standard input, at most 4096 bytes. On a terminal, the command shows the prompt `Secret key: ` on standard error, and does not show what you type. A trailing newline is dropped. No flag takes the secret key, because the process list shows the command line. Without this flag, the secret key that is set now stays. That works only for the same endpoint, bucket, and access key ID. |
+| `--ca-file` | path | none | A PEM file of CA certificates, at most 64 KiB, to trust beside the roots of the system. The command sends the content of the file. |
+| `--clear-ca` | bool | `false` | Removes the CA certificates. Without `--ca-file` or `--clear-ca`, the certificates that are set now stay. |
+| `--expected-version` | int | none | The version `N` of the install config, as `admin config get` printed it. With another version, the command fails with `aborted` and changes nothing. |
+| `--json` | bool | `false` | Prints one JSON object. |
+
+A secret key needs a key-encryption key. [install](#install) makes the first one. On a server that `hopboxd install` did not set up, such as a dev run, run `admin kek rotate` first.
+
+Example, with the secret key typed at the prompt:
+
+```text
+$ sudo hopboxd admin config object-storage set --endpoint https://s3.gra.io.cloud.ovh.net \
+    --region gra --bucket bucket1 --access-key-id 0123456789abcdef --secret-key-stdin
+Secret key:
+endpoint	https://s3.gra.io.cloud.ovh.net
+region	gra
+bucket	bucket1
+access_key_id	0123456789abcdef
+secret_key_set	true
+ca_certificates	none
+version	7
+update_time	2026-11-11T09:12:40Z
+```
+
+| Message | Cause |
+| --- | --- |
+| `standard input holds no secret key. Type it at the prompt, or pipe it to --secret-key-stdin` | `--secret-key-stdin` read nothing. |
+| `invalid_argument: invalid argument: invalid object storage config: ...` | A flag breaks a rule of [Object storage](/reference/object-storage/index.html.md#fields), such as a plain `http` endpoint. |
+| `invalid_argument: invalid argument: a new endpoint, bucket, or access key ID needs the secret key again. Run the command again with --secret-key-stdin` | The command has no `--secret-key-stdin`, and the install has no secret key for this endpoint, bucket, and access key ID. |
+| `failed_precondition: failed precondition: the check of the bucket failed: ...` | The check failed. The rest of the message names the cause, such as `the secret key is wrong`. |
+| `unavailable: unavailable: the check of the bucket failed: ...` | The check got no answer, such as on a cut link. Run the command again later. |
+| `failed_precondition: ...` | The keyring has no key-encryption key. |
+| `aborted: ...` | `--expected-version` is not the version of the install config now. |
+
+### admin config object-storage clear
+
+```sh
+hopboxd admin config object-storage clear [--expected-version=N] [--json]
+```
+
+Removes the object storage config and its secret key, so the install makes no more backups. It calls `ClearObjectStorageConfig` ([the admin API](/reference/admin-api/index.html.md#clearobjectstorageconfig)), and prints the empty config. The bucket and its objects stay at the provider.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--expected-version` | int | none | As for `admin config object-storage set`. |
+| `--json` | bool | `false` | Prints one JSON object. |
+
+### admin config object-storage check
+
+```sh
+hopboxd admin config object-storage check [--json]
+```
+
+Checks the saved config: it writes, reads, and deletes one small object in the bucket. It calls `CheckObjectStorage` ([the admin API](/reference/admin-api/index.html.md#checkobjectstorage)). On success, it prints one line, such as `The bucket bucket1 at https://s3.gra.io.cloud.ovh.net works: a write, a read, and a delete took 184ms.`. A failure names the cause, as for `admin config object-storage set`.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--json` | bool | `false` | Prints one JSON object: `endpoint`, `bucket`, and `duration_seconds`. |
 
 ### admin config alert-token set
 
