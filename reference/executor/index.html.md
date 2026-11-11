@@ -129,6 +129,13 @@ The server of the guest link, `internal/node/guestlink`, writes these records wi
 | `guest link down` | warn | `err` |
 | `push the configuration` | warn | `generation`, `err` |
 | `the guest agent failed to apply the configuration` | error | `generation`, `err` |
+| `the guest agent set its clock from the node` | info | `jump`, the clock of the node minus the old clock of the guest ([Guest link](/reference/guest-link/index.html.md#clock-and-randomness)) |
+| `the guest agent ran the randomness step` | info | |
+| `the guest agent failed the randomness step, so the next link asks for it again` | error | `err`, at most 1024 bytes |
+| `the guest agent did not set its clock` | error | `offset`, `err`. The clock of the guest was more than 1 s off, and the guest agent did not set it. |
+| `ignored a SyncResult that answers no Sync` | debug | `version` |
+| `the guest agent reported an error for the Sync of the node` | error | `err`. Another error of `SyncResult`, such as a `Sync` without a valid time. |
+| `the guest agent speaks no randomness step, so this later load of a saved state has only the kernel reseed of VMGenID` | warn | `version`, `agent_version`. Once for each guest link server. |
 | `ignored a guest link message that this node does not know` | debug | |
 
 ## Standby
@@ -267,6 +274,22 @@ A drop that fails keeps the file, and the machine runs. The executor reports `ru
 
 After a restart of `hopboxd`, the executor compares `woke_memory` with the time of the save of the kept memory file. When they match, a guest agent linked from that file already, so the executor drops it. Otherwise, a running microVM with a memory file can come from a wake that the restart cut before the link. Only its link proves the file. So the executor serves the guest link, and waits at most `WakeLinkTimeout` for it. A link records `woke_memory`, and the drop follows. Without a link in time, the executor ends the microVM, and reports `failed` with the error `the guest agent did not link within 1m0s of the load, so the memory file can be damaged`. The memory file stays.
 
+### The randomness step
+
+Firecracker calls it insecure to load one saved state more than once without a step that makes each copy unique. A failed wake can leave a guest that ran from the memory file, and the next wake loads that file again. So the executor asks the guest agent for the randomness step on each load of a memory file that loaded before ([Guest link](/reference/guest-link/index.html.md#clock-and-randomness)). The driver counts each load before it runs, also a load that fails ([the Firecracker driver](/reference/firecracker-driver/index.html.md#load)).
+
+| Case | The count that the executor reads | Step |
+| --- | --- | --- |
+| A wake | The count before the load. | When the count is 1 or more, or when the step of the last load of this machine is still pending. |
+| A load that a restart of `hopboxd` cut before the link | The count with that load. | When the count is 2 or more. |
+| A resume from standby | none. A resume loads nothing. | never |
+
+A load that a restart cut before its resume keeps its count. So the next load runs the step, also when no guest ran from the cut load. A step too many costs only a few ioctls. After a load returns, the executor counts it in its own record of the memory file too. So a link that a new grant attaches to the same microVM, after a loss of the lease during the wake, reads the right count.
+
+With the step, the executor logs `the wake runs the randomness step, because the memory file loaded before` at level info, with `loads`, the count of the earlier loads. For a step that is still pending, it logs `the wake runs the randomness step that the last guest agent of the microVM did not report` at level info. The server of the guest link logs the result.
+
+A failed step does not stop the machine, by Q215 ([Guest link](/reference/guest-link/index.html.md#clock-and-randomness)). The step stays pending until the guest agent reports it. Each new guest link of that microVM asks for it: a relink, a resume, and an attach after a restart of `hopboxd`, also after the drop of the memory file. A hibernate does not end it either: the next wake asks for the step, also when it is the first load of the new save. The executor keeps the pending step in `pending_reseed` of the node-local state. Only a boot from the disk or a reboot ends it without a report, because a new kernel needs no step. A guest agent whose guest link version is 3 or lower cannot run the step. The machine then has only the reseed of VMGenID in the guest kernel, and the server of the guest link logs that at level warn, once for each server.
+
 ### DiscardMemory
 
 `DiscardMemory` sets `discard_memory_generation` in the spec to a new reboot generation ([the machine API](/reference/machine-api/index.html.md#discardmemory)). The executor compares it with the generation of the last boot of the machine on the node. A higher value asks for the drop of the memory file that the boot saved. The executor drops the file once no microVM of the machine runs, with the action `discard_memory`, before any other step. It calls `Restorer.DiscardMemory`, which first puts the disk copy of the saved state back over the disk ([the VMM driver interface](/reference/vmm/index.html.md#snapshotter-and-restorer)). Then the executor reports `stopped` with the discard generation: a hibernated machine steps to `stopped`, and so does a failed one. A machine that is stopped already reports `stopped` again with the new generation. That report tells the control role that the disk of the save is back, and a cold move waits for it ([Cold move](/reference/cold-move/index.html.md)). The executor takes the discard generation as the generation of its last boot only once the control role accepted that report, and saves its node-local state then. No other accepted report raises the generation, because a reboot reports `starting` before its stop, and that stop can fail. A refused report, or one that a new grant dropped, goes again, and so does the report of a discard whose memory file is gone. After a refusal, the next try waits 5 s. So a move never waits for the next boot. The next boot starts from the disk of the save, not from a disk that a failed wake changed. A later hibernate saves with a boot of a higher generation, so an old request never drops its file.
@@ -283,6 +306,7 @@ The executor keeps one file per machine in its state dir, `<dir>/<machine ID>.js
 | `pulled_move` | The move whose disk the node pulled whole, so a restart before the report of the move pulls it no more. Absent for a machine that never moved here. |
 | `pending_move` | The move whose disk the node waits for, or `unknown` for a moving machine whose spec names no move. Absent for a machine that never moved here. |
 | `acked_move` | The move whose proof of the pull the control role accepted. Until it names the move of `pending_move`, the machine never boots on the node. Absent for a machine that never moved here. |
+| `pending_reseed` | `true` while the running microVM came from a later load of a memory file, and its guest agent did not report the randomness step yet ([The randomness step](#the-randomness-step)). Absent otherwise. |
 | `woke_memory` | The memory file from which a guest agent linked, named by the `saved_at` of that file, in RFC 3339 with nanoseconds, UTC. That file is older than the guest, so the executor drops it and never loads it again ([The end of a wake](#the-end-of-a-wake)). Absent while no guest agent linked from the kept file. |
 
 Example of the fields of a woken machine whose drop did not run yet:
@@ -291,7 +315,7 @@ Example of the fields of a woken machine whose drop did not run yet:
 {"machine_id":"0f6b1c9e-5d2a-4f7e-9a41-3c8e2b7d6a10","epoch":3,"token":"7c1e9a2f-0b4d-4e6a-8f3c-5d2b1a9e7c40","boot_generation":2,"woke_memory":"2026-11-08T10:12:03.521944107Z"}
 ```
 
-The executor writes the file at each new grant, at each boot, and at each change of `woke_memory`. Each write goes through a temporary file, a rename, and a sync of the dir. At its start, it removes each temporary file `.tmp-*` that a crash left. It removes the file once the control role accepted the report `deleted`. A stale answer to that report ends the executor too: the driver deleted the machine already, and the control store dropped its row. A file that does not parse is logged as `cannot read the node-local state of a machine` at level error, and the other machines still load.
+The executor writes the file at each new grant, at each boot, and at each change of `woke_memory` or `pending_reseed`. A rollback to a `hopboxd` before `pending_reseed` drops the field at its next write of the file, so that release asks for no pending step. Each write goes through a temporary file, a rename, and a sync of the dir. At its start, it removes each temporary file `.tmp-*` that a crash left. It removes the file once the control role accepted the report `deleted`. A stale answer to that report ends the executor too: the driver deleted the machine already, and the control store dropped its row. A file that does not parse is logged as `cannot read the node-local state of a machine` at level error, and the other machines still load.
 
 After a restart, the executor asks the driver for each machine of the state dir. It attaches to each microVM that runs, and logs `attached to the running microVM of the machine`. It acts only once the control role sent the spec again.
 

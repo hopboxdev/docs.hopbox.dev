@@ -37,6 +37,10 @@ A global flag goes before or after the command.
 | `guest link down, reconnecting` | warn | `err` | A link that was up for at least 1 s dropped. The agent opens a new link at once. |
 | `guest link failed` | warn | `err`, `retry_in` | A link did not come up, or dropped within 1 s. The agent waits `retry_in` before the next try. The wait starts at 100 ms and doubles after each failure, up to 5 s. |
 | `ignored an older configuration` | warn | `generation`, `applied` | The node pushed a configuration with a lower generation than the one that the agent applied. |
+| `ran the randomness step` | info | `bytes` | The node sent entropy for a later load of a saved state. The agent gave it to the kernel with `RNDADDENTROPY`, and forced a new seed with `RNDRESEEDCRNG` ([Guest link](/reference/guest-link/index.html.md#clock-and-randomness)). |
+| `the randomness step failed` | error | `err` | One of the two ioctls failed. The agent sends the error to the node, and goes on. |
+| `set the clock from the node` | info | `jump` | The guest clock was more than 1 s off the clock of the node, so the agent set it. `jump` is the clock of the node minus the old guest clock, in nanoseconds. A positive value moved the clock forward. |
+| `cannot set the clock from the node` | error | `jump`, `err` | The set of the clock failed. The agent sends the error to the node. |
 | `configuration applied` | info | `generation` | The agent applied a configuration. |
 | `configuration failed` | error | `generation`, `err` | The agent did not apply a configuration. It sends the error to the node. |
 | `left an env var out of the machine` | warn | `err` | An env var of the configuration breaks the rules of [Files](#files). |
@@ -83,12 +87,13 @@ The command does these steps:
 1. It writes the sshd drop-in. If the image has no ed25519 SSH host key, it creates one. Each machine then has its own host key.
 2. Under systemd, it tells systemd that it is ready. sshd starts after this step, so sshd always has a host key and the drop-in.
 3. It reads the link key from the metadata service, dials the node, and does the handshake.
-4. It applies each configuration that the node pushes, and starts the start command as [Start command](#start-command) says.
-5. After a drop of the link, it reads the key again and opens a new link at once.
+4. On a link of version 4 or later, it sets the guest clock from the node when the two differ by more than 1 s. When the node sends entropy, it first runs the randomness step ([Guest link](/reference/guest-link/index.html.md#clock-and-randomness)).
+5. It applies each configuration that the node pushes, and starts the start command as [Start command](#start-command) says.
+6. After a drop of the link, it reads the key again and opens a new link at once.
 
 On `SIGTERM` or `SIGINT`, it kills the start command and exits with status 0.
 
-The agent must run as root. Root can set the host name and the network, write the files below, and switch users for exec. Outside Linux, the host name and the network setup fail with an error, and the rest works.
+The agent must run as root. Root can set the host name, the network, and the clock, reseed the kernel, write the files below, and switch users for exec. Outside Linux, the host name, the network setup, the set of the clock, and the randomness step fail with an error, and the rest works.
 
 Example, on a local unix socket with a local metadata service:
 

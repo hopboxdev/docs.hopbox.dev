@@ -111,6 +111,19 @@ Firecracker adds `pci=off`, `root=/dev/vda rw` for the root disk, and the `virti
 
 Do not pass `i8042.nopnp`, although the Firecracker docs list it with the three arguments above. Firecracker 1.17 describes the controller in its ACPI tables, as the device `PNP0303` with its interrupt. The driver finds the controller there. With `i8042.nopnp`, the driver uses the legacy interrupt 1, which a Firecracker guest with ACPI does not have. The probe then fails with `i8042: probe of i8042 failed with error -22`, and `SendCtrlAltDel` does nothing. Without the argument, the kernel logs `serio: i8042 KBD port at 0x60,0x64 irq 30`, and `SendCtrlAltDel` stops the default image in about one second. The boot test of the default image checks both ([Default image](/reference/default-image/index.html.md#boot-test)).
 
+## Clocksource
+
+A clocksource is the counter from which the guest kernel reads the time. With `clock_realtime` true, Firecracker moves the guest clock forward at a load only through kvm-clock ([the Firecracker driver](/reference/firecracker-driver/index.html.md#the-guest-clock-after-a-load)). The guest agent sets the clock after each resume and each load in any case ([Guest link](/reference/guest-link/index.html.md#clock-and-randomness)).
+
+`TestKVMLifecycle` and `TestKVMHibernate` read `/sys/devices/system/clocksource/clocksource0/current_clocksource` and `available_clocksource` in a guest. The reads of the CI job `fleet (kvm)` on 2026-11-10, with the clock source `kvm-clock` on the host, so with `clock_realtime` false:
+
+| When | Current | Available |
+| --- | --- | --- |
+| After a boot | `kvm-clock` | `kvm-clock tsc` |
+| After a load | `kvm-clock` | `kvm-clock tsc` |
+
+No read on a host with the clock source `tsc` exists yet, so no read after a load with `clock_realtime` true exists either. ks has that clock source, and its first read comes with a proof on ks.
+
 ## Security modules
 
 The base config builds in SELinux, Landlock, and the capability module. `/sys/kernel/security/lsm` in the guest lists `capability,landlock,selinux`. SELinux stays inactive:

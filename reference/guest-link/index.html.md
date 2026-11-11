@@ -66,7 +66,7 @@ Every link starts with a handshake on the `Link` call. The guest agent speaks fi
 4. The guest agent checks the version and the proof. When one of them is wrong, it ends the call and sends nothing more. So a process that poses as the node never gets the proof of the guest.
 5. The guest agent sends `GuestAuth` with its proof.
 6. The node checks the proof. When it is wrong, the node ends the call with the code `unauthenticated`.
-7. The node sends the configuration in a `Config` message. The first message after the proof tells the guest agent that the node accepted it.
+7. On a link of version 4 or later, the node sends `Sync` ([Clock and randomness](#clock-and-randomness)). Then it sends the configuration in a `Config` message. The first message after the proof tells the guest agent that the node accepted it.
 
 The node waits at most 10 s for the hello and the proof together. `HandshakeTimeout` in `guestlink.Options` sets this limit.
 
@@ -101,7 +101,7 @@ Both nonces are new on each link, so an old proof never works again. The role di
 
 ## Versions
 
-A guest link version is a whole number from 1. This build speaks versions 1 to 3. Version 2 adds `ExecControl` on `Link`. On version 1, the node sends the resizes and the signals of an exec on `Exec`. From version 2 on, it sends them as `ExecControl`. Version 3 adds the credit of `Exec` ([Credit of an exec](#credit-of-an-exec)). On a link of version 3, the guest agent acks the messages of the node on `Exec`, and the node sends them on credit. The negotiated version of the link decides, not the build of the guest agent or of `hopboxd`.
+A guest link version is a whole number from 1. This build speaks versions 1 to 4. Version 2 adds `ExecControl` on `Link`. On version 1, the node sends the resizes and the signals of an exec on `Exec`. From version 2 on, it sends them as `ExecControl`. Version 3 adds the credit of `Exec` ([Credit of an exec](#credit-of-an-exec)). On a link of version 3, the guest agent acks the messages of the node on `Exec`, and the node sends them on credit. Version 4 adds `Sync` and `SyncResult` ([Clock and randomness](#clock-and-randomness)). The negotiated version of the link decides, not the build of the guest agent or of `hopboxd`.
 
 | Rule | Detail |
 | --- | --- |
@@ -121,6 +121,8 @@ After the handshake, both sides keep the `Link` call open. Each `LinkRequest` an
 | `GuestHello` | `LinkRequest.hello` | guest | the first message of each link |
 | `GuestAuth` | `LinkRequest.auth` | guest | the second message, after a `NodeHello` with a valid proof |
 | `NodeHello` | `LinkResponse.hello` | node | the answer to `GuestHello` |
+| `Sync` | `LinkResponse.sync` | node | from version 4 on, the first message after a valid `GuestAuth`, ahead of the first `Config` of the link |
+| `SyncResult` | `LinkRequest.sync_result` | guest | from version 4 on, the answer to `Sync` |
 | `Config` | `LinkResponse.config` | node | after the handshake, and after each change |
 | `ConfigApplied` | `LinkRequest.config_applied` | guest | after each `Config`. It holds the generation, the errors, and the count of env values that the agent left out. |
 | `Status` | `LinkRequest.status` | guest | after the handshake, and after each change of the start command. It is the first message of the guest agent after its proof, ahead of the first `ConfigApplied` of the link. A status and a `ConfigApplied` that wait together go in this order. So the node has the SSH host keys of the guest when the link becomes ready. A guest agent of an older image can send `ConfigApplied` first, if its sender starts late. |
@@ -129,6 +131,38 @@ After the handshake, both sides keep the `Link` call open. Each `LinkRequest` an
 | `RunStartCommand` | `LinkResponse.run_start_command` | node | to run the start command again, for the restart policy "always". It has no fields. If the start command runs, the guest agent does nothing. If there is no start command, it sends the status `START_COMMAND_STATE_NONE` again. |
 | `CancelAttach` | `LinkResponse.cancel_attach` | node | to stop an exec, an upload, or a download early. It holds the attach ID `id`. |
 | `ExecControl` | `LinkResponse.exec_control` | node | from version 2 on, for a resize or a signal of the command of an exec. It holds the attach ID `id`, and `resize` (a `WindowSize`) or `signal` (a name). `seq` numbers the controls of each exec from 1. |
+
+### Clock and randomness
+
+A guest in standby does not run, and a load gives the guest the clock of its save. The default image has no time service. So from version 4 on, the node sends its wall clock at the start of each link. Each resume and each load opens a new link, so each of them gets the clock.
+
+The same message carries the randomness step of a later load. Firecracker calls it insecure to load one saved state more than once without a step that makes each copy unique. The node asks for the step with the option `Reseed` of the server ([Node API](#node-api)). The executor sets it on each load of a memory file that loaded before ([the node executor](/reference/executor/index.html.md#the-randomness-step)).
+
+| Field of `Sync` | Type | What the guest agent does |
+| --- | --- | --- |
+| `time` | timestamp | The wall clock of the node at the send. If the clock of the guest differs from it by more than 1 s (`protocol.ClockTolerance`), the guest agent sets the clock of the guest kernel to it. |
+| `entropy` | bytes | 64 fresh random bytes of the node (`protocol.EntropySize`), only for the randomness step. The guest agent gives them to the kernel with the ioctl `RNDADDENTROPY` on `/dev/urandom`, and credits 8 bits for each byte. Then it forces a new seed with `RNDRESEEDCRNG`. Empty: no step. |
+
+The guest agent runs the step first, then sets the clock. It answers with `SyncResult`:
+
+| Field of `SyncResult` | Type | Meaning |
+| --- | --- | --- |
+| `offset` | duration | The clock of the node minus the clock of the guest, at the receipt of `Sync`. A positive value means that the guest clock was behind. |
+| `clock_set` | bool | The guest agent set the clock. |
+| `reseeded` | bool | The guest agent ran the randomness step. |
+| `error` | string | Why the step or the set of the clock failed, one error per line. Empty after a success. The node keeps and logs at most 1024 bytes of it. |
+
+The guest agent handles the messages of `Link` in order, so its `SyncResult` comes before the `ConfigApplied` of the link. So when `Server.Ready` returns, `Server.State` holds the result. The node takes one `SyncResult` for each `Sync`, and only on a link of version 4 or later. It ignores any other `SyncResult`, and logs `ignored a SyncResult that answers no Sync` at level debug.
+
+A failed step or a failed set does not fail the link, and the machine runs. The guest kernel already reseeds itself at each load through VMGenID. The owner decided this on 2026-11-10, as Q215. The node makes the failure visible and tries again:
+
+- It logs `the guest agent failed the randomness step, so the next link asks for it again` or `the guest agent did not set its clock` at level error, with `err`.
+- It counts each step in `hopbox_guest_randomness_steps_total{result}` ([Metrics](/reference/metrics/index.html.md#metrics-of-the-executors)).
+- While the guest agent did not report the step, the node sends new entropy on each new link. The executor keeps that request across a restart of `hopboxd` ([the node executor](/reference/executor/index.html.md#the-randomness-step)).
+
+The VMGenID reseed has a race window between the load and the new seed.
+
+A guest agent whose guest link version is 3 or lower gets no `Sync`, and never sets the clock. After a load without `clock_realtime`, its clock stays at the time of the save until a program in the guest sets it. A pause stops the guest, but kvm-clock reads the clock of the host after the resume, so the guest clock lags little: 0.65 s after a pause of 60 s, in the KVM test on the CI runner on 2026-11-10. A later load of such a machine has only the reseed of VMGenID, and the node logs `the guest agent speaks no randomness step, so this later load of a saved state has only the kernel reseed of VMGenID`.
 
 ### Configuration
 
@@ -301,7 +335,7 @@ The executor of each machine uses the Go package `internal/node/guestlink` ([the
 | `Server.Serve(listener)` | Accepts guest agent connections until `Close`. |
 | `Server.Close()` | Stops the server and ends every call. It waits for the handlers of the server and for `OnState`, so nothing logs or calls `OnState` after it returns. |
 | `Server.Ready(ctx)` | Waits until the guest agent applied the current configuration on an authenticated link. If the configuration failed, it returns the error of the guest agent. The node uses it for the "running" state of a machine. |
-| `Server.State()` | Returns `State`. It holds whether a link is up, the version, and the build version of the guest agent. It holds the boot ID and the run ID of the agent from the last hello. It also holds the current and the applied generation, the configuration error, and the count of skipped env values. Last, it holds the last status of the guest and the last link error. |
+| `Server.State()` | Returns `State`. It holds whether a link is up, the version, and the build version of the guest agent. It holds the boot ID and the run ID of the agent from the last hello. It also holds the current and the applied generation, the configuration error, and the count of skipped env values. It holds the last status of the guest and the last link error. Last, it holds the last `SyncResult`: `ClockOffset`, `ClockSet`, and `SyncError`, and `Reseeded`, which stays true once a link of the server ran the randomness step. |
 | `Server.UpdateConfig(ctx, config)` | Makes `config` the configuration, pushes it, and waits until the guest agent applied it. |
 | `Server.RunStartCommand(ctx)` | Asks the guest agent to run the start command again. |
 | `Server.Exec(ctx, ExecOptions)` | Starts a command. `Process.Wait` returns its `ExecExit`. `Process.Resize` sets the terminal size. `Process.Signal` sends a signal by name. Both use `ExecControl` from version 2 on. When `ctx` ends first, the guest agent stops the command with `SIGTERM`, then `SIGKILL`. |
@@ -314,6 +348,8 @@ The executor of each machine uses the Go package `internal/node/guestlink` ([the
 | `Config` | empty | The first configuration. |
 | `NodeVersion` | empty | The build version of `hopboxd` for `NodeHello`. |
 | `Versions` | the versions of this build | The versions that the node speaks. |
+| `OnReseed` | none | Gets the result of each randomness step that the server asked for: `ok`, `failed`, or `unsupported`, once for each server with a guest agent whose guest link version is 3 or lower. It must not block. |
+| `Reseed` | `false` | Asks for the randomness step: the microVM runs from a load of a saved state that a guest already ran from. Each link of version 4 or later then carries fresh `entropy`, until the guest agent reports the step. |
 | `OnState` | none | Gets each new `State`, in order, on a goroutine of the server. It can call the methods of the server. It gets no state after `Close` returns. When `OnState` falls behind, a new state replaces a queued state with the same `Connected` value, so every connect and disconnect stays in the queue. |
 | `OnLog` | none | Gets each `LogEntry`, in order. |
 | `HandshakeTimeout` | 10 s | The longest wait for the hello, for the proof, and for the attach ID of each call. |

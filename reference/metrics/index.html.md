@@ -479,6 +479,7 @@ The executors of a node count their actions, and what happens to their machines 
 | `hopbox_executor_boot_phase_seconds` | histogram | `phase` | The duration of each phase of a boot or a reboot: `unit_start`, `vmm_ready`, `guest_link`, and `start_command`. |
 | `hopbox_machine_restarts_total` | counter | `machine`, `reason` | The restarts of each machine by the restart policy: `crash`, `guest_shutdown`, or `start_command_exit`. The series of a machine go away when it leaves the node. |
 | `hopbox_guest_link_handshakes_total` | counter | `result` | The handshakes of the guest links: `ok`, `bad_proof`, `no_version`, or `error`. Each of the 4 series starts at 0. |
+| `hopbox_guest_randomness_steps_total` | counter | `result` | The randomness steps that the guest links asked for after a later load of a memory file ([the node executor](/reference/executor/index.html.md#the-randomness-step)): `ok`, `failed`, or `unsupported`. `unsupported` counts once for each guest link server whose guest agent has the guest link version 3 or lower. The executor serves a new guest link server at each boot, wake, resume, and restart of `hopboxd`, so such a machine counts once for each of them while its step is pending. Each of the 3 series starts at 0. |
 | `hopbox_guest_links_down` | gauge | none | The machines whose microVM runs on the node without an authenticated guest link. A boot counts until its guest agent connects. A machine that runs before its first spec after a restart of `hopboxd` does not count. A machine in standby does not count, because the node closed its link on purpose. |
 | `hopbox_vmm_save_seconds` | histogram | `kind` | The duration of each save of the memory of a machine by the VMM driver that worked, by kind: `hibernate`. The series starts at 0. |
 | `hopbox_vmm_load_seconds` | histogram | `kind` | The duration of each load of saved memory by the VMM driver that worked, until the microVM runs, by kind: `wake`. The wait for the guest agent does not count. The series starts at 0. |
@@ -493,7 +494,7 @@ The catalog names the phases and the results in words, so these label values sta
 | `result` of the handshakes | `ok`. `bad_proof`: the failed proofs of the catalog, a guest proof that does not match the link key. `no_version`: no common version of the guest link. `error`: any other failure, such as a broken message, a timeout, or a guest agent that ends the call before its proof. |
 
 ```sh
-curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(executor_lease|machine_restarts|guest_link)'
+curl -s http://127.0.0.1:9464/metrics | grep -E '^hopbox_(executor_lease|machine_restarts|guest_link|guest_randomness)'
 ```
 
 ```text
@@ -503,6 +504,9 @@ hopbox_guest_link_handshakes_total{result="error"} 0
 hopbox_guest_link_handshakes_total{result="no_version"} 0
 hopbox_guest_link_handshakes_total{result="ok"} 12
 hopbox_guest_links_down 0
+hopbox_guest_randomness_steps_total{result="failed"} 0
+hopbox_guest_randomness_steps_total{result="ok"} 1
+hopbox_guest_randomness_steps_total{result="unsupported"} 0
 hopbox_machine_restarts_total{machine="0193a5b2-7c1e-7d4a-9f3b-2a1c4e5f6a7b",reason="crash"} 1
 ```
 

@@ -7291,7 +7291,13 @@ A machine in standby does not move, because its memory lives in the RAM of its n
 
 ## What the wall clock does
 
-A guest in standby does not run, so its wall clock stops. After a resume, the clock of the guest stays behind until the guest syncs it. The default image has no time service. A later milestone of phase 3 sets the clock at each resume.
+A guest in standby does not run. The default image has no time service. So at each resume, the guest agent compares the clock of the guest with the clock of the node. If the two differ by more than 1 s, the guest agent sets the clock of the guest, and its log names the jump ([hopbox-guest](/reference/hopbox-guest/#logs)). Read that log in the machine:
+
+```sh
+journalctl -u hopbox-guest | grep 'set the clock from the node'
+```
+
+A guest agent of v0.2.0-rc.1 or older never sets the clock. A machine from an image with such a guest agent keeps the clock that the guest kernel reads after a resume, until a program in the machine sets it. After a pause of 60 s, that clock was 0.65 s behind in a test ([Guest link](/reference/guest-link/#clock-and-randomness)).
 
 ## When a machine loses its standby
 
@@ -7378,7 +7384,13 @@ At a wake, the guest gets the wall clock of the host from the save. KVM puts the
 cat /sys/devices/system/clocksource/clocksource0/current_clocksource
 ```
 
-On a host with another clock source, such as the CI runner, the save goes without the wall clock. A guest that wakes from such a save keeps the clock of the save. Milestone T04 of phase 3 sets the clock after a load ([the Firecracker driver](/reference/firecracker-driver/#the-guest-clock-after-a-load)). ks reads `tsc`, so a guest that wakes on ks gets the right time.
+On a host with another clock source, such as the CI runner, the save goes without the wall clock ([the Firecracker driver](/reference/firecracker-driver/#the-guest-clock-after-a-load)). On every host, the guest agent sets the clock of the guest from the node when its guest link comes up after the wake, as after a resume ([What the wall clock does](#what-the-wall-clock-does)).
+
+### Randomness after a second load
+
+A wake that fails can leave a guest that ran from the memory file. The next wake loads the same file again, so two runs start from one state of the random number generator. On each such load, the node sends fresh random bytes, and the guest agent reseeds the kernel with them before the machine reports `running` ([the node executor](/reference/executor/#the-randomness-step)). A hibernate does not freeze the programs of the machine. So on such a load, the programs of the machine run again before the step, from the moment of the load until the guest agent links. The guest kernel reseeds itself at the load through VMGenID, so only that short time runs without the step.
+
+If the step fails in the guest, the machine runs anyway. The node logs `the guest agent failed the randomness step, so the next link asks for it again` at level error, and counts the failure in `hopbox_guest_randomness_steps_total{result="failed"}`. Each new guest link of the machine asks for the step again, also after a restart of `hopboxd`, until the guest agent reports it. A guest agent of v0.2.0-rc.1 or older cannot do this step, and the guest kernel then reseeds only through VMGenID.
 
 ## A failed wake
 
