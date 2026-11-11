@@ -123,8 +123,19 @@ When the front door cannot reach the machine, the client stays signed in, and ea
 | `the front door cannot reach the OpenSSH server of the machine` | The TCP connection failed, or the machine refused it for 10 s. The front door logs `the front door cannot reach the OpenSSH server of a machine` at level info, with `machine`, `addr`, and `err`. |
 | `the OpenSSH server of the machine refused the front door` | The SSH handshake failed: another host key, or no sign-in with the client key. |
 | `the machine is gone` | The routes name no machine at the port any more. |
+| `it did not wake: <reason>` | The machine was in standby or hibernated, and did not run within the hold of the connection ([Wake on connect](#wake-on-connect)). |
 
-A machine in standby or hibernated does not wake at a connection before milestone T06 of phase 3.
+### Wake on connect
+
+A machine in standby or hibernated resumes or wakes only after the front door accepts the SSH key of the client (Q180 of the phase 3 plan). A connection whose key opens nothing wakes no machine, so a scan of the SSH ports holds no RAM.
+
+After the sign-in, the front door holds the connection, and the edge role calls `EdgeService.WakeForConnection` with the channel `WAKE_CHANNEL_SSH` ([the edge role](/reference/edge/index.html.md#edgeservicewakeforconnection)). Once the routes give the machine a target, the front door opens its connection to the OpenSSH server of the machine. The client sees only a longer login. The hold and its bounds are those of a request of a machine URL: 30 s for one connection, 256 held connections of one machine, and 16 wakes at once for one node ([the edge role](/reference/edge/index.html.md#wake-on-connect)).
+
+When the hold ends without the machine, each channel of the client fails with `it did not wake: <reason>`, such as `it did not wake: its wake failed, and it keeps its saved state. Its creator can start it again`. The reasons are those of [the edge role](/reference/edge/index.html.md#wake-on-connect). The connection counts as `unreachable` in `hopbox_edge_ssh_connections_total`, with the reason `waking` in `hopbox_edge_ssh_unreachable_total`.
+
+A client that closes its connection during the hold ends the hold at once, so it keeps no place of the bounds, and names its machine no more.
+
+A signed-in connection, also one that waits for a wake, keeps its machine awake: each heartbeat of the edge server names its machine in `connected_machines` ([the control channel](/reference/control-channel/index.html.md#heartbeat)).
 
 ## The mesh
 
@@ -252,7 +263,7 @@ The edge role serves these metrics on the metrics listener of `hopboxd` ([Metric
 | --- | --- | --- | --- |
 | `hopbox_edge_ssh_connections_total` | counter | `result` | The TCP connections of the front door, by result. See the table of results below. |
 | `hopbox_edge_ssh_auth_total` | counter | `result` | The keys that clients signed with: `allowed`, `refused`, `limited`, or `error` (the control role did not answer). |
-| `hopbox_edge_ssh_unreachable_total` | counter | `reason` | The signed-in connections that reached no OpenSSH server: `not_running`, `no_address`, `no_host_key`, `dial`, or `handshake`. |
+| `hopbox_edge_ssh_unreachable_total` | counter | `reason` | The signed-in connections that reached no OpenSSH server: `not_running`, `waking`, `no_address`, `no_host_key`, `dial`, or `handshake`. `waking`: the machine did not wake within the hold of the connection. |
 | `hopbox_edge_ssh_channels_total` | counter | `type`, `result` | The channels, by type, and by result: `forwarded`, `refused` (by the other side, or because its connection ended during the open), or `prohibited` (by the front door). An unknown type counts as `other`. |
 | `hopbox_edge_ssh_ended_total` | counter | `reason` | The open connections that the front door ended: `access_lost`, `route_changed`, or `shutdown`. |
 | `hopbox_edge_ssh_open_connections` | gauge | none | The signed-in connections that the front door holds now. |
@@ -296,7 +307,3 @@ The front door logs with `component=sshfd`.
 | `cannot remove the redirect of the SSH ports` | warn | The stop did not delete the table. |
 
 The control role logs each refusal of `AuthorizeSSH` as `refused an SSH connection` at info level. Its fields are `ssh_port`, `linux_user`, `client_ip`, `fingerprint`, and `reason`, such as `the account does not use the machine`. A refusal writes no audit entry, so this record is the only trace of it. It logs each access that it allows as `allowed an SSH connection` at debug level, with `ssh_port`, `linux_user`, `client_ip`, `fingerprint`, `machine`, and `account`. It logs `created the keys of the SSH front door` once, with `host_key`.
-
-## Not in phase 1
-
-- A machine in standby or hibernated wakes after the front door accepts an SSH key, in milestone T06 of phase 3. An SSH connection that passed that check keeps its machine awake. The owner decided these rules on 2026-11-06, in Q180 and Q181.

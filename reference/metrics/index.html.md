@@ -439,11 +439,14 @@ A server with the edge role adds these metrics to the listener of its `hopboxd r
 | `hopbox_edge_routes` | gauge | none | The machines that the machine URLs of the edge role name. |
 | `hopbox_edge_certificate_not_after_seconds` | gauge | none | The end of the certificate that the edge role serves, in seconds since the Unix epoch. It is 0 before the first certificate. |
 | `hopbox_edge_machine_requests_total` | counter | `visibility`, `status_class` | The HTTP requests that the edge role forwarded to a machine, by the visibility of the machine URL (`public` or `private`) and the class of the status of the answer (`1xx` to `5xx`). A forward that failed counts as `5xx`. Each of the 10 series starts at 0 ([the edge role](/reference/edge/index.html.md#metrics)). |
-| `hopbox_edge_upstream_errors_total` | counter | `reason` | The 502 and 503 answers to the requests of a machine URL, by cause: `not_running`, `no_address`, `no_answer`, or `expired_lease` ([the edge role](/reference/edge/index.html.md#metrics)). Each of the 4 series starts at 0. |
+| `hopbox_edge_upstream_errors_total` | counter | `reason` | The 502 and 503 answers to the requests of a machine URL, by cause: `not_running`, `no_address`, `no_answer`, `expired_lease`, or `waking` ([the edge role](/reference/edge/index.html.md#metrics)). Each of the 5 series starts at 0. |
+| `hopbox_edge_wakes_total` | counter | `result` | The resumes and wakes of sleeping machines that the edge role started for connections, by result: `woken`, `refused`, `failed`, `timeout`, `error`, or `node_busy` ([the edge role](/reference/edge/index.html.md#wake-on-connect)). |
+| `hopbox_edge_wake_wait_seconds` | histogram | `protocol` | The time from the first packet of a connection to a sleeping machine to the first answer of the machine, by protocol: `http` or `ssh`. |
+| `hopbox_edge_held_connections` | gauge | `protocol` | The connections that the edge role holds now until their sleeping machine runs, by protocol: `http` or `ssh`. |
 | `hopbox_edge_expired_targets` | gauge | none | The targets of the machine URLs whose lease ended at the edge. |
 | `hopbox_edge_ssh_connections_total` | counter | `result` | The TCP connections of the SSH front door, by result ([the SSH front door](/reference/ssh-front-door/index.html.md#metrics)). |
 | `hopbox_edge_ssh_auth_total` | counter | `result` | The keys that SSH clients signed with: `allowed`, `refused`, `limited`, or `error`. |
-| `hopbox_edge_ssh_unreachable_total` | counter | `reason` | The signed-in SSH connections that reached no OpenSSH server of a machine. |
+| `hopbox_edge_ssh_unreachable_total` | counter | `reason` | The signed-in SSH connections that reached no OpenSSH server of a machine, also those whose machine did not wake (`waking`). |
 | `hopbox_edge_ssh_channels_total` | counter | `type`, `result` | The SSH channels that the front door forwarded or refused. |
 | `hopbox_edge_ssh_ended_total` | counter | `reason` | The open SSH connections that the front door ended. |
 | `hopbox_edge_ssh_open_connections` | gauge | none | The signed-in SSH connections that the front door holds now. |

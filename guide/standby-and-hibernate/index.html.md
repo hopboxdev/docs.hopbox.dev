@@ -37,8 +37,7 @@ Paused the machine box1 in <time>.
 A pause has these effects:
 
 - Each exec and each terminal of the machine ends with an error.
-- `hopbox exec`, `hopbox connect`, and a file copy fail with `the machine box1 is in standby. Resume it first`.
-- The URL and the SSH port of the machine refuse connections, as for a machine that does not run. A later milestone of phase 3 makes a connection resume the machine.
+- The next `hopbox exec`, `hopbox connect`, file copy, request of its URL, or SSH session resumes the machine ([A connection brings the machine back](#a-connection-brings-the-machine-back)).
 - The machine still holds its RAM on its node. So it counts in the vCPU and RAM limits of its org, as a running machine does ([Create and manage machines](/guide/machines/index.html.md)).
 
 ## Bring a machine back
@@ -109,8 +108,7 @@ The save writes the whole RAM of the machine, so a machine with more RAM takes l
 A hibernate has these effects:
 
 - Each exec and each terminal of the machine ends with an error.
-- `hopbox exec`, `hopbox connect`, and a file copy fail, because the machine does not run.
-- The URL and the SSH port of the machine refuse connections. A later milestone of phase 3 makes a connection wake the machine.
+- The next `hopbox exec`, `hopbox connect`, file copy, request of its URL, or SSH session wakes the machine ([A connection brings the machine back](#a-connection-brings-the-machine-back)).
 - The machine frees its vCPUs and its RAM, so they do not count in the limits of its org. Its disk and its memory file stay on its node.
 - The memory file counts in the stored state of the org, and the save counts in the saves of the last 24 hours. `hopbox org usage` shows both ([hopbox CLI](/reference/cli/index.html.md#org-usage)).
 - A reboot of the node keeps the memory file. The machine stays hibernated.
@@ -169,6 +167,38 @@ On a host with another clock source, such as the CI runner, the save goes withou
 A wake that fails can leave a guest that ran from the memory file. The next wake loads the same file again, so two runs start from one state of the random number generator. On each such load, the node sends fresh random bytes, and the guest agent reseeds the kernel with them before the machine reports `running` ([the node executor](/reference/executor/index.html.md#the-randomness-step)). A hibernate does not freeze the programs of the machine. So on such a load, the programs of the machine run again before the step, from the moment of the load until the guest agent links. The guest kernel reseeds itself at the load through VMGenID, so only that short time runs without the step.
 
 If the step fails in the guest, the machine runs anyway. The node logs `the guest agent failed the randomness step, so the next link asks for it again` at level error, and counts the failure in `hopbox_guest_randomness_steps_total{result="failed"}`. Each new guest link of the machine asks for the step again, also after a restart of `hopboxd`, until the guest agent reports it. A guest agent of v0.2.0-rc.1 or older cannot do this step, and the guest kernel then reseeds only through VMGenID.
+
+## A connection brings the machine back
+
+You do not need to resume or wake a machine by hand. A connection that passes its check of access brings the machine back:
+
+| Connection | Check of access |
+| --- | --- |
+| `hopbox exec`, `hopbox connect`, `hopbox cp`, and the web terminal | Your rights on the machine, as for `hopbox machine resume` |
+| An SSH session through the SSH port of the machine | An SSH key of an account with access to the machine |
+| A request of a private URL | A sign-in of an account with access to the machine |
+| A request of a public URL | None. Any request passes. |
+
+The connection waits until the machine runs, so you see only a slower start. For SSH, the login takes longer. `hopbox list`, `hopbox machine show`, and `hopbox logs` do not bring a machine back. A scan of the SSH ports does not either, because a key that opens nothing passes no check.
+
+Run this command on your computer to try it:
+
+```sh
+hopbox machine hibernate box1
+curl -s -o /dev/null -w '%{http_code} %{time_total}\n' https://box1.example.com/
+```
+
+For a public URL with a server on the URL port of the machine, curl prints `200`, and the time includes the wake. A private URL sends a client without a sign-in to the sign-in, and wakes nothing.
+
+A wake on a connection takes the checks of `hopbox machine wake`: the limits of the org, and the room on the node. A public URL never wakes a private machine whose creator an instance admin suspended. A refused wake leaves the machine as it was:
+
+- A request of the URL gets `503 Service Unavailable` with a page that starts with `The machine box1 did not wake:` and names the reason. On a public URL, only a visitor with a sign-in of an account with access sees the reason. Other visitors see `this machine is not available right now. Retry later`.
+- An SSH session gets `channel 0: open failed: connect failed: hopbox: the machine box1 cannot take SSH connections now: it did not wake: <reason>`.
+- `hopbox exec`, `hopbox connect`, and `hopbox cp` fail with the error of `hopbox machine wake`.
+
+The URL and the SSH session wait for at most 30 s. A machine that does not run by then gets the same answers, with the reason `it did not wake within 30s. Retry`.
+
+An open connection keeps its machine awake: an SSH session, a terminal, an exec, or an open request of the URL, such as a WebSocket. A session that you forget holds the RAM of the machine on its node. Close the sessions that you do not use.
 
 ## A failed wake
 
@@ -242,7 +272,8 @@ Restart `hopboxd` on the node after the change. Each refused save counts in `hop
 | --- | --- | --- |
 | `failed_precondition: failed precondition: machine action not allowed: cannot pause a machine whose target state is stopped` | Only a running machine goes to standby. | Start the machine first. |
 | `failed_precondition: failed precondition: machine action not allowed: cannot resume a machine whose target state is running` | The machine is not in standby, or it lost its standby. | Read its state with `hopbox machine show box1`. |
-| `failed_precondition: failed precondition: the machine box1 is in standby. Resume it first` | An exec, a file copy, or `hopbox connect` found the machine in standby. | Run `hopbox machine resume box1`. |
+| `unavailable: the machine did not resume or wake in time. Retry: the machine box1 is <state>` | An exec, a file copy, or `hopbox connect` resumed or woke the machine, and it did not run within 60 s. | Retry. Read the state with `hopbox machine show box1`. |
+| `503` `The machine box1 did not wake: <reason>.` | A request of the URL brought the machine back, and the wake did not work. | Fix the reason, such as a limit of the org. After a failed wake, read [A failed wake](#a-failed-wake). |
 | `failed_precondition: failed precondition: machine action not allowed: cannot rename a machine in standby: resume it first` | A rename found the machine in standby, or on its way in or out of it. | Run `hopbox machine resume box1`, then rename the machine. |
 | `failed_precondition: failed precondition: machine action not allowed: cannot rename a hibernated machine: wake it first` | A rename found the machine hibernated, or on its way in or out of it. | Run `hopbox machine wake box1`, then rename the machine. |
 | `failed_precondition: failed precondition: the machine box1 moves to another node. Pause it after the move` | An instance admin or a drain moves the machine. | Wait for the end of the move, and pause again. |
@@ -251,7 +282,7 @@ Restart `hopboxd` on the node after the change. Each refused save counts in `hop
 | `failed_precondition: failed precondition: machine action not allowed: cannot wake a machine whose target state is running` | The machine is not hibernated, or a wake of it failed. | Read its state with `hopbox machine show box1`. After a failed wake, run `hopbox machine start box1` ([A failed wake](#a-failed-wake)). |
 | `failed_precondition: failed precondition: machine action not allowed: cannot stop a hibernated machine: wake it first` | A stop does not keep the memory of a hibernated machine. | Run `hopbox machine wake box1`, or drop the memory file with `hopbox machine discard-memory box1`. |
 | `failed_precondition: failed precondition: machine action not allowed: cannot stop a machine that is hibernated: wait for the end of its wake. After a failed wake, drop the file with DiscardMemory` | A wake of the machine is pending, and its load did not start yet. | Wait for the wake, then stop the machine. If the wake fails, run `hopbox machine discard-memory box1`. |
-| `failed_precondition: failed precondition: the machine box1 is hibernated, not running. Start it first` | An exec, a file copy, or `hopbox connect` found the machine hibernated. | Run `hopbox machine wake box1`. |
+| `failed_precondition: failed precondition: the machine box1 is failed, not running. Start it first` | An exec, a file copy, or `hopbox connect` woke the machine, and the wake failed. | Read [A failed wake](#a-failed-wake). |
 | `resource_exhausted: usage limit exceeded: ...` | The wake takes the org over a limit. | Stop another machine of the org, or ask an owner of the org for a higher limit. |
 | `resource_exhausted: usage limit exceeded: the saves of the org would write <bytes> bytes in 24 hours, and its daily budget is <limit>` | A hibernate passes the daily budget of saves of the org. The machine runs on. | Try again later, or ask an instance admin for a higher budget ([When a hibernate fails](#when-a-hibernate-fails)). |
 | `resource_exhausted: resource exhausted: the node of the machine box1 refused the save, so the machine runs on: the free disk of the node is below the floor of a save: ...` | The save leaves less free disk on the node than its floor. | Ask an instance admin to free disk on the node ([The memory file on the node](#the-memory-file-on-the-node)). |

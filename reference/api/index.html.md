@@ -273,6 +273,7 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `server.authorize_machine_url` | `EdgeService.AuthorizeMachineRequest` | the server of the caller | as for `server.read_edge_certificate` |
 | `server.read_edge_ssh_keys` | a read of the keys of the SSH front door before a push of `edge_ssh_keys` | the server of the caller | as for `server.read_edge_certificate` |
 | `server.authorize_ssh` | `EdgeService.AuthorizeSSH` ([the SSH front door](/reference/ssh-front-door/index.html.md#edgeserviceauthorizessh)) | the server of the caller | as for `server.read_edge_certificate` |
+| `server.wake_for_connection` | `EdgeService.WakeForConnection` ([the edge role](/reference/edge/index.html.md#edgeservicewakeforconnection)) | the server of the caller | as for `server.read_edge_certificate` |
 
 The `server.*` actions of the control channel and of the edge role have a server as their resource. The policy allows them only to a caller of kind `server` whose server is that resource. So the certificate of one server never acts for another ([the control channel](/reference/control-channel/index.html.md)).
 

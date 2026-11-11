@@ -464,7 +464,7 @@ Puts a running machine in standby, and waits until it is there. The memory of th
 
 The request `PauseMachineRequest` names the machine. The response `PauseMachineResponse` has the fields `machine`, `duration`, and `done`. A pause is allowed in a suspended org.
 
-A pause closes the guest link of the machine. So an exec, a file copy, or a web terminal that runs ends with an error. The machine has no route while it is in standby. So its URL and its SSH port refuse a connection, as for a machine that does not run. Milestone T06 of phase 3 makes a connection resume the machine.
+A pause closes the guest link of the machine. So an exec, a file copy, or a web terminal that runs ends with an error. The machine has no route while it is in standby. A connection to its URL or its SSH port, after its check of access, resumes it, and the edge holds the connection until the machine runs ([the edge role](/reference/edge/index.html.md#wake-on-connect)). So do `Exec`, `Upload`, and `Download` ([Wake for an access call](#wake-for-an-access-call)).
 
 | Error | Code |
 | --- | --- |
@@ -561,7 +561,7 @@ A suspension of the org or of the creator cancels a pending wake. It sets the ta
 | --- | --- |
 | The target is not `hibernated`: `failed precondition: machine action not allowed: cannot wake a machine whose target state is running` | `failed_precondition` |
 | A suspended org: `failed precondition: org suspended: an instance admin suspended the org, so it cannot wake a machine` | `failed_precondition` |
-| A private machine whose creator an instance admin suspended: `failed precondition: an instance admin suspended the creator of the private machine <name>, so it does not wake` | `failed_precondition` |
+| A private machine whose creator an instance admin suspended: `failed precondition: an instance admin suspended the creator of the private machine <name>, so it does not resume or wake` | `failed_precondition` |
 | The org is at a limit, with the message of `StartMachine` | `resource_exhausted` |
 | The node of the machine has no room, with the message of `StartMachine` | `unavailable` |
 | The node of the machine runs an older release: `failed precondition: the node of the machine <name> runs hopboxd <version>, whose heartbeats name no feature hibernate. An instance admin must upgrade the node first` | `failed_precondition` |
@@ -714,14 +714,21 @@ Every access call has the policy action `machine.exec`. Only a caller who uses t
 | A caller without a credential | `unauthenticated` |
 | A member on a private machine of another member | `not_found` |
 | An org admin or owner on a private machine of another member | `permission_denied` |
-| A machine that is not running, for `Exec`, `Upload`, or `Download` | `failed_precondition`, with the message `failed precondition: the machine <name> is <state>, not running. Start it first` |
-| A machine in standby, for `Exec`, `Upload`, or `Download` | `failed_precondition`, with the message `failed precondition: the machine <name> is in standby. Resume it first`. Milestone T06 of phase 3 makes these calls resume the machine. |
+| A machine that is not running, for `Exec`, `Upload`, or `Download` | `failed_precondition`, with the message `failed precondition: the machine <name> is <state>, not running. Start it first`. A machine in standby or hibernated resumes or wakes first ([Wake for an access call](#wake-for-an-access-call)). |
+| A machine in standby or hibernated that does not run within the wait of the lifecycle calls, for `Exec`, `Upload`, or `Download` | `unavailable`, with the message `unavailable: the machine did not resume or wake in time. Retry: the machine <name> is <state>` |
+| A resume or a wake that its checks refuse, for `Exec`, `Upload`, or `Download` | the code and the message of `ResumeMachine` or `WakeMachine`, such as `resource_exhausted` for an org limit |
 | A machine of a suspended org, for `Exec`, `Upload`, or `Download` | `failed_precondition`, with the message `failed precondition: org suspended: an instance admin suspended the org of the machine` |
 | A machine whose target or current state is `deleted` | `not_found` |
 | The node of the machine has no channel to the control process. Or it has 255 data streams open. Or it did not attach the stream within 10 s. | `unavailable`. A retry can work. |
 | The caller has 32 open access calls to the node of the machine (`service.MaxCallerStreams`) | `resource_exhausted`, with the message `too many requests: you have 32 open streams to the node of this machine, the most for one caller. End one, then retry` |
 | The org of the machine has 128 open access calls to its node (`service.MaxOrgStreams`) | `resource_exhausted`, with the message `too many requests: the org has 128 open streams to the node of this machine, the most for one org. End one, then retry` |
 | The guest agent of the machine is not connected, or the machine stopped during the call | `unavailable` |
+
+### Wake for an access call
+
+`Exec`, `Upload`, and `Download` resume a machine in standby, and wake a hibernated machine (Q180 of the phase 3 plan). `hopbox connect` and the web terminal use `Exec`, so they wake a machine too. `GetMachine`, `ListMachines`, and `StreamMachineLogs` wake nothing.
+
+The call first checks the access of the caller, as in [Who can call them](#who-can-call-them). So a caller who cannot use the machine wakes nothing. The call then runs [ResumeMachine](#resumemachine) or [WakeMachine](#wakemachine) with the rights of the caller, with their checks, their audit entry, and their wait of up to 60 s. A machine whose target is `running` already, such as during a wake of another call, only gets the wait. Once the machine runs, the call goes on. A refused resume or wake fails the call with its error, and leaves the machine as it was. A failed wake fails the call with the error of a machine that is not running.
 
 ### How a stream ends
 
@@ -818,7 +825,7 @@ Each message `ExecRequest` and `ExecResponse` holds one `ExecChunk` in the field
 
 A client that ends its side of the stream sends no more input, and the command runs on. A client that cancels the call ends the command.
 
-`hopbox connect` opens a shell with `Exec`: `tty` true and no `argv`. A connect to a machine that does not run gets `failed_precondition`, also a connect to a machine in standby ([Who can call them](#who-can-call-them)). Milestone T06 of phase 3 makes `hopbox connect`, `Exec`, `Upload`, and `Download` wake a machine. `GetMachine`, `ListMachines`, and `StreamMachineLogs` do not wake one. The owner decided this on 2026-11-06, in Q180. The CLI gives exec its JSON output, its exit status, and its terminal handling ([hopbox CLI](/reference/cli/index.html.md#exec)).
+`hopbox connect` opens a shell with `Exec`: `tty` true and no `argv`. A connect to a machine in standby or hibernated resumes or wakes it first ([Wake for an access call](#wake-for-an-access-call)). A connect to a machine that is stopped or failed gets `failed_precondition` ([Who can call them](#who-can-call-them)). The owner decided this on 2026-11-06, in Q180. The CLI gives exec its JSON output, its exit status, and its terminal handling ([hopbox CLI](/reference/cli/index.html.md#exec)).
 
 ### The WebSocket endpoint
 
@@ -1091,7 +1098,7 @@ A machine counts in the usage of its org ([the org API](/reference/org-api/index
 
 ## Auto-delete
 
-A machine with an auto-delete timeout goes after that time without use. The leader checks every minute ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). The use is `last_activity_time`. Today these set it: the create, each start that changes the machine, each resume, each wake, and each update with a new auto-delete timeout. The access calls set it too: each `Exec`, `Upload`, `Download`, and `StreamMachineLogs` at its start, and then every 30 s while it runs ([How a stream ends](#how-a-stream-ends)). SSH sessions set it, and so does inbound traffic: each heartbeat of the node names the machines with inbound traffic ([the node network](/reference/node-network/index.html.md#inbound-traffic-as-a-use)). An SSH session calls `Service.TouchMachine` of `internal/service` after its own policy check. `TouchMachine` writes at most once a minute for each machine, and does not change the `version` of the machine. So `last_activity_time` can be up to a minute older than the last use. The job deletes a machine only once `last_activity_time` is older than its timeout plus 1 minute (`service.TouchInterval`). So a machine that someone used within its timeout always stays. The job reads the idle machines in pages of 100, in the order of their last use. It goes on after a machine that fails, so a few bad machines never hold back the others. The job deletes the machine as `DeleteMachine` does, so its name and its SSH port stay reserved for 7 days. It skips the machines of a suspended org. Its audit entry has the actor `system`.
+A machine with an auto-delete timeout goes after that time without use. The leader checks every minute ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)). The use is `last_activity_time`. Today these set it: the create, each start that changes the machine, each resume, each wake, and each update with a new auto-delete timeout. The access calls set it too: each `Exec`, `Upload`, `Download`, and `StreamMachineLogs` at its start, and then every 30 s while it runs ([How a stream ends](#how-a-stream-ends)). SSH sessions set it, and so does inbound traffic: each heartbeat of the node names the machines with inbound traffic ([the node network](/reference/node-network/index.html.md#inbound-traffic-as-a-use)). Each heartbeat of an edge server names the machines with connections that it holds or keeps open after their check of access, and those count too ([the edge role](/reference/edge/index.html.md#wake-on-connect)). An SSH session calls `Service.TouchMachine` of `internal/service` after its own policy check. `TouchMachine` writes at most once a minute for each machine, and does not change the `version` of the machine. So `last_activity_time` can be up to a minute older than the last use. The job deletes a machine only once `last_activity_time` is older than its timeout plus 1 minute (`service.TouchInterval`). So a machine that someone used within its timeout always stays. The job reads the idle machines in pages of 100, in the order of their last use. It goes on after a machine that fails, so a few bad machines never hold back the others. The job deletes the machine as `DeleteMachine` does, so its name and its SSH port stay reserved for 7 days. It skips the machines of a suspended org. Its audit entry has the actor `system`.
 
 ## Audit entries
 
@@ -1103,9 +1110,9 @@ The machine calls write these entries in the transaction of the change. Their or
 | `machine.start` | `StartMachine`, and the report of a lost standby of a machine with the restart policy `always`, with the actor `system` | `old_target`, `retry`, `boot_again`. For a lost standby, `old_target` and `reason`. |
 | `machine.pause` | `PauseMachine` | `old_target` |
 | `machine.save_refuse` | A save that the node refused, with the actor `system` ([HibernateMachine](#hibernatemachine)) | `old_target`, `target`, `refused`, `reason` |
-| `machine.resume` | `ResumeMachine` | `old_target` |
+| `machine.resume` | `ResumeMachine`, also for an access call. A connection at an edge writes it with the actor `system` ([the edge role](/reference/edge/index.html.md#edgeservicewakeforconnection)). | `old_target`, and `channel` for a connection: `ssh`, `private_url`, or `public_url` |
 | `machine.hibernate` | `HibernateMachine` | `old_target` |
-| `machine.wake` | `WakeMachine` | `old_target` |
+| `machine.wake` | `WakeMachine`, also for an access call. A connection at an edge writes it with the actor `system`. | `old_target`, and `channel` for a connection |
 | `machine.discard_memory` | `DiscardMemory` | `old_target` |
 | `machine.stop` | `StopMachine`. Also the report of a lost standby of a machine with the restart policy `never`, with the actor `system`. Also `SuspendOrg` and `SuspendAccount` of the admin API for each machine that they stop. | `old_target`, and `reason` for a stop of the admin API. The reason is `org suspended` in an org that the call suspends, and `account suspended` for a private machine of the account in another org. |
 | `machine.reboot` | `RebootMachine` | none |

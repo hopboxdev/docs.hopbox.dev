@@ -618,7 +618,7 @@ If stdin is a terminal, the CLI does these things:
 3. At each SIGWINCH, it sends the new size of the terminal.
 4. When the shell ends, it puts the terminal back as it was. It does the same after an error and after a signal.
 
-The exit status is the exit status of the shell, so `exit 3` in the shell ends `hopbox connect` with 3. A machine that does not run fails with `failed_precondition`, status 1. Phase 1 has no standby and no hibernate, so `connect` wakes no machine. `connect` has no JSON output: `--json` fails with status 80.
+The exit status is the exit status of the shell, so `exit 3` in the shell ends `hopbox connect` with 3. A machine in standby resumes, and a hibernated machine wakes, before the shell opens. So `connect` only takes longer ([the machine API](/reference/machine-api/index.html.md#wake-for-an-access-call)). A machine that is stopped or failed fails with `failed_precondition`, status 1. A resume or a wake that its checks refuse fails with its error, such as an org limit. `connect` has no JSON output: `--json` fails with status 80.
 
 ### exec
 
@@ -650,7 +650,7 @@ The exit status of `hopbox exec` is the exit code of the command:
 | 127 | The program does not exist. The CLI prints `hopbox: <reason>` to stderr. |
 | 128 plus the signal number | A signal ended the command, for example 130 for SIGINT. |
 
-The statuses of [Exit status](#exit-status) apply only to a command that did not run. For example, a machine that does not exist gives 4, and a machine that does not run gives 1.
+The statuses of [Exit status](#exit-status) apply only to a command that did not run. For example, a machine that does not exist gives 4, and a machine that is stopped gives 1. A machine in standby or hibernated resumes or wakes first, and then runs the command ([the machine API](/reference/machine-api/index.html.md#wake-for-an-access-call)).
 
 A Ctrl-C (SIGINT) or a SIGTERM goes to the process group of the command, as the signal with the same name. The command can end, or go on. A second Ctrl-C or SIGTERM ends the exec. The API then ends the command with SIGTERM, and after 2 s with SIGKILL. The status is then 130 for SIGINT, or 143 for SIGTERM. With `--tty` and a terminal, Ctrl-C is a key for the command, as in `connect`.
 
@@ -677,7 +677,7 @@ The exit status with `--json` is the exit code of the command too. `--json` with
 hopbox cp [-r] [-u USER] SOURCE TARGET
 ```
 
-Copies a file or a directory into a running machine with `Upload`, or out of it with `Download` ([the machine API](/reference/machine-api/index.html.md#upload)). One of `SOURCE` and `TARGET` is in a machine, in the form `MACHINE:PATH`, such as `box1:app/main.go`. `MACHINE` is a machine name or UUID. A relative `PATH` starts at the home dir of the user. If a local path starts with a word and a colon, such as `notes:old`, write it as `./notes:old`.
+Copies a file or a directory into a running machine with `Upload`, or out of it with `Download` ([the machine API](/reference/machine-api/index.html.md#upload)). A machine in standby or hibernated resumes or wakes first. One of `SOURCE` and `TARGET` is in a machine, in the form `MACHINE:PATH`, such as `box1:app/main.go`. `MACHINE` is a machine name or UUID. A relative `PATH` starts at the home dir of the user. If a local path starts with a word and a colon, such as `notes:old`, write it as `./notes:old`.
 
 | Flag | Default | Description |
 | --- | --- | --- |
@@ -771,7 +771,7 @@ hopbox machine pause MACHINE
 
 Puts a running machine in standby with `PauseMachine`, and waits for it. The memory of the machine stays in the RAM of its node, and it still counts in the limits of its org. The command prints `Paused the machine <name> in <time>.`
 
-A pause ends each exec and each terminal of the machine. An exec, a file copy, and `hopbox connect` then fail with `the machine <name> is in standby. Resume it first`. See [Standby and hibernate](/guide/standby-and-hibernate/index.html.md).
+A pause ends each exec and each terminal of the machine. The next exec, file copy, or `hopbox connect` resumes the machine first, and so does a request of its URL or an SSH session after its check of access. See [Standby and hibernate](/guide/standby-and-hibernate/index.html.md).
 
 ### machine resume
 

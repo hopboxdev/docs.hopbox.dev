@@ -10,7 +10,10 @@ The SSH front door lets `ssh`, `scp`, `sftp`, `rsync`, port forwards, and VS Cod
 2. nftables on the edge server sends the connection to the SSH front door. The port names the machine.
 3. The front door shows the one host key of the install. The hopbox CLI wrote it to `~/.ssh/known_hosts` at your login, so ssh asks no question.
 4. Your client signs in with your SSH key. The control role checks that your account uses the machine, as for `hopbox exec`.
-5. The front door opens its own SSH connection to the OpenSSH server in the machine, and passes your channels through it.
+5. If the machine is in standby or hibernated, the front door holds your connection, and brings the machine back. It waits for at most 30 s. You see only a longer login.
+6. The front door opens its own SSH connection to the OpenSSH server in the machine, and passes your channels through it.
+
+A key that opens nothing brings no machine back. An open SSH session keeps its machine awake, so close the sessions that you do not use ([Standby and hibernate](/guide/standby-and-hibernate/index.html.md#a-connection-brings-the-machine-back)).
 
 An org admin cannot open a private machine of another member, as with `hopbox exec`. A shared machine opens for every member of its org.
 
@@ -97,6 +100,7 @@ curl -s -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer $K
 | --- | --- |
 | `Permission denied (publickey)` | Your key opens no machine at this port for this user. Check `hopbox ssh-key list`, the user name, and that you use the machine. The front door never says which part failed. |
 | `channel 0: open failed: connect failed: hopbox: the machine box1 cannot take SSH connections now: it is stopped. Start it with: hopbox machine start box1` | Start the machine, then retry. |
+| `... it did not wake: <reason>` | The machine was in standby or hibernated, and did not come back. The reason says why, such as a limit of the org or a failed wake ([Standby and hibernate](/guide/standby-and-hibernate/index.html.md#a-connection-brings-the-machine-back)). |
 | `... it has no network address on its node. Use hopbox connect instead` | The machine has no address. Run `hopbox connect box1` for a shell. |
 | `... its guest agent has not reported the SSH host keys of the machine yet. Retry in a few seconds` | The machine just booted. Retry. |
 | `Connection closed` right after a connection | The client held 64 connections, or the edge server has no keys of the front door yet. |

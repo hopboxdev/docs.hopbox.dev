@@ -218,13 +218,18 @@ The request reaches the machine over plain HTTP, with these headers:
 
 The edge role takes each cookie of hopbox out of the request, so the machine never gets a credential of the install. It also drops a `Set-Cookie` of the machine for another host than its own, such as `Domain=example.com`. Such a cookie can reach the console and the other machines of the install.
 
+### A machine in standby or hibernated
+
+A request of the URL of a machine in standby or hibernated brings the machine back. The edge holds the request until the machine runs, so the first answer takes longer. A request of a private URL brings the machine back only after its sign-in. Any request of a public URL does, so a public URL of a sleeping machine wakes it for each visitor. [Standby and hibernate](/guide/standby-and-hibernate/index.html.md#a-connection-brings-the-machine-back) has the rules.
+
 ### When the URL does not open
 
 | Page | Cause |
 | --- | --- |
 | `404` `no machine has the name "box1"` on the domain, after the sign-in | No machine holds the name, or the account does not see the machine. |
-| `403` | The account has no access to the machine, or an instance admin suspended its org. |
+| `403` | The account has no access to the machine, or an instance admin suspended its org. On a public URL, a visitor without a sign-in of an account with access sees `The machine box1 is not available right now.` |
 | `503` `The machine box1 is stopped.` | The machine does not run. Start it. |
+| `503` `The machine box1 did not wake: <reason>.` | The machine was in standby or hibernated, and the request brought it back. The wake was refused or failed, or it took more than 30 s. A public URL names the reason only after a sign-in of an account with access to the machine, and shows `this machine is not available right now. Retry later` to other visitors. The reason says which ([Standby and hibernate](/guide/standby-and-hibernate/index.html.md#a-connection-brings-the-machine-back)). |
 | `503` `... has no network address on its node` | The machine has no address. |
 | `502` `The machine did not answer on its URL port.` | No server listens on the URL port in the machine. Check the port, and start the server in the machine. |
 

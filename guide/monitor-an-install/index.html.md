@@ -240,7 +240,7 @@ Open `http://127.0.0.1:3000` in a browser, and sign in as `admin`. The folder `h
 | hopbox D6 Nodes | The executor actions and boot phases, the lease losses, the guest links, the image caches, the cold moves with their pulls, and the state and restarts of `hopboxd.service` |
 | hopbox D7 Edge, DNS, and SSH | The requests of the edge, the requests to machines and the upstream errors, the routes, the connections against their limit, the refusals, the certificate, the DNS queries and zone serials, and the SSH front door |
 | hopbox D8 Network | The egress exits and uplinks, the traffic and dropped packets of the machines, the repairs of the node network, the mesh peers with their handshakes and traffic, and the host firewall |
-| hopbox D9 Memory | The machines in standby and hibernated, the machines by state, the failed wakes and resumes, the count and the p99 of pauses, resumes, hibernates, and wakes, and the p95 of the saves and loads of the VMM driver. Also the saved state of the nodes, in all and by node and kind, and the saves that the nodes refused, by reason. |
+| hopbox D9 Memory | The machines in standby and hibernated, the machines by state, the failed wakes and resumes, the count and the p99 of pauses, resumes, hibernates, and wakes, the p95 of the saves and loads of the VMM driver. Also the saved state of the nodes, in all and by node and kind, and the saves that the nodes refused, by reason. Also the wakes that the edges start for connections with the held connections, and the p95 of the wait of a held connection. |
 
 The same tunnel works for Prometheus on port 9090 and Alertmanager on port 9093.
 
@@ -816,11 +816,15 @@ Warning. The open connections of a listener of an edge stayed above 80% of its l
 
 ### HopboxEdgeUpstreamErrors
 
-Warning. More than 10% of the requests to machine URLs of running machines got a 502 or a 503 for 10 minutes. The label `reason` of `hopbox_edge_upstream_errors_total` says why: `no_address`, `no_answer`, or `expired_lease` ([the edge role](/reference/edge/index.html.md#metrics)). `no_answer` means that the machine does not answer on its URL port. The reason `not_running` does not count, because a bot that polls a stopped machine makes it. D7 shows each reason, also `not_running`. This alert does not fire in maintenance mode, when each machine URL answers `expired_lease` as planned.
+Warning. More than 10% of the requests to machine URLs of running machines got a 502 or a 503 for 10 minutes. The label `reason` of `hopbox_edge_upstream_errors_total` says why: `no_address`, `no_answer`, or `expired_lease` ([the edge role](/reference/edge/index.html.md#metrics)). `no_answer` means that the machine does not answer on its URL port. The reasons `not_running` and `waking` do not count, because a bot that polls a stopped or sleeping machine makes them. `hopbox_edge_wakes_total` and HopboxWakesFailing cover the wakes. D7 shows each reason, also `not_running`. This alert does not fire in maintenance mode, when each machine URL answers `expired_lease` as planned.
 
 ### HopboxEdgeRoutesStale
 
 Critical. The leases of targets of machine URLs ended at an edge for 2 minutes, so those URLs answer 503. The node of those machines did not confirm them lately. This alert does not fire in maintenance mode, when the leases end as planned. Look at HopboxServerUnresponsive and HopboxChannelDown.
+
+### HopboxWakeBurst
+
+Warning. An edge sent more than 30 resumes and wakes of sleeping machines a minute to their nodes for 10 minutes: the results `woken`, `failed`, and `timeout`. A refused wake moves no RAM, so it does not count. A wake starts only after the check of access of a connection, so a scan of the SSH ports wakes nothing. Many requests to public URLs, or a client that connects in a loop, cause it. Each wake takes the RAM of its machine on its node. Read the log of `hopboxd` on the edge for the machines: each wake logs `waking a machine for a connection` ([the edge role](/reference/edge/index.html.md#wake-on-connect)). D9 shows the wakes by result.
 
 ### HopboxSSHRefusalBurst
 

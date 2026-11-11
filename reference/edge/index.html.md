@@ -164,12 +164,52 @@ The control role pushes the routes of the machine URLs over the control channel 
 | No machine has the name | The same answers as a private URL without a sign-in ([Answers of a private URL](#answers-of-a-private-url)). So a client cannot tell which names have a machine. After the sign-in, `/auth/machine` answers `404 Not Found`, also for a machine that the account does not see. |
 | A path under `/__hopbox/` other than `/__hopbox/auth` | `404 Not Found`. The edge role keeps these paths for itself and never forwards one to a machine. |
 | A private URL without a valid sign-in | The sign-in ([Private machine URLs](#private-machine-urls)). A private URL tells nothing else about its machine before the sign-in. |
-| An instance admin suspended the org of the machine | `403 Forbidden` |
+| An instance admin suspended the org of the machine | `403 Forbidden` with the page `An instance admin suspended the org of this machine.` On a public URL, only a visitor with a sign-in of an account with access to the machine gets that page. Every other visitor gets `The machine box1 is not available right now.` (Q214 of the phase 3 plan). |
+| The machine is in standby or hibernated | The edge role holds the request, and wakes the machine ([Wake on connect](#wake-on-connect)). The request goes on to the machine once it runs. |
 | The machine does not run | `503 Service Unavailable`, with the state of the machine, such as `The machine box1 is stopped. Start it, then retry.` |
 | The lease of the target ended at the edge | `503 Service Unavailable`. The node of the machine did not renew its lease lately, so the machine can run on another node now. |
 | The target has no address | `503 Service Unavailable`, with the page `The machine box1 runs, but it has no network address on its node, so its URL cannot reach it.` Each machine gets an address at its create, so only a machine without one gets it ([the node network](/reference/node-network/index.html.md#addresses)). |
 | The machine does not answer on its URL port | `502 Bad Gateway`, with a page that says to check that a server listens on that port in the machine |
 | Otherwise | Forwarded to the machine |
+
+### Wake on connect
+
+A sleeping machine is a machine in standby or hibernated. The edge role resumes or wakes it only after the check of access of the request:
+
+- A request for a public URL passes the check.
+- A request for a private URL passes it with a valid sign-in of an account with access to the machine. A request without one gets the sign-in, and wakes nothing.
+
+The edge role then holds the request, and calls `EdgeService.WakeForConnection` ([EdgeService.WakeForConnection](#edgeservicewakeforconnection)). The control role sets the target of the machine to running. Once the routes give the machine a target, the request goes on to the machine. So a client sees only a slower first answer. The requests that wait for one machine share one call.
+
+The URL can turn private, or the access of a token can end, during the hold. So once the machine runs, the request takes the check of access again on the new route. A request of a URL that turned private gets the sign-in, and a token without access gets `403 Forbidden`. Neither reaches the machine.
+
+| Bound | Value | Past it |
+| --- | --- | --- |
+| The hold of one request | 30 s | `503 Service Unavailable` with `Retry-After: 5` and the page `The machine box1 did not wake: it did not wake within 30s. Retry.` |
+| The held connections of one machine, on each edge server | 256 | `503 Service Unavailable` at once, with the page `The machine box1 did not wake: 256 connections wait for its wake already. Retry later.` |
+| The wakes at once for the machines of one node, on each edge server | 16 | The next wake waits for a free slot, within the hold of its requests. |
+
+The hold ends without the machine in these cases. Each one answers `503 Service Unavailable` with `Retry-After: 5`, and a page that starts with `The machine box1 did not wake:` and names the reason.
+
+The page of a public URL names the reason only to a visitor whose machine cookie proves a sign-in of an account with access to the machine. Every other visitor gets `The machine box1 did not wake: this machine is not available right now. Retry later.`, also for a timeout or the bound of held connections (Q214 of the phase 3 plan). The edge checks the cookie with `AuthorizeMachineRequest` and `read_only` true, so the check keeps the console session of the cookie as it is. It sends no sign-in and no cookie. The answer for each cookie stays for 5 s: access, also the answer `failed_precondition` of a suspended org, which the control role gives only after the check of access passed, or no access, for `unauthenticated`, `permission_denied`, `not_found`, and `invalid_argument`. A control role that did not answer leaves no answer, and the page then shows the generic reason. A request of a private URL passed its sign-in before the hold, so its page always names the reason. The metrics and the logs keep the full reason. The same rule covers the 403 of a public URL of a suspended org.
+
+| Case | Reason on the page |
+| --- | --- |
+| The control role refuses the wake: the org limits, the room of the node, a node without the feature, a suspended org, or a private machine of a suspended creator | The message of the control role, such as `an instance admin suspended the creator of the private machine box1, so it does not resume or wake` |
+| The wake fails on the node | `its wake failed, and it keeps its saved state. Its creator can start it again` |
+| Someone stops or deletes the machine during the hold | `it is stopped now` or `it is deleted now` |
+| The control role does not answer | `the control plane of this install did not answer. Retry later` |
+| The control role runs a release before the call | `the control plane of this install runs a release that wakes no machine for a connection. Start the machine, then retry` |
+
+A refused or failed wake leaves the machine as it was. A hibernated machine keeps its memory file. A stopped or failed machine never wakes for a request.
+
+The edge role keeps each refusal of the control role for 5 s, the value of `Retry-After`, or until the next routes. Each request of the machine in that time gets the same 503 at once, and asks the control role nothing. So a client in a loop with one cookie, or without one, costs the control role one wake call and one check of the cookie each 5 s, and no lock of the org row at each request. An error of a control role that did not answer is not kept.
+
+The edge role counts each wake in `hopbox_edge_wakes_total`, and each held request that gets 503 as the cause `waking` of `hopbox_edge_upstream_errors_total` ([Metrics](#metrics)). It records the time from the first packet of the connection to the first answer of the machine in `hopbox_edge_wake_wait_seconds`. For the first request of a connection, the first packet is the accept of the TCP connection. For a later request on the same connection, it is the start of the request.
+
+Each heartbeat names at most 4096 machines with connections. With more, the agent logs `the edge role holds connections of more machines than a heartbeat carries, so the heartbeat names only some of them` at warn level, with `machines` and `max`.
+
+An open connection that passed its check of access keeps its machine awake (Q181 of the phase 3 plan). Each heartbeat of the edge server names the machines with held requests, open forwarded requests, and signed-in SSH connections in `connected_machines` ([the control channel](/reference/control-channel/index.html.md#heartbeat)). The control role then counts a use of each of them. A scan that passes no check holds no machine awake.
 
 The edge role counts the lease of each target from the arrival of the routes. The control role sends the rest of the lease, less a tenth of the machine TTL. It also takes off the time that the routes waited in its queue. After each heartbeat of the edge server, it sends the changed routes, or only the rest of the lease of each target. So the lease of a live target never runs out. If the control channel of the edge server ends, the targets run out within the machine TTL of 30 s. The machine URLs then answer 503 until the channel is back.
 
@@ -483,10 +523,33 @@ ip addr show dev <uplink>
 | Call | Request | Response | Errors |
 | --- | --- | --- | --- |
 | `ExchangeMachineCode` | `machine`: the name of the machine of the host. `code`: the code of the query. | `token`: the value of the machine cookie. | `unauthenticated` for a code that is unknown, used, expired, malformed, or for another machine. `invalid_argument` for a name that breaks the name rules. |
-| `AuthorizeMachineRequest` | `machine`: the name of the machine of the host. `token`: the value of the machine cookie. | `machine_id` and `account_id`, UUIDs. `valid_for`: how long the edge can keep the answer, at most 1 minute. | `unauthenticated` for a token that is unknown, malformed, for another machine, or of an ended console session. `permission_denied` for an account without access. `failed_precondition` for a suspended org. |
+| `AuthorizeMachineRequest` | `machine`: the name of the machine of the host. `token`: the value of the machine cookie. `read_only`: true for a check that serves no request of the machine, such as the reason on the page of a failed wake. It then keeps the console session as it is. A control process of an older release reads it as false. | `machine_id` and `account_id`, UUIDs. `valid_for`: how long the edge can keep the answer, at most 1 minute. | `unauthenticated` for a token that is unknown, malformed, for another machine, or of an ended console session. `permission_denied` for an account without access. `failed_precondition` for a suspended org. |
 | `AuthorizeSSH` | `ssh_port`, `public_key`, `linux_user`, and `client_ip` of an SSH connection, and `recheck` for a check of an open connection ([the SSH front door](/reference/ssh-front-door/index.html.md#edgeserviceauthorizessh)). Each allowed sign-in writes the audit entry `machine.ssh`. | `machine_id`, `machine_name`, `account_id`, and `valid_for`. | `permission_denied` for every key, port, or user that opens nothing, with one message. `invalid_argument` for a sign-in without a valid `client_ip`, with the message `invalid argument: a sign-in needs the IP address of the SSH client` or `invalid argument: the client IP is not an IP address`. |
 
 The edge role calls each one with a timeout of 10 s.
+
+### EdgeService.WakeForConnection
+
+`hopbox.cluster.v1.EdgeService.WakeForConnection` resumes a machine in standby, or wakes a hibernated machine, for a connection that passed its check of access at the edge ([Wake on connect](#wake-on-connect)). It needs the certificate of a server with the edge role. The edge role calls it only after the check of access of the connection, so it carries no credential of the client. It sets the target running with the actor `system`, and does not wait. The edge role waits for the target in the routes.
+
+| Request field | Type | Meaning |
+| --- | --- | --- |
+| `machine_id` | string | The ID of the machine of the route, a UUID. |
+| `channel` | `WakeChannel` | The kind of the connection: `WAKE_CHANNEL_SSH` for an SSH key that the front door accepted, `WAKE_CHANNEL_PRIVATE_URL` for a signed-in request of a private URL, or `WAKE_CHANNEL_PUBLIC_URL` for a request of a public URL. The audit entry records it in its detail `channel`, as `ssh`, `private_url`, or `public_url`. |
+
+| Response field | Type | Meaning |
+| --- | --- | --- |
+| `current_state` | string | The state of the machine at the call, such as `hibernated`. |
+
+A machine with the target standby resumes, with the checks of `ResumeMachine`. A machine with the target hibernated wakes, with the checks of `WakeMachine`: the limits of the org, the room of its node, and a node whose heartbeats name the feature and the capability ([the machine API](/reference/machine-api/index.html.md#wakemachine)). Each change writes the audit entry `machine.resume` or `machine.wake` with the actor `system`, and counts as a use of the machine. A machine whose target is running already gives no change, no audit entry, and no error. A private machine whose creator is suspended never resumes or wakes, because a route knows only the suspension of the org.
+
+| Error | Code |
+| --- | --- |
+| A caller without the edge role | `permission_denied` |
+| A `machine_id` that is not a UUID, or a `channel` that is not one of the three | `invalid_argument` |
+| No machine has the ID | `not_found` |
+| A suspended org, a private machine of a suspended creator, a node without the feature, or a machine with the target stopped | `failed_precondition`. The message names the reason, such as `the machine box1 is stopped, so a connection does not start it. Start it with: hopbox machine start box1`. |
+| An org limit, or a node without room | `resource_exhausted`. The message names the limit or the room. |
 
 ## Metrics
 
@@ -502,7 +565,10 @@ The edge role serves these metrics on the metrics listener of `hopboxd` ([Metric
 | `hopbox_edge_routes` | gauge | none | The machines that the routes name. |
 | `hopbox_edge_certificate_not_after_seconds` | gauge | none | The end of the certificate that the edge role serves, in seconds since the Unix epoch, or 0 before the first certificate. |
 | `hopbox_edge_machine_requests_total` | counter | `visibility`: `public` or `private`. `status_class`: `1xx`, `2xx`, `3xx`, `4xx`, or `5xx` | The HTTP requests that the edge role forwarded to a machine, by the visibility of the machine URL and the class of the status of the answer. A forward that failed counts as `5xx`, because the edge answers it with 502. A request whose client left before the answer does not count. A request that the edge answers itself, such as a stopped machine, counts only in `hopbox_edge_requests_total`. Each of the 10 series starts at 0. |
-| `hopbox_edge_upstream_errors_total` | counter | `reason`: `not_running`, `no_address`, `no_answer`, or `expired_lease` | The 502 and 503 answers to the requests of a machine URL, by cause. `not_running`: the route has no target, because the machine does not run, or the control role holds no live route record of it. `no_address`: the machine runs without an address on its node. `no_answer`: the machine did not answer on its URL port, a 502. `expired_lease`: the lease of the target ended at the edge, because its node did not confirm the machine lately. A request whose client left before the answer does not count. Each of the 4 series starts at 0. |
+| `hopbox_edge_upstream_errors_total` | counter | `reason`: `not_running`, `no_address`, `no_answer`, `expired_lease`, or `waking` | The 502 and 503 answers to the requests of a machine URL, by cause. `not_running`: the route has no target, because the machine does not run, or the control role holds no live route record of it. `no_address`: the machine runs without an address on its node. `no_answer`: the machine did not answer on its URL port, a 502. `expired_lease`: the lease of the target ended at the edge, because its node did not confirm the machine lately. `waking`: a held request whose machine did not wake ([Wake on connect](#wake-on-connect)). A request whose client left before the answer does not count. Each of the 5 series starts at 0. |
+| `hopbox_edge_wakes_total` | counter | `result`: `woken`, `refused`, `failed`, `timeout`, `error`, or `node_busy` | The resumes and wakes that the edge role started for connections, by result. Connections at once to one machine share one wake, and a request that gets a kept refusal starts none. `woken`: the routes gave the machine a target. `refused`: the control role refused it, such as for a limit. `failed`: the machine failed, stopped, or went away. `timeout`: no target within 30 s. `error`: the control role did not answer. `node_busy`: no slot of the wakes of its node freed within the hold, so the wake never reached the control role. Each of the 6 series starts at 0. |
+| `hopbox_edge_wake_wait_seconds` | histogram | `protocol`: `http` or `ssh` | The time from the first packet of a connection to a sleeping machine to the first answer of the machine: the header of its HTTP answer, or the end of the SSH handshake with its OpenSSH server. Only a connection that waited for a wake counts. The buckets end at 30 s, the hold of a connection. |
+| `hopbox_edge_held_connections` | gauge | `protocol`: `http` or `ssh` | The connections that the edge role holds now until their sleeping machine runs. |
 | `hopbox_edge_expired_targets` | gauge | none | The targets of the routes whose lease ended at the edge, read at each scrape. A node that stopped its heartbeats leaves its targets here until the control role pushes new routes. |
 
 The metrics of the SSH front door start with `hopbox_edge_ssh_` ([the SSH front door](/reference/ssh-front-door/index.html.md#metrics)).
@@ -522,6 +588,10 @@ The edge role logs with `component=edge`.
 | `trading a machine URL code failed` | warn | `ExchangeMachineCode` failed without an answer, with `machine` and `err`. |
 | `ended the open requests of a machine URL sign-in that lost its access` | info | A check refused a token with open requests. The fields are `machine`, `open_requests`, and `code`. |
 | `ended the open requests of machine URLs that changed` | info | New routes ended open requests, with `open_requests` ([Machine URLs](#machine-urls)). |
+| `waking a machine for a connection` | info | The control role took a wake for a held connection, with `machine`, `name`, `channel`, and `state` ([Wake on connect](#wake-on-connect)). |
+| `the wake of a machine for a connection ended` | info | The wait of the edge for the target ended, with `machine`, `result`, and `after`. |
+| `the control plane refused the wake of a machine for a connection` | info | `WakeForConnection` refused the wake, with `machine` and `err`. |
+| `asking the control plane for the wake of a machine failed` | warn | `WakeForConnection` failed without an answer, with `machine` and `err`. |
 
 The host firewall logs the uplink of the IPv6 egress with `component=hostfw` ([the host firewall](/reference/host-firewall/index.html.md#logs)). The check of the uplink logs with `component=egress` ([the egress of the machines](/reference/egress/index.html.md#logs)).
 
@@ -531,7 +601,7 @@ The edge role can refuse a certificate or routes that the control role pushed. T
 
 These parts of the edge role come later:
 
-- A machine in standby or hibernated wakes after the check of access of a request, in milestone T06 of phase 3. Any request for a public URL passes the check, and a private URL needs a request from a signed-in account with access to the machine. A public URL never wakes a private machine whose creator is suspended. An open connection that passed the check keeps its machine awake. The owner decided these rules on 2026-11-06, in Q180 and Q181. Until T06, its URL answers 503.
+- The wake rule for a connection to a raw port (Q196 of the phase 3 plan, phase 4).
 - Subdomain routes, such as `sub.box1.example.com` (phase 4).
 - Custom domains and org domains (phase 4).
 - Raw TCP and UDP ports (phase 4).
