@@ -13,7 +13,7 @@ This release has two drivers. The Firecracker driver of `internal/node/vmm/firec
 | Capability | Go value | What it allows | Interface |
 | --- | --- | --- | --- |
 | pause | `vmm.CapPause` | standby: the microVM pauses in RAM | `vmm.Pauser` |
-| snapshot | `vmm.CapSnapshot` | hibernate: the memory goes to a memory file | `vmm.Snapshotter` |
+| snapshot | `vmm.CapSnapshot` | hibernate: the memory goes to a memory file. A save without a stop, for a fork, a snapshot, or a checkpoint. | `vmm.Snapshotter`, and `vmm.Saver` for a save without a stop |
 | restore | `vmm.CapRestore` | wake: a boot from the memory file | `vmm.Restorer` |
 | fork | `vmm.CapFork` | a new microVM from the state of another | none yet |
 | migrate | `vmm.CapMigrate` | a move of a microVM to another node | none yet |
@@ -98,7 +98,7 @@ A driver with the capability pause is a `vmm.Pauser`. Both calls are safe to run
 
 | Interface | Method | Description |
 | --- | --- | --- |
-| `vmm.Snapshotter` | `Snapshot(ctx, inst)` | Saves the memory and the state of a running or paused microVM to the memory file of the machine. Then it stops the microVM with the exit reason `snapshot`. It returns the `MemoryState` of the new file. The memory file appears whole or not at all. A new file replaces the one before it, and the old file goes before the new one gets its name. An error that wraps `vmm.ErrSaved` comes with the `MemoryState` of a whole file. The microVM then ends later, with the exit reason `snapshot`. A new `Snapshot` or a `Stop` of that instance only ends the microVM, with the exit reason `snapshot`, and saves nothing again. On any other error, the microVM runs or stays paused as before, and no new memory file exists. |
+| `vmm.Snapshotter` | `Snapshot(ctx, inst)` | Saves the memory and the state of a running or paused microVM to the memory file of the machine. Then it stops the microVM with the exit reason `snapshot`. It returns the `MemoryState` of the new file. The memory file appears whole or not at all. A new file replaces the one before it, and the old file goes before the new one gets its name. An error that wraps `vmm.ErrSaved` comes with the `MemoryState` of a whole file. The microVM then ends later, with the exit reason `snapshot`. A new `Snapshot` or a `Stop` of that instance only ends the microVM, with the exit reason `snapshot`, and saves nothing again. On any other error, the microVM runs or stays paused as before, and no new memory file exists. A save can outlast `ctx`. Once the VMM writes the memory, the driver waits for its answer, up to a grace that grows with the RAM ([the Firecracker driver](/reference/firecracker-driver/index.html.md#save)). Without an answer in that grace, the save fails, a running microVM can stay paused, and `Instance.Paused` says so. |
 | `vmm.Restorer` | `Restore(ctx, Boot)` | Boots a machine from its memory file, with a new link key. It counts the load first. The first load of a saved state makes a copy of each disk. Each later load puts that copy back, so the memory and the disks match. `Restore` keeps the memory file, because a load succeeds without a read of the memory. A failure keeps every file, and leaves no microVM of the machine running. |
 | `vmm.Restorer` | `DropMemory(ctx, id)` | Drops the memory file of a machine and the disk copies of its saved state. The executor calls it after the guest agent of a wake linked ([the node executor](/reference/executor/index.html.md#saved-state)). A microVM that maps the file runs on. A machine without a memory file succeeds. |
 | `vmm.Restorer` | `DiscardMemory(ctx, id)` | Drops the saved state of a machine that does not run, for the call `DiscardMemory` ([the machine API](/reference/machine-api/index.html.md#discardmemory)). A running machine refuses. It first puts the disk copy of the saved state back over the disk. So the next boot starts from the disk of the save, not from a disk that a failed wake changed. This is the default of Q205. A machine without a memory file succeeds. |
@@ -108,6 +108,29 @@ A driver with the capability pause is a `vmm.Pauser`. Both calls are safe to run
 | `vmm: the memory file of the save is whole` | `vmm.ErrSaved` | A save wrote a whole memory file, but its microVM did not end. The caller keeps the memory file, and never runs the microVM again. |
 
 A wake runs only after a load. So only the guest link proves that the memory file holds the guest, and the file stays until the guest agent of the wake linked.
+
+## Saver
+
+A driver with the capability snapshot that saves a running microVM without a stop is a `vmm.Saver`. A fork, a snapshot, and a checkpoint start from such a save. The Firecracker driver is one. The test driver is not one yet. Milestone T10 builds the call, and no executor action calls it yet. T12, T13, and T18 call it, with the gates of saved state ([the node executor](/reference/executor/index.html.md#saved-state)).
+
+| Interface | Method | Description |
+| --- | --- | --- |
+| `vmm.Saver` | `Save(ctx, inst, dir, SaveOptions)` | Pauses a running microVM, saves its memory and its state, makes a reflink copy of its disk, and resumes it. A paused microVM stays paused. It writes the files `memory`, `vmstate`, and `disk.raw` into `dir` (`vmm.SaveMemoryFile`, `vmm.SaveStateFile`, and `vmm.SaveDiskFile`), and returns a `vmm.SavedState`. `dir` must not exist, and its parent must be on the file system of the machine. `dir` appears whole or not at all, also after a kill of `hopboxd`. On an error, the microVM runs or stays paused as before, and `dir` does not exist. A save can outlast `ctx`, as a `Snapshot` does, and after a write that gets no answer in the grace, a running microVM can stay paused. The save resets the guest link, and the guest agent links again with the same link key. The caller runs no save and no hibernate of one microVM at once, because they share the files of a save in the jail. |
+
+| `SaveOptions` field | Description |
+| --- | --- |
+| `Diff` | Saves only the memory pages that the guest wrote since the last save, as a Firecracker diff snapshot. Without dirty page tracking, Firecracker 1.17 saves each page that the guest touched since its boot instead. No microVM of hopbox tracks dirty pages before T18. |
+| `Sync` | The files are on the disk before `Save` returns, so they survive a crash of the host. The guest does not wait for the sync, because the driver syncs after the resume. The owner decided this on 2026-11-11, as Q218. Without `Sync`, the files survive only while the host runs. After a crash of the host, such a dir can look whole and still hold damaged files, so it must not load. T12 and T13 add this rule to their loads. |
+
+| `SavedState` field | Description |
+| --- | --- |
+| `VMM`, `VMMVersion`, `SnapshotFormat` | As in `MemoryState`. |
+| `Diff` | Whether the memory file holds only the pages of a diff. |
+| `Bytes` | The bytes of the disk of the node that the memory file and the state file hold, counted by their blocks. The disk copy shares every block with the disk at the save, so it counts nothing yet. |
+| `SavedAt` | The time of the save. |
+| `ClockRealtime` | Whether the state holds the wall clock of the host, so a load can set the guest clock from it. |
+| `Microcode` | The CPU microcode of the node at the save, or empty. |
+| `Paused` | How long the vCPUs of a running guest did not run for the save. It is 0 for a guest that was paused before. |
 
 ## Mover
 

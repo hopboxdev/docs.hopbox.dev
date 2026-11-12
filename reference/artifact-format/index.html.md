@@ -2,7 +2,9 @@
 
 > The artifact format version 1 for images: the files, artifact.json, the digest, the Go API, and tools/imageartifact.
 
-An artifact is a folder that holds a disk and its metadata. Images, snapshots, and checkpoints share this format. Format version 1 has one kind, `image`. An image has no memory file. Snapshots and checkpoints come in phase 3, with a new format version.
+An artifact is a folder that holds a disk and its metadata. Images, snapshots, and checkpoints share this format. Format version 1 has one kind, `image`. An image has no memory file. Format version 2 has the kinds `snapshot` and `checkpoint`. Each one also holds a memory file and a state file ([Format version 2](#format-version-2)). An image stays in version 1, so its digest does not change. The owner decided this on 2026-11-11, as Q216.
+
+Milestone T10 builds the reader and the writer of version 2. The code writes no snapshot or checkpoint yet. T13 and T18 write them.
 
 The Go package `internal/artifact` reads, writes, and checks artifacts. It uses only the Go standard library, so the control role and the node role can both use it.
 
@@ -13,6 +15,8 @@ The Go package `internal/artifact` reads, writes, and checks artifacts. It uses 
 | `artifact.json` | yes | The metadata. |
 | the disk file | yes | The disk, as raw bytes. The default image calls it `disk.raw`. |
 | the compressed copy | no | A zstd copy of the disk, for downloads. The default image calls it `disk.raw.zst`. |
+| the memory file | version 2 | The RAM of the guest at the save. |
+| the state file | version 2 | The state of the VMM at the save: the vCPUs and the devices. |
 
 The metadata names each file. Each file must be a regular file: the checks refuse a symlink. A file name is a plain name in the folder: it has no `/` or `\`, it does not start with a dot, and it is not `artifact.json`. So metadata can never point at a file outside the folder.
 
@@ -30,7 +34,7 @@ A node makes the disk of a machine from the image disk with a reflink copy, and 
 
 ## artifact.json
 
-`artifact.json` is a JSON object with these fields, in this order. Every field is required, apart from `disk.compressed`.
+`artifact.json` is a JSON object with these fields, in this order. In version 1, every field is required, apart from `disk.compressed`. [Format version 2](#format-version-2) changes some of these rules.
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -58,14 +62,17 @@ A reader refuses these cases:
 
 | Case | Error |
 | --- | --- |
-| A `format_version` other than `1` | `ErrUnsupportedVersion` |
-| A field that the reader does not know, for example a `memory` field in an image | `ErrInvalid` |
+| A `format_version` other than `1` and `2` | `ErrUnsupportedVersion` |
+| A field that the reader does not know, for example a field `base` | `ErrInvalid` |
+| A field of version 2 in version 1, for example a `memory` field in an image | `ErrInvalid` |
+| A field of the other version, also with a zero value or `null`, for example `"vcpus": 0` in an image or `"programs": []` in a snapshot | `ErrInvalid` |
+| The kind `image` in version 2, or another kind than `image` in version 1 | `ErrInvalid` |
 | A field name in another case, for example `Kind` | `ErrInvalid` |
 | A field name that appears twice in one object | `ErrInvalid` |
 | A value that breaks a rule above | `ErrInvalid` |
 | Data after the JSON object | `ErrInvalid` |
 
-A new field therefore needs a new format version. A new version can add the kinds `snapshot` and `checkpoint` with their memory files.
+A new field therefore needs a new format version.
 
 Example, shortened:
 
@@ -102,9 +109,82 @@ Example, shortened:
 }
 ```
 
+## Format version 2
+
+Version 2 holds a snapshot or a checkpoint: the disk, the memory, and the VMM state of a machine at one moment. It has the fields of version 1, with these changes:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `format_version` | number | `2`. |
+| `kind` | string | `snapshot` or `checkpoint`. |
+| `name` | string | The name of the snapshot, or another name that the writer picks. The rules of version 1 hold. |
+| `disk` | object | The whole disk of the machine, a reflink copy of its disk at the save. `disk.size` is the disk size of the machine. |
+| `kernel.sha256` | string | The sha256 of the guest kernel of the image of the machine. |
+| `programs` | list | Absent. Only an image lists programs. |
+| `image` | string | The digest of the image that the disk started from, such as `sha256:354fb767...`. A copy to a node with that image skips the ranges of the disk that still share their blocks with the image ([Ranges that match the image](#ranges-that-match-the-image)). |
+| `vcpus` | number | The vCPUs of the saved microVM. A load keeps them. |
+| `memory.file` | string | The name of the memory file. |
+| `memory.size` | number | The size of the memory file in bytes: the RAM of the guest. |
+| `memory.sha256` | string | The sha256 of the memory file, as 64 lowercase hex digits. |
+| `state.file`, `state.size`, `state.sha256` | | The same three fields for the state file. |
+| `vmm.name` | string | The VMM driver that saved the memory and the state, such as `firecracker`. |
+| `vmm.version` | string | The version of the VMM, such as `v1.17.0`. |
+| `vmm.snapshot_format` | string | The snapshot format version of the files, such as `v12.0.0`. A node loads them only with a VMM of the same name and snapshot format. |
+| `vmm.clock_realtime` | bool | Whether the state holds the wall clock of the host. A load sets the guest clock from it only then ([the Firecracker driver](/reference/firecracker-driver/index.html.md#the-guest-clock-after-a-load)). |
+| `vmm.microcode` | string | The CPU microcode of the node at the save, or absent. It explains a load that fails after an update of the microcode. |
+
+Every field of this table is required, apart from `vmm.microcode` and `disk.compressed`. A reader refuses a version 2 artifact without the key `vmm.clock_realtime`, or with `null` there, because a missing key and `false` mean different things to a writer. Each file name appears once. The memory file is always a whole memory, never a Firecracker diff snapshot. A diff gets its rebase over its base before it becomes an artifact.
+
+The sha256 of each file is the sha256 of all its bytes, with each hole read as zeros, as in version 1. The owner decided this on 2026-11-11, as Q217. The hash reads the whole size of a file, so a writer hashes after the resume of the machine, never during its pause.
+
+Example, shortened:
+
+```json
+{
+  "format_version": 2,
+  "kind": "snapshot",
+  "arch": "x86_64",
+  "name": "snapshot1",
+  "created_at": "2026-11-11T09:00:00Z",
+  "disk": {
+    "file": "disk.raw",
+    "format": "raw",
+    "filesystem": "ext4",
+    "size": 100000000000,
+    "sha256": "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4"
+  },
+  "kernel": {
+    "sha256": "dfb03703bab6d4b590964f2d9473fdc82994ae94384cc5ed1c1b4a0430118a91"
+  },
+  "image": "sha256:354fb7679e5b6a52bcd8a4c2a6a9e7d1a9f3a1f0c1b2d3e4f5a6b7c8d9e0f1a2",
+  "vcpus": 2,
+  "memory": {
+    "file": "memory",
+    "size": 2147483648,
+    "sha256": "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+  },
+  "state": {
+    "file": "vmstate",
+    "size": 92160,
+    "sha256": "a3f1c2b1e0d9c8b7a6f5e4d3c2b1a0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3"
+  },
+  "vmm": {
+    "name": "firecracker",
+    "version": "v1.17.0",
+    "snapshot_format": "v12.0.0",
+    "clock_realtime": true,
+    "microcode": "0xb4"
+  }
+}
+```
+
+### Ranges that match the image
+
+The disk of a machine is one reflink copy of the disk of its image ([the Firecracker driver](/reference/firecracker-driver/index.html.md#disks)), not a layer over it. So the disk of an artifact is the whole disk, and its sha256 covers the blocks of the image too. A copy of the artifact to a node that has the image skips the ranges that still match the image. `savedstate.SharedRanges` finds them: it compares the extents of the two files with `FIEMAP`. A range matches when both files hold the same physical blocks at the same offset. A hole never matches. Neither does an extent that `FIEMAP` marks as unknown, encoded, inline, or not aligned, because its address does not name blocks of its own. The target node then makes its copy from a reflink copy of its own image, and gets the other ranges from the source. It checks the sha256 of the whole disk before a load. The copy between nodes comes with T23 and T27.
+
 ## Digest
 
-The digest of an artifact is `sha256:` and the sha256 of the bytes of its `artifact.json`, for example `sha256:354fb767...`. The metadata holds the sha256 of each file, so the digest covers the whole artifact. A node that has the digest from the control plane checks `artifact.json` against it, then checks each file against `artifact.json`. An image cache with the compressed copy checks it with `VerifyCompressed`, unpacks it to the disk file, and runs `VerifyDisk`. After that check, the cache can delete the compressed copy. `VerifyDisk` alone then proves the disk. A node that downloads the compressed disk from the URL of an image gets no `artifact.json`. It checks the unpacked disk against the sha256 and the size that the control plane sends with the image ([the Firecracker driver](/reference/firecracker-driver/index.html.md#the-image-cache)).
+The digest of an artifact of either version is `sha256:` and the sha256 of the bytes of its `artifact.json`, for example `sha256:354fb767...`. The metadata holds the sha256 of each file, so the digest covers the whole artifact. A node that has the digest from the control plane checks `artifact.json` against it, then checks each file against `artifact.json`. An image cache with the compressed copy checks it with `VerifyCompressed`, unpacks it to the disk file, and runs `VerifyDisk`. After that check, the cache can delete the compressed copy. `VerifyDisk` alone then proves the disk. A node that downloads the compressed disk from the URL of an image gets no `artifact.json`. It checks the unpacked disk against the sha256 and the size that the control plane sends with the image ([the Firecracker driver](/reference/firecracker-driver/index.html.md#the-image-cache)).
 
 The writer encodes the metadata the same way each time: the field order above, two spaces of indent, `created_at` in UTC, and one newline at the end. So two builds with the same content have the same digest.
 
@@ -121,7 +201,9 @@ The writer encodes the metadata the same way each time: the field order above, t
 | `HashFile(ctx, path)` | Returns the size and the sha256 of a file. |
 | `Metadata.VerifyDisk(ctx, dir)` | Checks the size and the sha256 of the disk file. |
 | `Metadata.VerifyCompressed(ctx, dir)` | If the metadata names a compressed copy, checks its size and its sha256. |
-| `Verify(ctx, dir)` | `Read`, then `VerifyDisk` and `VerifyCompressed`. |
+| `Metadata.VerifyState(ctx, dir)` | If the metadata names a memory file and a state file, checks their sizes and their sha256. An image passes. |
+| `Verify(ctx, dir)` | `Read`, then `VerifyDisk`, `VerifyCompressed`, and `VerifyState`. |
+| `HashedFile(ctx, dir, name)` | Returns the `File` of a regular file of the folder, with its size and its sha256, for the metadata of a new artifact. It refuses a symlink and a name that is not a plain file name. |
 
 If a file does not match its metadata, the error is a `*MismatchError`. It holds the file name, the field (`size` or `sha256`), and both values.
 
