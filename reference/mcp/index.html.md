@@ -143,11 +143,18 @@ Each tool tells the client whether it only reads, with the hint `readOnlyHint`. 
 | `hopbox_v1_MachineService_UnshareMachine` | `MachineService.UnshareMachine` | no |
 | `hopbox_v1_MachineService_SetMachineURLPort` | `MachineService.SetMachineURLPort` | no |
 | `hopbox_v1_MachineService_SetMachineURLVisibility` | `MachineService.SetMachineURLVisibility` | no |
+| `hopbox_v1_DiskService_CreateDisk` | [CreateDisk](/reference/disks/index.html.md#createdisk) | no |
+| `hopbox_v1_DiskService_GetDisk` | [GetDisk](/reference/disks/index.html.md#getdisk) | yes |
+| `hopbox_v1_DiskService_ListDisks` | [ListDisks](/reference/disks/index.html.md#listdisks) | yes |
+| `hopbox_v1_DiskService_AttachDisk` | [AttachDisk](/reference/disks/index.html.md#attachdisk) | no |
+| `hopbox_v1_DiskService_DetachDisk` | [DetachDisk](/reference/disks/index.html.md#detachdisk) | no |
+| `hopbox_v1_DiskService_DeleteDisk` | [DeleteDisk](/reference/disks/index.html.md#deletedisk) | no |
+| `hopbox_v1_DiskService_ShareDisk` | [ShareDisk](/reference/disks/index.html.md#sharedisk) | no |
 | `hopbox_v1_VarService_SetVar` | `VarService.SetVar` ([the env var API](/reference/vars-api/index.html.md)) | no |
 | `hopbox_v1_VarService_ListVars` | `VarService.ListVars` | yes |
 | `hopbox_v1_VarService_DeleteVar` | `VarService.DeleteVar` | no |
 
-`ListVars` returns no value of a secret, as on the API ([the env var API](/reference/vars-api/index.html.md)). A value that a client sets with `SetVar` passes through the client, so it is in the context of the agent.
+`CreateDisk` returns before the node of the disk made its file, so an agent reads the disk with `GetDisk` until `ready` is `true`, then attaches it. `ListVars` returns no value of a secret, as on the API ([the env var API](/reference/vars-api/index.html.md)). A value that a client sets with `SetVar` passes through the client, so it is in the context of the agent.
 
 A new unary method of `hopbox.v1` gets its tool from the code generator in the same change. The test of the tool list fails until the change updates `internal/mcp/testdata/tools.golden` ([Tests](#tests)).
 

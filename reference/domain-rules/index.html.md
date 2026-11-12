@@ -127,6 +127,14 @@ While an org is suspended, nothing deletes its data, for example the evidence of
 
 The admin `DeleteAccount` of an operator goes on in a suspended org. Its audit entry keeps the evidence instead ([the admin API](/reference/admin-api/index.html.md#deleteaccount)).
 
+The extra disks of a suspended org keep their data too by Q223 of the phase 3 plan. These calls fail with `failed_precondition` and `org suspended: an instance admin suspended the org, so it cannot <verb> a disk` ([Extra disks](/reference/disks/index.html.md)):
+
+| Call | In a suspended org |
+| --- | --- |
+| `CreateDisk`, `AttachDisk`, `ShareDisk` | blocked |
+| `DeleteDisk` | blocked, because a suspension keeps the data of the org |
+| `GetDisk`, `ListDisks`, `DetachDisk` | allowed. A detach deletes no data and runs nothing. |
+
 The env vars and secrets of a suspended org do not change either. `SetVar` and `DeleteVar` fail with `failed_precondition` and `org suspended: an instance admin suspended the org, so its env vars and secrets do not change until the suspension ends` ([the env var API](/reference/vars-api/index.html.md#suspension)).
 
 The rule holds for the members of the org. Instance admins can stop or delete a machine of a suspended org, for example to handle abuse. The admin API has these calls ([the admin API](/reference/admin-api/index.html.md#machineservice)).
@@ -466,7 +474,7 @@ The first defaults fit three machines of the size `default`, and the limited def
 
 - Each limit is 0 or more. `Validate` refuses a limit below 0 with `invalid limit`.
 - An org can have its own limits, `LimitOverrides`. Each limit that it does not set takes the default of the install for the tier of the org. `Apply(defaults)` returns the limits of the org.
-- Every machine that is not deleted counts in the machines and the disk. Only a machine whose target is `running` or `standby` counts in the vCPUs and the RAM. `HoldsCompute()` of a target state reports this case. The placement uses the same rule for the room of a node ([Placement](/reference/placement/index.html.md#what-a-node-uses)).
+- Every machine that is not deleted counts in the machines and the disk. Each extra disk counts in the disk by its size ([Extra disks](/reference/disks/index.html.md#rules-of-a-disk)), from its create to its delete, attached or not. `AfterDisk(bytes)` adds a new disk to a usage, and `CreateDisk` checks `limits.Check(usage.AfterDisk(bytes))`. Only a machine whose target is `running` or `standby` counts in the vCPUs and the RAM. `HoldsCompute()` of a target state reports this case. The placement uses the same rule for the room of a node ([Placement](/reference/placement/index.html.md#what-a-node-uses)).
 - `AfterCreate(size)` adds a new machine to a usage. A new machine has the target `running`, so it counts in all four limits.
 - `AfterStart(size, counted)` adds the vCPUs and the RAM of a machine that exists. If its target counts it already, `counted` is true and the usage stays as it is. So a start never counts a machine twice.
 - `Check(usage)` refuses a usage above a limit with `usage limit exceeded`. It names the first such limit, in the order machines, vCPUs, RAM, and disk. `Check` does not read the limits of yes or no: the service checks `PublicURLs` and `OutboundSMTP` where they apply. A create checks `limits.Check(usage.AfterCreate(size))`, and a start checks `limits.Check(usage.AfterStart(size, counted))`.

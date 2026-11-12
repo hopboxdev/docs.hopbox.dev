@@ -125,6 +125,7 @@ The spec holds the env vars and the secrets of the machine. No part of hopbox lo
 | `give_back_move_id` | string | Set while an instance admin asks this node to give the machine back to the source node of a failed move ([Give-back](#give-back)). Empty otherwise. |
 | `org_id` | string | The ID of the org of the machine, or empty for a machine whose org is gone. The node puts it in the label `org` of `hopbox_machine_info` ([Metrics](/reference/metrics/index.html.md#metrics-of-the-machines)). |
 | `size` | string | The name of the size of the machine, such as `default`. The node puts it in the label `size` of `hopbox_machine_info`. |
+| `disks` | repeated `MachineDisk` | The extra disks attached to the machine, in the order of their devices in the guest: `/dev/vdb` first ([Extra disks](/reference/disks/index.html.md)). `MachineDisk` has `disk_id`, a UUID, and `read_only`. The driver attaches each one at each boot and each load. A boot whose disk has no file on the node fails, and the node never makes a blank file in its place. A node of an older release ignores the field, and boots the machine without its disks. |
 | `discard_memory_generation` | uint64 | The reboot generation that the last `DiscardMemory` set, or 0 ([the machine API](/reference/machine-api/index.html.md#discardmemory)). The executor drops a kept memory file whose save came from a boot of a lower generation, once no microVM of the machine runs ([the node executor](/reference/executor/index.html.md#saved-state)). So an old request never drops the file of a later hibernate. A node of an older release ignores the field. |
 
 ### A machine whose env does not resolve
@@ -212,6 +213,7 @@ A release gives the machine back to the source in the transaction of the report,
 | `move_id` | string | The ID of the move, a UUID. A partial copy of another move starts again from zero. |
 | `source_server_id` | string | The ID of the source node, a UUID. Its certificate must name it. |
 | `source_address` | string | The disk listener of the source node: its mesh address and port `7444`, such as `10.239.0.2:7444`. |
+| `disk_ids` | repeated string | The extra disks attached to the machine ([Cold move](/reference/cold-move/index.html.md#attached-disks)). The executor pulls each one after the disk of the machine, into the file of the disk on the node. It keeps the disks that it pulled whole in `pulled_parts` of its node-local state, so a restart pulls none of them again. It names the move in `pulled_move_id` only once every disk is here. |
 
 ## MachineReport
 

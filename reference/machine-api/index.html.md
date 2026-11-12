@@ -685,6 +685,8 @@ Sets the target of a machine to `deleted`, and waits until its executor deleted 
 
 The request `DeleteMachineRequest` names the machine. The response `DeleteMachineResponse` has the fields `machine`, `duration`, and `done`. The machine has `delete_request_time`.
 
+The delete detaches each extra disk of the machine, and keeps it ([Extra disks](/reference/disks/index.html.md#rules-of-a-disk)). Each disk goes on counting in the limits of the org, until its creator deletes it.
+
 A delete is allowed from any target but `deleted`. A delete and [DiscardMemory](#discardmemory) are the only calls that drop the memory file of a hibernated machine ([Domain rules](/reference/domain-rules/index.html.md#hibernated-machines-keep-their-memory-file)). The leader drops the row of the machine 7 days after the delete request, once its executor deleted it ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)).
 
 Milestone T21 of phase 3 adds backups. A delete by a user then keeps the backups of the machine until the end of their retention. The same org gets an undo, which milestones T21 and T22 build. The owner decided this on 2026-11-06, in Q189.
@@ -965,6 +967,8 @@ Opens a private machine to the whole org. Every member and every org key of the 
 | Audit entry | action `machine.share`, target kind `machine`, details `name` and `shared` (`true`) |
 
 The request `ShareMachineRequest` names the machine. The response `ShareMachineResponse` has the field `machine`. On a machine whose target is `deleted`, the error is `failed precondition: machine action not allowed: cannot machine.share a machine that is being deleted`.
+
+A shared machine holds only shared extra disks ([Extra disks](/reference/disks/index.html.md#who-can-do-what)). So the share of a machine with an attached private disk fails with `failed precondition: the machine box1 holds the private disk disk1, and a shared machine holds only shared disks. Share the disk first, or detach it`. An unshare of a machine with an attached shared disk fails in the same way, with `failed precondition: the machine box1 holds the shared disk disk1, and a private machine holds only private disks. Detach the disk first`.
 
 A share fails closed. In its transaction, the call resolves the env that the machine gets as a shared machine: the shared values and the all values of its org, with each secret open ([the env var API](/reference/vars-api/index.html.md#env-of-a-machine)). If that env does not resolve, the call fails with `failed_precondition`. The machine then stays private, at the same version, with its old env. The call writes no audit entry and publishes no event. The message names the cause:
 

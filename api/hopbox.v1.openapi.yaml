@@ -859,6 +859,282 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.v1.VerifyMagicLinkResponse'
+  /hopbox.v1.DiskService/AttachDisk:
+    post:
+      tags:
+        - hopbox.v1.DiskService
+      summary: AttachDisk
+      description: AttachDisk attaches a disk to a stopped machine on its node. The guest sees it at the next boot.
+      operationId: hopbox.v1.DiskService.AttachDisk
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.AttachDiskRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.AttachDiskResponse'
+  /hopbox.v1.DiskService/CreateDisk:
+    post:
+      tags:
+        - hopbox.v1.DiskService
+      summary: CreateDisk
+      description: |-
+        CreateDisk makes an empty disk of size_gb GB, and returns it at once. The disk is ready once its node made the file.
+         The disk counts in the disk limit of its org, by its size.
+         A disk that names a machine lives on the node of that machine.
+      operationId: hopbox.v1.DiskService.CreateDisk
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.CreateDiskRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.CreateDiskResponse'
+  /hopbox.v1.DiskService/DeleteDisk:
+    post:
+      tags:
+        - hopbox.v1.DiskService
+      summary: DeleteDisk
+      description: DeleteDisk deletes a detached disk and its data.
+      operationId: hopbox.v1.DiskService.DeleteDisk
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.DeleteDiskRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.DeleteDiskResponse'
+  /hopbox.v1.DiskService/DetachDisk:
+    post:
+      tags:
+        - hopbox.v1.DiskService
+      summary: DetachDisk
+      description: DetachDisk takes a disk off its stopped machine. The disk and its data stay.
+      operationId: hopbox.v1.DiskService.DetachDisk
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.DetachDiskRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.DetachDiskResponse'
+  /hopbox.v1.DiskService/GetDisk:
+    post:
+      tags:
+        - hopbox.v1.DiskService
+      summary: GetDisk
+      description: GetDisk returns one disk that the caller sees.
+      operationId: hopbox.v1.DiskService.GetDisk
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.GetDiskRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.GetDiskResponse'
+  /hopbox.v1.DiskService/ListDisks:
+    post:
+      tags:
+        - hopbox.v1.DiskService
+      summary: ListDisks
+      description: ListDisks lists the disks of an org that the caller sees, by name.
+      operationId: hopbox.v1.DiskService.ListDisks
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.ListDisksRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.ListDisksResponse'
+  /hopbox.v1.DiskService/ShareDisk:
+    post:
+      tags:
+        - hopbox.v1.DiskService
+      summary: ShareDisk
+      description: ShareDisk opens a private disk to the whole org. Only its creator can call it.
+      operationId: hopbox.v1.DiskService.ShareDisk
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.ShareDiskRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.ShareDiskResponse'
   /hopbox.v1.InstallService/GetInstallInfo:
     post:
       tags:
@@ -2773,6 +3049,90 @@ components:
       title: ApproveDeviceResponse
       additionalProperties: false
       description: ApproveDeviceResponse describes the client that the approval signs in.
+    hopbox.v1.AttachDiskRequest:
+      type: object
+      allOf:
+        - anyOf:
+            - type: object
+              properties:
+                id:
+                  type: string
+                  title: id
+                  description: id is the UUID of the disk.
+              title: id
+            - type: object
+              properties:
+                name:
+                  type: string
+                  title: name
+                  description: name is the name of the disk.
+              title: name
+          not:
+            allOf:
+              - anyOf:
+                  - required:
+                      - id
+                  - required:
+                      - name
+              - not:
+                  oneOf:
+                    - required:
+                        - id
+                    - required:
+                        - name
+        - anyOf:
+            - type: object
+              properties:
+                machineId:
+                  type: string
+                  title: machine_id
+                  description: machine_id is the UUID of the machine.
+              title: machine_id
+            - type: object
+              properties:
+                machineName:
+                  type: string
+                  title: machine_name
+                  description: machine_name is the name of the machine.
+              title: machine_name
+          not:
+            allOf:
+              - anyOf:
+                  - required:
+                      - machineId
+                  - required:
+                      - machineName
+              - not:
+                  oneOf:
+                    - required:
+                        - machineId
+                    - required:
+                        - machineName
+      unevaluatedProperties: false
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the org of a disk named by its name. Leave it out for the org of an API key, or the personal org.
+        readOnly:
+          type: boolean
+          title: read_only
+          description: read_only attaches the disk so that the guest cannot write it.
+      title: AttachDiskRequest
+      description: AttachDiskRequest names a disk and a machine.
+    hopbox.v1.AttachDiskResponse:
+      type: object
+      properties:
+        disk:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Disk'
+          title: disk
+          description: disk is the attached disk.
+      title: AttachDiskResponse
+      additionalProperties: false
+      description: AttachDiskResponse holds the disk after the attach.
     hopbox.v1.AuditActor:
       type: object
       properties:
@@ -2971,6 +3331,66 @@ components:
       title: CreateAPIKeyResponse
       additionalProperties: false
       description: CreateAPIKeyResponse holds the new key and its secret.
+    hopbox.v1.CreateDiskRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            machineId:
+              type: string
+              title: machine_id
+              description: machine_id is the UUID of the machine.
+          title: machine_id
+        - type: object
+          properties:
+            machineName:
+              type: string
+              title: machine_name
+              description: machine_name is the name of the machine.
+          title: machine_name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - machineId
+              - required:
+                  - machineName
+          - not:
+              oneOf:
+                - required:
+                    - machineId
+                - required:
+                    - machineName
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the org. Leave it out for the org of an API key, or the personal org.
+        name:
+          type: string
+          title: name
+          description: 'name is the name of the disk: the rules of a machine name, unique in the org.'
+        sizeGb:
+          type: string
+          title: size_gb
+          format: int64
+          description: size_gb is the size of the disk in GB, from 1 to 2000.
+      title: CreateDiskRequest
+      description: CreateDiskRequest names the new disk.
+    hopbox.v1.CreateDiskResponse:
+      type: object
+      properties:
+        disk:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Disk'
+          title: disk
+          description: disk is the new disk. ready is false until its node made the file.
+      title: CreateDiskResponse
+      additionalProperties: false
+      description: CreateDiskResponse holds the new disk.
     hopbox.v1.CreateInvitationRequest:
       type: object
       properties:
@@ -3113,6 +3533,51 @@ components:
       title: DeleteAccountResponse
       additionalProperties: false
       description: DeleteAccountResponse has no fields.
+    hopbox.v1.DeleteDiskRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the disk.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the disk.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the org of a disk named by its name. Leave it out for the org of an API key, or the personal org.
+      title: DeleteDiskRequest
+      description: DeleteDiskRequest names a disk.
+    hopbox.v1.DeleteDiskResponse:
+      type: object
+      title: DeleteDiskResponse
+      additionalProperties: false
+      description: DeleteDiskResponse is empty.
     hopbox.v1.DeleteMachineRequest:
       type: object
       anyOf:
@@ -3213,6 +3678,57 @@ components:
       title: DeleteVarResponse
       additionalProperties: false
       description: DeleteVarResponse has no fields.
+    hopbox.v1.DetachDiskRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the disk.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the disk.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the org of a disk named by its name. Leave it out for the org of an API key, or the personal org.
+      title: DetachDiskRequest
+      description: DetachDiskRequest names a disk.
+    hopbox.v1.DetachDiskResponse:
+      type: object
+      properties:
+        disk:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Disk'
+          title: disk
+          description: disk is the detached disk.
+      title: DetachDiskResponse
+      additionalProperties: false
+      description: DetachDiskResponse holds the disk after the detach.
     hopbox.v1.DeviceAuthorizationState:
       type: string
       title: DeviceAuthorizationState
@@ -3277,6 +3793,86 @@ components:
       title: DiscardMemoryResponse
       additionalProperties: false
       description: DiscardMemoryResponse holds the machine after the wait.
+    hopbox.v1.Disk:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the disk.
+        orgId:
+          type: string
+          title: org_id
+          description: org_id is the UUID of the org of the disk.
+        name:
+          type: string
+          title: name
+          description: name is the name of the disk, unique in its org.
+        sizeGb:
+          type: string
+          title: size_gb
+          format: int64
+          description: size_gb is the size of the disk in GB.
+        usedBytes:
+          type: string
+          title: used_bytes
+          format: int64
+          description: used_bytes are the bytes that the blocks of the disk hold on its node, as its node last reported them.
+        shared:
+          type: boolean
+          title: shared
+          description: shared is true when every member of the org can use the disk.
+        creatorAccountId:
+          type:
+            - string
+            - "null"
+          title: creator_account_id
+          description: creator_account_id is the account that made the disk, if an account made it.
+        creatorKeyId:
+          type:
+            - string
+            - "null"
+          title: creator_key_id
+          description: creator_key_id is the org key that made the disk, if an org key made it.
+        ready:
+          type: boolean
+          title: ready
+          description: ready is true once the node of the disk made its file. Only a ready disk attaches.
+        attachment:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.DiskAttachment'
+          title: attachment
+          description: attachment is the machine that holds the disk, if any.
+        createdAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: created_at
+          description: created_at is when the disk was made.
+      title: Disk
+      additionalProperties: false
+      description: Disk is one extra disk.
+    hopbox.v1.DiskAttachment:
+      type: object
+      properties:
+        machineId:
+          type: string
+          title: machine_id
+          description: machine_id is the UUID of the machine.
+        machineName:
+          type: string
+          title: machine_name
+          description: machine_name is the name of the machine.
+        readOnly:
+          type: boolean
+          title: read_only
+          description: read_only is true when the guest cannot write the disk.
+        device:
+          type: string
+          title: device
+          description: device is the block device of the disk in the guest, such as /dev/vdb, in the order of the attach.
+      title: DiskAttachment
+      additionalProperties: false
+      description: DiskAttachment is the machine that holds a disk.
     hopbox.v1.DownloadInfo:
       type: object
       properties:
@@ -3664,6 +4260,57 @@ components:
       title: GetDeviceAuthorizationResponse
       additionalProperties: false
       description: GetDeviceAuthorizationResponse describes the client that waits for the approval.
+    hopbox.v1.GetDiskRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the disk.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the disk.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the org of a disk named by its name. Leave it out for the org of an API key, or the personal org.
+      title: GetDiskRequest
+      description: GetDiskRequest names a disk.
+    hopbox.v1.GetDiskResponse:
+      type: object
+      properties:
+        disk:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Disk'
+          title: disk
+          description: disk is the disk.
+      title: GetDiskResponse
+      additionalProperties: false
+      description: GetDiskResponse holds one disk.
     hopbox.v1.GetInstallInfoRequest:
       type: object
       title: GetInstallInfoRequest
@@ -4021,6 +4668,30 @@ components:
       title: ListCLISignInsResponse
       additionalProperties: false
       description: ListCLISignInsResponse lists the CLI sign-ins.
+    hopbox.v1.ListDisksRequest:
+      type: object
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the org. Leave it out for the org of an API key, or the personal org.
+      title: ListDisksRequest
+      additionalProperties: false
+      description: ListDisksRequest names an org.
+    hopbox.v1.ListDisksResponse:
+      type: object
+      properties:
+        disks:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.v1.Disk'
+          title: disks
+          description: disks are the disks, by name.
+      title: ListDisksResponse
+      additionalProperties: false
+      description: ListDisksResponse holds the disks of the org that the caller sees.
     hopbox.v1.ListInvitationsRequest:
       type: object
       properties:
@@ -5249,6 +5920,57 @@ components:
       title: SetVarResponse
       additionalProperties: false
       description: SetVarResponse holds the value, without the value of a secret.
+    hopbox.v1.ShareDiskRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the disk.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the disk.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      properties:
+        orgId:
+          type:
+            - string
+            - "null"
+          title: org_id
+          description: org_id is the org of a disk named by its name. Leave it out for the org of an API key, or the personal org.
+      title: ShareDiskRequest
+      description: ShareDiskRequest names a disk.
+    hopbox.v1.ShareDiskResponse:
+      type: object
+      properties:
+        disk:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Disk'
+          title: disk
+          description: disk is the shared disk.
+      title: ShareDiskResponse
+      additionalProperties: false
+      description: ShareDiskResponse holds the disk after the change.
     hopbox.v1.ShareMachineRequest:
       type: object
       anyOf:
@@ -6097,6 +6819,12 @@ components:
       description: WatchMachinesResponse is one message of the stream.
 security: []
 tags:
+  - name: hopbox.v1.DiskService
+    description: |-
+      DiskService creates, attaches, and deletes the extra disks of an org.
+       A disk lives on one node, and attaches to one stopped machine at a time, read-only or read-write.
+       A request on one disk names it by its ID or by its name: names are unique in the org of the disk.
+       A disk starts private to its creator. ShareDisk opens it to the org.
   - name: hopbox.v1.MachineService
     description: |-
       MachineService creates, reads, and changes the machines of an org.

@@ -1,6 +1,6 @@
 # Control store tables
 
-> The tables of the control store, leases, leader election, change events, the audit log, idempotency keys, the install config, the tables of accounts, sign-ups, the block list, orgs, invitations, usage, sessions, sign-in links, and instance admins, the tables of pools, the install CA, the server registry, and enrollment tokens, the tables of sizes, images, machines, memory files of machines, records of saves, machine names, SSH ports, and placements, and the tables of the DNS zone.
+> The tables of the control store, leases, leader election, change events, the audit log, idempotency keys, the install config, the tables of accounts, sign-ups, the block list, orgs, invitations, usage, sessions, sign-in links, and instance admins, the tables of pools, the install CA, the server registry, and enrollment tokens, the tables of sizes, images, machines, memory files of machines, records of saves, extra disks and their moves, machine names, SSH ports, and placements, and the tables of the DNS zone.
 
 This page lists the tables of the control store and the Go packages that write them. The control store is the Postgres database of the control role. [The bundled Postgres](/reference/postgres/index.html.md) covers the bundled Postgres, the migration runner, and the advisory lock keys.
 
@@ -612,7 +612,7 @@ Migration `0017_org_limits_and_suspension.sql`. A view with one row per org: wha
 | `machines` | `integer` | The machines of the org whose target state is not `deleted`. |
 | `vcpus` | `integer` | The vCPUs of the machines whose target state is `running` or `standby`. |
 | `memory_bytes` | `bigint` | The RAM of the machines whose target state is `running` or `standby`, in bytes. |
-| `disk_bytes` | `bigint` | The disk of the machines whose target state is not `deleted`, in bytes. |
+| `disk_bytes` | `bigint` | The disk of the machines whose target state is not `deleted`, plus the size of each extra disk of the org, in bytes. Migration `0077` adds the disks. |
 | `stored_state_bytes` | `bigint` | The `bytes` of the memory files of the machines whose target state is not `deleted`, from [machine_memory_states](#machine_memory_states). Migration `0074`. |
 | `pending_save_bytes` | `bigint` | The RAM of the machines with the target `hibernated` and no memory file yet, whose saves wait or run on their nodes. The check of a save counts them at this worst size (Q211). Migration `0074`. |
 | `saved_bytes_last_day` | `bigint` | The `bytes` of the saves of the org in the last 24 hours, from [saved_state_writes](#saved_state_writes). Migration `0074`. |
@@ -1444,6 +1444,83 @@ Migration `0074_saved_state_limits.sql`, with `oldest_schema_version` 57. One ro
 The primary key is `(machine_id, saved_at)`. A repeated report of one save names the same machine and time, so it adds no row. The index `saved_state_writes_org` on `(org_id, recorded_at)` serves the sum of an org, and the index `saved_state_writes_recorded_at` serves the sweep. The sweep of machines deletes the rows recorded more than 48 hours ago, twice the window of the budget ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)).
 
 Example: a machine of `org1` hibernates twice, with saves recorded at 10:00 and at 16:00 by the clock of the control store, and each save holds 8 GiB. At 20:00 the org has 16 GiB in `saved_bytes_last_day`. At 10:01 the next day, only the save of 16:00 counts, so it has 8 GiB.
+
+## disks
+
+Migration `0077_disks.sql`, with `oldest_schema_version` 57. One row for each extra disk ([Extra disks](/reference/disks/index.html.md)). A delete of the disk drops the row at once, and leaves a row of [disk_removals](#disk_removals) for each node that holds its file. A `hopboxd` of schema version 57 to 76 never reads the table. It counts the disks in `disk_bytes` through the view [org_usage](#org_usage), as this release does.
+
+| Column | Type | Default | Description |
+| --- | --- | --- | --- |
+| `id` | `uuid`, primary key | none | A UUIDv7. |
+| `org_id` | `uuid` | none | The org. A delete of the org row deletes the row, but `OrgDeleting` deletes the disks first, with their removals. |
+| `creator_account_id` | `uuid`, can be null | none | The account that made the disk. A delete of the account sets it to null. |
+| `creator_key_id` | `uuid`, can be null | none | The org key that made the disk. A revoke of the key sets it to null. A check keeps at most one of the two creators. |
+| `name` | `text` | none | The name, unique in the org. |
+| `shared` | `boolean` | `false` | Whether every member of the org uses the disk. |
+| `size_bytes` | `bigint` | none | The size in bytes, above 0. |
+| `server_id` | `uuid` | none | The node of the disk, a row of `servers`. A move that ends changes it. |
+| `ready_at` | `timestamptz`, can be null | null | The first heartbeat of the node that named the file of the disk. |
+| `used_bytes` | `bigint` | 0 | The bytes of the blocks of the file in the last such heartbeat. |
+| `version` | `bigint` | 1 | The row version. |
+| `created_at`, `updated_at` | `timestamptz` | the time of the insert | The times of the row. |
+
+The unique key `(org_id, name)` keeps the names. The index `disks_server` lists the disks of a node.
+
+## disk_attachments
+
+Migration `0077_disks.sql`. One row for each attached disk: at most one machine for each disk.
+
+| Column | Type | Description |
+| --- | --- | --- |
+| `disk_id` | `uuid`, primary key | The disk. A delete of the disk row deletes the row. |
+| `machine_id` | `uuid` | The machine. A delete of the machine row deletes the row, but the delete of a machine detaches its disks first. |
+| `read_only` | `boolean` | Whether the guest cannot write the disk. |
+| `attached_at` | `timestamptz` | The time of the attach. The order of `(attached_at, disk_id)` gives the order of the devices in the guest. |
+
+The index `disk_attachments_machine` on `(machine_id, attached_at)` lists the disks of a machine.
+
+## disk_removals
+
+Migration `0077_disks.sql`. One row for each file of a disk that a node must remove: after the delete of the disk, and on the old node after a move ([Extra disks](/reference/disks/index.html.md#the-files-of-the-disks)). `NodeDisks` names a row in `remove` only while no disk row puts the disk on that node. The heartbeat that names the disk in `removed_disks` drops the row. The decommission of the node drops its rows.
+
+| Column | Type | Description |
+| --- | --- | --- |
+| `disk_id` | `uuid` | The disk. It has no foreign key, because the disk can be gone. |
+| `server_id` | `uuid` | The node, a row of `servers`. |
+| `created_at` | `timestamptz` | The time of the row. |
+
+The primary key is `(disk_id, server_id)`. The index `disk_removals_server` lists the rows of a node.
+
+## disk_moves
+
+Migration `0077_disks.sql`. One row for each move of a detached disk by a drain or by the removal of the node role ([Cold move](/reference/cold-move/index.html.md#detached-disks)). An attached disk moves in the move of its machine, so it has no row here.
+
+| Column | Type | Description |
+| --- | --- | --- |
+| `id` | `uuid`, primary key | A UUIDv7. |
+| `disk_id` | `uuid` | The disk. A delete of the disk row deletes the row. |
+| `source_server_id`, `target_server_id` | `uuid` | The two nodes, never the same one. |
+| `cause` | `text` | `drain` or `removal`. |
+| `state` | `text` | `pulling`, `done`, or `failed`. |
+| `error` | `text` | Why the move failed, or empty. |
+| `created_at`, `updated_at` | `timestamptz` | The start of the move, and its last change. The time limit counts from the start. |
+
+The unique index `disk_moves_active` keeps one move in `pulling` for each disk.
+
+## disk_strands
+
+Migration `0077_disks.sql`. One row for each detached disk that a drain or a removal of the node role cannot move, as [drain_strands](#drain_strands) for a machine.
+
+| Column | Type | Description |
+| --- | --- | --- |
+| `server_id` | `uuid` | The server of the evacuation. |
+| `disk_id` | `uuid` | The disk. A delete of the disk row deletes the row. |
+| `kind` | `text` | `drain` or `removal`. |
+| `reason` | `text` | Why the disk cannot move. It is never empty. |
+| `retry_at` | `timestamptz`, can be null | For a disk that no node took, the time at which the drain tries it again. |
+| `created_at`, `updated_at` | `timestamptz` | The times of the row. |
+
+The primary key is `(server_id, kind, disk_id)`. A retry, a cancel, and the end of the evacuation drop the rows of its kind, and so does the decommission of the server.
 
 ## machine_names
 

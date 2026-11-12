@@ -25,11 +25,14 @@ The driver declares the capabilities `pause`, `snapshot`, and `restore`. It boot
 | `.../state/vmstate` | root | 0600 | The state of the microVM at the save: its vCPUs and its devices. |
 | `.../state/state.json` | root | 0600 | The record of the saved state. See [The record of a saved state](#the-record-of-a-saved-state). |
 | `.../state/disk.raw` | root | 0600 | The reflink copy of the disk that the first load of the saved state makes. |
+| `.../state/disk-<disk id>.raw` | root | 0600 | The reflink copy of each read-write extra disk that the first load makes. See [Extra disks](#extra-disks). |
+| `<data_dir>/disks/<disk id>/disk.raw` | the jail user of the machine that holds the disk last | 0600, or 0400 for a read-only attach | An extra disk ([Extra disks](/reference/disks/index.html.md)). The disk keeper of the node makes, pulls, and removes it. The delete of a machine keeps it. |
 | `<data_dir>/machines/<id>/save.partial/` | root | 0700 | The files of a save without a stop, before its dir gets its name. Each such save removes what an earlier one left, and `Delete` removes it with the machine dir. See [Save without a stop](#save-without-a-stop). |
 | `<data_dir>/jail/firecracker/<id>/root/` | the jail user | 0700 | The root of the jail. The jailed Firecracker sees it as `/`. |
 | `.../root/firecracker` | the jail user | 0755 | The copy of Firecracker that the jailer makes at each boot. A running microVM keeps its copy, so an upgrade does not change it. |
 | `.../root/vmlinux` | root | 0644 | The guest kernel, as a hard link to the kernel cache. |
 | `.../root/rootfs` | the jail user | 0600 | The disk, as a hard link to `disk.raw`. |
+| `.../root/disk-<disk id>` | the jail user | 0600 | Each extra disk of the machine, as a hard link to its file. |
 | `.../root/memory`, `.../root/vmstate` | the jail user | 0600 | The reflink copies of the memory file and of `vmstate` that a load reads. Firecracker maps the memory copy. A boot removes them. |
 | `.../root/memory.new`, `.../root/vmstate.new` | the jail user, then root | 0600 | The files that a save writes, before it moves them into `state/`. A failed save removes them. |
 | `.../root/run/firecracker.socket` | the jail user | socket | The API socket of Firecracker. |
@@ -98,7 +101,7 @@ A boot runs these steps. The executor then waits for the guest agent ([the node 
 3. It takes the kernel that the image names from the kernel cache.
 4. It takes the disk of the image from the image cache. The first boot of an image can unpack or download it.
 5. It makes the disk of the machine, at its first boot. See [Disks](#disks).
-6. It fills the jail: it removes what an earlier boot left there, apart from the guest link socket, and makes hard links to the kernel and the disk.
+6. It fills the jail. It removes what an earlier boot left there, apart from the guest link socket. Then it makes hard links to the kernel, the disk, and each extra disk. See [Extra disks](#extra-disks).
 7. It makes the tap device of the machine, and connects it to the node network. See [The tap device](#the-tap-device).
 8. It starts the unit, and waits at most 10 s for the API socket of Firecracker.
 9. It configures the microVM through the API, and starts it.
@@ -108,6 +111,7 @@ A boot runs these steps. The executor then waits for the guest agent ([the node 
 | `PUT /machine-config` | `vcpu_count`, `mem_size_mib`, and `smt` false. No CPU template. |
 | `PUT /boot-source` | `kernel_image_path` `/vmlinux`, and the boot arguments of [Guest kernel](/reference/guest-kernel/index.html.md#boot-requirements). The kernel command line holds no secret. |
 | `PUT /drives/rootfs` | The root disk `/rootfs`, read-write, with `cache_type` `Writeback` and `discard` true. See [Disks](#disks). |
+| `PUT /drives/disk_<32 hex>` | Each extra disk, in the order of the spec, at `/disk-<disk id>`, with `is_root_device` false, `is_read_only` from the attach, and `cache_type` `Writeback`. A read-write disk has `discard` true. The drive ID holds only letters, digits, and `_`, as Firecracker asks. |
 | `PUT /network-interfaces/eth0` | The tap device, and a MAC address from a hash of the machine ID, `06:00:xx:xx:xx:xx`. |
 | `PUT /mmds/config` | MMDS version 2 on `eth0`, at `169.254.169.254`. |
 | `PUT /mmds` | `{"hopbox": {"guest_link_key": "<64 hex characters>"}}`, the link key of the boot ([Guest link](/reference/guest-link/index.html.md#link-key)). |
@@ -128,6 +132,21 @@ The disk of a machine is a reflink copy of the disk of its image, made with the 
 | Discard | On: the guest can give freed blocks back, so the disk stays sparse. |
 | Delete | `Delete` removes the disk with the machine dir. |
 | Cold move | `DiskPath(id)` names `disk.raw`, so the driver is a `vmm.Mover` ([the VMM driver interface](/reference/vmm/index.html.md#mover)). The target node of a move pulls the disk into `disk.raw.pull` of the machine dir, and renames it to `disk.raw` once its digest matches ([Cold move](/reference/cold-move/index.html.md#the-stream)). The next boot keeps that disk, and gives it to the jail user. |
+
+## Extra disks
+
+The extra disks of a machine come in `Disks` of `vmm.Machine`, in the order of their devices in the guest ([Extra disks](/reference/disks/index.html.md)). The driver is a `vmm.DiskHolder`: `DisksDir()` returns `<data_dir>/disks`, the dir of the disk keeper. The file of each disk is `vmm.DiskFile(<data_dir>/disks, <disk id>)`. The dir is on the file system of the jail dir, so a disk enters a jail as a hard link. The unit of a machine lists it in `RequiresMountsFor`.
+
+| Step | What the driver does |
+| --- | --- |
+| Boot and load | It opens the file of each disk with `O_NOFOLLOW`, and refuses a file that is not a regular file. Through the descriptor, it gives the file to the jail user of the machine with mode 0600, or 0400 for a read-only disk. A disk without its file fails with `vmm.ErrDiskMissing`, and the driver never makes a blank file. It links each file into the jail root as `disk-<disk id>`, and adds it with `PUT /drives` before the network interface. |
+| First load of a saved state | It makes the reflink copy `state/disk-<disk id>.raw` of each read-write disk, beside `state/disk.raw`. A read-only disk needs none. |
+| Later load | It puts each copy back over its disk, so every disk matches the memory again. A disk whose file is gone fails with `vmm.ErrDiskMissing`, and the copy never makes the file again. The rule is A second load of one state of the phase 3 plan. |
+| `DiscardMemory` | It puts each copy back too, with the same check of the file, logs `put the extra disks of the save back before the discard of its memory file` with `disks`, and drops the saved state. |
+| A new save | It drops the copies of the older state. |
+| `ReleaseDisk` | It removes the link `disk-<disk id>` from the jail root of each machine whose unit does not run. The disk keeper calls it before it removes a file, so the removal frees the blocks. A unit that runs fails the call, and keeps its link. |
+
+A snapshot of Firecracker names each drive with its path in the jail. Attach and detach need a machine without a memory file ([Extra disks](/reference/disks/index.html.md#rules-of-a-disk)), so a load always finds the drives of its save.
 
 ## The image cache
 
@@ -387,6 +406,7 @@ Every record has `component=firecracker`.
 | `attached to a microVM whose save is whole` | info | `machine`, `unit`, `saved_at` |
 | `stopping a microVM that never started` | warn | `machine`, `unit` |
 | `made the disk of a machine as a reflink copy of its image` | info | `machine`, `image` |
+| `put the extra disks of the save back before the discard of its memory file` | info | `machine`, `disks` |
 | `unpacked the disk of an image` | info | `digest`, `duration` |
 | `downloaded the disk of an image` | info | `digest`, `url`, `duration` |
 | `checked the disk of an image` | info | `digest`, `duration` |

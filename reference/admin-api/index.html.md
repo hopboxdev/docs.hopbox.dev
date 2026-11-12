@@ -1807,6 +1807,7 @@ The message `ServerDrain` has these fields:
 | `error` | string | Why the drain waits now, such as a refused decommission. Empty while the drain goes on. |
 | `stuck` | bool | True when no move runs, every machine left on the server is stranded, and a machine is stranded or the decommission was refused. A second `DrainServer` tries again. The drain also tries a machine that no node had room for again once a minute ([Cold move](/reference/cold-move/index.html.md#the-machines-of-the-node)). |
 | `cordoned_before` | bool | True when the server was cordoned before the drain, or an instance admin cordoned it during the drain. [CancelDrain](#canceldrain) then keeps the cordon. A drain that a release of the schema version 57 or 58 started holds no such record, and shows `true`. |
+| `stranded_disks` | repeated `StrandedDisk` | The detached extra disks that the drain cannot move. Each one keeps its data on the server ([Cold move](/reference/cold-move/index.html.md#detached-disks)). `moving` counts the moves of disks from the server too, and `stuck` needs each such disk stranded. |
 
 The message `ServerRoleRemoval` has these fields:
 
@@ -1819,7 +1820,8 @@ The message `ServerRoleRemoval` has these fields:
 | `stranded` | repeated `StrandedMachine` | The machines that the removal of `node` cannot move. Each one keeps its disk on the server. |
 | `error` | string | Why the removal waits now, such as a machine that has not booted yet. Empty while the removal goes on. |
 | `stuck` | bool | True when no move runs, a machine is stranded, and every machine left on the server is stranded. A cancel ends such a removal ([CancelRoleRemoval](#cancelroleremoval)). |
-| `ready` | bool | True when an enrollment of the server with the roles that stay can end the removal. A removal without `node` is ready at once. A removal of `node` is ready once the server holds no machine, no allocation, and no move from or to it. It must also hold no old copy of a moved machine, and no copy of a disk that a failed move left. |
+| `ready` | bool | True when an enrollment of the server with the roles that stay can end the removal. A removal without `node` is ready at once. A removal of `node` is ready once the server holds no machine, no allocation, and no move from or to it. It must also hold no old copy of a moved machine, and no copy of a disk that a failed move left. It must hold no extra disk, no move of a disk, and no file of a disk that left it ([Extra disks](/reference/disks/index.html.md#moves-of-disks)). |
+| `stranded_disks` | repeated `StrandedDisk` | The detached extra disks that the removal of `node` cannot move. Each one keeps its data on the server. |
 
 The message `StrandedMachine` has these fields:
 
@@ -1831,6 +1833,14 @@ The message `StrandedMachine` has these fields:
 | `on_server` | bool | False for a machine on another node whose disk copy a failed move left on this server ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node)). |
 
 A drain and the removal of the role `node` name the machines that they cannot move with this message.
+
+The message `StrandedDisk` names an extra disk that a drain or a removal of `node` cannot move:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `disk_id` | string | The ID of the disk. |
+| `name` | string | The name of the disk in its org. |
+| `reason` | string | Why the disk cannot move, such as `its move failed: ...` or `no capacity: no other node takes the disk disk1 ...`. |
 
 The enum `ServerState` has these values:
 
@@ -2047,7 +2057,7 @@ Takes a server out of the install for good. The state turns `decommissioned`, an
 
 The call works from every state but `decommissioned`. A `draining` or `shutting_down` server must be empty. The drain runs this call itself at its third empty check ([Cold move](/reference/cold-move/index.html.md#drain-of-a-node)).
 
-The call refuses a server that still holds machines. The control store counts each machine on the server that its executor has not deleted yet, stopped machines included. The last heartbeat of the server counts its allocations. The call refuses a server that a move runs from or to. It also refuses a server that keeps the copy of a disk which a failed move left, while the machine lives on another node.
+The call refuses a server that still holds machines. The control store counts each machine on the server that its executor has not deleted yet, stopped machines included. The last heartbeat of the server counts its allocations. The call refuses a server that a move runs from or to. It also refuses a server that keeps the copy of a disk which a failed move left, while the machine lives on another node. It refuses a server that holds an extra disk, with `failed precondition: the server <id> holds <n> disks, such as disk1. Drain it first, so that its disks move to other nodes, or delete them`. It also refuses a server that a move of a disk runs from or to ([Extra disks](/reference/disks/index.html.md#moves-of-disks)). The decommission drops the removals of the files of disks that the server still had to do.
 
 The decommission drops the old copies that the server still had to remove. It clears `cleanup_server_id` of those moves, so that a new move of those machines does not wait. The row of the drain goes too, and so does a pending removal of roles, with its stranded machines. `removed_roles` stays.
 
@@ -2974,6 +2984,44 @@ source_server_id	01a14600-0a1b-7c2d-8e3f-405162738495
 target_server_id	01a14600-1b2c-7d3e-8f40-516273849506
 state	stopping
 ```
+
+## DiskService
+
+`hopbox.admin.v1.DiskService` lets instance admins see the extra disks of every org, and delete a detached one, also in a suspended org ([Extra disks](/reference/disks/index.html.md)). An example is a disk that strands the drain of a node. It never reads the data of a disk. Q224 of the phase 3 plan gives these calls.
+
+The message `Disk` of this service has two fields. `disk` is the `hopbox.v1.Disk` as its users see it ([Extra disks](/reference/disks/index.html.md#disk)). `server_id` is the UUID of the node of the disk.
+
+### ListDisks
+
+Lists the disks of every org, or of one node, one page at a time, in the order of their IDs. The list holds metadata only.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.DiskService/ListDisks` |
+| Policy action | `disk.list_all`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no |
+| Audit entry | action `disk.list_all`, no target. With `server_id`, the entry has the detail `server`. |
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `server_id` | optional string | none | Lists only the disks of this node. |
+| `page_size` | int32 | 1000 | The most disks in one response, 1 to 1000. A value out of range takes 1000. |
+| `page_token` | string | empty | The `next_page_token` of the response before. Leave it empty for the first page. |
+
+The response `ListDisksResponse` has the fields `disks`, a repeated `Disk` of this service, and `next_page_token`. The token is empty on the last page.
+
+### DeleteDisk
+
+Deletes any detached disk with its data, as `DeleteDisk` of the public API does ([Extra disks](/reference/disks/index.html.md#deletedisk)), also in a suspended org. Its node then removes the file. An attached disk fails with `failed_precondition`: detach it first, or delete its machine.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.admin.v1.DiskService/DeleteDisk` |
+| Policy action | `disk.admin_delete`: `local_root`, `admin_key`, and an [admin session](#admin-sessions) |
+| Idempotent option | no. A second call gets `not_found`. |
+| Audit entry | action `disk.admin_delete`, org the org of the disk, target kind `disk`, details `name` |
+
+The request `DeleteDiskRequest` has the field `id`, the UUID of the disk. The response `DeleteDiskResponse` is empty.
 
 ## ImageService
 

@@ -523,7 +523,7 @@ At the prompt itself, the keys Ctrl-C and Ctrl-D are keys, not signals. A SIGINT
 | [`machine discard-memory`](#machine-discard-memory) | Drops the memory file of a machine that does not run, and stops it. |
 | [`machine reboot`](#machine-reboot) | Boots a running machine again, and waits for the new boot. |
 | [`machine rename`](#machine-rename) | Gives a machine a new name. |
-| [`machine delete`](#machine-delete), `machine rm` | Deletes a machine and its disk. |
+| [`machine delete`](#machine-delete), `machine rm` | Deletes a machine and its disk. Its extra disks stay. |
 | [`machine share`](#machine-share) | Opens a machine to the whole org. |
 | [`machine unshare`](#machine-unshare) | Makes a shared machine private to its creator again. |
 | [`machine update`](#machine-update) | Changes the restart policy, the start command, or a timeout: auto-delete, auto-standby, or auto-hibernate. |
@@ -531,6 +531,12 @@ At the prompt itself, the keys Ctrl-C and Ctrl-D are keys, not signals. A SIGINT
 | [`url port`](#url-port) | Sets the port in the machine that its URL reaches. |
 | [`url public`](#url-public) | Lets anyone open the URL of a machine. |
 | [`url private`](#url-private) | Lets only accounts with access to the machine open its URL. |
+| [`disk create`](#disk-create) | Makes an empty extra disk, and waits until its node made its file. |
+| [`disk list`](#disk-list), `disk ls` | Lists the extra disks of the org. |
+| [`disk attach`](#disk-attach) | Attaches a disk to a stopped machine. |
+| [`disk detach`](#disk-detach) | Takes a disk off its stopped machine. |
+| [`disk delete`](#disk-delete), `disk rm` | Deletes a detached disk and its data. |
+| [`disk share`](#disk-share) | Opens a private disk to the whole org. |
 | [`env list`](#env-list), `env ls` | Lists the env vars and secrets of the org. |
 | [`env set`](#env-set) | Sets an env var or a secret. |
 | [`env unset`](#env-unset), `env rm` | Removes an env var or a secret. |
@@ -944,6 +950,101 @@ hopbox url private MACHINE
 ```
 
 Lets only signed-in accounts with access to the machine open its URL. Only the creator of the machine can. A new machine is private.
+
+### disk create
+
+```sh
+hopbox disk create NAME --size=GB [--machine=MACHINE]
+```
+
+Makes an empty extra disk in the org of the command with `CreateDisk` ([Extra disks](/reference/disks/index.html.md#createdisk)). Then it reads the disk with `GetDisk` every 500 ms, for up to 30 s, until its node made its file. With `--machine`, the disk lives on the node of that machine, so it attaches to it.
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--size=GB` | none | The size of the disk in GB, from 1 to 2000. Required. |
+| `--machine=MACHINE` | none | A machine, by name or UUID. Without it, the install picks a node. |
+
+```text
+Made the disk disk1 of 10 GB.
+```
+
+If the node has not made the file after 30 s, the line ends with `Its node has not made its file yet, so wait a few seconds before an attach.`
+
+JSON: one object with the keys `id`, `org_id`, `name`, `size_gb`, `used_bytes`, `shared`, and `ready`. It also has `machine_id`, `machine_name`, `read_only`, `device`, and `created_at`. A detached disk has empty strings in `machine_id`, `machine_name`, and `device`.
+
+### disk list
+
+```sh
+hopbox disk list
+```
+
+Lists the extra disks of the org that you see, with `ListDisks`. The table has the columns `NAME`, `SIZE`, `MACHINE`, `DEVICE`, `MODE` (`rw` or `ro`), `SHARED`, and `READY`. A detached disk shows `-` for the machine, the device, and the mode.
+
+JSON: a list of the objects of [disk create](#disk-create).
+
+### disk attach
+
+```sh
+hopbox disk attach DISK MACHINE [--read-only]
+```
+
+Attaches the disk `DISK` to the stopped machine `MACHINE` with `AttachDisk`. Each one is a name or a UUID. The guest sees the disk at its next boot, as the device of the output. The disk and the machine must be on one node, and the machine must have no memory file ([Extra disks](/reference/disks/index.html.md#attachdisk)).
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--read-only` | `false` | Attaches the disk so that the guest cannot write it. |
+
+```text
+Attached the disk disk1 to the machine box1. The guest sees it as /dev/vdb at its next boot.
+```
+
+JSON: the object of [disk create](#disk-create).
+
+### disk detach
+
+```sh
+hopbox disk detach DISK
+```
+
+Takes the disk `DISK` off its stopped machine with `DetachDisk`. The data stays on the disk.
+
+```text
+Detached the disk disk1. Its data stays.
+```
+
+JSON: the object of [disk create](#disk-create).
+
+### disk delete
+
+```sh
+hopbox disk delete DISK [-y]
+```
+
+Deletes the detached disk `DISK` and its data with `DeleteDisk`. It asks first, as `machine delete` does. The node of the disk then removes its file.
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-y`, `--yes` | `false` | Deletes without a question. A command without a terminal needs it. |
+
+```text
+Deleted the disk disk1.
+```
+
+JSON: `{"deleted":"disk1"}`.
+
+### disk share
+
+```sh
+hopbox disk share DISK
+```
+
+Opens the private disk `DISK` to the whole org with `ShareDisk`. Only its creator shares it. A shared disk attaches only to a shared machine ([Extra disks](/reference/disks/index.html.md#who-can-do-what)).
+
+```text
+Shared the disk disk1 with the org.
+```
+
+JSON: the object of [disk create](#disk-create).
 
 ### env list
 

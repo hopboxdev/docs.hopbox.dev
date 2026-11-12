@@ -229,6 +229,12 @@ Every operation of the service layer calls one policy check, `policy.Authorize(c
 | `machine.move` | admin `MachineService.MoveMachine` ([Cold move](/reference/cold-move/index.html.md)) | the install | `local_root`, `admin_key` |
 | `machine.list_moves` | admin `MachineService.ListMoves` | the install | `local_root`, `admin_key` |
 | `machine.cancel_move` | admin `MachineService.CancelMove` | the install | `local_root`, `admin_key` |
+| `disk.create`, `disk.list` | `DiskService.CreateDisk`, `ListDisks` ([Extra disks](/reference/disks/index.html.md)) | the org | as for `machine.create` and `machine.list` |
+| `disk.get`, `disk.delete` | `DiskService.GetDisk`, `DeleteDisk` | the disk | as for `machine.get`, with the creator and the share of the disk |
+| `disk.attach`, `disk.detach` | `DiskService.AttachDisk`, `DetachDisk` | the disk, and the machine with `machine.exec` | as for `machine.start`, with the creator and the share of the disk |
+| `disk.share` | `DiskService.ShareDisk` | the disk | as for `machine.share`, for the creator of the disk |
+| `disk.list_all` | admin `DiskService.ListDisks` | the install | `local_root`, `admin_key`, an admin `session` |
+| `disk.admin_delete` | admin `DiskService.DeleteDisk` | the install | `local_root`, `admin_key`, an admin `session` |
 | `image.register` | admin `ImageService.RegisterImage`, and the start of the control role for the default image of its release ([hopboxd](/reference/hopboxd/index.html.md#the-default-image-of-the-release)) | the install | `local_root`, `admin_key` |
 | `image.list` | admin `ImageService.ListImages` | the install | `local_root`, `admin_key`, an admin `session` |
 | `pool.create` | `PoolService.CreatePool` | the install | `local_root`, `admin_key`, an admin `session` |

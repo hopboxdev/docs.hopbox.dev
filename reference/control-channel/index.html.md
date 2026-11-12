@@ -68,6 +68,7 @@ Each message from the control role holds one of these fields:
 | `mesh_peers` | `MeshPeers` | The mesh address of the server and the other servers of the mesh. Only a server whose heartbeat holds `mesh` gets it ([Mesh pushes](#mesh-pushes)). |
 | `disk_transfers` | `DiskTransfers` | The disks that the node serves to other nodes, and the machines whose old files it removes. Only a server whose heartbeat says `disk_transfer` gets it ([Disk transfers](#disk-transfers)). |
 | `control_urls` | `ControlURLs` | The internal listeners of the live control processes on their peer addresses. Every server gets it ([Control URLs](#control-urls)). |
+| `node_disks` | `NodeDisks` | The extra disks that the node holds, makes, or pulls, and the disks whose files it removes. Only a server whose heartbeats name the feature `disks` gets it ([Node disks](#node-disks)). |
 
 A message without a known field ends the channel with `invalid_argument`. A server that gets a message that it does not know logs `the control plane sent a message that this hopboxd does not know. Upgrade hopboxd` and goes on.
 
@@ -109,6 +110,10 @@ The heartbeat holds these values.
 | `removed_machines` | repeated string | The IDs of the machines of the last `remove` of `DiskTransfers` whose old files the server removed ([Disk transfers](#disk-transfers)). | at most 4096, each a UUID |
 | `egress_exit` | bool | Tells that the server takes the egress of the machines of the other nodes. It is true on an edge server whose egress tunnel `hbe0` is ready and whose uplink works ([the egress of the machines](/reference/egress/index.html.md#egress-edges)). The control role records the `hopboxd_version` of the heartbeat with it, in `servers.egress_exit_version`. A server of a release before the egress tunnels never sends it. | |
 | `features` | repeated string | The features of the `hopboxd` of the server, as `hopboxd version --json` lists them, such as `remove-role` or `give-back` ([the version command](/reference/version/index.html.md)). The control role records them in `servers.features`, with the `hopboxd_version` of the heartbeat in `servers.reports_version`. A server of a release before the field sends none. | at most 64, each from 1 to 64 bytes of UTF-8 |
+| `disks` | repeated `HeldDisk` | The extra disks of the last `NodeDisks` whose whole file the node holds ([Node disks](#node-disks)). `HeldDisk` has `disk_id`, a UUID, and `bytes`, the bytes of the blocks of the file. The first such heartbeat makes a new disk ready. | at most 4096 |
+| `removed_disks` | repeated string | The IDs of the disks of the last `remove` of `NodeDisks` whose files the node removed. | at most 4096, each a UUID |
+| `pulled_disk_moves` | repeated string | The IDs of the moves of detached disks whose disk the node pulled whole and checked ([Cold move](/reference/cold-move/index.html.md#detached-disks)). | at most 4096, each a UUID |
+| `failed_disk_moves` | repeated `DiskMoveFailure` | The moves of detached disks whose pull failed for good on the node. `DiskMoveFailure` has `move_id`, a UUID, and `error`. | at most 4096, each error at most 1024 bytes |
 | `capabilities` | repeated string | What the VMM driver of the node can do, from `Driver.Capabilities()`, such as `pause` ([the VMM driver interface](/reference/vmm/index.html.md#capabilities)). The control role records them in `servers.capabilities`. A feature says what the build of `hopboxd` knows, and a capability says what its driver can do. An action on a node needs both ([Placement](/reference/placement/index.html.md#hard-filters)). A server without the node role, and a server of a release before the field, sends none. | at most 64, each from 1 to 64 bytes of UTF-8 |
 | `addresses` | repeated string | The public addresses on the interfaces of the server: each global unicast address that is not private, such as its peer address and the floating addresses on its uplink. The control role records them in `servers.addresses`. The removal of a role from the server checks that the public addresses of the install name none of them. | at most 64, each an IP address |
 | `floating_addresses` | repeated string | The floating addresses of the bootstrap config of an edge server: `edge.public_ipv4`, `edge.floating_addresses`, and `edge.public_ipv6` ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)). A server without the edge role sends none. The control role records them in `servers.floating_addresses`. | at most 64, each an IP address |
@@ -262,9 +267,26 @@ These messages carry the part of a node in the cold moves ([Cold move](/referenc
 | --- | --- | --- | --- |
 | `DiskTransfers` | `serve` | repeated `DiskExport` | The disks that the node lets another node pull: those of the moves in `pulling` whose source is the node. At most 4096. |
 | `DiskTransfers` | `remove` | repeated string | The IDs of the machines that left the node, whose old files it removes. At most 4096. |
-| `DiskExport` | `machine_id` | string | The ID of the machine, a UUID. |
+| `DiskExport` | `machine_id` | string | The ID of the machine, a UUID. Empty for a detached extra disk. |
+| `DiskExport` | `disk_id` | string | Set for an extra disk: the ID of the disk, a UUID. The disk listener serves it at `/v1/extra-disks/<disk ID>` ([Cold move](/reference/cold-move/index.html.md#requests)). `machine_id` then names the machine that holds it, or is empty. |
 | `DiskExport` | `target_server_id` | string | The ID of the one node that can pull the disk, a UUID. |
 | `DiskExport` | `target_serials` | repeated string | The serials of the certificates of that node that are not retired and not expired. The disk listener serves the disk only to a client certificate with one of these serials. |
+
+### NodeDisks, NodeDisk, and DiskPull
+
+These messages carry the part of a node in the extra disks ([Extra disks](/reference/disks/index.html.md#the-files-of-the-disks)). Each `NodeDisks` replaces the one before it.
+
+| Message | Field | Type | Description |
+| --- | --- | --- | --- |
+| `NodeDisks` | `disks` | repeated `NodeDisk` | The disks that the node holds, makes, or pulls. At most 4096. |
+| `NodeDisks` | `remove` | repeated string | The IDs of the disks whose files the node removes. At most 4096. |
+| `NodeDisk` | `disk_id` | string | The ID of the disk, a UUID. |
+| `NodeDisk` | `size_bytes` | uint64 | The size of the disk. |
+| `NodeDisk` | `create` | bool | True for a new disk whose file no node reported yet. The node makes an empty file of `size_bytes`. Without it, the node never makes a file. |
+| `NodeDisk` | `pull` | `DiskPull` | Set while a move brings the detached disk to the node. |
+| `DiskPull` | `move_id` | string | The ID of the move, a UUID. |
+| `DiskPull` | `source_server_id` | string | The ID of the source node, a UUID. |
+| `DiskPull` | `source_address` | string | The disk listener of the source node, such as `10.239.0.1:7444`. |
 
 ### ControlURLs
 
@@ -479,6 +501,12 @@ A heartbeat whose `mesh` breaks its limit is recorded without its part of the me
 A node takes part in the cold moves with the field `disk_transfer` of its heartbeats ([Cold move](/reference/cold-move/index.html.md)). The control role records such a heartbeat. Then it reads the part of the node in the moves, under the policy action `server.read_disk_transfers`. It keeps the SHA-256 of the last `DiskTransfers` that it sent on the channel, and sends `disk_transfers` only after a change, as for the mesh. So the first heartbeat of each channel sends it, and a new step of a move reaches the node within 5 s. A failed read logs `reading the moves of a node failed. The next heartbeat tries again` at level warn. The channel stays open.
 
 The agent hands each `DiskTransfers` to the node role (`node.Agent.Moves`). The disk listener takes `serve`. It ends the streams of each disk that the new message no longer lists, or lists with another node or other serials. The executors take `remove`. The heartbeats then name each machine of `remove` whose files the node removed in `removed_machines`, until a later `DiskTransfers` names it no more. The control role records the removal in the transaction of the heartbeat. A server that takes part in no move logs `the control plane sent the disks of cold moves to a server that takes part in no move` at level warn, and drops the message.
+
+## Node disks
+
+A node takes the extra disks with the feature `disks` of its heartbeats ([Extra disks](/reference/disks/index.html.md)). The control role records such a heartbeat, with its disk fields, in its transaction. Then it reads the part of the node in the disks, under the policy action `server.read_disk_transfers`. It keeps the SHA-256 of the last `NodeDisks` that it sent on the channel. It sends `node_disks` only after a change, as for the disk transfers. So a new disk, a removal, or a move of a disk reaches the node within 5 s. A failed read logs `reading the disks of a node failed. The next heartbeat tries again` at level warn. The channel stays open.
+
+The agent hands each `NodeDisks` to the disk keeper of the node (`node.Agent.Disks`). The keeper makes the file of each disk with `create`, and pulls each disk with `pull`. It removes the file of each disk of `remove` ([Extra disks](/reference/disks/index.html.md#the-files-of-the-disks)). Each heartbeat carries what it holds and what it did, in `disks`, `removed_disks`, `pulled_disk_moves`, and `failed_disk_moves`. A server without a keeper logs `the control plane sent the extra disks of a node to a server that holds none` at level warn, and drops the message.
 
 ## Control URLs
 
@@ -719,6 +747,7 @@ The control side writes these records with `component=channel` and the field `se
 | `reading the dns zones of a server failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
 | `reading the mesh for a server failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
 | `reading the control URLs for a server failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
+| `reading the disks of a node failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
 | `the edge server gets no certificate yet` | info | `err`. The install has no certificate, or one of an old domain. |
 | `reading the certificate for an edge server failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
 | `reading the routes for an edge server failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
@@ -758,6 +787,7 @@ The server side writes these records with `component=node`:
 | `the control plane sent edge data to a server without the edge role` | warn | `server`, `push` |
 | `the mesh device refused the mesh of the control plane, and keeps the peers that it has` | error | `server`, `address`, `peers`, `err` |
 | `the control plane sent the mesh to a server outside the mesh` | warn | `server` |
+| `the control plane sent the extra disks of a node to a server that holds none` | warn | `server` |
 | `the control plane sent new control URLs` | info | `server`, `urls` |
 | `the control plane sent control URLs that this server refuses, and it keeps the URLs that it has` | error | `server`, `err` |
 | `cannot keep the control URLs of the control plane. This server dials them until hopboxd stops, and tries the write again at each heartbeat` | error | `server`, `err` |

@@ -30,7 +30,7 @@ if errors.Is(err, client.ErrPermissionDenied) {
 | `MaxRetryAfter` | `time.Duration` | 0, no cap | The longest `Retry-After` that the client waits for. A longer one ends the call with its error, and `Error.RetryAfter` holds the wanted wait. With 0, the client waits as long as the server asks. The CLI sets 5 minutes. |
 | `Logger` | `*slog.Logger` | no logs | Gets a debug record for each retry, and a record for each refresh of CLI tokens. |
 
-`Client` has the field `BaseURL`, the URL of `ParseURL`. It has one generated client for each service of `hopbox.v1`: `Install`, `Auth`, `Accounts`, `Orgs`, `APIKeys`, `SSHKeys`, `Machines`, `Vars`, and `Audit`. Each call of each one goes through the steps below.
+`Client` has the field `BaseURL`, the URL of `ParseURL`. It has one generated client for each service of `hopbox.v1`: `Install`, `Auth`, `Accounts`, `Orgs`, `APIKeys`, `SSHKeys`, `Machines`, `Disks`, `Vars`, and `Audit`. Each call of each one goes through the steps below.
 
 ## Install URLs
 

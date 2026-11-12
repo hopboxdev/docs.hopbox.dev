@@ -86,6 +86,7 @@ try {
 | `apiKeys` | `Client<typeof APIKeyService>` | API keys ([the sign-in, account, and audit API](/reference/auth-api/index.html.md)) |
 | `sshKeys` | `Client<typeof SSHKeyService>` | SSH keys ([the sign-in, account, and audit API](/reference/auth-api/index.html.md)) |
 | `machines` | `Client<typeof MachineService>` | machines, their lifecycle, and the access calls ([the machine API](/reference/machine-api/index.html.md)) |
+| `disks` | `Client<typeof DiskService>` | extra disks ([Extra disks](/reference/disks/index.html.md)) |
 | `vars` | `Client<typeof VarService>` | env vars and secrets ([the env var API](/reference/vars-api/index.html.md)) |
 | `exec(start, options?)` | `ExecSession` | Runs a command in a running machine ([Exec](#exec)). |
 | `upload(start, data, options?)` | `Promise<UploadResponse>` | Writes a file, or a tar stream into a directory, in a running machine ([Upload](#upload)). Node.js only. |

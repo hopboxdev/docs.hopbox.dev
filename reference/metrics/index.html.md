@@ -234,6 +234,7 @@ The registry gets the capacity of each server in its heartbeats ([the control ch
 | `hopbox_server_disk_bytes` | gauge | `server` | The size of the file system of the data dir of the node. |
 | `hopbox_server_disk_free_bytes` | gauge | `server` | The free space of that file system. |
 | `hopbox_server_disk_allocated_bytes` | gauge | `server` | The disk sizes of the machines on the node that are not deleted. A disk is sparse, so this sum can be larger than the disk of the node. |
+| `hopbox_disks_bytes` | gauge | `server` | The sizes of the extra disks on the node ([Extra disks](/reference/disks/index.html.md)). The recording rule `server:hopbox_server_disk_allocated:ratio` adds them to the disks of the machines. |
 | `hopbox_server_machines` | gauge | `server`, `state` | The machines on the node by current state. |
 
 The leader also serves the registry of every server, whatever its roles ([Enrollment and the install PKI](/reference/enrollment/index.html.md), [the control channel](/reference/control-channel/index.html.md)).
@@ -752,7 +753,7 @@ The monitoring bundle computes these series in Prometheus, in `monitoring/rules/
 | `server:hopbox_server_vcpus:free` | The vCPUs of each node that placement can still give |
 | `install:hopbox_nodes:count`, `install:hopbox_server_vcpus:free` | The nodes of the install, and the vCPUs that placement can still give on all of them. They read 0 on an install without a node. While the leader serves no stats, as in maintenance mode, they record no sample, because the count is unknown. |
 | `server:hopbox_server_vcpus_allocated:ratio`, `server:hopbox_server_memory_allocated:ratio` | The allocated share of the vCPU capacity and of the RAM of each node |
-| `server:hopbox_server_disk_free:ratio`, `server:hopbox_server_disk_allocated:ratio` | The free share of the data dir of each node, and the disk sizes of its machines divided by the size of the data dir |
+| `server:hopbox_server_disk_free:ratio`, `server:hopbox_server_disk_allocated:ratio` | The free share of the data dir of each node. The second is the disk sizes of its machines and its extra disks (`hopbox_disks_bytes`), divided by the size of the data dir. |
 | `instance:node_cpu_busy:ratio_rate5m`, `instance:node_memory_available:ratio` | The busy share of the CPUs and the available share of the RAM of each host, from node_exporter |
 | `install:hopbox_account_creations:increase1h` | The new accounts of the last hour, without the refused sign-ins |
 | `install:hopbox_org_creations:increase1h`, `install:hopbox_machine_creations:increase1h` | The audit entries `org.create` and `machine.create` of the last hour |

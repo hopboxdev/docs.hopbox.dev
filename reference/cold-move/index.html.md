@@ -172,6 +172,21 @@ The call refuses with `failed_precondition` in two more cases. The heartbeats of
 
 `cleanup_server_id` of a move names the node that still holds an old copy of the files of the machine: the source after `done`, the target after `failed`. The `DiskTransfers` of that node lists the machine in `remove`, once the machine is on another node or its row is gone. The executor of the node removes the files once it holds no valid lease of the machine and the microVM does not run: the disk, the partial copy, the node-local state, and the log. Then the next heartbeats name the machine in `removed_machines`, and the control role clears `cleanup_server_id`. A new move of the machine waits until then.
 
+### Attached disks
+
+A move carries the extra disks that are attached to the machine ([Extra disks](/reference/disks/index.html.md#moves-of-disks)). The spec of the moving machine names them in `disks` of `MachineMove` ([the executor protocol](/reference/executor-protocol/index.html.md#machinemove)). The target pulls the disk of the machine first, then each attached disk, through the same disk listener and the same steps. The proof of the pull, `pulled_move_id`, comes only once every disk of the move is whole. A failure of the pull of any of them counts toward the 3 failures that end the move. The listener of the source serves each attached disk with the export of the machine. So it refuses the disk while the executor holds the lease or the microVM runs.
+
+A machine with an attached disk moves only to a node whose heartbeats name the feature `disks`. The target must also hold no old copy of one of the disks that it still removes. A placement that finds no such node fails with no capacity.
+
+| End of the move | The attached disks |
+| --- | --- |
+| `done` | They live on the target. The source removes its copies, as `remove` of `NodeDisks` names them ([the control channel](/reference/control-channel/index.html.md)). |
+| `failed`, the machine back on the source | They stay on the source. The target removes what it pulled. |
+| A give-back that the target keeps | They live on the target, and the source removes its copies. The target keeps the machine only with the proof, so it holds every disk. |
+| A give-back that the target releases | They stay on the source, and the target removes what it pulled. |
+
+Take a move that failed while the machine was not in `moving` on its target. It leaves the disks on the source, beside the copy of the disk of the machine.
+
 ## Drain of a node
 
 A drain takes every machine off a node, so that the node can leave the install. `DrainServer` of the admin API ([the admin API](/reference/admin-api/index.html.md#drainserver)) or `hopboxd admin server drain` ([hopboxd](/reference/hopboxd/index.html.md#admin-server-drain)) starts it. The guide [Drain a node](/guide/drain-a-node/index.html.md) shows it step by step. The drain cordons the node and sets its state to `draining` ([the control channel](/reference/control-channel/index.html.md#server-states)). Then a leader job moves each machine of the node cold to another node. A drain never deletes a machine. Every machine keeps its disk.
@@ -223,6 +238,31 @@ A move starts as `MoveMachine` starts it ([Start of a move](#start-of-a-move)), 
 
 A machine that cannot move stays on the node with its disk: a running machine with no room keeps running, a machine whose move failed stays stopped. The stop is part of the cold move, and an early stop of a machine with no room elsewhere only adds downtime.
 
+### Detached disks
+
+An attached disk moves with its machine ([Attached disks](#attached-disks)). After the machines, each step of the drain takes the detached disks of the node, in the order of their IDs. It moves each one by a move of its own. The table `disk_moves` holds these moves ([Control store tables](/reference/control-store/index.html.md#disk_moves)). Such a move counts toward the 2 moves at once from the node, with the moves of machines. For each detached disk, the job does the first case that fits:
+
+| Disk | What the job does |
+| --- | --- |
+| A move of the disk runs | It waits. |
+| Its node has not made its file yet | It waits, with the reason `the disk <name> waits for the node to make its file`. |
+| The newest move of the disk from the node since the start of the drain failed | The disk is stranded, with the reason `its move failed: <error of the move>`. |
+| A node still removes an old copy of the disk | It waits, with the reason `the disk <name> waits until the node <id> removes the old copy of its last move`. |
+| Otherwise | If fewer than 2 moves run from the node, a move starts. |
+
+A disk move needs a source that serves disks, and a target that is `ready`, in the mesh, and names the feature `disks`. The target holds no old copy of the disk, and has free disk for the blocks that the guest wrote (`used_bytes`). Among such nodes, the move takes the one with the most free disk. The job locks the row of the target and checks again that it is `ready`. So a drain or a decommission of the target waits for the move. With no such node, the disk strands with the reason `no capacity: no other node takes the disk <name>: ...`. A drain tries it again once a minute, as a machine without room. A removal of the node role does not try it again. An attached disk whose machine lives on another node strands with the reason `the disk is attached to the machine <name> on another node. Move the machine back, or detach the disk`. A move of an older release leaves such a disk. That strand ends at the next step once the machine is back, or the disk is detached. A machine that moves from the node is on its target before the proof of the pull. Its move carries its disks, so they never strand this way.
+
+The target pulls the disk from the disk listener of the source, as the executor pulls the disk of a machine ([The pull](#the-pull)). Its disk keeper runs the pull ([Extra disks](/reference/disks/index.html.md#the-files-of-the-disks)). Once the disk is whole, the next heartbeat of the target names the move in `pulled_disk_moves`. After 3 failures in a row, it names the move in `failed_disk_moves` ([the control channel](/reference/control-channel/index.html.md#heartbeat)). The control role then ends the move:
+
+| End | Result |
+| --- | --- |
+| `done` | The disk lives on the target. The source removes its copy. |
+| `failed` | The disk stays on the source with its data. The target removes what it pulled. |
+
+A disk move has the time limit of a cold move: the size of the disk at 1 MiB/s, plus 10 min, from its start. The leader job of the moves fails a move that runs longer, with the error `the move ran longer than <limit>, the time of its disk at 1 MiB/s plus 10m0s`. A cancel of the drain lets the moves of disks run to their end, as it does for the moves that pull. A delete of the disk during its move ends the move, and both nodes remove their files.
+
+The start of a disk move writes the audit entry `disk.move` with the actor `system`. Its details are `move`, `source`, `target`, and `drain` or `removal`, the ID of the server. The end writes `disk.move` with `move`, `source`, `target`, `result`, and for a failure `error`.
+
 A machine that no node had room for gets the time of a next try, 1 min later (`service.DrainRetryEvery`, plan question Q102). So does a machine whose node has not yet reported the end of `DiscardMemory`. At that time, the drain takes the machine as a machine that is not stranded. If a move of it starts, the machine leaves the stranded list. If no node has room again, the reason and the time of the next try change, and the drain logs `the drain tried a stranded machine again, and it still cannot move` at level debug. Any other reason ends the tries. The tries count toward the 2 moves at once, so a node that gets room takes the machines one step at a time. A machine stranded for another reason is not tried again until `DrainServer` runs again, because its reason needs a change by an operator. The removal of the node role does not try its stranded machines again. The drain also strands a machine whose disk copy a failed move left on this node ([A step that an older control process accepted](#a-step-that-an-older-control-process-accepted)). The machine is on another node. Its reason is `a failed move left the machine <state> on the node <id>, and this server keeps a copy of its disk. Give the machine back with hopboxd admin machine move --cancel --give-back, or delete it (reference/cold-move.md)`. A delete of that machine ends the reason.
 
 The drain is stuck when no move runs, every machine left on the server is stranded, and a machine is stranded or the decommission was refused. A stuck drain waits for an operator. The operator fixes the reason, then runs `DrainServer` again. For a machine without room, room is enough: the next try moves it.
@@ -239,6 +279,7 @@ After the moves, the job checks the node. The node counts as empty when all thes
 - No move runs from or to the node.
 - No old copy waits for the node to remove it (`cleanup_server_id`). While one waits, the reason is `the server still removes the old copy of the machine <name>`.
 - The node keeps no copy of a disk after a failed move.
+- No extra disk is on the node, and no move of a disk runs from or to it. The node removed each file of a disk that left it ([Extra disks](/reference/disks/index.html.md#moves-of-disks)).
 - No live control process runs a release of the schema version below 51.
 
 The first empty check turns the state to `shutting_down`. It writes the audit entry `server.mark_shutting_down` with the actor `system` and the details `old_state` `draining`, `state` `shutting_down`, and `checks` `1`. The later checks change no state and write no such entry. The checks are 1 min apart, and the third one decommissions the node with all the checks of `DecommissionServer` ([the admin API](/reference/admin-api/index.html.md#decommissionserver)). The audit entry is `server.decommission` with the actor `system` and the details `old_state` `shutting_down`, `state` `decommissioned`, and `drain` `true`. The row of `server_drains` goes with the decommission.
@@ -282,6 +323,8 @@ The control role logs with `component=service`:
 | `a step of the drain of a server failed. The next run tries again` | warn | `server`, `err` |
 | `the drain found a server empty` | info | `server`, `checks` |
 | `the drain decommissioned a server` | info | `server` |
+| `the drain of a server moves a disk` | info | `server`, `disk`, `move`, `target` |
+| `the drain of a server cannot move a disk, so the disk stays with its data` | warn | `server`, `disk`, `reason` |
 | `the drain cannot decommission a server that it found empty` | warn | `server`, `err` |
 | `an instance admin canceled the drain of a server` | info | `server`, `state`, `moved`, `canceled_moves`, `pulling` |
 | `a server without a drain was in a state of a drain, so it gets the state of its cordon` | warn | `server`, `state` |
@@ -349,7 +392,10 @@ So a node can pull only the disk of a machine whose lease the control role grant
 
 ```text
 GET https://<mesh address>:7444/v1/disks/<machine ID>?offset=<bytes>
+GET https://<mesh address>:7444/v1/extra-disks/<disk ID>?offset=<bytes>
 ```
+
+The second path serves an extra disk, with the same rules, frames, and digest ([Extra disks](/reference/disks/index.html.md#moves-of-disks)). Its export names the disk in `disk_id` of `DiskExport`. An export of a machine does not serve the second path, and an export of a disk does not serve the first. The listener answers `409` for an attached disk while the executor of its machine holds the lease or the microVM runs. It answers `409` for a detached disk while an executor of the node holds a valid lease of a machine with the disk.
 
 | Status | When |
 | --- | --- |
@@ -457,7 +503,8 @@ The executor logs with `component=executor` and `machine`:
 
 | Message | Level | Fields |
 | --- | --- | --- |
-| `the disk of the machine is on this node` | info | `move`, `source`, `size` |
+| `the disk of the machine is on this node` | info | `move`, `source`, `size`. With extra disks, it comes once every disk is here. |
+| `an extra disk of the machine is on this node` | info | `move`, `disk`, `size` |
 | `the pull of the disk stopped, and the executor tries again` | warn | `move`, `source`, `received`, `err`, `retry_in` |
 | `the pull of the disk failed for good, so the machine goes back to its source node` | error | `move`, `source`, `err` |
 | `the spec names no valid source node of the disk` | error | `source` |
@@ -483,14 +530,19 @@ The disk listener and the pulls log with `component=transfer` and `machine`. The
 | `cannot listen for the pulls of disks. The next check tries again` | error | `address`, `port`, `err`, `retry_in`. No `machine`. |
 | `a node pulls the disk of a machine` | info | `offset`, `size` |
 | `a node pulled the disk of a machine` | info | `sent`, `size`, `duration` |
+| `a node pulls an extra disk` | info | `offset`, `size`. The field `disk` takes the place of `machine`. |
+| `a node pulled an extra disk` | info | `sent`, `size`, `duration`. The field `disk` takes the place of `machine`. |
 | `the pull of a disk ended early` | warn | `sent`, `err` |
 | `refused the pull of a disk by a node that the control plane did not name for it` | warn | |
 | `a node pulls the disk of a machine that has no disk on this node` | error | |
+| `a node pulls an extra disk that has no file on this node` | error | `disk` in the place of `machine` |
 | `cannot open the disk of a machine for a pull` | error | `err` |
 | `cannot compute the digest of a disk` | error | `err`. The error `transfer: the disk changed during the pull` means that the disk file changed during the digest job. The next pull then starts again from zero. |
 | `pulling the disk of a machine` | info | `size` |
 | `resumed the pull of a disk` | info | `offset`, `size` |
 | `pulled the disk of a machine` | info | `size`, `received`, `digest`, `duration` |
+| `pulling an extra disk` | info | `size`, `disk` |
+| `pulled an extra disk` | info | `size`, `received`, `digest`, `duration`, `disk` |
 | `the disk of the source changed since the last pull, so the pull starts again from zero` | warn | |
 | `the control plane named a disk to serve without valid IDs` | warn | `machine`, `target` |
 

@@ -106,6 +106,8 @@ hopboxd --log-level=debug version
 | `admin machine delete` | Deletes any machine, also in a suspended org, and waits for it. |
 | `admin machine move` | Moves any machine cold to another node. It returns at once. With `--cancel`, it ends the move of the machine that runs. With `--give-back` too, it asks the target node to give back a machine that a failed move left there. |
 | `admin machine moves` | Lists the cold moves of one machine, or of every machine, newest first. |
+| `admin disk list` | Lists the extra disks of every org, or of one node, with metadata only. |
+| `admin disk delete` | Deletes any detached extra disk with its data, also in a suspended org. |
 | `admin image register` | Adds an image from its `artifact.json`. |
 | `admin image list` | Lists the images of the install. |
 | `admin admin-key create` | Makes an admin API key and prints it once. |
@@ -1698,8 +1700,8 @@ The JSON object has these keys:
 - `mesh`: an object with `address` and `public_key`, or `null` for a server outside the mesh
 - `dns_zone_serial`: a number, or `null` on a server without the DNS role or without zones
 - `peer_address`: a string, empty for a server without one
-- `drain`: `null` for a server that does not drain, or an object with `start_time`, `moving`, `stranded` (a list of objects with `machine_id`, `name`, `reason`, and `on_server`), `empty_checks`, `last_check_time` (`null` before the first check), `error`, `stuck`, and `cordoned_before`
-- `removal`: `null` without a pending removal of roles, or an object with `roles`, `start_time`, `cordoned_before`, `moving`, `stranded` (as in `drain`), `error`, `stuck`, and `ready`
+- `drain`: `null` for a server that does not drain, or an object with `start_time`, `moving`, `stranded` (a list of objects with `machine_id`, `name`, `reason`, and `on_server`), `empty_checks`, `last_check_time` (`null` before the first check), `error`, `stuck`, `cordoned_before`, and `stranded_disks` (a list of objects with `disk_id`, `name`, and `reason`)
+- `removal`: `null` without a pending removal of roles, or an object with `roles`, `start_time`, `cordoned_before`, `moving`, `stranded` (as in `drain`), `error`, `stuck`, `ready`, and `stranded_disks` (as in `drain`)
 - `removed_roles`: the roles that a removal took from the server
 
 Lists and the `labels` object are empty, never `null`. [The admin API](/reference/admin-api/index.html.md#server) describes each field.
@@ -1836,6 +1838,36 @@ The states are `stopping`, `pulling`, `done`, and `failed` ([Cold move](/referen
 ```console
 $ sudo hopboxd admin machine moves --id 01a1460c-1f6e-7b8a-9c42-3d5e7f8a9b10
 01a1460c-2a7b-7c11-8d23-4e5f6a7b8c9d	machine=01a1460c-1f6e-7b8a-9c42-3d5e7f8a9b10	done	from=01a14600-0a1b-7c2d-8e3f-405162738495	to=01a14600-1b2c-7d3e-8f40-516273849506	cleanup=
+```
+
+### admin disk list
+
+```sh
+hopboxd admin disk list [--server-id=ID] [--json]
+```
+
+Lists the extra disks of every org, or of one node, in the order of their IDs, with metadata only ([Extra disks](/reference/disks/index.html.md)). It calls `ListDisks` of the admin API, page by page, until the last page ([the admin API](/reference/admin-api/index.html.md#listdisks)). Each line has six parts, with a tab between them. They are the disk ID, the name, `org=` with the org ID, and the size in GB. Then come `server=` with the server ID of its node, and `machine=` with the name of the machine that holds the disk, or `-`.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--server-id` | string | none | Lists only the disks of this node. |
+| `--json` | bool | `false` | Prints one JSON object, `{"disks":[...]}`. Each disk has the keys `id`, `org_id`, `name`, `size_gb`, `used_bytes`, `shared`, `ready`, `server_id`, and `created_at`. An attached disk also has `machine_id`, `machine_name`, `read_only`, and `device`. |
+
+```text
+$ sudo hopboxd admin disk list
+01a1460c-2a1e-7b8a-9c42-3d5e7f8a9b11	disk1	org=01a14565-8448-7753-9c1f-5ec0a86b8d92	10 GB	server=01a14403-6bd1-7522-9ab0-b3ab4517e0e4	machine=box1
+```
+
+### admin disk delete
+
+```sh
+hopboxd admin disk delete ID
+```
+
+Deletes any detached extra disk with its data, also in a suspended org. It calls `DeleteDisk` of the admin API ([the admin API](/reference/admin-api/index.html.md#deletedisk)). The argument `id` is the UUID of the disk. The node of the disk then removes the file. Use it for a disk that strands the drain of a node, after a talk with its org.
+
+```sh
+sudo hopboxd admin disk delete 01a1460c-2a1e-7b8a-9c42-3d5e7f8a9b11
 ```
 
 ### The default image of the release

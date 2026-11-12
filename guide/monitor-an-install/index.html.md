@@ -501,7 +501,7 @@ The file system of the data dir of a node has little space left. The label `caus
 
 ### HopboxDiskOvercommit
 
-Info. The disk sizes of the machines on a node are more than 3 times the size of its data dir. The disks are sparse, so this is no fault yet. A machine that writes its whole disk can fill the data dir. Watch HopboxDiskFull.
+Info. Take the disk sizes of the machines on a node, with the sizes of its extra disks (`hopbox_disks_bytes`). Their sum is more than 3 times the size of its data dir. The disks are sparse, so this is no fault yet. A machine that writes its whole disk can fill the data dir. Watch HopboxDiskFull, and the panel "Extra disks" of D9.
 
 ### HopboxNoCapacity
 
