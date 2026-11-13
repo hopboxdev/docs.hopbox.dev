@@ -242,7 +242,7 @@ The `modprobe@` services of systemd report that they find no `modprobe` program.
 | UUID | `2f6e1d4a-7c3b-4e58-9a0d-6b1f3c5e8a72`, the same in every build |
 | Block size | 4096 bytes |
 | Size | The size of the files, plus a tenth, plus 1 GiB, rounded up to 256 MiB. The build of 2026-10-16 is 3,758,096,384 bytes. |
-| Features | The ext4 defaults of `mke2fs` 1.47.2. The inode tables and the journal are written at build time, so a machine does not write them at its first boot. |
+| Features | The ext4 defaults of `mke2fs` 1.47.2, with `orphan_file`. The inode tables and the journal are written at build time, so a machine does not write them at its first boot. The node repairs a file system with the ext4 error state before a boot ([the Firecracker driver](/reference/firecracker-driver/index.html.md#repair-of-the-root-file-system)). |
 
 The node makes the disk of a machine as a reflink copy of the image disk. Then it grows the copy, for example to 100 GB. At each boot, `systemd-growfs-root.service` grows the file system to the size of the disk, while it is mounted. The `x-systemd.growfs` option in `/etc/fstab` turns this on. A machine sees all of its disk without a step of its own.
 

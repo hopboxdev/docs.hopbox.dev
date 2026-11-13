@@ -283,6 +283,7 @@ preflight cgroup2	ok
 preflight tun	ok
 preflight nftables	ok
 preflight reflink	ok
+preflight e2fsck	ok
 preflight kernel	ok
 hopboxd: enrolled as the server 01a14404-ce7b-72d9-b18e-5006c3e462db. hopboxd run connects it to the control plane.
 01a14404-ce7b-72d9-b18e-5006c3e462db
@@ -437,6 +438,7 @@ preflight cgroup2	ok
 preflight tun	ok
 preflight nftables	ok
 preflight reflink	ok
+preflight e2fsck	ok
 preflight kernel	ok
 hopboxd: installed v0.1.0, and hopboxd runs. Changed: users, release files, keys, postgres, ports, config, release, units.
 v0.1.0

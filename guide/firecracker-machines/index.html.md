@@ -53,6 +53,8 @@ UNIT                                                         LOAD   ACTIVE SUB  
 hopbox-machine-01a1610f-26b5-71c8-abbd-93be11b94c53.service loaded active running hopbox machine 01a1610f-26b5-71c8-abbd-93be11b94c53
 ```
 
+During the repair of the root file system of a machine before its boot, the list also has the unit `hopbox-machine-<id>-fsck.service` of `e2fsck` ([the Firecracker driver](/reference/firecracker-driver/index.html.md#repair-of-the-root-file-system)).
+
 The main process of the unit is Firecracker. It runs as the jail user of the machine, in the jail of the machine. The journal of the unit holds the serial console of the guest and the log of Firecracker:
 
 ```sh

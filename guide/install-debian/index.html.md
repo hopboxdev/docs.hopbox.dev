@@ -68,10 +68,10 @@ On the tested server, SSH answered 187 to 319 seconds after the reboot.
 
 ## 2. Make the XFS file system
 
-Install the XFS tools, and make the file system with reflinks on the free partition. This example uses `/dev/md3`. Use the name of your partition.
+Install the XFS tools, and make the file system with reflinks on the free partition. This example uses `/dev/md3`. Use the name of your partition. The same command installs `e2fsprogs` and `util-linux`, which Debian 13 usually has already. The node needs their `e2fsck` and `setpriv` to repair the root file system of a machine with ext4 errors before a boot ([the Firecracker driver](/reference/firecracker-driver/index.html.md#repair-of-the-root-file-system)). Without them, the preflight check `e2fsck` warns.
 
 ```sh
-sudo apt-get install -y xfsprogs
+sudo apt-get install -y xfsprogs e2fsprogs util-linux
 sudo mkfs.xfs -m reflink=1 /dev/md3
 sudo mkdir -p /var/lib/hopbox
 echo '/dev/md3 /var/lib/hopbox xfs defaults 0 2' | sudo tee -a /etc/fstab

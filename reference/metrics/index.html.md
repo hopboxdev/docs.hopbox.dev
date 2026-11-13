@@ -592,6 +592,29 @@ hopbox_image_fetches_total{result="ok",source="bundle"} 1
 hopbox_image_fetches_total{result="ok",source="url"} 0
 ```
 
+## Metrics of the root repairs
+
+A server with the node role counts each repair of a root file system with the ext4 error state before a boot ([the Firecracker driver](/reference/firecracker-driver/index.html.md#repair-of-the-root-file-system)). The Firecracker driver adds the metric, so a node with another driver has none.
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `hopbox_root_repairs_total` | counter | `result` | The repairs, by `result`: `repaired` for an exit status of `e2fsck` of 0, 1, or 2, `failed` for another status, a failed step of the driver, or a failed cleanup of what an earlier repair left on a disk with the error state, `timeout` for an `e2fsck` past the repair timeout, `killed` for an `e2fsck` that a signal ended, `unavailable` for a node without `e2fsck` or `setpriv`, an `e2fsck` older than 1.47.0, or an exit status 8, and `skipped` for a machine whose `state/` holds a file. Each of the 6 series starts at 0. |
+
+A boot of a root file system without the error state counts nothing. Only `repaired` changes the disk. A rise of `failed`, `timeout`, or `killed` names a machine whose clean stops can count as `crash`, and the log of the driver names it.
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_root_repairs_total'
+```
+
+```text
+hopbox_root_repairs_total{result="failed"} 0
+hopbox_root_repairs_total{result="killed"} 0
+hopbox_root_repairs_total{result="repaired"} 1
+hopbox_root_repairs_total{result="skipped"} 0
+hopbox_root_repairs_total{result="timeout"} 0
+hopbox_root_repairs_total{result="unavailable"} 0
+```
+
 ## Metrics of the node network
 
 A server with the node role serves the traffic counters of each machine with network ([the node network](/reference/node-network/index.html.md#metrics)). The node reads them from the table `inet hopbox_node` at each scrape. They start from zero at each start of `hopboxd`.

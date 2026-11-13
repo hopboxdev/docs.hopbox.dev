@@ -178,6 +178,7 @@ preflight cgroup2	ok
 preflight tun	ok
 preflight nftables	ok
 preflight reflink	ok
+preflight e2fsck	ok
 preflight kernel	ok
 hopboxd: enrolled as the server 01a14403-6bd1-7522-9ab0-b3ab4517e0e4. hopboxd run connects it to the control plane.
 01a14403-6bd1-7522-9ab0-b3ab4517e0e4

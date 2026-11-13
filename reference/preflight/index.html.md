@@ -45,6 +45,7 @@ The checks run in the order of this table.
 | `tun` | `fail` | Opens `/dev/net/tun` for reading and writing. |
 | `nftables` | `fail` | Opens a netlink socket for nftables and lists the tables, with a bound of 10 s. This needs the kernel module `nf_tables` and the capability `CAP_NET_ADMIN`. |
 | `reflink` | `fail` | Makes a missing `data_dir`. Then it writes a test file of 64 KiB in `data_dir` and clones it with the ioctl `FICLONE`. It removes both files after the test. The test files are `.preflight-reflink-<random>` and `.preflight-reflink-<random>.clone`. |
+| `e2fsck` | `warn` | Checks that `/usr/sbin/e2fsck` and `/usr/bin/setpriv` exist, and runs `e2fsck -V`. The version must be 1.47.0 or later, because the default image has the ext4 feature `orphan_file`. Debian 13 has 1.47.2 in `e2fsprogs`, and `setpriv` in `util-linux`. The node needs both to repair a root file system with ext4 errors before a boot ([the Firecracker driver](/reference/firecracker-driver/index.html.md#repair-of-the-root-file-system)). Without them, such a machine boots unrepaired. |
 | `kernel` | `warn` | Compares the operating system and the kernel release with the tested host. |
 
 The checks need root, or rights that most users do not have, such as the group `kvm` and `CAP_NET_ADMIN`. Run them as root.
@@ -66,6 +67,10 @@ The checks need root, or rights that most users do not have, such as the group `
 | `reflink` | `create the data dir: <error>` | `data_dir` is missing, and `hopboxd` cannot make it. |
 | `reflink` | `create a test file in <dir>: <error>`, `write a test file in <dir>: <error>`, or `sync a test file in <dir>: <error>` | `data_dir` is not writable, or the disk is full. |
 | `reflink` | `FICLONE in <dir>: <error>. The data dir needs a file system with reflinks, such as XFS made with reflink=1` | The file system of `data_dir` has no reflinks, for example ext4 or tmpfs. |
+| `e2fsck` | `/usr/sbin/e2fsck does not exist. Install e2fsprogs 1.47.0 or later: it repairs the root file system of a machine with ext4 errors` | The host has no `e2fsprogs`. Run `sudo apt-get install e2fsprogs`. |
+| `e2fsck` | `/usr/bin/setpriv does not exist. Install util-linux: it runs e2fsck as the jail user of a machine` | The host has no `util-linux`. |
+| `e2fsck` | `e2fsck <version> is older than 1.47.0, which the orphan_file feature of the default image needs. Install e2fsprogs 1.47.0 or later, or a machine with ext4 errors boots unrepaired` | An older operating system, such as Ubuntu 22.04 with 1.46.5. |
+| `e2fsck` | `cannot read the version of e2fsck from "<line>"` or `/usr/sbin/e2fsck -V: <error>` | `/usr/sbin/e2fsck` is not the `e2fsck` of `e2fsprogs`, or it does not run. |
 | `kernel` | `this host runs <name> with the kernel <release>, and hopbox tests only Debian 13 with the kernel 6.18.57-hopbox1. hopbox runs, with a higher risk` | Another operating system or kernel. `<name>` is `PRETTY_NAME` of `/etc/os-release`, or its `ID` and `VERSION_ID`. |
 | `kernel` | `read os-release: <error>` or `uname: <error>` | `hopboxd` cannot read the host. It reads `/etc/os-release`. Without that file, it reads `/usr/lib/os-release`. |
 
@@ -118,6 +123,7 @@ preflight cgroup2	ok
 preflight tun	ok
 preflight nftables	ok
 preflight reflink	ok
+preflight e2fsck	ok
 preflight kernel	ok
 ```
 
@@ -130,6 +136,7 @@ preflight cgroup2	fail	hopbox runs machines only on Linux with KVM, and this hos
 preflight tun	fail	hopbox runs machines only on Linux with KVM, and this host runs darwin
 preflight nftables	fail	hopbox runs machines only on Linux with KVM, and this host runs darwin
 preflight reflink	fail	hopbox runs machines only on Linux with KVM, and this host runs darwin
+preflight e2fsck	warn	hopbox runs machines only on Linux with KVM, and this host runs darwin
 preflight kernel	warn	this host runs darwin with the kernel 27.0.0, and hopbox tests only Debian 13 with the kernel 6.18.57-hopbox1. hopbox runs, with a higher risk
 hopboxd: error: the preflight check failed, so this server cannot run machines
 ```
@@ -158,6 +165,8 @@ On a server with the node role, the `channel` unit runs the checks once, at the 
 | Test | Where it runs | What it checks |
 | --- | --- | --- |
 | `TestReport`, `TestChecksOrder`, `TestParseOSRelease`, `TestHostTested` | `make test` | The report, the order of the checks, and the tested host, with injected checks. |
+| `TestE2fsckVersion` | `make test` | The version of `e2fsck -V`: 1.47.0 and later pass, an older version and an output of another program fail. |
+| `TestE2fsckCheck` | `make test-linux` | The `e2fsck` check passes on a host with `e2fsck` and `setpriv`, and names the missing program on a host without one. |
 | `TestChecksFailOffLinux` | `make test` on a Mac | Every check of severity `fail` fails off Linux. |
 | `TestLinuxChecks` | `make test-linux`, as root in a privileged container | `cgroup2`, `tun`, and `nftables` pass. On a host with `/dev/kvm`, such as the CI runner, `kvm` passes. On a host without it, `kvm` reports the missing device. |
 | `TestReflinkRefusesAFileSystemWithoutReflinks` | `make test-linux` | The `reflink` check fails on a tmpfs and leaves no file. |

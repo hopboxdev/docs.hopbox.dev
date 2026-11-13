@@ -22,6 +22,7 @@ preflight cgroup2	fail	hopbox runs machines only on Linux with KVM, and this hos
 preflight tun	fail	hopbox runs machines only on Linux with KVM, and this host runs darwin
 preflight nftables	fail	hopbox runs machines only on Linux with KVM, and this host runs darwin
 preflight reflink	fail	hopbox runs machines only on Linux with KVM, and this host runs darwin
+preflight e2fsck	warn	hopbox runs machines only on Linux with KVM, and this host runs darwin
 preflight kernel	warn	this host runs darwin with the kernel 27.0.0, and hopbox tests only Debian 13 with the kernel 6.18.57-hopbox1. hopbox runs, with a higher risk
 hopboxd: error: the preflight check failed, so this server cannot run machines:
   kvm: hopbox runs machines only on Linux with KVM, and this host runs darwin
@@ -44,6 +45,7 @@ preflight cgroup2	ok
 preflight tun	ok
 preflight nftables	ok
 preflight reflink	ok
+preflight e2fsck	ok
 preflight kernel	ok
 ```
 
@@ -109,6 +111,7 @@ preflight cgroup2	ok
 preflight tun	ok
 preflight nftables	ok
 preflight reflink	ok
+preflight e2fsck	ok
 preflight kernel	ok
 hopboxd: enrolled as the server 01a14403-6bd1-7522-9ab0-b3ab4517e0e4. hopboxd run connects it to the control plane.
 01a14403-6bd1-7522-9ab0-b3ab4517e0e4

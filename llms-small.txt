@@ -2482,6 +2482,7 @@ preflight cgroup2  fail  hopbox runs machines only on Linux with KVM, and this h
 preflight tun  fail  hopbox runs machines only on Linux with KVM, and this host runs darwin
 preflight nftables  fail  hopbox runs machines only on Linux with KVM, and this host runs darwin
 preflight reflink  fail  hopbox runs machines only on Linux with KVM, and this host runs darwin
+preflight e2fsck  warn  hopbox runs machines only on Linux with KVM, and this host runs darwin
 preflight kernel  warn  this host runs darwin with the kernel 27.0.0, and hopbox tests only Debian 13 with the kernel 6.18.57-hopbox1. hopbox runs, with a higher risk
 hopboxd: error: the preflight check failed, so this server cannot run machines:
   kvm: hopbox runs machines only on Linux with KVM, and this host runs darwin
@@ -2504,6 +2505,7 @@ preflight cgroup2  ok
 preflight tun  ok
 preflight nftables  ok
 preflight reflink  ok
+preflight e2fsck  ok
 preflight kernel  ok
 ```
 
@@ -2570,6 +2572,7 @@ preflight cgroup2  ok
 preflight tun  ok
 preflight nftables  ok
 preflight reflink  ok
+preflight e2fsck  ok
 preflight kernel  ok
 hopboxd: enrolled as the server 01a14403-6bd1-7522-9ab0-b3ab4517e0e4. hopboxd run connects it to the control plane.
 01a14403-6bd1-7522-9ab0-b3ab4517e0e4
@@ -3432,6 +3435,8 @@ UNIT                                                         LOAD   ACTIVE SUB  
 hopbox-machine-01a1610f-26b5-71c8-abbd-93be11b94c53.service loaded active running hopbox machine 01a1610f-26b5-71c8-abbd-93be11b94c53
 ```
 
+During the repair of the root file system of a machine before its boot, the list also has the unit `hopbox-machine-<id>-fsck.service` of `e2fsck` ([the Firecracker driver](/reference/firecracker-driver/#repair-of-the-root-file-system)).
+
 The main process of the unit is Firecracker. It runs as the jail user of the machine, in the jail of the machine. The journal of the unit holds the serial console of the guest and the log of Firecracker:
 
 ```sh
@@ -4139,10 +4144,10 @@ On the tested server, SSH answered 187 to 319 seconds after the reboot.
 
 ## 2. Make the XFS file system
 
-Install the XFS tools, and make the file system with reflinks on the free partition. This example uses `/dev/md3`. Use the name of your partition.
+Install the XFS tools, and make the file system with reflinks on the free partition. This example uses `/dev/md3`. Use the name of your partition. The same command installs `e2fsprogs` and `util-linux`, which Debian 13 usually has already. The node needs their `e2fsck` and `setpriv` to repair the root file system of a machine with ext4 errors before a boot ([the Firecracker driver](/reference/firecracker-driver/#repair-of-the-root-file-system)). Without them, the preflight check `e2fsck` warns.
 
 ```sh
-sudo apt-get install -y xfsprogs
+sudo apt-get install -y xfsprogs e2fsprogs util-linux
 sudo mkfs.xfs -m reflink=1 /dev/md3
 sudo mkdir -p /var/lib/hopbox
 echo '/dev/md3 /var/lib/hopbox xfs defaults 0 2' | sudo tee -a /etc/fstab
@@ -17678,6 +17683,7 @@ preflight cgroup2  ok
 preflight tun  ok
 preflight nftables  ok
 preflight reflink  ok
+preflight e2fsck  ok
 preflight kernel  ok
 hopboxd: enrolled as the server 01a14404-ce7b-72d9-b18e-5006c3e462db. hopboxd run connects it to the control plane.
 01a14404-ce7b-72d9-b18e-5006c3e462db
@@ -17831,6 +17837,7 @@ preflight cgroup2  ok
 preflight tun  ok
 preflight nftables  ok
 preflight reflink  ok
+preflight e2fsck  ok
 preflight kernel  ok
 hopboxd: installed v0.1.0, and hopboxd runs. Changed: users, release files, keys, postgres, ports, config, release, units.
 v0.1.0
@@ -23671,6 +23678,29 @@ hopbox_image_fetches_total{result="ok",source="bundle"} 1
 hopbox_image_fetches_total{result="ok",source="url"} 0
 ```
 
+## Metrics of the root repairs
+
+A server with the node role counts each repair of a root file system with the ext4 error state before a boot ([the Firecracker driver](/reference/firecracker-driver/#repair-of-the-root-file-system)). The Firecracker driver adds the metric, so a node with another driver has none.
+
+| Metric                      | Type    | Labels   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| --------------------------- | ------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hopbox_root_repairs_total` | counter | `result` | The repairs, by `result`: `repaired` for an exit status of `e2fsck` of 0, 1, or 2, `failed` for another status, a failed step of the driver, or a failed cleanup of what an earlier repair left on a disk with the error state, `timeout` for an `e2fsck` past the repair timeout, `killed` for an `e2fsck` that a signal ended, `unavailable` for a node without `e2fsck` or `setpriv`, an `e2fsck` older than 1.47.0, or an exit status 8, and `skipped` for a machine whose `state/` holds a file. Each of the 6 series starts at 0. |
+
+A boot of a root file system without the error state counts nothing. Only `repaired` changes the disk. A rise of `failed`, `timeout`, or `killed` names a machine whose clean stops can count as `crash`, and the log of the driver names it.
+
+```sh
+curl -s http://127.0.0.1:9464/metrics | grep '^hopbox_root_repairs_total'
+```
+
+```text
+hopbox_root_repairs_total{result="failed"} 0
+hopbox_root_repairs_total{result="killed"} 0
+hopbox_root_repairs_total{result="repaired"} 1
+hopbox_root_repairs_total{result="skipped"} 0
+hopbox_root_repairs_total{result="timeout"} 0
+hopbox_root_repairs_total{result="unavailable"} 0
+```
+
 ## Metrics of the node network
 
 A server with the node role serves the traffic counters of each machine with network ([the node network](/reference/node-network/#metrics)). The node reads them from the table `inet hopbox_node` at each scrape. They start from zero at each start of `hopboxd`.
@@ -25548,36 +25578,41 @@ A page that gives a time or a result “on the tested server” gives a number o
 
 The checks run in the order of this table.
 
-| Check      | Severity | What it does                                                                                                                                                                                                                                           |
-| ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `kvm`      | `fail`   | Opens `/dev/kvm` for reading and writing, and asks for the KVM API version with the ioctl `KVM_GET_API_VERSION`. The version must be 12.                                                                                                               |
-| `cgroup2`  | `fail`   | Checks with `statfs` that `/sys/fs/cgroup` is a cgroup v2 file system, the unified hierarchy that the jailer needs.                                                                                                                                    |
-| `tun`      | `fail`   | Opens `/dev/net/tun` for reading and writing.                                                                                                                                                                                                          |
-| `nftables` | `fail`   | Opens a netlink socket for nftables and lists the tables, with a bound of 10 s. This needs the kernel module `nf_tables` and the capability `CAP_NET_ADMIN`.                                                                                           |
-| `reflink`  | `fail`   | Makes a missing `data_dir`. Then it writes a test file of 64 KiB in `data_dir` and clones it with the ioctl `FICLONE`. It removes both files after the test. The test files are `.preflight-reflink-<random>` and `.preflight-reflink-<random>.clone`. |
-| `kernel`   | `warn`   | Compares the operating system and the kernel release with the tested host.                                                                                                                                                                             |
+| Check      | Severity | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ---------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `kvm`      | `fail`   | Opens `/dev/kvm` for reading and writing, and asks for the KVM API version with the ioctl `KVM_GET_API_VERSION`. The version must be 12.                                                                                                                                                                                                                                                                                                                                            |
+| `cgroup2`  | `fail`   | Checks with `statfs` that `/sys/fs/cgroup` is a cgroup v2 file system, the unified hierarchy that the jailer needs.                                                                                                                                                                                                                                                                                                                                                                 |
+| `tun`      | `fail`   | Opens `/dev/net/tun` for reading and writing.                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `nftables` | `fail`   | Opens a netlink socket for nftables and lists the tables, with a bound of 10 s. This needs the kernel module `nf_tables` and the capability `CAP_NET_ADMIN`.                                                                                                                                                                                                                                                                                                                        |
+| `reflink`  | `fail`   | Makes a missing `data_dir`. Then it writes a test file of 64 KiB in `data_dir` and clones it with the ioctl `FICLONE`. It removes both files after the test. The test files are `.preflight-reflink-<random>` and `.preflight-reflink-<random>.clone`.                                                                                                                                                                                                                              |
+| `e2fsck`   | `warn`   | Checks that `/usr/sbin/e2fsck` and `/usr/bin/setpriv` exist, and runs `e2fsck -V`. The version must be 1.47.0 or later, because the default image has the ext4 feature `orphan_file`. Debian 13 has 1.47.2 in `e2fsprogs`, and `setpriv` in `util-linux`. The node needs both to repair a root file system with ext4 errors before a boot ([the Firecracker driver](/reference/firecracker-driver/#repair-of-the-root-file-system)). Without them, such a machine boots unrepaired. |
+| `kernel`   | `warn`   | Compares the operating system and the kernel release with the tested host.                                                                                                                                                                                                                                                                                                                                                                                                          |
 
 The checks need root, or rights that most users do not have, such as the group `kvm` and `CAP_NET_ADMIN`. Run them as root.
 
 ### Errors of the checks
 
-| Check      | Error                                                                                                                                               | Cause                                                                                                             |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `kvm`      | `/dev/kvm does not exist. Turn on virtualization (VT-x or AMD-V) in the firmware, and load the kvm_intel or kvm_amd module`                         | The CPU or the kernel gives no KVM.                                                                               |
-| `kvm`      | `open /dev/kvm: <error>. hopboxd must run as root or in the group kvm`                                                                              | The user cannot open the device.                                                                                  |
-| `kvm`      | `KVM_GET_API_VERSION on /dev/kvm: <error>`                                                                                                          | The ioctl failed.                                                                                                 |
-| `kvm`      | `/dev/kvm has the KVM API version <n>, not 12`                                                                                                      | A KVM that hopbox does not know.                                                                                  |
-| `cgroup2`  | `statfs /sys/fs/cgroup: <error>`                                                                                                                    | `/sys/fs/cgroup` does not exist.                                                                                  |
-| `cgroup2`  | `/sys/fs/cgroup is not cgroup v2. The jailer needs the unified cgroup hierarchy: boot without systemd.unified_cgroup_hierarchy=0`                   | The host runs cgroup v1 or a hybrid hierarchy.                                                                    |
-| `tun`      | `/dev/net/tun does not exist. Load the tun module`                                                                                                  | The kernel has no tun device.                                                                                     |
-| `tun`      | `open /dev/net/tun: <error>`                                                                                                                        | The user cannot open the device.                                                                                  |
-| `nftables` | `open a netlink socket for nftables: <error>`                                                                                                       | The socket failed.                                                                                                |
-| `nftables` | `list the nftables tables: <error>. The kernel needs nf_tables, and hopboxd needs CAP_NET_ADMIN`                                                    | The kernel has no `nf_tables`, or the user lacks the capability.                                                  |
-| `reflink`  | `create the data dir: <error>`                                                                                                                      | `data_dir` is missing, and `hopboxd` cannot make it.                                                              |
-| `reflink`  | `create a test file in <dir>: <error>`, `write a test file in <dir>: <error>`, or `sync a test file in <dir>: <error>`                              | `data_dir` is not writable, or the disk is full.                                                                  |
-| `reflink`  | `FICLONE in <dir>: <error>. The data dir needs a file system with reflinks, such as XFS made with reflink=1`                                        | The file system of `data_dir` has no reflinks, for example ext4 or tmpfs.                                         |
-| `kernel`   | `this host runs <name> with the kernel <release>, and hopbox tests only Debian 13 with the kernel 6.18.57-hopbox1. hopbox runs, with a higher risk` | Another operating system or kernel. `<name>` is `PRETTY_NAME` of `/etc/os-release`, or its `ID` and `VERSION_ID`. |
-| `kernel`   | `read os-release: <error>` or `uname: <error>`                                                                                                      | `hopboxd` cannot read the host. It reads `/etc/os-release`. Without that file, it reads `/usr/lib/os-release`.    |
+| Check      | Error                                                                                                                                                                                | Cause                                                                                                             |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `kvm`      | `/dev/kvm does not exist. Turn on virtualization (VT-x or AMD-V) in the firmware, and load the kvm_intel or kvm_amd module`                                                          | The CPU or the kernel gives no KVM.                                                                               |
+| `kvm`      | `open /dev/kvm: <error>. hopboxd must run as root or in the group kvm`                                                                                                               | The user cannot open the device.                                                                                  |
+| `kvm`      | `KVM_GET_API_VERSION on /dev/kvm: <error>`                                                                                                                                           | The ioctl failed.                                                                                                 |
+| `kvm`      | `/dev/kvm has the KVM API version <n>, not 12`                                                                                                                                       | A KVM that hopbox does not know.                                                                                  |
+| `cgroup2`  | `statfs /sys/fs/cgroup: <error>`                                                                                                                                                     | `/sys/fs/cgroup` does not exist.                                                                                  |
+| `cgroup2`  | `/sys/fs/cgroup is not cgroup v2. The jailer needs the unified cgroup hierarchy: boot without systemd.unified_cgroup_hierarchy=0`                                                    | The host runs cgroup v1 or a hybrid hierarchy.                                                                    |
+| `tun`      | `/dev/net/tun does not exist. Load the tun module`                                                                                                                                   | The kernel has no tun device.                                                                                     |
+| `tun`      | `open /dev/net/tun: <error>`                                                                                                                                                         | The user cannot open the device.                                                                                  |
+| `nftables` | `open a netlink socket for nftables: <error>`                                                                                                                                        | The socket failed.                                                                                                |
+| `nftables` | `list the nftables tables: <error>. The kernel needs nf_tables, and hopboxd needs CAP_NET_ADMIN`                                                                                     | The kernel has no `nf_tables`, or the user lacks the capability.                                                  |
+| `reflink`  | `create the data dir: <error>`                                                                                                                                                       | `data_dir` is missing, and `hopboxd` cannot make it.                                                              |
+| `reflink`  | `create a test file in <dir>: <error>`, `write a test file in <dir>: <error>`, or `sync a test file in <dir>: <error>`                                                               | `data_dir` is not writable, or the disk is full.                                                                  |
+| `reflink`  | `FICLONE in <dir>: <error>. The data dir needs a file system with reflinks, such as XFS made with reflink=1`                                                                         | The file system of `data_dir` has no reflinks, for example ext4 or tmpfs.                                         |
+| `e2fsck`   | `/usr/sbin/e2fsck does not exist. Install e2fsprogs 1.47.0 or later: it repairs the root file system of a machine with ext4 errors`                                                  | The host has no `e2fsprogs`. Run `sudo apt-get install e2fsprogs`.                                                |
+| `e2fsck`   | `/usr/bin/setpriv does not exist. Install util-linux: it runs e2fsck as the jail user of a machine`                                                                                  | The host has no `util-linux`.                                                                                     |
+| `e2fsck`   | `e2fsck <version> is older than 1.47.0, which the orphan_file feature of the default image needs. Install e2fsprogs 1.47.0 or later, or a machine with ext4 errors boots unrepaired` | An older operating system, such as Ubuntu 22.04 with 1.46.5.                                                      |
+| `e2fsck`   | `cannot read the version of e2fsck from "<line>"` or `/usr/sbin/e2fsck -V: <error>`                                                                                                  | `/usr/sbin/e2fsck` is not the `e2fsck` of `e2fsprogs`, or it does not run.                                        |
+| `kernel`   | `this host runs <name> with the kernel <release>, and hopbox tests only Debian 13 with the kernel 6.18.57-hopbox1. hopbox runs, with a higher risk`                                  | Another operating system or kernel. `<name>` is `PRETTY_NAME` of `/etc/os-release`, or its `ID` and `VERSION_ID`. |
+| `kernel`   | `read os-release: <error>` or `uname: <error>`                                                                                                                                       | `hopboxd` cannot read the host. It reads `/etc/os-release`. Without that file, it reads `/usr/lib/os-release`.    |
 
 ### Off Linux
 
@@ -25628,6 +25663,7 @@ preflight cgroup2  ok
 preflight tun  ok
 preflight nftables  ok
 preflight reflink  ok
+preflight e2fsck  ok
 preflight kernel  ok
 ```
 
@@ -25640,6 +25676,7 @@ preflight cgroup2  fail  hopbox runs machines only on Linux with KVM, and this h
 preflight tun  fail  hopbox runs machines only on Linux with KVM, and this host runs darwin
 preflight nftables  fail  hopbox runs machines only on Linux with KVM, and this host runs darwin
 preflight reflink  fail  hopbox runs machines only on Linux with KVM, and this host runs darwin
+preflight e2fsck  warn  hopbox runs machines only on Linux with KVM, and this host runs darwin
 preflight kernel  warn  this host runs darwin with the kernel 27.0.0, and hopbox tests only Debian 13 with the kernel 6.18.57-hopbox1. hopbox runs, with a higher risk
 hopboxd: error: the preflight check failed, so this server cannot run machines
 ```
@@ -25668,6 +25705,8 @@ On a server with the node role, the `channel` unit runs the checks once, at the 
 | Test                                                                    | Where it runs                                        | What it checks                                                                                                                                                   |
 | ----------------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `TestReport`, `TestChecksOrder`, `TestParseOSRelease`, `TestHostTested` | `make test`                                          | The report, the order of the checks, and the tested host, with injected checks.                                                                                  |
+| `TestE2fsckVersion`                                                     | `make test`                                          | The version of `e2fsck -V`: 1.47.0 and later pass, an older version and an output of another program fail.                                                       |
+| `TestE2fsckCheck`                                                       | `make test-linux`                                    | The `e2fsck` check passes on a host with `e2fsck` and `setpriv`, and names the missing program on a host without one.                                            |
 | `TestChecksFailOffLinux`                                                | `make test` on a Mac                                 | Every check of severity `fail` fails off Linux.                                                                                                                  |
 | `TestLinuxChecks`                                                       | `make test-linux`, as root in a privileged container | `cgroup2`, `tun`, and `nftables` pass. On a host with `/dev/kvm`, such as the CI runner, `kvm` passes. On a host without it, `kvm` reports the missing device.   |
 | `TestReflinkRefusesAFileSystemWithoutReflinks`                          | `make test-linux`                                    | The `reflink` check fails on a tmpfs and leaves no file.                                                                                                         |
