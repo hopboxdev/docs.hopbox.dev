@@ -63,6 +63,7 @@ The executor reports these fields with `hibernated`, apart from `Loads` ([the ex
 | `Address` | The IPv4 address of the machine on its node, from the network of the spec, or the zero `netip.Addr` for a machine without one. A driver with a network device for each machine connects the device to the node network with it ([the node network](/reference/node-network/index.html.md)). |
 | `LinkKey` | The link key of this boot, 32 random bytes. The driver puts it in the metadata service of the microVM, never on the kernel command line. |
 | `OnPhase` | A func that gets the duration of each phase of the boot that the driver times, or nil. A driver calls `Boot.Phase(phase, took)` once for each phase. `vmm.PhaseUnitStart` (`unit_start`) runs from the start of the boot until the process of the VMM runs. Then `vmm.PhaseVMMReady` (`vmm_ready`) runs until the VMM answers and started the microVM. The executor serves them in `hopbox_executor_boot_phase_seconds` ([the node executor](/reference/executor/index.html.md#metrics)). `Restore` times no phase. |
+| `TrackDirtyPages` | Turns on dirty page tracking in the microVM of this boot or load. A `Save` with `SaveOptions.Diff` then saves only the pages that the guest wrote since the last save. A load sets it again, because a saved state does not keep it. Tracking costs CPU while the guest runs, so only a machine with checkpoints turns it on. No executor action sets it before T18. |
 
 ## Instance
 
@@ -119,7 +120,7 @@ A driver with the capability snapshot that saves a running microVM without a sto
 
 | `SaveOptions` field | Description |
 | --- | --- |
-| `Diff` | Saves only the memory pages that the guest wrote since the last save, as a Firecracker diff snapshot. Without dirty page tracking, Firecracker 1.17 saves each page that the guest touched since its boot instead. No microVM of hopbox tracks dirty pages before T18. |
+| `Diff` | Saves only the memory pages that the guest wrote since the last save, as a Firecracker diff snapshot. The boot or the load of the microVM must have `Boot.TrackDirtyPages`. Without dirty page tracking, Firecracker 1.17 saves each page that the guest touched since its boot instead. The memory file of a diff is sparse. `savedstate.Rebase` makes a whole memory of it, over a reflink copy of the memory file of the last save ([the Firecracker driver](/reference/firecracker-driver/index.html.md#the-rebase-of-a-diff)). |
 | `Sync` | The files are on the disk before `Save` returns, so they survive a crash of the host. The guest does not wait for the sync, because the driver syncs after the resume. The owner decided this on 2026-11-11, as Q218. Without `Sync`, the files survive only while the host runs. After a crash of the host, such a dir can look whole and still hold damaged files, so it must not load. T12 and T13 add this rule to their loads. |
 
 | `SavedState` field | Description |
