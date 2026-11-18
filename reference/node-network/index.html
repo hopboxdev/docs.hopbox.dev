@@ -318,7 +318,7 @@
 </tr>
 <tr>
 <td><code dir="auto">drop_forged</code>, <code dir="auto">drop_blocked</code>, <code dir="auto">drop_smtp</code></td>
-<td>The chain <code dir="auto">from_machine</code> jumps to one of them for a packet from a source that is not an address of the machine, for a packet to a blocked destination, and for a TCP packet to port 25 outside the set <code dir="auto">smtp</code>. The first rule counts the packet in the element of the tap device in the set <code dir="auto">dropped_forged</code>, <code dir="auto">dropped_blocked</code>, or <code dir="auto">dropped_smtp</code>. The second rule drops the packet, or gives a reset for port 25, whatever the first rule found. So a device that is missing from a set still loses the packet.</td>
+<td>The chain <code dir="auto">from_machine</code> jumps to one of them for a packet from a source that is not an address of the machine, for a packet to a blocked destination, and for a TCP packet to port 25 outside the set <code dir="auto">smtp</code>. The first rule counts the packet in the element of the tap device in the set <code dir="auto">dropped_forged</code>, <code dir="auto">dropped_blocked</code>, or <code dir="auto">dropped_smtp</code>. The second rule drops the packet, or gives a reset for port 25, whatever the first rule found. So a device that is missing from a set still loses the packet. A clone loads with the address of its source, on a tap device of its own. Until its guest agent sets the new address, the node drops each packet of that old address as <code dir="auto">forged_source</code> (<a href="/reference/guest-link/#freeze-and-clone-identity-step">Guest link</a>).</td>
 </tr>
 <tr>
 <td><code dir="auto">to_machine</code></td>

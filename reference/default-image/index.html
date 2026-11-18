@@ -367,6 +367,16 @@
 <td>The guest agent. It sets up the network, the host name, and the SSH host key, and keeps the guest link open (<a href="/reference/hopbox-guest/#systemd-unit">hopbox-guest</a>).</td>
 </tr>
 <tr>
+<td><code dir="auto">hopbox.slice</code></td>
+<td>static</td>
+<td>The guest agent, journald, D-Bus, logind, udevd, and sshd, which a freeze spares (<a href="/reference/hopbox-guest/#freeze-of-the-user-processes">hopbox-guest</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">hopbox-user.slice</code></td>
+<td>static</td>
+<td>The start command and each exec, in a scope of their own. A stop or a restart of <code dir="auto">hopbox-guest.service</code> stops it.</td>
+</tr>
+<tr>
 <td><code dir="auto">ssh.socket</code></td>
 <td>enabled</td>
 <td>Listens on port 22 and starts <code dir="auto">sshd</code> at the first connection.</td>
@@ -479,7 +489,7 @@
 </tr>
 </tbody>
 </table>
-<p>Processes that the guest agent starts are not restricted: the start command, and the commands of exec and <code dir="auto">hopbox connect</code>. They are children of the guest agent. Also, root can remove the drop-in. The <a href="/reference/guest-link/#threat-model">threat model of the guest link</a> does not depend on this restriction.</p>
+<p>Processes that the guest agent starts are not restricted: the start command, and the commands of exec and <code dir="auto">hopbox connect</code>. They are children of the guest agent. They run in a scope of <code dir="auto">hopbox-user.slice</code>, and a scope sets no seccomp filter. Also, root can remove the drop-in. The <a href="/reference/guest-link/#threat-model">threat model of the guest link</a> does not depend on this restriction.</p>
 <p>The filter does not bring <code dir="auto">NoNewPrivileges</code> to <code dir="auto">user@.service</code>, the user manager of <code dir="auto">systemctl --user</code>. On the <a href="/reference/preflight/#the-tested-server">tested server</a>, the user manager of <code dir="auto">user</code> runs with the filter and with <code dir="auto">NoNewPrivs: 0</code>, and the boot test checks it. So <code dir="auto">sudo</code> works in SSH sessions, in <code dir="auto">hopbox connect</code>, in exec, and in user services. The systemd docs say that systemd can set <code dir="auto">NoNewPrivileges=yes</code> for another service with <code dir="auto">User=</code> and a filter. The image has no such service that runs <code dir="auto">sudo</code>.</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="files">Files</h2><a class="sl-anchor-link" href="#files"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Files”</span></a></div>
 <p>The image adds these files to Ubuntu. The recipe keeps them in <code dir="auto">images/default/rootfs/</code>, at the same paths.</p>
@@ -498,6 +508,18 @@
 <tr>
 <td><code dir="auto">/usr/lib/systemd/system/hopbox-guest.service</code></td>
 <td>The unit of the guest agent (<a href="/reference/hopbox-guest/#systemd-unit">hopbox-guest</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">/usr/lib/systemd/system/hopbox.slice</code></td>
+<td>The slice of the units that a freeze of the user processes spares, with the dependencies of <code dir="auto">system.slice</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">/usr/lib/systemd/system/&lt;unit&gt;.d/70-hopbox-keep.conf</code></td>
+<td><code dir="auto">Slice=hopbox.slice</code> for <code dir="auto">systemd-journald.service</code>, <code dir="auto">dbus.service</code>, <code dir="auto">dbus-broker.service</code>, <code dir="auto">systemd-logind.service</code>, <code dir="auto">systemd-udevd.service</code>, and <code dir="auto">ssh.service</code>. <code dir="auto">hopbox-guest.service</code> sets it in its own unit.</td>
+</tr>
+<tr>
+<td><code dir="auto">/usr/lib/systemd/system/hopbox-user.slice</code></td>
+<td>The slice of the start command and of each exec, with <code dir="auto">PartOf=hopbox-guest.service</code>. Each command runs in a scope of its own there, so the guest agent can freeze the commands for a save and keep running (<a href="/reference/hopbox-guest/#freeze-of-the-user-processes">hopbox-guest</a>). An image without this file gives a guest agent without the feature <code dir="auto">clone</code>, so its machines get no fork, snapshot, or checkpoint.</td>
 </tr>
 <tr>
 <td><code dir="auto">/usr/lib/systemd/system/service.d/50-hopbox-no-vsock.conf</code></td>
@@ -964,6 +986,8 @@
 <ul>
 <li>The disk has no SSH host key, and <code dir="auto">/etc/machine-id</code> is empty.</li>
 <li><code dir="auto">/usr/local/bin/hopbox-guest</code> exists with mode 0755, and <code dir="auto">hopbox-guest.service</code> is enabled.</li>
+<li><code dir="auto">/usr/lib/systemd/system/hopbox-user.slice</code> and <code dir="auto">/usr/lib/systemd/system/hopbox.slice</code> exist, and journald, D-Bus, logind, udevd, and sshd each have the drop-in <code dir="auto">70-hopbox-keep.conf</code>.</li>
+<li>sshd uses PAM, and <code dir="auto">pam_systemd.so</code> is in the session stack of sshd. Without them, an SSH session runs in <code dir="auto">ssh.service</code>, which a freeze spares.</li>
 <li>The drop-in that removes <code dir="auto">AF_VSOCK</code> from services exists.</li>
 <li><code dir="auto">nginx.service</code> is not enabled, and <code dir="auto">systemd-ssh-generator</code> is masked.</li>
 <li><code dir="auto">/etc/sudoers.d/90-hopbox-user</code> has mode 0440.</li>

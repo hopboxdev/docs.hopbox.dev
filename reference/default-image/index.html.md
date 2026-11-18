@@ -130,6 +130,8 @@ SSH logins use keys only. The guest agent writes the key of the SSH front door t
 | Unit | State | What it does |
 | --- | --- | --- |
 | `hopbox-guest.service` | enabled | The guest agent. It sets up the network, the host name, and the SSH host key, and keeps the guest link open ([hopbox-guest](/reference/hopbox-guest/index.html.md#systemd-unit)). |
+| `hopbox.slice` | static | The guest agent, journald, D-Bus, logind, udevd, and sshd, which a freeze spares ([hopbox-guest](/reference/hopbox-guest/index.html.md#freeze-of-the-user-processes)). |
+| `hopbox-user.slice` | static | The start command and each exec, in a scope of their own. A stop or a restart of `hopbox-guest.service` stops it. |
 | `ssh.socket` | enabled | Listens on port 22 and starts `sshd` at the first connection. |
 | `docker.service`, `docker.socket`, `containerd.service` | enabled | Docker. |
 | `nginx.service` | disabled | The HTTP server on port 8000 ([nginx](#nginx)). |
@@ -182,7 +184,7 @@ systemd applies the restriction with a seccomp filter. A child process keeps the
 | `systemd-run` commands and timers | Each one is a service. |
 | nginx and its workers | `nginx.service` starts them. |
 
-Processes that the guest agent starts are not restricted: the start command, and the commands of exec and `hopbox connect`. They are children of the guest agent. Also, root can remove the drop-in. The [threat model of the guest link](/reference/guest-link/index.html.md#threat-model) does not depend on this restriction.
+Processes that the guest agent starts are not restricted: the start command, and the commands of exec and `hopbox connect`. They are children of the guest agent. They run in a scope of `hopbox-user.slice`, and a scope sets no seccomp filter. Also, root can remove the drop-in. The [threat model of the guest link](/reference/guest-link/index.html.md#threat-model) does not depend on this restriction.
 
 The filter does not bring `NoNewPrivileges` to `user@.service`, the user manager of `systemctl --user`. On the [tested server](/reference/preflight/index.html.md#the-tested-server), the user manager of `user` runs with the filter and with `NoNewPrivs: 0`, and the boot test checks it. So `sudo` works in SSH sessions, in `hopbox connect`, in exec, and in user services. The systemd docs say that systemd can set `NoNewPrivileges=yes` for another service with `User=` and a filter. The image has no such service that runs `sudo`.
 
@@ -194,6 +196,9 @@ The image adds these files to Ubuntu. The recipe keeps them in `images/default/r
 | --- | --- |
 | `/usr/local/bin/hopbox-guest` | The guest agent, built from the same checkout for `linux/amd64` (mode 0755). |
 | `/usr/lib/systemd/system/hopbox-guest.service` | The unit of the guest agent ([hopbox-guest](/reference/hopbox-guest/index.html.md#systemd-unit)). |
+| `/usr/lib/systemd/system/hopbox.slice` | The slice of the units that a freeze of the user processes spares, with the dependencies of `system.slice`. |
+| `/usr/lib/systemd/system/<unit>.d/70-hopbox-keep.conf` | `Slice=hopbox.slice` for `systemd-journald.service`, `dbus.service`, `dbus-broker.service`, `systemd-logind.service`, `systemd-udevd.service`, and `ssh.service`. `hopbox-guest.service` sets it in its own unit. |
+| `/usr/lib/systemd/system/hopbox-user.slice` | The slice of the start command and of each exec, with `PartOf=hopbox-guest.service`. Each command runs in a scope of its own there, so the guest agent can freeze the commands for a save and keep running ([hopbox-guest](/reference/hopbox-guest/index.html.md#freeze-of-the-user-processes)). An image without this file gives a guest agent without the feature `clone`, so its machines get no fork, snapshot, or checkpoint. |
 | `/usr/lib/systemd/system/service.d/50-hopbox-no-vsock.conf` | `RestrictAddressFamilies=~AF_VSOCK` and `SystemCallArchitectures=native` for every service. |
 | `/usr/lib/systemd/system/hopbox-guest.service.d/60-hopbox-allow-vsock.conf` | `RestrictAddressFamilies=` and `SystemCallArchitectures=` for the guest agent. |
 | `/usr/lib/systemd/system-shutdown/hopbox-poweroff` | A hook of `systemd-shutdown` (mode 0755). At a poweroff or a halt, it writes `b` to `/proc/sysrq-trigger`, a reboot. Firecracker has no power-off device, so without it a poweroff leaves the microVM running with a stopped kernel. The hook runs once the root file system is read-only, so the reboot is clean, and the reboot ends Firecracker ([the Firecracker driver](/reference/firecracker-driver/index.html.md#exit-reasons)). `poweroff -ff`, and a direct `reboot(2)` call that powers off, skip `systemd-shutdown` and the hook. They leave the microVM running with a stopped kernel until a stop of the machine. A machine keeps the files of the image that it was made from. So a machine from an image without the hook keeps the old poweroff until it is made again. |
@@ -364,6 +369,8 @@ It also writes `bin/linux_amd64/hopbox-guest`. `make bundle` puts `artifact.json
 
 - The disk has no SSH host key, and `/etc/machine-id` is empty.
 - `/usr/local/bin/hopbox-guest` exists with mode 0755, and `hopbox-guest.service` is enabled.
+- `/usr/lib/systemd/system/hopbox-user.slice` and `/usr/lib/systemd/system/hopbox.slice` exist, and journald, D-Bus, logind, udevd, and sshd each have the drop-in `70-hopbox-keep.conf`.
+- sshd uses PAM, and `pam_systemd.so` is in the session stack of sshd. Without them, an SSH session runs in `ssh.service`, which a freeze spares.
 - The drop-in that removes `AF_VSOCK` from services exists.
 - `nginx.service` is not enabled, and `systemd-ssh-generator` is masked.
 - `/etc/sudoers.d/90-hopbox-user` has mode 0440.

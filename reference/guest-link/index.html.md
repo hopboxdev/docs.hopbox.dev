@@ -66,7 +66,7 @@ Every link starts with a handshake on the `Link` call. The guest agent speaks fi
 4. The guest agent checks the version and the proof. When one of them is wrong, it ends the call and sends nothing more. So a process that poses as the node never gets the proof of the guest.
 5. The guest agent sends `GuestAuth` with its proof.
 6. The node checks the proof. When it is wrong, the node ends the call with the code `unauthenticated`.
-7. On a link of version 4 or later, the node sends `Sync` ([Clock and randomness](#clock-and-randomness)). Then it sends the configuration in a `Config` message. The first message after the proof tells the guest agent that the node accepted it.
+7. On a link of version 4 or later, the node sends `Sync` ([Clock and randomness](#clock-and-randomness)). A link of version 5 or later can name the feature `clone` in its hello. On such a link, the node then sends `CloneIdentity` while a clone identity step waits ([Freeze and clone identity step](#freeze-and-clone-identity-step)). Then it sends the configuration in a `Config` message. On such a link, the node then sends `Thaw`, unless a clone identity step or a freeze waits. The first message after the proof tells the guest agent that the node accepted it.
 
 The node waits at most 10 s for the hello and the proof together. `HandshakeTimeout` in `guestlink.Options` sets this limit.
 
@@ -78,6 +78,7 @@ The node waits at most 10 s for the hello and the proof together. `HandshakeTime
 | `GuestHello` | `nonce` | bytes | 32 random bytes, new for each link. |
 | `GuestHello` | `boot_id` | string | The boot ID of the guest kernel. It changes at each boot of the machine. |
 | `GuestHello` | `agent_instance_id` | string | A random ID of this run of the guest agent. Each restart of the agent gives a new ID. |
+| `GuestHello` | `features` | list of strings | The features of the guest agent and its image. With `clone`, the agent runs the start command and exec in `hopbox-user.slice`. It freezes the user processes for a save, and runs the clone identity step ([hopbox-guest](/reference/hopbox-guest/index.html.md#freeze-of-the-user-processes)). An older agent sends no features. |
 | `NodeHello` | `version` | uint32 | The version that the node picked. |
 | `NodeHello` | `nonce` | bytes | 32 random bytes, new for each link. |
 | `NodeHello` | `proof` | bytes | The node proof. |
@@ -101,7 +102,7 @@ Both nonces are new on each link, so an old proof never works again. The role di
 
 ## Versions
 
-A guest link version is a whole number from 1. This build speaks versions 1 to 4. Version 2 adds `ExecControl` on `Link`. On version 1, the node sends the resizes and the signals of an exec on `Exec`. From version 2 on, it sends them as `ExecControl`. Version 3 adds the credit of `Exec` ([Credit of an exec](#credit-of-an-exec)). On a link of version 3, the guest agent acks the messages of the node on `Exec`, and the node sends them on credit. Version 4 adds `Sync` and `SyncResult` ([Clock and randomness](#clock-and-randomness)). The negotiated version of the link decides, not the build of the guest agent or of `hopboxd`.
+A guest link version is a whole number from 1. This build speaks versions 1 to 5. Version 2 adds `ExecControl` on `Link`. On version 1, the node sends the resizes and the signals of an exec on `Exec`. From version 2 on, it sends them as `ExecControl`. Version 3 adds the credit of `Exec` ([Credit of an exec](#credit-of-an-exec)). On a link of version 3, the guest agent acks the messages of the node on `Exec`, and the node sends them on credit. Version 4 adds `Sync` and `SyncResult` ([Clock and randomness](#clock-and-randomness)). Version 5 adds `Freeze`, `FreezeResult`, `Thaw`, `ThawResult`, `CloneIdentity`, and `CloneResult` ([Freeze and clone identity step](#freeze-and-clone-identity-step)). The node sends the three messages of version 5 only to a guest agent whose hello names the feature `clone`. The negotiated version of the link decides, not the build of the guest agent or of `hopboxd`.
 
 | Rule | Detail |
 | --- | --- |
@@ -123,6 +124,12 @@ After the handshake, both sides keep the `Link` call open. Each `LinkRequest` an
 | `NodeHello` | `LinkResponse.hello` | node | the answer to `GuestHello` |
 | `Sync` | `LinkResponse.sync` | node | from version 4 on, the first message after a valid `GuestAuth`, ahead of the first `Config` of the link |
 | `SyncResult` | `LinkRequest.sync_result` | guest | from version 4 on, the answer to `Sync` |
+| `CloneIdentity` | `LinkResponse.clone_identity` | node | from version 5 on, to a guest agent with the feature `clone`: the clone identity step. It comes after `Sync` and ahead of the first `Config` of the link. |
+| `CloneResult` | `LinkRequest.clone_result` | guest | from version 5 on, the answer to `CloneIdentity` |
+| `Freeze` | `LinkResponse.freeze` | node | from version 5 on, to a guest agent with the feature `clone`: freeze the user processes before a save. It holds `seq`, a number that grows with each `Freeze` of the server. |
+| `FreezeResult` | `LinkRequest.freeze_result` | guest | from version 5 on, the answer to `Freeze` |
+| `Thaw` | `LinkResponse.thaw` | node | from version 5 on, to a guest agent with the feature `clone`: thaw the user processes. It holds `seq`. A non-zero `seq` asks for a `ThawResult`, also with nothing frozen. |
+| `ThawResult` | `LinkRequest.thaw_result` | guest | from version 5 on, the answer to a `Thaw` that ended a freeze. It also reports a thaw that the guest agent did by itself. |
 | `Config` | `LinkResponse.config` | node | after the handshake, and after each change |
 | `ConfigApplied` | `LinkRequest.config_applied` | guest | after each `Config`. It holds the generation, the errors, and the count of env values that the agent left out. |
 | `Status` | `LinkRequest.status` | guest | after the handshake, and after each change of the start command. It is the first message of the guest agent after its proof, ahead of the first `ConfigApplied` of the link. A status and a `ConfigApplied` that wait together go in this order. So the node has the SSH host keys of the guest when the link becomes ready. A guest agent of an older image can send `ConfigApplied` first, if its sender starts late. |
@@ -163,6 +170,67 @@ A failed step or a failed set does not fail the link, and the machine runs. The 
 The VMGenID reseed has a race window between the load and the new seed.
 
 A guest agent whose guest link version is 3 or lower gets no `Sync`, and never sets the clock. After a load without `clock_realtime`, its clock stays at the time of the save until a program in the guest sets it. A pause stops the guest, but kvm-clock reads the clock of the host after the resume, so the guest clock lags little: 0.65 s after a pause of 60 s, in the KVM test on the CI runner on 2026-11-10. A later load of such a machine has only the reseed of VMGenID, and the node logs `the guest agent speaks no randomness step, so this later load of a saved state has only the kernel reseed of VMGenID`.
+
+### Freeze and clone identity step
+
+Stock Firecracker resumes each process at a load. So the guest agent freezes the user processes before a save for a fork, a snapshot, or a checkpoint. It thaws them only after the steps of the load. The owner decided this on 2026-11-06, as Q178, and on 2026-11-14 that the freeze covers systemd itself, as Q256. [hopbox-guest](/reference/hopbox-guest/index.html.md#freeze-of-the-user-processes) lists the cgroups that a freeze covers, and says what the freeze guarantees and what it does not.
+
+A freeze runs in this order:
+
+1. The node sends `Freeze` with a new `seq`, and waits for the `FreezeResult` with the same `seq`. A late answer to an earlier `Freeze` answers no later one. From then on, the node holds the freeze. A `FreezeResult` with an `error` fails the save.
+2. The node saves the microVM. A save resets the vsock connections, so the guest agent opens a new link to the same server. While the node holds the freeze, a new link gets no `Thaw`.
+3. At the resume of the microVM, also after a failed save, the node ends its hold. It sends `Thaw` with a new `seq` on the current link. Without a link, the next link carries it. The node waits for the `ThawResult` with that `seq`. A result with `broken` or `by_itself` fails the save, because each load of the save fails its clone identity step.
+
+The thaw has one rule: the node sends `Thaw` on each new link once no step of a load waits and no freeze holds. A restart of `hopboxd` ends the hold, so the first link of the new `hopboxd` thaws the guest. A source can freeze and then get no `Thaw`. It then thaws by itself after 60 sleeps of 1 s from the freeze or from its last new link. It counts sleeps, not the time between two reads of the clock. So a jump of the guest clock at a load costs one sleep at most, and a lost node leaves no frozen source. A loaded copy never thaws by itself, and only the `Thaw` of the node ends its freeze (Q257). The guest agent tells the two apart with the VMClock generation counter.
+
+| Field of `FreezeResult` | Type | Meaning |
+| --- | --- | --- |
+| `frozen` | list of strings | The cgroups that froze, as paths below `/sys/fs/cgroup`, for example `hopbox.slice/hopbox-user.slice`. |
+| `not_frozen` | list of strings | The cgroups that did not report the freeze within 2 s (`protocol.FreezeWait`). Each keeps its freeze. Its tasks are inside a kernel call, and stop before they return to user code. So the save goes on, and only waits no longer. The executor counts such a freeze in `hopbox_guest_freezes_total{result="slow"}`. |
+| `error` | string | Why a part of the freeze failed, one error per line. Empty after a success. |
+| `seq` | uint64 | The `seq` of the `Freeze` that the result answers. |
+
+| Field of `ThawResult` | Type | Meaning |
+| --- | --- | --- |
+| `thawed` | uint32 | The count of cgroups that the guest agent thawed. |
+| `by_itself` | bool | The guest agent thawed by itself, or ended, during the freeze. |
+| `error` | string | Why a part of the thaw failed, one error per line. |
+| `broken` | string | Why the freeze check failed, such as a restart of the guest agent, a record of an early thaw, or a cgroup that appeared. Empty for a freeze that held ([hopbox-guest](/reference/hopbox-guest/index.html.md#freeze-of-the-user-processes)). |
+| `seq` | uint64 | The `seq` of the `Thaw` that the result answers, or 0. |
+
+A fork, and a new machine from a snapshot, load a save of another machine. The node then asks for the full clone identity step on each link of the load, until the guest agent reports it:
+
+1. `Sync` carries fresh entropy, and the guest agent runs the randomness step ([Clock and randomness](#clock-and-randomness)).
+2. `CloneIdentity` carries the MAC address of the new machine in `mac_address`, for example `06:00:3f:a2:91:0c`. The driver gives the microVM its new tap device with `network_overrides`, which changes no MAC address. So the guest agent sets the MAC address of its interface, and drops its neighbor entries. It writes a new `/etc/machine-id`, removes `/var/lib/systemd/random-seed`, shows a new `boot_id`, and replaces the SSH host keys ([hopbox-guest](/reference/hopbox-guest/index.html.md#clone-identity-step)). It answers with `CloneResult`.
+3. `Config` carries the new host name and the new address of the machine.
+4. The node sends `Thaw` with a `seq` after three answers of the link: a `CloneResult` without an error, a `SyncResult` that ran the randomness step, and a `ConfigApplied` without an error. So no user process runs with the host name or the address of the source.
+5. `Server.Ready` of the clone returns only after the `ThawResult` of that `seq` reports a freeze that held. A result with `broken` or `by_itself` fails `Ready` with `ErrCloneStep`.
+
+| Field of `CloneResult` | Type | Meaning |
+| --- | --- | --- |
+| `error` | string | Why the step failed, one error per line. Empty after a success. |
+| `boot_id`, `machine_id` | string | The new `boot_id` and `machine-id` of the guest. |
+
+A failed part of the step, a failed randomness step, or a failed `Config` fails the clone. The node then sends no `Thaw`, so no user process of the clone runs. `Server.Ready` returns the error, which wraps `ErrCloneStep`, and the executor ends the microVM of the clone with a kill ([the node executor](/reference/executor/index.html.md#the-clone-identity-step)). The source stays as it was. After the step, the guest agent sends a status with the new SSH host keys. That status comes ahead of the `ConfigApplied` of the link. So the node reports nothing as `running` before the step, and the SSH front door learns only the new host keys ([the executor protocol](/reference/executor-protocol/index.html.md#what-the-control-role-does)).
+
+A guest agent without the feature `clone` gets no `Freeze` and no clone. `Server.Freeze` fails with `ErrNoClone`, and `Server.Ready` of a clone fails with it too. The error says `the guest agent of the machine cannot freeze its user processes, because its image is older than hopbox-user.slice, so the machine gets no fork, snapshot, or checkpoint. Make the machine again from a new image`, with the build and the link version of the agent. The node then logs `the guest agent of a clone has no clone identity step, so the clone must not run` at level error, and counts it once in `hopbox_guest_clone_steps_total{result="unsupported"}`.
+
+| Message of the node | Level | Fields |
+| --- | --- | --- |
+| `the guest agent froze its user processes` | info | `cgroups`, a count, and `took` |
+| `cgroups of the guest did not freeze in time, so their processes run during the save` | warn | `cgroups` |
+| `a part of the freeze of the user processes failed` | error | `err` |
+| `the guest agent thawed its user processes` | info | `cgroups` |
+| `the guest agent thawed its user processes by itself, because no thaw came in time` | warn | `cgroups` |
+| `a part of the thaw of the user processes failed` | error | `err` |
+| `the guest agent ran the clone identity step` | info | `boot_id`, `machine_id` |
+| `the clone identity step failed, so the clone must not run` | error | `err`, at most 1024 bytes |
+| `cannot thaw the user processes of the clone` | warn | `err` |
+| `the freeze of the save did not hold until the thaw of the clone, so the clone must not run` | error | `err` |
+| `ignored a FreezeResult that answers no Freeze` | debug | |
+| `ignored the answer to an earlier freeze` | debug | `seq`, `want` |
+| `the freeze of the user processes did not hold until the thaw` | error | `err`, the `broken` of the guest agent |
+| `ignored a CloneResult that answers no CloneIdentity` | debug | `version` |
 
 ### Configuration
 
@@ -335,9 +403,11 @@ The executor of each machine uses the Go package `internal/node/guestlink` ([the
 | `Server.Serve(listener)` | Accepts guest agent connections until `Close`. |
 | `Server.Close()` | Stops the server and ends every call. It waits for the handlers of the server and for `OnState`, so nothing logs or calls `OnState` after it returns. |
 | `Server.Ready(ctx)` | Waits until the guest agent applied the current configuration on an authenticated link. If the configuration failed, it returns the error of the guest agent. The node uses it for the "running" state of a machine. |
-| `Server.State()` | Returns `State`. It holds whether a link is up, the version, and the build version of the guest agent. It holds the boot ID and the run ID of the agent from the last hello. It also holds the current and the applied generation, the configuration error, and the count of skipped env values. It holds the last status of the guest and the last link error. Last, it holds the last `SyncResult`: `ClockOffset`, `ClockSet`, and `SyncError`, and `Reseeded`, which stays true once a link of the server ran the randomness step. |
+| `Server.State()` | Returns `State`. It holds whether a link is up, the version, and the build version of the guest agent. It holds the boot ID and the run ID of the agent from the last hello. It also holds the current and the applied generation, the configuration error, and the count of skipped env values. It holds the last status of the guest and the last link error. It holds the last `SyncResult`: `ClockOffset`, `ClockSet`, and `SyncError`, and `Reseeded`, which stays true once a link of the server ran the randomness step. Last, it holds `Features` from the last hello, and `Frozen` from a `FreezeResult` until a `ThawResult`. `Cloned` stays true once a link ran the clone identity step, and `CloneThawed` once the thaw of the clone reported a freeze that held. `CloneError` holds the error of the step or of that thaw on the current link. `State.CanClone()` reports a link of version 5 or later whose hello names `clone`. |
 | `Server.UpdateConfig(ctx, config)` | Makes `config` the configuration, pushes it, and waits until the guest agent applied it. |
 | `Server.RunStartCommand(ctx)` | Asks the guest agent to run the start command again. |
+| `Server.Freeze(ctx)` | Freezes the user processes before a save, and holds the freeze until `Thaw`. It returns a `FreezeResult` with `Frozen`, `NotFrozen`, `Error`, and `Took`. A guest agent without the feature `clone` fails with `ErrNoClone`. The caller calls `Thaw` once the save ended, also after an error. |
+| `Server.Thaw(ctx)` | Ends the hold of `Freeze`, and sends `Thaw` on the current link. Without a link, the next link sends it. It waits for the answer, and returns a `ThawResult` with `Thawed`, `ByItself`, `Broken`, and `Error`. `ThawResult.Held()` reports a freeze that held until the thaw. A guest agent without the feature `clone` gets no `Thaw`, and the call returns at once. |
 | `Server.Exec(ctx, ExecOptions)` | Starts a command. `Process.Wait` returns its `ExecExit`. `Process.Resize` sets the terminal size. `Process.Signal` sends a signal by name. Both use `ExecControl` from version 2 on. When `ctx` ends first, the guest agent stops the command with `SIGTERM`, then `SIGKILL`. |
 | `Server.Upload(ctx, UploadStart, reader)` | Uploads the data of the reader. |
 | `Server.Download(ctx, DownloadStart, options...)` | Returns a `Download`, which holds the `DownloadInfo` and reads the data. The option `MaxBytes(n)` caps the data, for example at 4 MB for a laptop. A file over the cap fails before any data, and an archive fails at the cap, both with `ErrTooLarge`. |
@@ -350,9 +420,11 @@ The executor of each machine uses the Go package `internal/node/guestlink` ([the
 | `Versions` | the versions of this build | The versions that the node speaks. |
 | `OnReseed` | none | Gets the result of each randomness step that the server asked for: `ok`, `failed`, or `unsupported`, once for each server with a guest agent whose guest link version is 3 or lower. It must not block. |
 | `Reseed` | `false` | Asks for the randomness step: the microVM runs from a load of a saved state that a guest already ran from. Each link of version 4 or later then carries fresh `entropy`, until the guest agent reports the step. |
+| `Clone` | none | Asks for the full clone identity step, with the `MAC` of the new machine: the microVM is a fork, or a new machine from a snapshot. Each link then carries the randomness step and `CloneIdentity`, until the guest agent reports both. `Ready` waits for them. It fails after a failure of one of them, and for a guest agent without the feature `clone`. |
+| `OnClone` | none | Gets the result of each clone identity step: `ok`, `failed`, or `unsupported`, once for each server with a guest agent without the feature `clone`. It must not block. |
 | `OnState` | none | Gets each new `State`, in order, on a goroutine of the server. It can call the methods of the server. It gets no state after `Close` returns. When `OnState` falls behind, a new state replaces a queued state with the same `Connected` value, so every connect and disconnect stays in the queue. |
 | `OnLog` | none | Gets each `LogEntry`, in order. |
 | `HandshakeTimeout` | 10 s | The longest wait for the hello, for the proof, and for the attach ID of each call. |
 | `AttachTimeout` | 10 s | The longest wait for the guest agent to open a call after an `Attach`. |
 
-An error that the guest agent reports for a file copy has the type `GuestError`. A call that needs the link while no guest agent is connected fails with `ErrNotConnected`.
+An error that the guest agent reports for a file copy has the type `GuestError`. A call that needs the link while no guest agent is connected fails with `ErrNotConnected`. A freeze or a clone of a guest agent without the feature `clone` fails with `ErrNoClone`. The `Ready` of a clone whose step, randomness step, or first `Config` failed fails with `ErrCloneStep`.

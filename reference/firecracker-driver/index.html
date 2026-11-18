@@ -402,7 +402,7 @@
 </tr>
 <tr>
 <td><code dir="auto">PUT /network-interfaces/eth0</code></td>
-<td>The tap device, and a MAC address from a hash of the machine ID, <code dir="auto">06:00:xx:xx:xx:xx</code>.</td>
+<td>The tap device, and a MAC address from a hash of the machine ID, <code dir="auto">06:00:xx:xx:xx:xx</code> (<code dir="auto">vmm.GuestMAC</code>). A clone loads with the MAC address of its source, and its guest agent sets this one in the clone identity step (<a href="/reference/guest-link/#freeze-and-clone-identity-step">Guest link</a>).</td>
 </tr>
 <tr>
 <td><code dir="auto">PUT /mmds/config</code></td>

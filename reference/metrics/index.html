@@ -1364,6 +1364,18 @@
 <td>The randomness steps that the guest links asked for after a later load of a memory file (<a href="/reference/executor/#the-randomness-step">the node executor</a>): <code dir="auto">ok</code>, <code dir="auto">failed</code>, or <code dir="auto">unsupported</code>. <code dir="auto">unsupported</code> counts once for each guest link server whose guest agent has the guest link version 3 or lower. The executor serves a new guest link server at each boot, wake, resume, and restart of <code dir="auto">hopboxd</code>, so such a machine counts once for each of them while its step is pending. Each of the 3 series starts at 0.</td>
 </tr>
 <tr>
+<td><code dir="auto">hopbox_guest_clone_steps_total</code></td>
+<td>counter</td>
+<td><code dir="auto">result</code></td>
+<td>The clone identity steps that the guest links asked for after the load of a fork or of a new machine from a snapshot (<a href="/reference/guest-link/#freeze-and-clone-identity-step">Guest link</a>): <code dir="auto">ok</code>, <code dir="auto">failed</code>, or <code dir="auto">unsupported</code>. <code dir="auto">unsupported</code> counts once for each guest link server of a clone whose guest agent names no feature <code dir="auto">clone</code>. Each of the 3 series starts at 0.</td>
+</tr>
+<tr>
+<td><code dir="auto">hopbox_guest_freezes_total</code></td>
+<td>counter</td>
+<td><code dir="auto">result</code></td>
+<td>The freezes of the user processes of a machine before a save (<a href="/reference/executor/#the-freeze-before-a-save">the node executor</a>): <code dir="auto">ok</code>, <code dir="auto">slow</code>, <code dir="auto">incomplete</code>, <code dir="auto">failed</code>, <code dir="auto">unsupported</code>, or <code dir="auto">broken</code>. <code dir="auto">slow</code> is a freeze with a cgroup that did not report the freeze within 2 s. Its tasks run no user code until the thaw, so the save goes on. <code dir="auto">incomplete</code> is a freeze with a part that failed, and the save fails. <code dir="auto">failed</code> is a freeze that got no answer, and <code dir="auto">unsupported</code> a guest agent without the feature <code dir="auto">clone</code>. <code dir="auto">broken</code> is a freeze that did not hold until its thaw, and the save fails. Each of the 6 series starts at 0.</td>
+</tr>
+<tr>
 <td><code dir="auto">hopbox_guest_links_down</code></td>
 <td>gauge</td>
 <td>none</td>

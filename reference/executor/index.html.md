@@ -136,6 +136,18 @@ The server of the guest link, `internal/node/guestlink`, writes these records wi
 | `ignored a SyncResult that answers no Sync` | debug | `version` |
 | `the guest agent reported an error for the Sync of the node` | error | `err`. Another error of `SyncResult`, such as a `Sync` without a valid time. |
 | `the guest agent speaks no randomness step, so this later load of a saved state has only the kernel reseed of VMGenID` | warn | `version`, `agent_version`. Once for each guest link server. |
+| `the guest agent froze its user processes` | info | `cgroups`, `took` ([Guest link](/reference/guest-link/index.html.md#freeze-and-clone-identity-step)) |
+| `cgroups of the guest did not freeze in time, so their processes run during the save` | warn | `cgroups` |
+| `a part of the freeze of the user processes failed` | error | `err` |
+| `the guest agent thawed its user processes` | info | `cgroups` |
+| `the guest agent thawed its user processes by itself, because no thaw came in time` | warn | `cgroups` |
+| `a part of the thaw of the user processes failed` | error | `err` |
+| `the guest agent ran the clone identity step` | info | `boot_id`, `machine_id` |
+| `the clone identity step failed, so the clone must not run` | error | `err`, at most 1024 bytes |
+| `the guest agent of a clone has no clone identity step, so the clone must not run` | error | `version`, `agent_version`. Once for each guest link server. |
+| `cannot thaw the user processes of the clone` | warn | `err` |
+| `ignored a CloneResult that answers no CloneIdentity` | debug | `version` |
+| `ignored a FreezeResult that answers no Freeze` | debug | |
 | `ignored a guest link message that this node does not know` | debug | |
 
 ## Standby
@@ -290,6 +302,28 @@ With the step, the executor logs `the wake runs the randomness step, because the
 
 A failed step does not stop the machine, by Q215 ([Guest link](/reference/guest-link/index.html.md#clock-and-randomness)). The step stays pending until the guest agent reports it. Each new guest link of that microVM asks for it: a relink, a resume, and an attach after a restart of `hopboxd`, also after the drop of the memory file. A hibernate does not end it either: the next wake asks for the step, also when it is the first load of the new save. The executor keeps the pending step in `pending_reseed` of the node-local state. Only a boot from the disk or a reboot ends it without a report, because a new kernel needs no step. A guest agent whose guest link version is 3 or lower cannot run the step. The machine then has only the reseed of VMGenID in the guest kernel, and the server of the guest link logs that at level warn, once for each server.
 
+### The freeze before a save
+
+A fork, a snapshot, and a checkpoint save a machine that runs on. Stock Firecracker resumes each process at a load, so the executor freezes the user processes of the guest, and systemd, before such a save, as Q178 and Q256 of the phase 3 plan say. The save of T12, T13, and T18 calls `freezeForSave` of `internal/node/executor` first, and saves only after it returns without an error. Then it runs the thaw that it returned at the resume of the microVM, also after a failed save ([Guest link](/reference/guest-link/index.html.md#freeze-and-clone-identity-step)). The thaw does not wait for the sync of the files. A long sync must not reach the 60 sleeps of the thaw by itself. A hibernate and a move freeze nothing.
+
+`freezeForSave` needs the guest link of the running machine. A guest agent without the feature `clone` fails with `guestlink.ErrNoClone`, and the machine gets no such save. A freeze with an error fails too, after a thaw. A cgroup that does not report the freeze within 2 s runs no user code, so the save goes on. The thaw waits for the answer of the guest agent, at most 30 s. A freeze that did not hold until the thaw fails the save, because each load of it fails its clone identity step. The executor counts each freeze in `hopbox_guest_freezes_total{result}`.
+
+| Log message | Level | Fields |
+| --- | --- | --- |
+| `the user processes of the machine froze for a save` | info | `cgroups`, `took` |
+| `cgroups did not report the freeze in time, and they run no user code until the thaw` | warn | `not_frozen`, `took` |
+| `a part of the freeze failed, so the save fails` | error | `err`, `took` |
+| `the guest agent did not answer the thaw, so the next link sends it` | warn | `err` |
+| `the freeze of the save did not hold until the thaw, so the save fails` | error | `broken`, `by_itself` |
+| `ended a clone whose clone identity step failed` | error | `err` |
+| `cannot end a clone whose clone identity step failed` | error | `err`. The kill runs again 5 s later. |
+
+### The clone identity step
+
+A fork and a new machine from a snapshot load the save of another machine (T12, T14). Before the guest link of such a load starts, the load calls `setClone(true)` of `internal/node/executor`. The executor keeps the step pending in `pending_clone` of the node-local state ([Node-local state](#node-local-state)). While it is pending, each guest link of the microVM asks for the full step, with the MAC address of the machine from `vmm.GuestMAC` ([Guest link](/reference/guest-link/index.html.md#freeze-and-clone-identity-step)). This holds also for the link of an attach after a restart of `hopboxd`. The user processes stay frozen until the step ends.
+
+`Server.Ready` of such a link returns only after the step. So the executor reports no clone as `running` before it, and the report of `running` carries only the new SSH host keys. A failed step fails `Ready` with `guestlink.ErrCloneStep`, and a guest agent without the feature `clone` with `guestlink.ErrNoClone`. While `pending_clone` is set, each failure of the link ends the clone: a failed step, no feature `clone`, no link in time, and an action that ended. The executor kills the microVM at once, also in an attach after a restart of `hopboxd`, and reports `failed`. Each other end of the microVM while the step is pending is a kill too, also a stop and a delete. The shutdown of a guest runs its frozen processes. `pending_clone` stays. The restart policy then starts nothing. A boot from the disk fails, because the disk of the clone holds the `machine-id` and the SSH host keys of the source. A new try of a clone is a new load of its save. The source is a microVM of its own, so it stays as it was. Once the guest agent reported the step, the executor clears `pending_clone`. The executor counts each step in `hopbox_guest_clone_steps_total{result}`.
+
 ### DiscardMemory
 
 `DiscardMemory` sets `discard_memory_generation` in the spec to a new reboot generation ([the machine API](/reference/machine-api/index.html.md#discardmemory)). The executor compares it with the generation of the last boot of the machine on the node. A higher value asks for the drop of the memory file that the boot saved. The executor drops the file once no microVM of the machine runs, with the action `discard_memory`, before any other step. It calls `Restorer.DiscardMemory`, which first puts the disk copy of the saved state back over the disk ([the VMM driver interface](/reference/vmm/index.html.md#snapshotter-and-restorer)). Then the executor reports `stopped` with the discard generation: a hibernated machine steps to `stopped`, and so does a failed one. A machine that is stopped already reports `stopped` again with the new generation. That report tells the control role that the disk of the save is back, and a cold move waits for it ([Cold move](/reference/cold-move/index.html.md)). The executor takes the discard generation as the generation of its last boot only once the control role accepted that report, and saves its node-local state then. No other accepted report raises the generation, because a reboot reports `starting` before its stop, and that stop can fail. A refused report, or one that a new grant dropped, goes again, and so does the report of a discard whose memory file is gone. After a refusal, the next try waits 5 s. So a move never waits for the next boot. The next boot starts from the disk of the save, not from a disk that a failed wake changed. A later hibernate saves with a boot of a higher generation, so an old request never drops its file.
@@ -307,6 +341,7 @@ The executor keeps one file per machine in its state dir, `<dir>/<machine ID>.js
 | `pending_move` | The move whose disk the node waits for, or `unknown` for a moving machine whose spec names no move. Absent for a machine that never moved here. |
 | `acked_move` | The move whose proof of the pull the control role accepted. Until it names the move of `pending_move`, the machine never boots on the node. Absent for a machine that never moved here. |
 | `pending_reseed` | `true` while the running microVM came from a later load of a memory file, and its guest agent did not report the randomness step yet ([The randomness step](#the-randomness-step)). Absent otherwise. |
+| `pending_clone` | `true` while the running microVM is a clone, and its guest agent did not report the clone identity step yet ([The clone identity step](#the-clone-identity-step)). Absent otherwise. |
 | `woke_memory` | The memory file from which a guest agent linked, named by the `saved_at` of that file, in RFC 3339 with nanoseconds, UTC. That file is older than the guest, so the executor drops it and never loads it again ([The end of a wake](#the-end-of-a-wake)). Absent while no guest agent linked from the kept file. |
 
 Example of the fields of a woken machine whose drop did not run yet:
@@ -342,6 +377,8 @@ After a restart, the executor asks the driver for each machine of the state dir.
 | `hopbox_vmm_save_seconds` | histogram | `kind` | The duration of each save of the memory of a machine by the VMM driver, from the start of the call to its end. Only a save that worked counts. |
 | `hopbox_vmm_load_seconds` | histogram | `kind` | The duration of each load of saved memory by the VMM driver, until the microVM runs. The wait for the guest agent does not count. Only a load that worked counts. |
 | `hopbox_saved_state_refusals_total` | counter | `reason` | The saves of memory that the node refused ([The gate of a save](#the-gate-of-a-save)). |
+| `hopbox_guest_clone_steps_total` | counter | `result` | The clone identity steps that the guest links of the node asked for ([The clone identity step](#the-clone-identity-step)): `ok`, `failed`, or `unsupported`. |
+| `hopbox_guest_freezes_total` | counter | `result` | The freezes of the user processes before a save ([The freeze before a save](#the-freeze-before-a-save)): `ok`, `slow`, `incomplete`, `failed`, `unsupported`, or `broken`. |
 
 | Label | Values |
 | --- | --- |

@@ -114,7 +114,7 @@ A boot runs these steps. The executor then waits for the guest agent ([the node 
 | `PUT /boot-source` | `kernel_image_path` `/vmlinux`, and the boot arguments of [Guest kernel](/reference/guest-kernel/index.html.md#boot-requirements). The kernel command line holds no secret. |
 | `PUT /drives/rootfs` | The root disk `/rootfs`, read-write, with `cache_type` `Writeback` and `discard` true. See [Disks](#disks). |
 | `PUT /drives/disk_<32 hex>` | Each extra disk, in the order of the spec, at `/disk-<disk id>`, with `is_root_device` false, `is_read_only` from the attach, and `cache_type` `Writeback`. A read-write disk has `discard` true. The drive ID holds only letters, digits, and `_`, as Firecracker asks. |
-| `PUT /network-interfaces/eth0` | The tap device, and a MAC address from a hash of the machine ID, `06:00:xx:xx:xx:xx`. |
+| `PUT /network-interfaces/eth0` | The tap device, and a MAC address from a hash of the machine ID, `06:00:xx:xx:xx:xx` (`vmm.GuestMAC`). A clone loads with the MAC address of its source, and its guest agent sets this one in the clone identity step ([Guest link](/reference/guest-link/index.html.md#freeze-and-clone-identity-step)). |
 | `PUT /mmds/config` | MMDS version 2 on `eth0`, at `169.254.169.254`. |
 | `PUT /mmds` | `{"hopbox": {"guest_link_key": "<64 hex characters>"}}`, the link key of the boot ([Guest link](/reference/guest-link/index.html.md#link-key)). |
 | `PUT /vsock` | `guest_cid` 3, `uds_path` `/v.sock`. The vsock device of Firecracker carries the connections over unix sockets, so every guest can have the address 3. |

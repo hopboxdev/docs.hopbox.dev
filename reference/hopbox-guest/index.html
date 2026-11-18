@@ -88,7 +88,7 @@
 		})();
 	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-yhmccwul"><div class="social-icons astro-yhmccwul"><a class="site-link astro-o2gh7vpa" href="https://hopbox.dev">hopbox.dev</a><a class="try astro-o2gh7vpa" href="https://dev.hopbox.dev">Try hopbox <span class="preview-tag astro-o2gh7vpa">PREVIEW</span></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-ljc46nbw"><span class="sr-only astro-ljc46nbw">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-ljc46nbw astro-yliuox2t" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-ljc46nbw"><option value="dark" class="astro-ljc46nbw">Dark</option><option value="light" class="astro-ljc46nbw">Light</option><option value="auto" selected class="astro-ljc46nbw">Auto</option></select><svg aria-hidden="true" class="icon caret astro-ljc46nbw astro-yliuox2t" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
 	StarlightThemeProvider.updatePickers();
-</script></div></div></div></sl-sidebar-pane></nav><div class="main-frame astro-roljilfy"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-4l54ma7n"><aside class="right-sidebar-container print:hidden astro-4l54ma7n"><div class="right-sidebar astro-4l54ma7n"><div class="lg:sl-hidden astro-lwvg3pal"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-5ser4d3l"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-5ser4d3l"><details id="starlight__mobile-toc" class="astro-5ser4d3l"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-5ser4d3l"><span class="toggle sl-flex astro-5ser4d3l">On this page<svg aria-hidden="true" class="caret astro-5ser4d3l astro-yliuox2t" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-5ser4d3l"></span></summary><div class="dropdown astro-5ser4d3l"><ul class="isMobile astro-lr6gfr5y" style="--depth: 0;"><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#_top" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Overview</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#usage" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Usage</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#global-flags" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Global flags</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#logs" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Logs</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#commands" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Commands</span></a><ul class="isMobile astro-lr6gfr5y" style="--depth: 1;"><li style="--depth: 1;" class="astro-lr6gfr5y"><a href="#run" style="--depth: 1;" class="astro-lr6gfr5y"><span style="--depth: 1;" class="astro-lr6gfr5y">run</span></a></li></ul></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#files" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Files</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#kernel-changes" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Kernel changes</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#start-command" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Start command</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#systemd-unit" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">systemd unit</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#exit-status" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Exit status</span></a></li></ul></div></details></nav></mobile-starlight-toc><script type="module" src="/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.C3fM4Kra.js"></script></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-lwvg3pal"><div class="sl-container astro-lwvg3pal"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-lr6gfr5y" style="--depth: 0;"><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#_top" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Overview</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#usage" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Usage</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#global-flags" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Global flags</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#logs" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Logs</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#commands" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Commands</span></a><ul class="astro-lr6gfr5y" style="--depth: 1;"><li style="--depth: 1;" class="astro-lr6gfr5y"><a href="#run" style="--depth: 1;" class="astro-lr6gfr5y"><span style="--depth: 1;" class="astro-lr6gfr5y">run</span></a></li></ul></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#files" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Files</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#kernel-changes" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Kernel changes</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#start-command" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Start command</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#systemd-unit" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">systemd unit</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#exit-status" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Exit status</span></a></li></ul></nav></starlight-toc><script type="module" src="/_astro/TableOfContents.astro_astro_type_script_index_0_lang.BpJaGz7G.js"></script></div></div></div></aside><div class="main-pane astro-4l54ma7n"><main data-pagefind-body class="astro-54eho2k2" lang="en" dir="ltr"><div class="content-panel astro-ryortuwl"><div class="sl-container astro-ryortuwl"><h1 id="_top" class="astro-v2f724rr">hopbox-guest</h1></div></div><div class="content-panel astro-ryortuwl"><div class="sl-container astro-ryortuwl"><div class="sl-markdown-content"><p><code dir="auto">hopbox-guest</code> is the guest agent of hopbox. It runs inside every machine. Images ship it. Users and operators do not install it.</p>
+</script></div></div></div></sl-sidebar-pane></nav><div class="main-frame astro-roljilfy"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-4l54ma7n"><aside class="right-sidebar-container print:hidden astro-4l54ma7n"><div class="right-sidebar astro-4l54ma7n"><div class="lg:sl-hidden astro-lwvg3pal"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-5ser4d3l"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-5ser4d3l"><details id="starlight__mobile-toc" class="astro-5ser4d3l"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-5ser4d3l"><span class="toggle sl-flex astro-5ser4d3l">On this page<svg aria-hidden="true" class="caret astro-5ser4d3l astro-yliuox2t" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-5ser4d3l"></span></summary><div class="dropdown astro-5ser4d3l"><ul class="isMobile astro-lr6gfr5y" style="--depth: 0;"><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#_top" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Overview</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#usage" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Usage</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#global-flags" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Global flags</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#logs" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Logs</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#commands" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Commands</span></a><ul class="isMobile astro-lr6gfr5y" style="--depth: 1;"><li style="--depth: 1;" class="astro-lr6gfr5y"><a href="#run" style="--depth: 1;" class="astro-lr6gfr5y"><span style="--depth: 1;" class="astro-lr6gfr5y">run</span></a></li><li style="--depth: 1;" class="astro-lr6gfr5y"><a href="#exec-gate" style="--depth: 1;" class="astro-lr6gfr5y"><span style="--depth: 1;" class="astro-lr6gfr5y">exec-gate</span></a></li><li style="--depth: 1;" class="astro-lr6gfr5y"><a href="#freeze-watch" style="--depth: 1;" class="astro-lr6gfr5y"><span style="--depth: 1;" class="astro-lr6gfr5y">freeze-watch</span></a></li></ul></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#files" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Files</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#kernel-changes" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Kernel changes</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#start-command" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Start command</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#systemd-unit" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">systemd unit</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#freeze-of-the-user-processes" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Freeze of the user processes</span></a><ul class="isMobile astro-lr6gfr5y" style="--depth: 1;"><li style="--depth: 1;" class="astro-lr6gfr5y"><a href="#what-the-freeze-guarantees" style="--depth: 1;" class="astro-lr6gfr5y"><span style="--depth: 1;" class="astro-lr6gfr5y">What the freeze guarantees</span></a></li><li style="--depth: 1;" class="astro-lr6gfr5y"><a href="#what-the-freeze-does-not-guarantee" style="--depth: 1;" class="astro-lr6gfr5y"><span style="--depth: 1;" class="astro-lr6gfr5y">What the freeze does not guarantee</span></a></li></ul></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#clone-identity-step" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Clone identity step</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#exit-status" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Exit status</span></a></li></ul></div></details></nav></mobile-starlight-toc><script type="module" src="/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.C3fM4Kra.js"></script></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-lwvg3pal"><div class="sl-container astro-lwvg3pal"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-lr6gfr5y" style="--depth: 0;"><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#_top" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Overview</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#usage" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Usage</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#global-flags" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Global flags</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#logs" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Logs</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#commands" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Commands</span></a><ul class="astro-lr6gfr5y" style="--depth: 1;"><li style="--depth: 1;" class="astro-lr6gfr5y"><a href="#run" style="--depth: 1;" class="astro-lr6gfr5y"><span style="--depth: 1;" class="astro-lr6gfr5y">run</span></a></li><li style="--depth: 1;" class="astro-lr6gfr5y"><a href="#exec-gate" style="--depth: 1;" class="astro-lr6gfr5y"><span style="--depth: 1;" class="astro-lr6gfr5y">exec-gate</span></a></li><li style="--depth: 1;" class="astro-lr6gfr5y"><a href="#freeze-watch" style="--depth: 1;" class="astro-lr6gfr5y"><span style="--depth: 1;" class="astro-lr6gfr5y">freeze-watch</span></a></li></ul></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#files" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Files</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#kernel-changes" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Kernel changes</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#start-command" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Start command</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#systemd-unit" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">systemd unit</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#freeze-of-the-user-processes" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Freeze of the user processes</span></a><ul class="astro-lr6gfr5y" style="--depth: 1;"><li style="--depth: 1;" class="astro-lr6gfr5y"><a href="#what-the-freeze-guarantees" style="--depth: 1;" class="astro-lr6gfr5y"><span style="--depth: 1;" class="astro-lr6gfr5y">What the freeze guarantees</span></a></li><li style="--depth: 1;" class="astro-lr6gfr5y"><a href="#what-the-freeze-does-not-guarantee" style="--depth: 1;" class="astro-lr6gfr5y"><span style="--depth: 1;" class="astro-lr6gfr5y">What the freeze does not guarantee</span></a></li></ul></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#clone-identity-step" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Clone identity step</span></a></li><li style="--depth: 0;" class="astro-lr6gfr5y"><a href="#exit-status" style="--depth: 0;" class="astro-lr6gfr5y"><span style="--depth: 0;" class="astro-lr6gfr5y">Exit status</span></a></li></ul></nav></starlight-toc><script type="module" src="/_astro/TableOfContents.astro_astro_type_script_index_0_lang.BpJaGz7G.js"></script></div></div></div></aside><div class="main-pane astro-4l54ma7n"><main data-pagefind-body class="astro-54eho2k2" lang="en" dir="ltr"><div class="content-panel astro-ryortuwl"><div class="sl-container astro-ryortuwl"><h1 id="_top" class="astro-v2f724rr">hopbox-guest</h1></div></div><div class="content-panel astro-ryortuwl"><div class="sl-container astro-ryortuwl"><div class="sl-markdown-content"><p><code dir="auto">hopbox-guest</code> is the guest agent of hopbox. It runs inside every machine. Images ship it. Users and operators do not install it.</p>
 <p>The guest agent keeps the guest link to the node open (<a href="/reference/guest-link/">Guest link</a>). It applies the configuration that the node pushes, runs the start command, and runs exec and file copy for the node.</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="usage">Usage</h2><a class="sl-anchor-link" href="#usage"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Usage”</span></a></div>
 <div class="expressive-code"><link rel="stylesheet" href="/_astro/ec.jh14r.css"><script type="module" src="/_astro/ec.0vx5m.js"></script><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="sh"><code><div class="ec-line hb-command"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">hopbox-guest [--log-level=LEVEL] &lt;command&gt; [flags]</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="hopbox-guest [--log-level=LEVEL] <command> [flags]"><div></div></button></div></figure></div>
@@ -154,6 +154,126 @@
 <td>info</td>
 <td><code dir="auto">link</code>, <code dir="auto">metadata_url</code>, <code dir="auto">interface</code>, <code dir="auto">user</code></td>
 <td>The agent starts its guest link.</td>
+</tr>
+<tr>
+<td><code dir="auto">the commands of the agent run in their own slice, so the agent can freeze them for a save</code></td>
+<td>info</td>
+<td><code dir="auto">slice</code></td>
+<td>The guest runs systemd with cgroup v2. The image has <code dir="auto">hopbox.slice</code> and <code dir="auto">hopbox-user.slice</code>, and runs each kept unit in <code dir="auto">hopbox.slice</code>. The agent names the feature <code dir="auto">clone</code> (<a href="#freeze-of-the-user-processes">Freeze of the user processes</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">the guest has no cgroup v2, so the agent cannot freeze the user processes for a save</code></td>
+<td>warn</td>
+<td><code dir="auto">err</code></td>
+<td><code dir="auto">/sys/fs/cgroup/cgroup.controllers</code> is missing. The agent names no feature <code dir="auto">clone</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">cannot find the binary of the agent for the gate of its commands</code></td>
+<td>warn</td>
+<td><code dir="auto">err</code></td>
+<td>The agent cannot read the path of its own binary. It names no feature <code dir="auto">clone</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">cannot read the units of the freeze, so the agent cannot freeze the user processes for a save</code></td>
+<td>error</td>
+<td><code dir="auto">slice</code>, <code dir="auto">err</code></td>
+<td>systemd did not answer, also on a second try 1 s later. The agent names no feature <code dir="auto">clone</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">the image cannot freeze the user processes for a save</code></td>
+<td>warn</td>
+<td><code dir="auto">reason</code></td>
+<td>The image has no unit <code dir="auto">hopbox.slice</code> or <code dir="auto">hopbox-user.slice</code>, or a kept unit runs in another slice. The reason names it. The agent names no feature <code dir="auto">clone</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">cannot stop the commands of an earlier run of the agent</code></td>
+<td>error</td>
+<td><code dir="auto">slice</code>, <code dir="auto">err</code></td>
+<td>The stop of <code dir="auto">hopbox-user.slice</code> at the start of the agent failed.</td>
+</tr>
+<tr>
+<td><code dir="auto">cannot read the cgroups of an earlier freeze</code></td>
+<td>error</td>
+<td><code dir="auto">err</code></td>
+<td>The list of the cgroups at the start of the agent failed.</td>
+</tr>
+<tr>
+<td><code dir="auto">thawed the user processes that an earlier run of the agent froze, and recorded the broken freeze</code></td>
+<td>warn</td>
+<td><code dir="auto">cgroups</code></td>
+<td>An earlier run of the agent froze the user processes and ended before a thaw. The new run never holds such a freeze, and the thaw of the node reports it as broken.</td>
+</tr>
+<tr>
+<td><code dir="auto">froze the user processes for a save</code></td>
+<td>info</td>
+<td><code dir="auto">cgroups</code>, <code dir="auto">took</code></td>
+<td>The node sent <code dir="auto">Freeze</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">a part of the freeze of the user processes failed</code></td>
+<td>error</td>
+<td><code dir="auto">err</code></td>
+<td>A write of <code dir="auto">cgroup.freeze</code> failed. The agent sends the error to the node.</td>
+</tr>
+<tr>
+<td><code dir="auto">cgroups did not freeze in time, so their processes go on during the save</code></td>
+<td>warn</td>
+<td><code dir="auto">cgroups</code>, <code dir="auto">wait</code></td>
+<td>A cgroup did not report the freeze within 2 s. Its tasks still stop before they return to user code.</td>
+</tr>
+<tr>
+<td><code dir="auto">thawed the user processes</code></td>
+<td>info</td>
+<td><code dir="auto">cgroups</code></td>
+<td>The node sent <code dir="auto">Thaw</code> after a freeze.</td>
+</tr>
+<tr>
+<td><code dir="auto">thawed the user processes by itself, because no thaw came</code></td>
+<td>warn</td>
+<td><code dir="auto">ticks</code>, <code dir="auto">cgroups</code></td>
+<td>A source ran 60 sleeps of 1 s after the freeze or the last new link, and no <code dir="auto">Thaw</code> came. The agent records it in <code dir="auto">/run/hopbox/thawed-early</code>, so the freeze check fails. A loaded copy never thaws by itself.</td>
+</tr>
+<tr>
+<td><code dir="auto">the freeze of the user processes did not hold until the thaw</code></td>
+<td>error</td>
+<td><code dir="auto">err</code></td>
+<td>The freeze check at a <code dir="auto">Thaw</code> failed. The agent sends the reason to the node in <code dir="auto">broken</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">cannot record the restart during a freeze</code></td>
+<td>error</td>
+<td><code dir="auto">err</code></td>
+<td>A new run of the agent found a freeze, and did not write <code dir="auto">/run/hopbox/thawed-early</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">cannot thaw the user processes that an earlier run of the agent froze</code></td>
+<td>error</td>
+<td><code dir="auto">err</code></td>
+<td>A write of <code dir="auto">cgroup.freeze</code> at the start of the agent failed.</td>
+</tr>
+<tr>
+<td><code dir="auto">the guest has no VMClock generation counter, so the agent cannot freeze the user processes for a save</code></td>
+<td>warn</td>
+<td><code dir="auto">err</code></td>
+<td><code dir="auto">/dev/vmclock0</code> is missing, or it has no generation counter. The agent names no feature <code dir="auto">clone</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">a part of the thaw of the user processes failed</code></td>
+<td>error</td>
+<td><code dir="auto">err</code></td>
+<td>A write of <code dir="auto">cgroup.freeze</code> failed.</td>
+</tr>
+<tr>
+<td><code dir="auto">ran the clone identity step</code></td>
+<td>info</td>
+<td><code dir="auto">machine_id</code>, <code dir="auto">boot_id</code>, <code dir="auto">took</code></td>
+<td>The node sent <code dir="auto">CloneIdentity</code> (<a href="#clone-identity-step">Clone identity step</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">the clone identity step failed</code></td>
+<td>error</td>
+<td><code dir="auto">err</code></td>
+<td>A part of the step failed. The agent sends the error to the node, and the node ends the clone.</td>
 </tr>
 <tr>
 <td><code dir="auto">guest link up</code></td>
@@ -342,6 +462,14 @@
 <td><code dir="auto">version</code></td>
 <td>Prints the version of <code dir="auto">hopbox-guest</code>. See <a href="/reference/version/">the version command</a>.</td>
 </tr>
+<tr>
+<td><code dir="auto">exec-gate</code></td>
+<td>Hidden. Only the agent runs it, as the first step of each new command (<a href="#exec-gate">exec-gate</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">freeze-watch</code></td>
+<td>Hidden. Only the agent runs it, at each freeze (<a href="#freeze-watch">freeze-watch</a>).</td>
+</tr>
 </tbody>
 </table>
 <div class="sl-heading-wrapper level-h3"><h3 id="run">run</h3><a class="sl-anchor-link" href="#run"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “run”</span></a></div>
@@ -384,8 +512,10 @@
 </table>
 <p>The command does these steps:</p>
 <ol>
+<li>It checks for systemd, cgroup v2, the VMClock generation counter, the units <code dir="auto">hopbox.slice</code> and <code dir="auto">hopbox-user.slice</code>, and the kept units in <code dir="auto">hopbox.slice</code>. With all of them, the agent runs each command in <code dir="auto">hopbox-user.slice</code> and names the feature <code dir="auto">clone</code> (<a href="#freeze-of-the-user-processes">Freeze of the user processes</a>).</li>
 <li>It writes the sshd drop-in. If the image has no ed25519 SSH host key, it creates one. Each machine then has its own host key.</li>
 <li>Under systemd, it tells systemd that it is ready. sshd starts after this step, so sshd always has a host key and the drop-in.</li>
+<li>With the slice, it stops <code dir="auto">hopbox-user.slice</code>, so the commands of an earlier run end. An earlier run can end during a freeze. The agent then first records the broken freeze and thaws its cgroups (<a href="#freeze-of-the-user-processes">Freeze of the user processes</a>).</li>
 <li>It reads the link key from the metadata service, dials the node, and does the handshake.</li>
 <li>On a link of version 4 or later, it sets the guest clock from the node when the two differ by more than 1 s. When the node sends entropy, it first runs the randomness step (<a href="/reference/guest-link/#clock-and-randomness">Guest link</a>).</li>
 <li>It applies each configuration that the node pushes, and starts the start command as <a href="#start-command">Start command</a> says.</li>
@@ -395,6 +525,31 @@
 <p>The agent must run as root. Root can set the host name, the network, and the clock, reseed the kernel, write the files below, and switch users for exec. Outside Linux, the host name, the network setup, the set of the clock, and the randomness step fail with an error, and the rest works.</p>
 <p>Example, on a local unix socket with a local metadata service:</p>
 <div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="sh"><code><div class="ec-line hb-command"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">hopbox-guest </span><span style="--0:#B9BBB3;--1:#5C5E57">run</span><span style="--0:#EDEEE8;--1:#0D0E0C"> </span><span style="--0:#B9BBB3;--1:#5C5E57">--link=unix:///tmp/box1.sock_10240</span><span style="--0:#EDEEE8;--1:#0D0E0C"> </span><span style="--0:#B9BBB3;--1:#5C5E57">--metadata-url=http://127.0.0.1:8169</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="hopbox-guest run --link=unix:///tmp/box1.sock_10240 --metadata-url=http://127.0.0.1:8169"><div></div></button></div></figure></div>
+<div class="sl-heading-wrapper level-h3"><h3 id="exec-gate">exec-gate</h3><a class="sl-anchor-link" href="#exec-gate"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “exec-gate”</span></a></div>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="sh"><code><div class="ec-line hb-command"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">hopbox-guest </span><span style="--0:#B9BBB3;--1:#5C5E57">exec-gate</span><span style="--0:#EDEEE8;--1:#0D0E0C"> </span><span style="--0:#B9BBB3;--1:#5C5E57">--</span><span style="--0:#EDEEE8;--1:#0D0E0C"> </span><span style="--0:#B9BBB3;--1:#5C5E57">&lt;path&gt;</span><span style="--0:#EDEEE8;--1:#0D0E0C"> </span><span style="--0:#B9BBB3;--1:#5C5E57">&lt;argv0&gt;</span><span style="--0:#EDEEE8;--1:#0D0E0C"> [&lt;arg&gt;...]</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="hopbox-guest exec-gate -- <path> <argv0> [<arg>...]"><div></div></button></div></figure></div>
+<p>The agent runs this command as the first step of the start command and of each exec, in place of the command itself. The gate has the user, the working directory, the env, the process group, and the terminal of the command. It waits on file descriptor 3 for one byte from the agent. In that time, the agent moves the gate into a new scope of <code dir="auto">hopbox-user.slice</code>. Then the gate runs <code dir="auto">&lt;path&gt;</code> in its own place, with the argv <code dir="auto">&lt;argv0&gt; &lt;arg&gt;...</code>. So the command keeps the PID of the gate, and no process of the command runs outside its scope. If the pipe ends without the byte, the gate runs nothing, and exits with status 126. A run of <code dir="auto">exec-gate</code> by hand waits for that byte, and exits with status 126 too.</p>
+<p>The gate runs as the user of the command, and the kernel can dump it while it waits. So with <code dir="auto">kernel.yama.ptrace_scope</code> 0, a process of the same user can trace it. That gives the user nothing new, because the main user has sudo.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="freeze-watch">freeze-watch</h3><a class="sl-anchor-link" href="#freeze-watch"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “freeze-watch”</span></a></div>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="sh"><code><div class="ec-line hb-command"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">hopbox-guest </span><span style="--0:#B9BBB3;--1:#5C5E57">freeze-watch</span><span style="--0:#EDEEE8;--1:#0D0E0C"> [--generation=N]</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="hopbox-guest freeze-watch [--generation=N]"><div></div></button></div></figure></div>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">--generation</code></td>
+<td>integer</td>
+<td><code dir="auto">-1</code></td>
+<td>The VMClock generation counter at the freeze. <code dir="auto">-1</code> means a guest without the counter.</td>
+</tr>
+</tbody>
+</table>
+<p>The agent runs this command at each freeze, in its own cgroup, with the read end of a pipe as file descriptor 3. At the thaw, the agent writes one byte, and the watcher exits. An end of the pipe without the byte means that the agent died. In a source, the watcher then writes <code dir="auto">/run/hopbox/thawed-early</code>, and thaws each frozen cgroup, with <code dir="auto">init.scope</code> last, so systemd restarts the agent. In a loaded copy, a guest whose counter now reads another value, it does nothing. A counter that it cannot read counts as a copy.</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="files">Files</h2><a class="sl-anchor-link" href="#files"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Files”</span></a></div>
 <p>The agent writes these files in the guest. Each write replaces the file in one rename, so a reader never sees a part of a file.</p>
 <table>
@@ -461,6 +616,24 @@
 <td>root</td>
 <td>The public part of that key.</td>
 </tr>
+<tr>
+<td><code dir="auto">/etc/machine-id</code></td>
+<td>0444</td>
+<td>root</td>
+<td>A new machine ID, from the clone identity step. A file <code dir="auto">/var/lib/dbus/machine-id</code> gets it too. A link there stays as it is.</td>
+</tr>
+<tr>
+<td><code dir="auto">/run/hopbox/boot_id</code></td>
+<td>0644</td>
+<td>root</td>
+<td>A new boot ID, from the clone identity step. A bind mount shows it at <code dir="auto">/proc/sys/kernel/random/boot_id</code>.</td>
+</tr>
+<tr>
+<td><code dir="auto">/run/hopbox/thawed-early</code></td>
+<td>0644</td>
+<td>root</td>
+<td>The record of a thaw by itself, or of an end of the agent, since the last freeze. The freeze check fails while it exists, and the next freeze removes it.</td>
+</tr>
 </tbody>
 </table>
 <p>The agent reads <code dir="auto">/etc/passwd</code> and <code dir="auto">/etc/group</code> for the user ID, the groups, the home directory, and the login shell of each user. It reports every <code dir="auto">/etc/ssh/ssh_host_*_key.pub</code> key to the node.</p>
@@ -491,6 +664,14 @@
 <tr>
 <td>The interface comes up and gets a route to the metadata service. If it has no IPv4 address, it gets <code dir="auto">169.254.0.2/32</code>.</td>
 <td>The metadata service has an IPv4 link-local address. The change comes before each read of the link key.</td>
+</tr>
+<tr>
+<td><code dir="auto">1</code> or <code dir="auto">0</code> in <code dir="auto">cgroup.freeze</code> of each cgroup of a freeze.</td>
+<td>A <code dir="auto">Freeze</code> or a <code dir="auto">Thaw</code> of the node, a thaw by itself, and the start of the agent (<a href="#freeze-of-the-user-processes">Freeze of the user processes</a>).</td>
+</tr>
+<tr>
+<td>The interface gets the MAC address of the new machine, and its neighbor entries go. The bind mount of the new boot ID.</td>
+<td>The clone identity step (<a href="#clone-identity-step">Clone identity step</a>).</td>
 </tr>
 </tbody>
 </table>
@@ -528,7 +709,7 @@
 </tr>
 <tr>
 <td>A restart of the agent, for example after a crash</td>
-<td>systemd stops the start command with the agent. The new agent starts it again, as for a new boot.</td>
+<td>The start command stops: systemd stops <code dir="auto">hopbox-user.slice</code> with the agent, and the new agent stops it at its start. The new agent starts the command again, as for a new boot.</td>
 </tr>
 </tbody>
 </table>
@@ -562,7 +743,7 @@
 <tr>
 <td><code dir="auto">KillMode</code></td>
 <td><code dir="auto">control-group</code></td>
-<td>A restart of the agent stops the start command and exec. The new agent runs the start command again.</td>
+<td>A restart of the agent ends each helper process of the agent. The start command and exec run in <code dir="auto">hopbox-user.slice</code>, outside the cgroup of the agent.</td>
 </tr>
 <tr>
 <td><code dir="auto">DefaultDependencies</code></td>
@@ -580,12 +761,80 @@
 <td>The agent runs in every normal boot.</td>
 </tr>
 <tr>
+<td><code dir="auto">Slice</code></td>
+<td><code dir="auto">hopbox.slice</code></td>
+<td>A freeze of the user processes spares the agent (<a href="#freeze-of-the-user-processes">Freeze of the user processes</a>).</td>
+</tr>
+<tr>
+<td><code dir="auto">hopbox-user.slice</code></td>
+<td>the unit <code dir="auto">images/default/rootfs/usr/lib/systemd/system/hopbox-user.slice</code>, with <code dir="auto">PartOf=hopbox-guest.service</code></td>
+<td>A stop or a restart of the agent stops the slice, and with it the start command and each exec. The agent also stops the slice at its start, for a restart after a crash.</td>
+</tr>
+<tr>
 <td><code dir="auto">RestrictAddressFamilies</code>, <code dir="auto">SystemCallArchitectures</code></td>
 <td>empty, from the drop-in <code dir="auto">hopbox-guest.service.d/60-hopbox-allow-vsock.conf</code></td>
 <td>The image removes <code dir="auto">AF_VSOCK</code> from every other service. The agent dials the node over vsock, so its drop-in undoes that (<a href="/reference/default-image/#no-vsock-for-services">Default image</a>). The commands that the agent starts keep this freedom.</td>
 </tr>
 </tbody>
 </table>
+<div class="sl-heading-wrapper level-h2"><h2 id="freeze-of-the-user-processes">Freeze of the user processes</h2><a class="sl-anchor-link" href="#freeze-of-the-user-processes"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Freeze of the user processes”</span></a></div>
+<p>Stock Firecracker resumes each process at a load. So before a save for a fork, a snapshot, or a checkpoint, the node sends <code dir="auto">Freeze</code>. The agent then freezes the user processes with <code dir="auto">cgroup.freeze</code> of cgroup v2, and systemd itself too (<a href="/reference/guest-link/#freeze-and-clone-identity-step">Guest link</a>). The owner decided the freeze on 2026-11-06, as Q178, and the freeze of systemd on 2026-11-14, as Q256.</p>
+<p>The agent runs each command in a scope of its own, in <code dir="auto">hopbox-user.slice</code>. The scope has a name of the form <code dir="auto">hopbox-cmd-&lt;pid&gt;-&lt;random&gt;.scope</code>. The gate <code dir="auto">exec-gate</code> holds each new command until the agent placed it in its scope through the private socket of systemd (<a href="#exec-gate">exec-gate</a>). So a freeze of the slice never freezes the agent.</p>
+<p>The image runs the units that a save and a later login need in <code dir="auto">hopbox.slice</code>, through a drop-in <code dir="auto">70-hopbox-keep.conf</code> with <code dir="auto">Slice=hopbox.slice</code> for each: <code dir="auto">systemd-journald.service</code>, <code dir="auto">dbus.service</code>, <code dir="auto">dbus-broker.service</code>, <code dir="auto">systemd-logind.service</code>, <code dir="auto">systemd-udevd.service</code>, and <code dir="auto">ssh.service</code>. The unit of the agent sets <code dir="auto">Slice=hopbox.slice</code> too. <code dir="auto">hopbox.slice</code> has the dependencies of <code dir="auto">system.slice</code>, so journald and udevd start in it before <code dir="auto">sysinit.target</code>, and it stops last at a shutdown.</p>
+<p>At a <code dir="auto">Freeze</code>, the agent does these steps in this order:</p>
+<ol>
+<li>It removes <code dir="auto">/run/hopbox/thawed-early</code>, and reads the generation counter of the VMClock from <code dir="auto">/dev/vmclock0</code>.</li>
+<li>It starts its watcher, <code dir="auto">hopbox-guest freeze-watch</code> (<a href="#freeze-watch">freeze-watch</a>).</li>
+<li>It freezes <code dir="auto">init.scope</code>, the cgroup of systemd, and waits for <code dir="auto">frozen 1</code>. From then on, no unit starts or stops, no timer fires, and no login gets a session. Each of them waits for the thaw.</li>
+<li>It freezes each top-level cgroup but <code dir="auto">hopbox.slice</code>, and each child cgroup of <code dir="auto">hopbox.slice</code> but the kept units, by their exact names. So <code dir="auto">system.slice</code>, <code dir="auto">user.slice</code>, <code dir="auto">machine.slice</code>, each slice that a user adds, <code dir="auto">hopbox-user.slice</code>, a unit with <code dir="auto">Slice=hopbox.slice</code>, and each <code dir="auto">hopbox-*.slice</code> freeze too.</li>
+<li>It lists the cgroups again, and freezes each new one, until a pass finds none. More than 5 passes is an error.</li>
+<li>It waits for <code dir="auto">frozen 1</code> of each cgroup. One budget of 2 s covers the steps 3 to 6.</li>
+<li>It checks the root cgroup. A process there that is no kernel thread is an error that names its PID and its name.</li>
+</ol>
+<p>A cgroup that does not report <code dir="auto">frozen 1</code> in 2 s keeps <code dir="auto">1</code> in its <code dir="auto">cgroup.freeze</code>. Its tasks are inside a kernel call, and the kernel stops each of them before it returns to user code. So such a cgroup runs no user code, and the save only waits no longer for it. An error of a step fails the save. If the freeze of <code dir="auto">init.scope</code> fails, nothing else freezes, because a running systemd must never meet a frozen slice. While the freeze holds, the agent starts no command: the start command and each exec wait for the thaw, apart from the loop of the link, which goes on to take the <code dir="auto">Thaw</code>.</p>
+<p>At a <code dir="auto">Thaw</code>, the agent first runs the freeze check. The check passes only with all of these conditions:</p>
+<ul>
+<li>A <code dir="auto">Freeze</code> of this run of the agent started the freeze.</li>
+<li><code dir="auto">/run/hopbox/thawed-early</code> does not exist.</li>
+<li>Each frozen cgroup still reads <code dir="auto">1</code>, <code dir="auto">init.scope</code> included.</li>
+<li>No new cgroup exists outside the freeze.</li>
+<li>The root cgroup holds only kernel threads.
+The check freezes a new cgroup that it finds, and names it. Its failure goes to the node in <code dir="auto">broken</code>, and the save fails. Then the agent thaws each user cgroup, and <code dir="auto">init.scope</code> last. It thaws <code dir="auto">init.scope</code> only after a pass in which each other write worked and no other cgroup still reads frozen. It tries 3 passes. After that, systemd stays frozen, and the error goes to the node, so a later <code dir="auto">Thaw</code> can try again.</li>
+</ul>
+<p>A source can get no <code dir="auto">Thaw</code>. It then thaws by itself after 60 sleeps of 1 s from the freeze or from its last new link. Each sleep counts once, also one across a jump of the guest clock. The agent records such a thaw in <code dir="auto">/run/hopbox/thawed-early</code>. A loaded copy, a guest whose VMClock generation counter changed since the freeze, never thaws by itself. Only the <code dir="auto">Thaw</code> of the node ends its freeze (Q257). A guest without <code dir="auto">/dev/vmclock0</code> names no feature <code dir="auto">clone</code>.</p>
+<p>A frozen systemd restarts no agent that died. So at an end of the agent during a freeze, its watcher acts. In a source, it records the end in <code dir="auto">/run/hopbox/thawed-early</code>, and ends the whole freeze: it thaws each frozen cgroup, with <code dir="auto">init.scope</code> last. systemd then restarts the agent, and the restart stops <code dir="auto">hopbox-user.slice</code> through <code dir="auto">PartOf=</code>, as at each restart of the agent. In a loaded copy, it does nothing, and the copy stays frozen until the node ends it.</p>
+<p>The rule: a running systemd never meets a frozen slice. systemd 259 starts a unit with <code dir="auto">clone3</code> in the mode of <code dir="auto">vfork</code>, right into the cgroup of the unit. In a frozen slice, the new process stops before its <code dir="auto">exec</code>, and PID 1 waits for it in the kernel. So a thaw of <code dir="auto">init.scope</code> alone holds systemd at its next start of a unit in a frozen slice, such as a timer. For the same reason, a new run of the agent never holds a freeze. A new run starts only with systemd thawed, so only in a source. If it finds frozen cgroups, it writes the record, so the thaw of the node reports a broken freeze, and thaws them, with <code dir="auto">init.scope</code> last. Then it stops <code dir="auto">hopbox-user.slice</code> through systemd, as without a freeze.</p>
+<p>To see the scope of a command, run in the machine:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="sh"><code><div class="ec-line hb-command"><div class="code"><span style="--0:#EDEEE8;--1:#0D0E0C">cat </span><span style="--0:#B9BBB3;--1:#5C5E57">/proc/self/cgroup</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="cat /proc/self/cgroup"><div></div></button></div></figure></div>
+<p>The output has the form <code dir="auto">0::/hopbox.slice/hopbox-user.slice/hopbox-cmd-2817-9f3a1c22.scope</code>.</p>
+<p>A guest agent from an image without <code dir="auto">hopbox.slice</code> and <code dir="auto">hopbox-user.slice</code> names no feature <code dir="auto">clone</code>. Its commands run in the cgroup of the agent, so it cannot freeze them, and the machine gets no fork, snapshot, or checkpoint.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="what-the-freeze-guarantees">What the freeze guarantees</h3><a class="sl-anchor-link" href="#what-the-freeze-guarantees"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “What the freeze guarantees”</span></a></div>
+<p>From the answer to <code dir="auto">Freeze</code> until the <code dir="auto">Thaw</code> of the node, no process of the guest runs user code. systemd stands still too. The exceptions are the guest agent and five services: journald, D-Bus, logind, udev, and sshd, each with the helpers that it starts in its own cgroup. In a clone, the node sends the thaw only after the clone identity step, the randomness step, and the first configuration. So no program of the user runs in a clone before the clone has its new identity and fresh kernel randomness. A clone whose step fails ends with a kill, and its programs never run.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="what-the-freeze-does-not-guarantee">What the freeze does not guarantee</h3><a class="sl-anchor-link" href="#what-the-freeze-does-not-guarantee"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “What the freeze does not guarantee”</span></a></div>
+<ul>
+<li>A program keeps what it holds in memory: keys, tokens, a <code dir="auto">machine-id</code> or a host name that it read before, and the state of its own random number generator. OpenSSL, Go, Python, and Java each keep such a state. After the thaw, each clone goes on from the same state. Only randomness that a program takes from the kernel after the step is fresh. A program can read the VMClock generation counter to learn that it is a copy.</li>
+<li>systemd and the kept services are copies too. They keep the old <code dir="auto">machine-id</code>.</li>
+<li>The kernel works on for a frozen process. It answers on open TCP connections, and a kernel WireGuard device sends on. The node drops each packet with the address of the source until the step.</li>
+<li>A helper of a kept service runs during the freeze. Examples are a udev rule with <code dir="auto">RUN</code>, a PAM module of sshd, and a D-Bus service without a systemd unit. A helper of the kernel, such as <code dir="auto">core_pattern</code>, runs too.</li>
+<li>The user is root in the machine. A user who moves a process into a kept cgroup, or who changes the agent, defeats the freeze. The freeze protects against accidents, not against the owner of the machine.</li>
+<li>A source whose node is lost thaws by itself after 60 s. A source whose agent dies during a freeze thaws at once. A save of such a freeze fails.</li>
+<li>A hibernate and a move do not freeze (Q178).</li>
+</ul>
+<div class="sl-heading-wrapper level-h2"><h2 id="clone-identity-step">Clone identity step</h2><a class="sl-anchor-link" href="#clone-identity-step"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Clone identity step”</span></a></div>
+<p>A fork, and a new machine from a snapshot, start from the memory of another machine. On each link of such a load, until the step is done, the node sends entropy in <code dir="auto">Sync</code>, then <code dir="auto">CloneIdentity</code> (<a href="/reference/guest-link/#freeze-and-clone-identity-step">Guest link</a>). The user processes and systemd are still frozen from the save. The step first runs the freeze check of <a href="#freeze-of-the-user-processes">Freeze of the user processes</a>. A failed check fails the step, with <code dir="auto">the freeze of the save did not hold, so user processes can have run before the step</code>. The agent runs each part of the step, also after another part failed:</p>
+<ol>
+<li>It sets the MAC address of <code dir="auto">--interface</code> to the address of the new machine, and drops the neighbor entries of the interface. The old entries name the tap device of the source.</li>
+<li>It writes a new random <code dir="auto">/etc/machine-id</code>.</li>
+<li>It removes <code dir="auto">/var/lib/systemd/random-seed</code>.</li>
+<li>It writes a new random boot ID to <code dir="auto">/run/hopbox/boot_id</code>, and bind-mounts it over <code dir="auto">/proc/sys/kernel/random/boot_id</code>. A later step writes the file in place. The next hello of the agent names the new boot ID.</li>
+<li>It removes each SSH host key, makes a new ed25519 key, and sends the new keys in its status. Then it sends <code dir="auto">SIGHUP</code> to the sshd listener, the process of <code dir="auto">hopbox.slice/ssh.service</code> whose parent is PID 1, so sshd loads the new key. The step calls no part of systemd, because systemd is frozen. With no listener, sshd reads the new key at its start through <code dir="auto">ssh.socket</code>.</li>
+</ol>
+<p>The <code dir="auto">Config</code> that follows sets the new host name and the new address. After the step and that <code dir="auto">Config</code>, the node sends <code dir="auto">Thaw</code>, and the user processes run with the new identity. A failed part ends the step with an error, and the node ends the clone with its processes still frozen.</p>
+<p>Two parts reach only some processes:</p>
+<ul>
+<li>The bind mount of the boot ID holds in the mount namespace of the agent, the root one. A Docker container reads <code dir="auto">boot_id</code> from its own <code dir="auto">/proc</code>, so it reads the boot ID of the source.</li>
+<li>A daemon that read <code dir="auto">machine-id</code> before the save keeps the old value, such as systemd itself, journald, and D-Bus. So journald writes on to the dir of the old ID in <code dir="auto">/var/log/journal</code>. A program that reads the file after the step gets the new ID. Every clone holds a copy of the keys and the tokens that the programs of its source hold in RAM.</li>
+</ul>
 <div class="sl-heading-wrapper level-h2"><h2 id="exit-status">Exit status</h2><a class="sl-anchor-link" href="#exit-status"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Exit status”</span></a></div>
 <table>
 <thead>
