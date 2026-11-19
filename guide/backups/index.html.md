@@ -1,10 +1,10 @@
-# Give an install a bucket for backups
+# Back up machines to a bucket
 
-> How an operator gives an install an S3 bucket for backups: the bucket and its keys, the lifecycle rule for old versions of deleted objects, the set and the check of the bucket, a private CA, what each failure means, and the backup of the keyring.
+> How an operator gives an install an S3 bucket for backups, and how a user backs up a machine: the bucket and its keys, the lifecycle rule for old versions of deleted objects, the set and the check of the bucket, a private CA, what each failure means, the backup of the keyring, a backup by hand, a backup schedule, and the backups of a deleted machine.
 
-This guide connects an install to a bucket of an S3 server, such as OVHcloud Object Storage. A bucket is a named store of files, called objects, at an object storage provider. Backups need the bucket. Object storage is optional: without it, every other feature of hopbox works.
+A backup is a copy of the main disk of a machine in a bucket of an S3 server, such as OVHcloud Object Storage. A bucket is a named store of files, called objects, at an object storage provider. Backups need the bucket. Object storage is optional: without it, every other feature of hopbox works.
 
-Backups themselves come in a later release. This guide sets the bucket and checks it, so the install is ready for them. [Object storage](/reference/object-storage/index.html.md) holds every rule and error.
+The first part of this guide is for an instance admin: it connects the install to a bucket, and checks it. The second part is for each user: it backs up a machine, by hand and on a schedule ([Back up a machine](#back-up-a-machine)). [Object storage](/reference/object-storage/index.html.md) holds every rule and error.
 
 ## What you need
 
@@ -113,7 +113,7 @@ The bucket bucket1 at https://s3.gra.io.cloud.ovh.net works: a write, a read, an
 
 ## Keep the keyring safe
 
-hopbox will encrypt each backup with a data key that the key-encryption key of the install seals. If you lose the keyring, you lose the backups too. So back up the keyring dir of each control server, apart from the bucket. [Sealing](/reference/sealing/index.html.md#key-files) names the dir.
+hopbox encrypts each backup with a data key that the key-encryption key of the install seals ([Object storage](/reference/object-storage/index.html.md#encryption)). If you lose the keyring, you lose the backups too. So back up the keyring dir of each control server, apart from the bucket. [Sealing](/reference/sealing/index.html.md#key-files) names the dir.
 
 ## Remove the bucket
 
@@ -124,3 +124,70 @@ sudo hopboxd admin config object-storage clear
 ```
 
 The bucket and its objects stay at the provider. Delete them there.
+
+## Back up a machine
+
+A backup copies the main disk of the machine, such as `box1`. It holds no memory and no extra disk. A running machine pauses for a moment while its node makes a copy of the disk. The upload of the copy runs after the resume, so the machine runs on during the upload. Each upload sends only the parts of the disk that no earlier backup of the machine holds. A part of the disk that holds only zeros goes nowhere. So a disk of 100 GB with little data makes a small backup.
+
+To back up `box1` and wait up to 10 minutes for the end:
+
+```sh
+hopbox machine backup create box1 --wait 10m
+```
+
+```text
+The backup 01a1d722-d8ed-7a6e-b058-365cdfc60315 of box1 is done: 12.0 MiB of data, 12.0 MiB sent.
+```
+
+Without `--wait`, the command returns at once, and the backup goes on. A backup needs the rights to open a shell in the machine. So an org admin cannot back up a private machine of another member ([the machine API](/reference/machine-api/index.html.md#who-can-do-what)).
+
+## List and delete backups
+
+```sh
+hopbox machine backup list box1
+```
+
+```text
+ID                                    CREATED               KIND    STATE  DATA      SENT      EXPIRES
+01a1d722-d8ed-7a6e-b058-365cdfc60315  2026-11-13T10:00:00Z  manual  done   12.0 MiB  12.0 MiB  2026-11-20T10:00:00Z
+```
+
+The column `SENT` holds the bytes that each backup added to the bucket. A second backup of a disk that did not change sends only a small list of its parts, called the manifest. The column `EXPIRES` is the end of the retention of the backup. After it, hopbox deletes the backup from the bucket.
+
+To delete a backup before the end of its retention:
+
+```sh
+hopbox machine backup delete 01a1d722-d8ed-7a6e-b058-365cdfc60315
+```
+
+The backup leaves the list at once. Its objects leave the bucket within 10 minutes.
+
+## Back up on a schedule
+
+A machine has no backup schedule by default. To back up `box1` every hour, and keep each backup for 7 days:
+
+```sh
+hopbox machine update box1 --backup-period 1h --backup-retention 7d
+```
+
+The shortest period is 15 minutes. The retention is 1 hour to 365 days, and the default is 7 days. A new retention also changes the end of the retention of each backup of the machine. To turn the schedule off, run `hopbox machine update box1 --backup-period off`. `hopbox machine show box1` shows the schedule in the row `backups`.
+
+The backups of an org count in its limit `backup_bytes` ([the org API](/reference/org-api/index.html.md#usage-limits)). Read the usage with `hopbox org usage`. A backup above the limit fails, and its error names the limit.
+
+## Backups of a deleted machine
+
+A delete of a machine keeps its backups until the end of their retention. List them with the UUID of the machine, such as `hopbox machine backup list 01a1d716-8aad-7a87-af38-80506cd5787b`. A restore of such a backup comes in a later release. When the creator of a machine leaves the org, or the org or the account goes, hopbox removes the backups of its machines at once. A shared machine that stays in the org keeps its backups.
+
+While an instance admin suspends the org, its backups stay, also past their retention. A delete of a backup then fails. After the suspension, each backup keeps the retention that it had left.
+
+## When a backup fails
+
+`hopbox machine backup list box1` shows a failed backup with the state `failed`. The JSON output, with `--json`, holds its error. These are common errors:
+
+| Error | What to do |
+| --- | --- |
+| `this install has no object storage, so it makes no backups` | An instance admin sets the bucket ([Set the bucket](#set-the-bucket)). |
+| `the machine box1 is pending. A backup needs a machine that is running, in standby, hibernated, or stopped` | Wait until the machine runs or stops. |
+| `usage limit exceeded: the backups of the org would use ...` | Delete old backups, set a shorter retention, or ask an instance admin for a higher limit. |
+| `the node of the machine moved no part of the backup for 1h0m0s` | The node of the machine cannot reach the bucket, or is down. An instance admin checks the node and the bucket ([What a failure means](#what-a-failure-means)). |
+| `the upload failed: ...` | The rest names the error of the bucket, as in [What a failure means](#what-a-failure-means). |

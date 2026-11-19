@@ -69,6 +69,7 @@ Each message from the control role holds one of these fields:
 | `disk_transfers` | `DiskTransfers` | The disks that the node serves to other nodes, and the machines whose old files it removes. Only a server whose heartbeat says `disk_transfer` gets it ([Disk transfers](#disk-transfers)). |
 | `control_urls` | `ControlURLs` | The internal listeners of the live control processes on their peer addresses. Every server gets it ([Control URLs](#control-urls)). |
 | `node_disks` | `NodeDisks` | The extra disks that the node holds, makes, or pulls, and the disks whose files it removes. Only a server whose heartbeats name the feature `disks` gets it ([Node disks](#node-disks)). |
+| `node_backups` | `NodeBackups` | The backups that the node copies or uploads, with the data keys of their machines and the bucket. Only a server whose heartbeats name the feature `backups` gets it ([Node backups](#node-backups)). |
 
 A message without a known field ends the channel with `invalid_argument`. A server that gets a message that it does not know logs `the control plane sent a message that this hopboxd does not know. Upgrade hopboxd` and goes on.
 
@@ -114,6 +115,7 @@ The heartbeat holds these values.
 | `removed_disks` | repeated string | The IDs of the disks of the last `remove` of `NodeDisks` whose files the node removed. | at most 4096, each a UUID |
 | `pulled_disk_moves` | repeated string | The IDs of the moves of detached disks whose disk the node pulled whole and checked ([Cold move](/reference/cold-move/index.html.md#detached-disks)). | at most 4096, each a UUID |
 | `failed_disk_moves` | repeated `DiskMoveFailure` | The moves of detached disks whose pull failed for good on the node. `DiskMoveFailure` has `move_id`, a UUID, and `error`. | at most 4096, each error at most 1024 bytes |
+| `backups` | repeated `BackupProgress` | The backups of the last `NodeBackups` of this channel that the node copied, uploads, or ended ([Node backups](#node-backups)). | at most 256, each error at most 1024 bytes of UTF-8 |
 | `capabilities` | repeated string | What the VMM driver of the node can do, from `Driver.Capabilities()`, such as `pause` ([the VMM driver interface](/reference/vmm/index.html.md#capabilities)). The control role records them in `servers.capabilities`. A feature says what the build of `hopboxd` knows, and a capability says what its driver can do. An action on a node needs both ([Placement](/reference/placement/index.html.md#hard-filters)). A server without the node role, and a server of a release before the field, sends none. | at most 64, each from 1 to 64 bytes of UTF-8 |
 | `addresses` | repeated string | The public addresses on the interfaces of the server: each global unicast address that is not private, such as its peer address and the floating addresses on its uplink. The control role records them in `servers.addresses`. The removal of a role from the server checks that the public addresses of the install name none of them. | at most 64, each an IP address |
 | `floating_addresses` | repeated string | The floating addresses of the bootstrap config of an edge server: `edge.public_ipv4`, `edge.floating_addresses`, and `edge.public_ipv6` ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)). A server without the edge role sends none. The control role records them in `servers.floating_addresses`. | at most 64, each an IP address |
@@ -287,6 +289,32 @@ These messages carry the part of a node in the extra disks ([Extra disks](/refer
 | `DiskPull` | `move_id` | string | The ID of the move, a UUID. |
 | `DiskPull` | `source_server_id` | string | The ID of the source node, a UUID. |
 | `DiskPull` | `source_address` | string | The disk listener of the source node, such as `10.239.0.1:7444`. |
+
+### NodeBackups, ObjectStorage, NodeBackup, and BackupProgress
+
+These messages carry the part of a node in the disk backups ([Object storage](/reference/object-storage/index.html.md#backups)). Each `NodeBackups` replaces the one before it, and holds only for the channel that carried it.
+
+| Message | Field | Type | Description |
+| --- | --- | --- | --- |
+| `NodeBackups` | `storage` | `ObjectStorage` | The bucket of the backups, with its secret key. Unset while the install has no object storage, or while no backup of the push has `upload`. The node then uploads nothing. |
+| `NodeBackups` | `backups` | repeated `NodeBackup` | The backups that the node copies or uploads, the oldest first. A backup that the node holds and that the message leaves out ends there. At most 256. |
+| `ObjectStorage` | `endpoint`, `region`, `bucket`, `access_key_id`, `secret_key`, `ca_certificates` | string | The config of the bucket, with the secret key in clear ([Object storage](/reference/object-storage/index.html.md#fields)). |
+| `NodeBackup` | `backup_id`, `machine_id`, `org_id` | string | The backup, its machine, and its org, as UUIDs. |
+| `NodeBackup` | `upload` | bool | True once the control role lets the upload of the copy start. Until then, the node only makes the copy. |
+| `NodeBackup` | `prefix` | string | The start of the keys of each object of the backups of the machine, such as `backups/<org>/<machine>/`. |
+| `NodeBackup` | `data_key` | bytes | The data key of the machine, 32 bytes, that the control role opened. Only a backup with `upload` carries it. The node keeps it in memory only, and never logs it. The field has `debug_redact`, as `secret_key` has. |
+| `BackupProgress` | `backup_id` | string | The backup, a UUID. |
+| `BackupProgress` | `step` | `BackupStep` | How far the node got: `BACKUP_STEP_COPIED`, `BACKUP_STEP_UPLOADING`, `BACKUP_STEP_DONE`, or `BACKUP_STEP_FAILED`. `BACKUP_STEP_UNSPECIFIED` is refused. |
+| `BackupProgress` | `copy_time` | timestamp | The time of the copy of the disk. |
+| `BackupProgress` | `disk_bytes` | uint64 | The size of the disk. |
+| `BackupProgress` | `chunks` | uint32 | The chunks of 4 MiB of the copy that a region of data covers. |
+| `BackupProgress` | `chunks_done` | uint32 | The chunks that the upload went through so far. |
+| `BackupProgress` | `new_chunks` | uint32 | The chunks that the upload sent, because the bucket did not hold them. |
+| `BackupProgress` | `data_bytes` | uint64 | The bytes of the disk in the chunks of data so far. |
+| `BackupProgress` | `uploaded_bytes` | uint64 | The bytes of the objects that the upload sent. |
+| `BackupProgress` | `error` | string | Why the backup failed. At most 1024 bytes. |
+
+`BACKUP_STEP_COPIED`: the node made the copy, and waits for the upload. `BACKUP_STEP_UPLOADING`: the node uploads the copy. `BACKUP_STEP_DONE`: the node wrote the manifest, so the backup is whole in the bucket. `BACKUP_STEP_FAILED`: the backup failed for good, and `error` says why.
 
 ### ControlURLs
 
@@ -507,6 +535,12 @@ The agent hands each `DiskTransfers` to the node role (`node.Agent.Moves`). The 
 A node takes the extra disks with the feature `disks` of its heartbeats ([Extra disks](/reference/disks/index.html.md)). The control role records such a heartbeat, with its disk fields, in its transaction. Then it reads the part of the node in the disks, under the policy action `server.read_disk_transfers`. It keeps the SHA-256 of the last `NodeDisks` that it sent on the channel. It sends `node_disks` only after a change, as for the disk transfers. So a new disk, a removal, or a move of a disk reaches the node within 5 s. A failed read logs `reading the disks of a node failed. The next heartbeat tries again` at level warn. The channel stays open.
 
 The agent hands each `NodeDisks` to the disk keeper of the node (`node.Agent.Disks`). The keeper makes the file of each disk with `create`, and pulls each disk with `pull`. It removes the file of each disk of `remove` ([Extra disks](/reference/disks/index.html.md#the-files-of-the-disks)). Each heartbeat carries what it holds and what it did, in `disks`, `removed_disks`, `pulled_disk_moves`, and `failed_disk_moves`. A server without a keeper logs `the control plane sent the extra disks of a node to a server that holds none` at level warn, and drops the message.
+
+## Node backups
+
+A node makes backups with the feature `backups` of its heartbeats ([Object storage](/reference/object-storage/index.html.md#backups)). The control role records such a heartbeat, with its field `backups`, in its transaction. A report of a backup that ended, that a user deleted, or that belongs to another node changes nothing. Then it reads the part of the node in the backups, under the policy action `server.read_node_backups`. Only a server with the node role passes it. It keeps the SHA-256 of the last `NodeBackups` that it sent on the channel, and sends `node_backups` only after a change, as for the disks. So a new backup, the start of an upload, or a delete reaches the node within 5 s. The message holds secrets, so no log names its content. A failed read logs `reading the backups of a node failed. The next heartbeat tries again` at level warn. The channel stays open.
+
+The agent hands each `NodeBackups` to the backups of the node (`node.Agent.Backups`). At the end of each channel, the agent drops the keys and the bucket of the last push, and the uploads stop. The next channel gets a new push. A server without backups logs `the control plane sent backups to a server that makes none` at level warn, and drops the message.
 
 ## Control URLs
 
@@ -748,6 +782,7 @@ The control side writes these records with `component=channel` and the field `se
 | `reading the mesh for a server failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
 | `reading the control URLs for a server failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
 | `reading the disks of a node failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
+| `reading the backups of a node failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
 | `the edge server gets no certificate yet` | info | `err`. The install has no certificate, or one of an old domain. |
 | `reading the certificate for an edge server failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
 | `reading the routes for an edge server failed. The next heartbeat tries again` | warn | `err`. The channel stays open. |
@@ -788,6 +823,7 @@ The server side writes these records with `component=node`:
 | `the mesh device refused the mesh of the control plane, and keeps the peers that it has` | error | `server`, `address`, `peers`, `err` |
 | `the control plane sent the mesh to a server outside the mesh` | warn | `server` |
 | `the control plane sent the extra disks of a node to a server that holds none` | warn | `server` |
+| `the control plane sent backups to a server that makes none` | warn | `server` |
 | `the control plane sent new control URLs` | info | `server`, `urls` |
 | `the control plane sent control URLs that this server refuses, and it keeps the URLs that it has` | error | `server`, `err` |
 | `cannot keep the control URLs of the control plane. This server dials them until hopboxd stops, and tries the write again at each heartbeat` | error | `server`, `err` |

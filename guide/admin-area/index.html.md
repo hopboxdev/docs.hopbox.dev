@@ -156,7 +156,8 @@ The Admin area has no shell and no file access for a machine. It never shows a s
 The row of each org shows its usage against its limits, also its stored state and its saves in 24 hours. To change the limits of one org, click "Limits" in its row. A field that you leave empty takes the default of the install. For the personal org of a limited account, that is the default of the tier `limited`. The row of such an org has the tag "limited". The dialog shows the limits that apply now. Four fields bound the saved state of the org:
 
 - "Stored state in GiB": the memory files of hibernated machines, and later checkpoints and snapshots. A hibernate never checks it.
-- "Snapshots" and "Backups in GiB": no snapshot or backup exists yet.
+- "Snapshots": no snapshot exists yet.
+- "Backups in GiB": the backups of the org in the bucket. A backup above it fails ([Back up machines to a bucket](/guide/backups/index.html.md#back-up-on-a-schedule)). The row of the org does not show the backup usage. Milestone T29 adds it. The owner of the org reads it with `hopbox org usage`.
 - "Saves in 24 hours, in GiB": the daily budget of saves. A hibernate above it fails, and the machine runs on.
 
 The dialog also has two choices:
@@ -278,7 +279,7 @@ The page never shows the password, and the API never returns it. The page says o
 1. Open the page "Config", section "Object storage".
 2. Type the endpoint, the region, the bucket, the access key ID, and the secret key, and click "Save the object storage".
 
-The page first checks the bucket: the control server writes, reads, and deletes one small object. A failed check changes nothing, and the page shows its cause, such as `the signature does not match, so the secret key is wrong`. Leave the field "Secret key" empty to keep the secret key that is set now. The page empties that field after each save, also after a failed one, so type the key again for the next try. For a server with a private CA, paste its PEM certificates in the field "CA certificates". Click "Check the bucket" to check it again later. [Give an install a bucket for backups](/guide/backups/index.html.md) sets up the bucket at the provider.
+The page first checks the bucket: the control server writes, reads, and deletes one small object. A failed check changes nothing, and the page shows its cause, such as `the signature does not match, so the secret key is wrong`. Leave the field "Secret key" empty to keep the secret key that is set now. The page empties that field after each save, also after a failed one, so type the key again for the next try. For a server with a private CA, paste its PEM certificates in the field "CA certificates". Click "Check the bucket" to check it again later. [Back up machines to a bucket](/guide/backups/index.html.md) sets up the bucket at the provider.
 
 ## Change the domain
 

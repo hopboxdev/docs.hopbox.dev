@@ -281,6 +281,7 @@ These metrics show the leader lease, the jobs of the leader, and the state of ea
 | `hopbox_leader_job_runs_total` | counter | `job`, `result` | The runs of each leader job that ended, by `result`: `ok`, or `failed` for a run that logged a failure. A run that the end of the jobs cut does not count. Each series starts at 0. |
 | `hopbox_leader_job_last_success_seconds` | gauge | `job` | The Unix time of the last run of the job that worked. The leader serves it while its jobs run, after the first run of the job that worked. At the end of the term, and while maintenance mode or the fence pauses the jobs, the series go away. |
 | `hopbox_machines_idled_total` | counter | `action` | The machines that the idle timers moved in the terms of this control process as the leader, by `action`: `standby` or `hibernate` ([the machine API](/reference/machine-api/index.html.md#idle-timers)). A machine counts when its change commits. Each series starts at 0. The sum over the control processes is the count of the install. |
+| `hopbox_machines_backup_overdue` | gauge | none | The machines with a backup period and no done backup in twice that period, in an org that is not suspended ([the machine API](/reference/machine-api/index.html.md#backups)). A schedule counts from its last change. Only the leader serves it, after its first run of the job `backups` in its term. `HopboxBackupsOverdue` fires on it. |
 
 | `job` | Runs |
 | --- | --- |
@@ -294,6 +295,8 @@ These metrics show the leader lease, the jobs of the leader, and the state of ea
 | `sign_up_digest` | At the start of the jobs, then every minute: the digest of new pending accounts. |
 | `host_keys` | Every minute: the return of SSH host keys that no route record holds. |
 | `abuse_detection` | Every minute: the detection of abuse for each account ([Abuse detection](/reference/abuse-detection/index.html.md#the-leader-job)). A run that its timeout of 30 s cuts counts as `failed`. |
+| `backups` | Every minute: the scheduled backups, the end of stalled backups, the record of the chunks of done backups, and the purge of the removals of Q189 ([Object storage](/reference/object-storage/index.html.md#the-jobs-of-the-leader)). A run that its timeout of 5 minutes cuts counts as `failed`. |
+| `backup_prune` | Every 10 minutes: the prune of the backups past their retention and of the deleted ones ([Object storage](/reference/object-storage/index.html.md#the-prune)). `HopboxLeaderJobFailing` and `HopboxLeaderJobStale` take it with the jobs of the sweep. |
 | `acme` | Each turn of the ACME job: a read of the state of the certificate, and the attempt when one is due. A turn follows each attempt, at most 1 hour after the turn before, and 1 minute after a failed read ([the certificate of the install](/reference/acme/index.html.md#the-acme-job)). |
 
 The ACME job also serves the state of the certificate of the install. Only the leader runs the job, so only the leader serves these gauges, from the last read of its state.
@@ -479,7 +482,7 @@ The executors of a node count their actions, and what happens to their machines 
 
 | Metric | Type | Labels | Description |
 | --- | --- | --- | --- |
-| `hopbox_executor_actions_total` | counter | `action`, `result` | The actions of the executors of the node, such as `boot`, `pause`, `resume`, `hibernate`, and `wake` ([the node executor](/reference/executor/index.html.md#metrics)). `drop_memory` drops the memory file of a woken machine in a later step, after a drop that failed or a restart of `hopboxd`. `discard_memory` drops it for `DiscardMemory`. |
+| `hopbox_executor_actions_total` | counter | `action`, `result` | The actions of the executors of the node, such as `boot`, `pause`, `resume`, `hibernate`, and `wake` ([the node executor](/reference/executor/index.html.md#metrics)). `drop_memory` drops the memory file of a woken machine in a later step, after a drop that failed or a restart of `hopboxd`. `discard_memory` drops it for `DiscardMemory`. `copy_disk` copies the disk of a machine for a backup ([the node executor](/reference/executor/index.html.md#the-copy-of-a-disk)), with the results `ok`, `failed`, or `canceled`. |
 | `hopbox_executor_action_duration_seconds` | histogram | `action` | The duration of the actions. |
 | `hopbox_executor_lease_losses_total` | counter | none | The machine leases that the node lost: the control role did not renew one or refused a report with it, or it expired. Each grant counts once, 10 s after its end. The end of a grant by a cold move, or after a delete, does not count ([the node executor](/reference/executor/index.html.md#metrics)). |
 | `hopbox_executor_boot_phase_seconds` | histogram | `phase` | The duration of each phase of a boot or a reboot: `unit_start`, `vmm_ready`, `guest_link`, and `start_command`. |
@@ -492,6 +495,9 @@ The executors of a node count their actions, and what happens to their machines 
 | `hopbox_vmm_save_seconds` | histogram | `kind` | The duration of each save of the memory of a machine by the VMM driver that worked, by kind: `hibernate`. The series starts at 0. |
 | `hopbox_vmm_load_seconds` | histogram | `kind` | The duration of each load of saved memory by the VMM driver that worked, until the microVM runs, by kind: `wake`. The wait for the guest agent does not count. The series starts at 0. |
 | `hopbox_saved_state_refusals_total` | counter | `reason` | The saves of memory that the node refused, by reason: `disk_low`, for a save that leaves less free disk than the floor of `vmm.save_free_percent` and `vmm.save_free_bytes` ([the node executor](/reference/executor/index.html.md#the-gate-of-a-save)). The series starts at 0. `HopboxSavedStateDiskLow` fires on it. |
+| `hopbox_backups_total` | counter | `result` | The backups of the machines of the node that ended on the node, by `result`: `done` or `failed` ([Object storage](/reference/object-storage/index.html.md#the-copy-and-the-upload-on-the-node)). A backup that the control role fails, such as for its limit or a stall, does not count. Each of the 2 series starts at 0. |
+| `hopbox_backup_bytes_total` | counter | none | The bytes that the backups of the node sent to object storage, after the encryption: the new chunks and the manifests. The series starts at 0. |
+| `hopbox_object_storage_requests_total` | counter | `op`, `result` | The attempts of the requests of this process to object storage, on each server with the node role or the control role: the uploads of the node, and the record, the prune, and the purge of the leader. `op` is `put`, `get`, `head`, `delete`, or `list` ([Object storage](/reference/object-storage/index.html.md#requests)). `result` is `ok`, or the kind of the error, such as `unreachable` or `not_found` ([Object storage](/reference/object-storage/index.html.md#errors)). A retry counts as one more attempt. A series shows after its first attempt. `HopboxObjectStorageErrors` fires on it. |
 
 The catalog names the phases and the results in words, so these label values stand for them:
 

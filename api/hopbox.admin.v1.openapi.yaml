@@ -9340,6 +9340,16 @@ components:
             auto_hibernate_timeout is the time without inbound traffic after which the machine hibernates, from running
              or from standby. Unset is off. Like the auto-delete timeout, it counts from last_activity_time, 1 to 2
              minutes late.
+        backupPeriod:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: backup_period
+          description: backup_period is the time between two scheduled backups of the machine. Unset is off, the default.
+        backupRetention:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: backup_retention
+          description: backup_retention is how long hopbox keeps each backup of the machine. The default is 7 days.
       title: Machine
       additionalProperties: false
       description: Machine is a machine as its users see it.

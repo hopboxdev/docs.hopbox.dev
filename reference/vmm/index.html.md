@@ -133,6 +133,19 @@ A driver with the capability snapshot that saves a running microVM without a sto
 | `Microcode` | The CPU microcode of the node at the save, or empty. |
 | `Paused` | How long the vCPUs of a running guest did not run for the save. It is 0 for a guest that was paused before. |
 
+## DiskCopier
+
+A driver that copies the main disk of a machine for a backup is a `vmm.DiskCopier` ("Disk copy of saved state"). The copy holds no extra disk and no memory. The Firecracker driver and the test driver are one. The executor calls it between two actions ([the node executor](/reference/executor/index.html.md#the-copy-of-a-disk)).
+
+| Interface | Method | Description |
+| --- | --- | --- |
+| `vmm.DiskCopier` | `CopyDisk(ctx, id, inst, dst)` | Makes `dst` a reflink copy of the main disk of the machine, and returns a `vmm.DiskCopy`. With `inst`, a running microVM, it pauses the vCPUs, flushes the disk file, copies it, and resumes them. A paused microVM stays paused. A nil `inst` is a machine that does not run, whose copy needs no pause. `dst` must not exist, and its parent must be on the file system of the disk. On an error, `dst` does not exist, and the microVM runs or stays paused as before. A resume that fails is the exception: `Instance.Paused` then says so. The pause lasts as long as the reflink, so the caller keeps the guest link open. |
+
+| `DiskCopy` field | Description |
+| --- | --- |
+| `Bytes` | The size of the disk. |
+| `Paused` | How long the vCPUs of a running guest did not run for the copy. It is 0 for a guest that was paused before, and for a machine that does not run. |
+
 ## Mover
 
 A driver that keeps the disk of each machine in one file is a `vmm.Mover`. A cold move copies that file to another node ([Cold move](/reference/cold-move/index.html.md)). A node whose driver is not a `Mover` takes part in no move.
@@ -163,12 +176,13 @@ A driver that reads what its microVMs use on the host is a `vmm.UsageReader`. Th
 | `SaveWithoutAnEnd(on)` | With true, each save keeps its memory file, as a save whose unit did not end in time. The save then fails with an error that wraps `vmm.ErrSaved`. The guest agent stops at once, and the microVM ends 200 ms later with the exit reason `snapshot`. With false, saves end their microVM again. |
 | `SaveThatEndsAtAStop(on)` | With true, each save keeps its memory file, and fails with an error that wraps `vmm.ErrSaved`. The microVM ends only at a `Stop` or at a new `Snapshot`, each with the exit reason `snapshot`. |
 | `FailStops(err)` | Makes each `Stop` fail with `err`, and the microVM run on, until the next call with nil. |
+| `FailCopies(err)` | Makes each `CopyDisk` fail with `err`, until the next call with nil. The microVM runs or stays paused as before. |
 | `HangWakes(hang)` | With true, each wake runs a microVM whose guest agent never links, as a memory file with damaged bytes does. With false, wakes link again. |
 | `LinkHungWake(id)` | Starts the guest agent of a running microVM whose wake `HangWakes` hung, as a guest that links late. |
 | `Loads(id)` | How many times the memory file of a machine loaded, also in wakes that failed. A new save and a drop start it at 0. |
 | `SetDelay(d)` | Makes each call wait `d` before it acts. A call whose context ends during the wait fails with the cause of the end. A stop then kills the microVM. |
 | `MostSavesAtOnce()` | The most saves that ran at once, of any machines of the driver. |
-| `Ops()` | The calls so far, in order. |
+| `Ops()` | The calls so far, in order. A copy of a disk is `copy_disk`, or `copy_disk_paused` for a running microVM that paused for it. The copy holds the first 64 MiB of the disk and a hole of the rest of its size. The guest agent of the driver never writes the disk, so a test writes its data at the start. |
 | `Overlaps()` | Each call that ran while another call of the same machine ran. An executor must never cause one. |
 | `Guarded(id, pgid)` | Whether a watchdog of the running microVM of a machine guards the process group `pgid` (see below). |
 | `Boots(id)`, `Status(id)`, `Root(id)` | How many times a machine booted, what the driver holds of it, and the dir of the `/etc` of its guest. |

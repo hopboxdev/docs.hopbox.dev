@@ -1176,6 +1176,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.v1.GetInstallInfoResponse'
+  /hopbox.v1.MachineService/CreateBackup:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: CreateBackup
+      description: |-
+        CreateBackup starts a backup of the main disk of a machine to the object storage of the install, and returns it
+         at once, pending. The node pauses a running machine for the copy of its disk, and uploads the copy after the
+         resume. Without object storage, the call fails with failed_precondition.
+      operationId: hopbox.v1.MachineService.CreateBackup
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.CreateBackupRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.CreateBackupResponse'
   /hopbox.v1.MachineService/CreateMachine:
     post:
       tags:
@@ -1218,6 +1260,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.v1.CreateMachineResponse'
+  /hopbox.v1.MachineService/DeleteBackup:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: DeleteBackup
+      description: DeleteBackup deletes one backup. Its objects leave the bucket at the next prune.
+      operationId: hopbox.v1.MachineService.DeleteBackup
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.DeleteBackupRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.DeleteBackupResponse'
   /hopbox.v1.MachineService/DeleteMachine:
     post:
       tags:
@@ -1382,6 +1463,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hopbox.v1.HibernateMachineResponse'
+  /hopbox.v1.MachineService/ListBackups:
+    post:
+      tags:
+        - hopbox.v1.MachineService
+      summary: ListBackups
+      description: |-
+        ListBackups lists the backups of a machine, the newest first. An ID also names a deleted machine whose backups
+         stay until their retention ends.
+      operationId: hopbox.v1.MachineService.ListBackups
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/hopbox.v1.ListBackupsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/hopbox.v1.ListBackupsResponse'
   /hopbox.v1.MachineService/ListMachineSizes:
     post:
       tags:
@@ -3200,6 +3322,107 @@ components:
       title: AuditEntry
       additionalProperties: false
       description: AuditEntry records one action.
+    hopbox.v1.Backup:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the backup.
+        machineId:
+          type: string
+          title: machine_id
+          description: machine_id is the UUID of the machine.
+        machineName:
+          type: string
+          title: machine_name
+          description: machine_name is the name of the machine at the last backup or change.
+        kind:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.BackupKind'
+          title: kind
+          description: kind says who asked for the backup.
+        state:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.BackupState'
+          title: state
+          description: state is the state of the backup.
+        error:
+          type: string
+          title: error
+          description: error says why a failed backup failed.
+        createTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: create_time
+          description: create_time is when the backup was asked for.
+        copyTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: copy_time
+          description: 'copy_time is when the node copied the disk: the moment that the backup holds. Unset while pending.'
+        finishTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: finish_time
+          description: finish_time is when the backup ended, done or failed.
+        expireTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: expire_time
+          description: expire_time is the end of the retention of the backup.
+        diskBytes:
+          type: string
+          title: disk_bytes
+          format: int64
+          description: disk_bytes is the size of the disk.
+        chunks:
+          type: integer
+          title: chunks
+          format: int32
+          description: chunks is the count of chunks of 4 MiB of the copy that hold data.
+        chunksDone:
+          type: integer
+          title: chunks_done
+          format: int32
+          description: chunks_done is the count of chunks that the upload went through so far.
+        newChunks:
+          type: integer
+          title: new_chunks
+          format: int32
+          description: new_chunks is the count of chunks that the upload sent, because no earlier backup of the machine held them.
+        dataBytes:
+          type: string
+          title: data_bytes
+          format: int64
+          description: data_bytes are the bytes of the disk in the chunks so far.
+        uploadedBytes:
+          type: string
+          title: uploaded_bytes
+          format: int64
+          description: uploaded_bytes are the bytes that the upload sent to the bucket, after the encryption.
+      title: Backup
+      additionalProperties: false
+      description: Backup is one backup of the main disk of a machine in object storage.
+    hopbox.v1.BackupKind:
+      type: string
+      title: BackupKind
+      enum:
+        - BACKUP_KIND_UNSPECIFIED
+        - BACKUP_KIND_MANUAL
+        - BACKUP_KIND_SCHEDULED
+      description: BackupKind says who asked for a backup.
+    hopbox.v1.BackupState:
+      type: string
+      title: BackupState
+      enum:
+        - BACKUP_STATE_UNSPECIFIED
+        - BACKUP_STATE_PENDING
+        - BACKUP_STATE_COPIED
+        - BACKUP_STATE_UPLOADING
+        - BACKUP_STATE_DONE
+        - BACKUP_STATE_FAILED
+      description: BackupState is the state of a backup.
     hopbox.v1.CLISignIn:
       type: object
       properties:
@@ -3331,6 +3554,50 @@ components:
       title: CreateAPIKeyResponse
       additionalProperties: false
       description: CreateAPIKeyResponse holds the new key and its secret.
+    hopbox.v1.CreateBackupRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      title: CreateBackupRequest
+      description: CreateBackupRequest names the machine to back up.
+    hopbox.v1.CreateBackupResponse:
+      type: object
+      properties:
+        backup:
+          allOf:
+            - $ref: '#/components/schemas/hopbox.v1.Backup'
+          title: backup
+          description: backup is the new backup, pending.
+      title: CreateBackupResponse
+      additionalProperties: false
+      description: CreateBackupResponse holds the new backup.
     hopbox.v1.CreateDiskRequest:
       type: object
       anyOf:
@@ -3533,6 +3800,21 @@ components:
       title: DeleteAccountResponse
       additionalProperties: false
       description: DeleteAccountResponse has no fields.
+    hopbox.v1.DeleteBackupRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: id is the UUID of the backup.
+      title: DeleteBackupRequest
+      additionalProperties: false
+      description: DeleteBackupRequest names one backup.
+    hopbox.v1.DeleteBackupResponse:
+      type: object
+      title: DeleteBackupResponse
+      additionalProperties: false
+      description: DeleteBackupResponse has no fields.
     hopbox.v1.DeleteDiskRequest:
       type: object
       anyOf:
@@ -4652,6 +4934,51 @@ components:
       title: ListAuditEntriesResponse
       additionalProperties: false
       description: ListAuditEntriesResponse holds one page of entries.
+    hopbox.v1.ListBackupsRequest:
+      type: object
+      anyOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              title: id
+              description: id is the UUID of the machine. It also names a deleted machine.
+          title: id
+        - type: object
+          properties:
+            name:
+              type: string
+              title: name
+              description: name is the name of the machine.
+          title: name
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - id
+              - required:
+                  - name
+          - not:
+              oneOf:
+                - required:
+                    - id
+                - required:
+                    - name
+      title: ListBackupsRequest
+      description: ListBackupsRequest names the machine whose backups to list.
+    hopbox.v1.ListBackupsResponse:
+      type: object
+      properties:
+        backups:
+          type: array
+          items:
+            $ref: '#/components/schemas/hopbox.v1.Backup'
+          title: backups
+          description: backups are the backups, the newest first.
+      title: ListBackupsResponse
+      additionalProperties: false
+      description: ListBackupsResponse holds the backups of the machine.
     hopbox.v1.ListCLISignInsRequest:
       type: object
       title: ListCLISignInsRequest
@@ -5011,6 +5338,16 @@ components:
             auto_hibernate_timeout is the time without inbound traffic after which the machine hibernates, from running
              or from standby. Unset is off. Like the auto-delete timeout, it counts from last_activity_time, 1 to 2
              minutes late.
+        backupPeriod:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: backup_period
+          description: backup_period is the time between two scheduled backups of the machine. Unset is off, the default.
+        backupRetention:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: backup_retention
+          description: backup_retention is how long hopbox keeps each backup of the machine. The default is 7 days.
       title: Machine
       additionalProperties: false
       description: Machine is a machine as its users see it.
@@ -6423,6 +6760,18 @@ components:
             - $ref: '#/components/schemas/google.protobuf.Duration'
           title: auto_hibernate_timeout
           description: auto_hibernate_timeout is the new auto-hibernate timeout. A zero duration turns it off.
+        backupPeriod:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: backup_period
+          description: 'backup_period is the new backup period: 15 minutes to 365 days. A zero duration turns the schedule off.'
+        backupRetention:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Duration'
+          title: backup_retention
+          description: |-
+            backup_retention is the new backup retention: 1 hour to 365 days. It also moves the end of the retention of
+             each backup of the machine.
         expectedVersion:
           type:
             - string

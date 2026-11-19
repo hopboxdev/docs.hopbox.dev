@@ -143,6 +143,9 @@ Each tool tells the client whether it only reads, with the hint `readOnlyHint`. 
 | `hopbox_v1_MachineService_UnshareMachine` | `MachineService.UnshareMachine` | no |
 | `hopbox_v1_MachineService_SetMachineURLPort` | `MachineService.SetMachineURLPort` | no |
 | `hopbox_v1_MachineService_SetMachineURLVisibility` | `MachineService.SetMachineURLVisibility` | no |
+| `hopbox_v1_MachineService_CreateBackup` | [CreateBackup](/reference/machine-api/index.html.md#createbackup) | no |
+| `hopbox_v1_MachineService_ListBackups` | [ListBackups](/reference/machine-api/index.html.md#listbackups) | yes |
+| `hopbox_v1_MachineService_DeleteBackup` | [DeleteBackup](/reference/machine-api/index.html.md#deletebackup) | no |
 | `hopbox_v1_DiskService_CreateDisk` | [CreateDisk](/reference/disks/index.html.md#createdisk) | no |
 | `hopbox_v1_DiskService_GetDisk` | [GetDisk](/reference/disks/index.html.md#getdisk) | yes |
 | `hopbox_v1_DiskService_ListDisks` | [ListDisks](/reference/disks/index.html.md#listdisks) | yes |

@@ -650,11 +650,11 @@ Warning. A control process took the leader lease 4 or more times in the last hou
 
 ### HopboxLeaderJobFailing
 
-Warning. A leader job failed 3 or more times in a row, and no run of it worked. The label `exported_job` names the job, such as `sweep` or `moves`. Prometheus names the label `exported_job`, because the label `job` of the scrape wins. The window is 5 minutes for the jobs that run every minute or more often, and 35 minutes for `sweep` and `pending_expiry`, which run every 10 minutes ([Metrics](/reference/metrics/index.html.md#metrics-of-the-leader-jobs)). Read the log of `hopboxd` on the leader for the errors of that job.
+Warning. A leader job failed 3 or more times in a row, and no run of it worked. The label `exported_job` names the job, such as `sweep` or `moves`. Prometheus names the label `exported_job`, because the label `job` of the scrape wins. The window is 5 minutes for the jobs that run every minute or more often, and 35 minutes for `sweep`, `pending_expiry`, and `backup_prune`, which run every 10 minutes ([Metrics](/reference/metrics/index.html.md#metrics-of-the-leader-jobs)). Read the log of `hopboxd` on the leader for the errors of that job.
 
 ### HopboxLeaderJobStale
 
-Warning. A leader job had no run that worked for 3 of its periods. The label `exported_job` names the job. The jobs of the sweep get 30 minutes and `acme` gets 3 hours. The other jobs get 3 minutes, also the jobs that run every few seconds, because Prometheus reads the time of the last success only every 15 seconds. Look at HopboxLeaderJobFailing for the same job, and read the log of `hopboxd` on the leader.
+Warning. A leader job had no run that worked for 3 of its periods. The label `exported_job` names the job. The jobs of the sweep and `backup_prune` get 30 minutes, and `acme` gets 3 hours. The other jobs get 3 minutes, also the jobs that run every few seconds, because Prometheus reads the time of the last success only every 15 seconds. Look at HopboxLeaderJobFailing for the same job, and read the log of `hopboxd` on the leader.
 
 ### HopboxACMEFailing
 
@@ -793,6 +793,14 @@ Warning. Wakes or resumes of machines failed on a node for 10 minutes. Each mach
 ### HopboxSavedStateDiskLow
 
 Warning. A node refused a save of the memory of a machine in the last 10 minutes. The save would leave less free disk than the floor of the node, `vmm.save_free_percent` and `vmm.save_free_bytes` ([the bootstrap config of hopboxd](/reference/hopboxd-config/index.html.md#keys)). The machine runs on, and its hibernate fails with `resource_exhausted`. The alert ends 10 minutes after the last refusal. Read the log of `hopboxd` on the node for `refused the save of a hibernate, because the node has too little free disk`, which names the free bytes and the floor ([the node executor](/reference/executor/index.html.md#the-gate-of-a-save)). Check the free disk of `<data_dir>/machines` with `df -h /var/lib/hopbox/machines`, and the panel "Saved state by kind" of D9. Free disk on the node, or move machines to another node. Lower the floor only on a small node whose disk holds less than the default of 50 GiB.
+
+### HopboxBackupsOverdue
+
+Warning. For 30 minutes, some machines with a backup schedule had no done backup in twice their backup period. The value is the count of such machines, from the leader. List the backups of a machine with `hopbox machine backup list box1`: a failed backup names its error. A bucket that refuses the requests is a common cause: look at HopboxObjectStorageErrors. Other causes are a node without the feature `backups`, a node that is down, and the backup limit of the org. A backup whose node moved no part of it for an hour fails. Read the log of `hopboxd` on the leader for `a check refused the scheduled backup of a machine, so it fails`, and on the node for `the upload of a backup failed for good` ([Object storage](/reference/object-storage/index.html.md#logs)). See the panel "Overdue machines" of D9.
+
+### HopboxObjectStorageErrors
+
+Warning. For 10 minutes, more than 10% of the requests of a server to object storage failed. The label `instance` names the server. A missing object counts as no error. Backups wait, and an upload goes on from its last chunk once the requests work again. Check the bucket with `sudo hopboxd admin config object-storage check` on a control server. Its message names the cause ([Back up machines to a bucket](/guide/backups/index.html.md#what-a-failure-means)). On a node, the series `hopbox_object_storage_requests_total` names the kind of each error in its label `result`. A node reaches the bucket from its own public address, so check the firewall of the provider for each node too.
 
 ### HopboxGuestLinkProofFailed
 

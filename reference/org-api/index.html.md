@@ -92,7 +92,7 @@ Each such change first locks the row of the org in `orgs`. Then it reads the rol
 | `disk_bytes` | int64 | The disk of all machines together, in bytes. |
 | `stored_state_bytes` | int64 | The stored state that the nodes keep for the org, in bytes: memory files of hibernated machines, checkpoints, and snapshots. Today only memory files count. |
 | `snapshots` | int32 | The snapshots of the org. 0 in the usage until snapshots exist. |
-| `backup_bytes` | int64 | The backups of the org in object storage, in bytes. 0 in the usage until backups exist. |
+| `backup_bytes` | int64 | The backups of the org in object storage, in bytes: the objects of its backups in the bucket, and the worst size of each backup that copies or uploads ([Object storage](/reference/object-storage/index.html.md#the-steps-of-a-backup)). |
 
 The daily budget of saves has a field of its own in each message:
 
@@ -221,7 +221,7 @@ Deletes an org, its memberships, its invitations, and every resource in it. The 
 | `org_id` | optional string | The org. |
 | `confirm` | string | The name of the org, exactly. |
 
-The response `DeleteOrgResponse` has no fields. The audit log keeps the entries of the deleted org, and instance admins read them. Milestone T21 of phase 3 adds backups, and the delete of an org then removes them at once. The owner decided this on 2026-11-06, in Q189.
+The response `DeleteOrgResponse` has no fields. The audit log keeps the entries of the deleted org, and instance admins read them. The delete of an org also removes its backups at once ([Object storage](/reference/object-storage/index.html.md#backups-after-a-delete)). The owner decided this on 2026-11-06, in Q189.
 
 | Error | Code |
 | --- | --- |
@@ -365,7 +365,7 @@ The machines do this in each method. Each method locks the machine rows in the o
 
 The extra disks are a resource of the org too, after the machines ([Extra disks](/reference/disks/index.html.md#a-member-who-leaves-and-the-delete-of-an-org)). `MemberLeaving` deletes each disk that the account made in the org and did not share. `OrgDeleting` deletes every disk of the org. A suspension changes no disk.
 
-Milestone T21 of phase 3 adds backups. A leave of the creator then removes at once the backups of each machine that `MemberLeaving` deletes, and the backups that an earlier delete kept for a machine of that creator. The delete of an org or an account does the same for its machines. A live shared machine keeps its backups. The owner decided this on 2026-11-06, in Q189.
+The backups are a resource of the org too, after the disks. `MemberLeaving` removes at once the backups of each machine of the account in the org that is deleted or gone: the machines that the hook of the machines deleted, and the machines whose backups an earlier delete kept. `OrgDeleting` removes every backup of the org. The delete of an account runs both. A live shared machine keeps its backups, and a suspension keeps every backup. A removal drops the data key of each such machine at once, so no backup of it opens again. The leader then deletes its objects in the bucket ([Object storage](/reference/object-storage/index.html.md#backups-after-a-delete)). The owner decided this on 2026-11-06, in Q189.
 
 `MemberSuspending` of the env vars and secrets does nothing, because a value runs nothing. A delete reserves the name and the SSH port of the machine for 7 days, as `DeleteMachine` does ([the machine API](/reference/machine-api/index.html.md#deletemachine)). The actor of each entry is the caller of the change, and each change publishes the event `machine.updated` ([the machine API](/reference/machine-api/index.html.md#change-events)). A delete of an org sets `org_id` of its machines to null once their target is `deleted`. The machines then wait for their executor ([Control store tables](/reference/control-store/index.html.md#machines)).
 

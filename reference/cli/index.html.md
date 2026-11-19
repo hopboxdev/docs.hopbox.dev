@@ -332,11 +332,12 @@ start command   -
 auto-standby    off
 auto-hibernate  after 4h0m0s without inbound traffic
 auto-delete     off
+backups         off
 last used       2026-10-21T10:52:07Z
 created         2026-10-21T10:52:07Z
 ```
 
-A machine on its way to another state shows both states, such as `stopped, on its way to running`. The line `reboot pending  yes` shows while a reboot waits. The line `skipped env vars  <count>` shows the env vars that the guest agent left out. The line `memory file  yes` shows while the node keeps a memory file of the machine, after a hibernate or a wake that failed. While the install has no domain, the URL is `-`. `auto-delete` shows the timeout, such as `after 168h0m0s without use`. `auto-standby` and `auto-hibernate` show the idle timers, such as `after 4h0m0s without inbound traffic`, or `off` ([the machine API](/reference/machine-api/index.html.md#idle-timers)).
+A machine on its way to another state shows both states, such as `stopped, on its way to running`. The line `reboot pending  yes` shows while a reboot waits. The line `skipped env vars  <count>` shows the env vars that the guest agent left out. The line `memory file  yes` shows while the node keeps a memory file of the machine, after a hibernate or a wake that failed. While the install has no domain, the URL is `-`. `auto-delete` shows the timeout, such as `after 168h0m0s without use`. `auto-standby` and `auto-hibernate` show the idle timers, such as `after 4h0m0s without inbound traffic`, or `off` ([the machine API](/reference/machine-api/index.html.md#idle-timers)). `backups` shows the backup schedule, such as `every 1h0m0s, kept 168h0m0s`, or `off` ([the machine API](/reference/machine-api/index.html.md#backups)).
 
 The JSON object of a machine:
 
@@ -358,6 +359,8 @@ The JSON object of a machine:
 | `auto_delete_timeout_seconds` | number or null | The auto-delete timeout in seconds. `null` means off. |
 | `auto_standby_timeout_seconds` | number or null | The auto-standby timeout in seconds. `null` means off. |
 | `auto_hibernate_timeout_seconds` | number or null | The auto-hibernate timeout in seconds. `null` means off. |
+| `backup_period_seconds` | number or null | The backup period in seconds. `null` means off. |
+| `backup_retention_seconds` | number or null | The backup retention in seconds. |
 | `url` | string | `https://<name>.<domain>`, or empty while the install has no domain. |
 | `url_port` | number | The port in the machine that the URL reaches. |
 | `url_visibility` | string | `private` or `public`. |
@@ -893,6 +896,7 @@ Makes a shared machine private to its creator again with `UnshareMachine`, and p
 
 ```sh
 hopbox machine update MACHINE [--restart=POLICY] [--start-command=CMD] [--auto-delete=TIMEOUT] [--auto-standby=TIMEOUT] [--auto-hibernate=TIMEOUT]
+    [--backup-period=PERIOD] [--backup-retention=TIME]
 ```
 
 Changes the config of a machine with `UpdateMachine`, and prints the machine. A flag that you leave out keeps its value. Without a flag, the command fails with status 80.
@@ -904,6 +908,57 @@ Changes the config of a machine with `UpdateMachine`, and prints the machine. A 
 | `--auto-delete=TIMEOUT` | The new auto-delete timeout, or `off`. A new timeout counts from now. |
 | `--auto-standby=TIMEOUT` | The new auto-standby timeout, or `off`. A new timeout counts from now. |
 | `--auto-hibernate=TIMEOUT` | The new auto-hibernate timeout, or `off`. A new timeout counts from now. |
+| `--backup-period=PERIOD` | The time between two scheduled backups: `off`, or 15 minutes to 365 days, such as `1h` or `1d`. |
+| `--backup-retention=TIME` | How long hopbox keeps each backup: 1 hour to 365 days, such as `7d`. It also moves the end of the retention of each backup of the machine. |
+
+### machine backup create
+
+```sh
+hopbox machine backup create MACHINE [--wait=DURATION]
+```
+
+Starts a backup of the main disk of the machine with `CreateBackup` ([the machine API](/reference/machine-api/index.html.md#createbackup)). A running machine pauses for the copy of its disk, and the upload runs after the resume. Without `--wait`, the command returns at once with the backup pending. With `--wait`, it reads the backups of the machine with `ListBackups` every 2 s. It stops once the backup is done or failed, or at the end of the wait. A failed backup is no error of the command: the line names the error.
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--wait=DURATION` | `0s` | How long to wait until the backup is done or failed. `0s` returns at once. A value below 0 fails with status 80. |
+
+```text
+The backup 01a1d722-d8ed-7a6e-b058-365cdfc60315 of box1 is done: 12.0 MiB of data, 12.0 MiB sent.
+```
+
+Without a wait, or before the end of the backup, the line is `Started the backup <id> of box1. Run hopbox machine backup list box1 to follow it.` A failed backup prints `The backup <id> of box1 failed: <error>`.
+
+JSON: one object with the keys `id`, `machine_id`, `machine_name`, `kind`, `state`, and `error`. `kind` is `manual` or `scheduled`. `state` is `pending`, `copied`, `uploading`, `done`, or `failed`. It also has `create_time`, `copy_time`, `finish_time`, and `expire_time`, as RFC 3339 times, and `copy_time` and `finish_time` are `null` until set. The counts are `disk_bytes`, `chunks`, `chunks_done`, `new_chunks`, `data_bytes`, and `uploaded_bytes`, as the fields of `Backup` ([the machine API](/reference/machine-api/index.html.md#backup)).
+
+### machine backup list
+
+```sh
+hopbox machine backup list MACHINE
+```
+
+Lists the backups of the machine with `ListBackups`, the newest first. The alias is `machine backup ls`. A machine UUID also names a deleted machine whose backups stay until the end of their retention. The table has the columns `ID`, `CREATED`, `KIND`, `STATE`, `DATA`, `SENT`, and `EXPIRES`. An upload shows its progress in the state, such as `uploading 40%`.
+
+```text
+ID                                    CREATED               KIND       STATE  DATA      SENT      EXPIRES
+01a1d722-d8ed-7a6e-b058-365cdfc60315  2026-11-13T10:00:00Z  scheduled  done   12.0 MiB  4.0 MiB   2026-11-20T10:00:00Z
+```
+
+JSON: a list of the objects of [machine backup create](#machine-backup-create).
+
+### machine backup delete
+
+```sh
+hopbox machine backup delete BACKUP
+```
+
+Deletes one backup by its UUID with `DeleteBackup`. The alias is `machine backup rm`. The objects of the backup leave the bucket at the next prune. In a suspended org, the delete fails.
+
+```text
+Deleted the backup 01a1d722-d8ed-7a6e-b058-365cdfc60315.
+```
+
+JSON: an empty object.
 
 ### machine sizes
 
@@ -1331,7 +1386,7 @@ public urls               yes
 outbound smtp             no
 ```
 
-The row `stored state` counts the memory files of the hibernated machines of the org. The row `saves in 24 hours` holds the bytes that the saves of the org wrote in the last 24 hours, and the daily budget. A hibernate above the budget fails ([machine hibernate](#machine-hibernate)). The rows `snapshots` and `backups` stay at 0 until hopbox makes snapshots and backups.
+The row `stored state` counts the memory files of the hibernated machines of the org. The row `saves in 24 hours` holds the bytes that the saves of the org wrote in the last 24 hours, and the daily budget. A hibernate above the budget fails ([machine hibernate](#machine-hibernate)). The row `snapshots` stays at 0 until hopbox makes snapshots. The row `backups` counts the backups of the org in object storage ([the org API](/reference/org-api/index.html.md#usage-limits)).
 
 The row `public urls` says whether the creator of a machine can make its URL public. The personal org of a limited account says `no` ([the org API](/reference/org-api/index.html.md#usage-limits)). The row `outbound smtp` says whether the machines reach TCP port 25. Only an instance admin opens it, for one org.
 

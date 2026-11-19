@@ -33,6 +33,7 @@ The code gives each kind of place its own Go type. The linter (`exhaustruct_v5` 
 | --- | --- | --- |
 | `OrgSecret` | `Org`, `Scope`, `Owner`, `Name` | A secret of an org. `Scope` is `shared`, `private`, or `all`. `Owner` is the account that owns a `private` value. It must be the nil UUID for `shared` and `all`. |
 | `InstallSecret` | `Name` | A value of the install that no org owns. Examples are the SMTP password, the client secret of a sign-in provider, the secret key of the object storage, and the key of the install CA. The key of the install CA uses the name `install_ca.key`, in the table `install_ca` ([Control store tables](/reference/control-store/index.html.md#install_ca)). |
+| `BackupKey` | `Org`, `Machine` | The data key of the backups of a machine in object storage (Q177 of the plan of phase 3). Both fields must be set. A key copied to the set of another machine does not open. |
 
 These columns of the control store hold sealed values:
 
@@ -47,6 +48,7 @@ These columns of the control store hold sealed values:
 | `install_certificate.sealed_key` | `InstallSecret{Name: "install_certificate.key"}`: the PKCS #8 key of the certificate of the install ([the certificate of the install](/reference/acme/index.html.md#where-the-certificate-lives)) |
 | `ssh_front_door_keys.sealed_host_key` | `InstallSecret{Name: "ssh_host.key"}`: the PKCS #8 Ed25519 host key of the SSH front door ([the SSH front door](/reference/ssh-front-door/index.html.md#keys)) |
 | `ssh_front_door_keys.sealed_client_key` | `InstallSecret{Name: "ssh_client.key"}`: the PKCS #8 Ed25519 key with which the SSH front door signs in to the machines ([the SSH front door](/reference/ssh-front-door/index.html.md#keys)) |
+| `backup_sets.sealed_key` | `BackupKey{Org, Machine}` of the row: the data key of 32 bytes of the backups of the machine ([Object storage](/reference/object-storage/index.html.md#encryption), [Control store tables](/reference/control-store/index.html.md#backup_sets)) |
 | `env_vars.sealed_value` | `OrgSecret{Org, Scope, Owner, Name}` of the row: its org, its scope, the owner of a private value or the nil UUID, and its name ([the env var API](/reference/vars-api/index.html.md#sealing), [Control store tables](/reference/control-store/index.html.md#env_vars)) |
 
 Each feature that seals a value adds its column to the list `sealedColumns` in `internal/service/keyring.go`. Then the [rewrap](#rewrap) and the KEK report cover the column.
@@ -60,8 +62,8 @@ The associated data is these bytes:
 | Field | Size | Value |
 | --- | --- | --- |
 | format | 1 byte | `0x01` |
-| kind | 2-byte length, then the bytes | `org-secret` or `install-secret` |
-| each field of the place, in the order of the table above | 2-byte length, then the bytes | An org or an owner is its 16 UUID bytes. A scope and a name are their UTF-8 bytes. |
+| kind | 2-byte length, then the bytes | `org-secret`, `install-secret`, or `backup-key` |
+| each field of the place, in the order of the table above | 2-byte length, then the bytes | An org, an owner, or a machine is its 16 UUID bytes. A scope and a name are their UTF-8 bytes. |
 
 All lengths are big endian.
 

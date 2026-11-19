@@ -328,6 +328,19 @@ A fork and a new machine from a snapshot load the save of another machine (T12, 
 
 `DiscardMemory` sets `discard_memory_generation` in the spec to a new reboot generation ([the machine API](/reference/machine-api/index.html.md#discardmemory)). The executor compares it with the generation of the last boot of the machine on the node. A higher value asks for the drop of the memory file that the boot saved. The executor drops the file once no microVM of the machine runs, with the action `discard_memory`, before any other step. It calls `Restorer.DiscardMemory`, which first puts the disk copy of the saved state back over the disk ([the VMM driver interface](/reference/vmm/index.html.md#snapshotter-and-restorer)). Then the executor reports `stopped` with the discard generation: a hibernated machine steps to `stopped`, and so does a failed one. A machine that is stopped already reports `stopped` again with the new generation. That report tells the control role that the disk of the save is back, and a cold move waits for it ([Cold move](/reference/cold-move/index.html.md)). The executor takes the discard generation as the generation of its last boot only once the control role accepted that report, and saves its node-local state then. No other accepted report raises the generation, because a reboot reports `starting` before its stop, and that stop can fail. A refused report, or one that a new grant dropped, goes again, and so does the report of a discard whose memory file is gone. After a refusal, the next try waits 5 s. So a move never waits for the next boot. The next boot starts from the disk of the save, not from a disk that a failed wake changed. A later hibernate saves with a boot of a higher generation, so an old request never drops its file.
 
+### The copy of a disk
+
+`Manager.CopyDisk(ctx, id, dst)` makes `dst` a reflink copy of the main disk of a machine, for a backup ([Object storage](/reference/object-storage/index.html.md#the-copy-and-the-upload-on-the-node)). The request waits in a queue of the executor of the machine. The goroutine of the executor takes it between two actions, once it holds a valid lease. So no boot, stop, or save runs at the same time. The caller ends its wait at the end of its context. A copy that starts after that does not run, and a copy that ends after that goes.
+
+The copy needs the state `running`, `standby`, `hibernated`, or `stopped`. It refuses a machine with a move, and a microVM whose save is whole. A running microVM with its guest link first gets the command `sync`, as root, through the guest link. Without an answer within 2 s (`GuestSyncTimeout`), the copy is crash-consistent. Then the driver pauses the vCPUs, copies the disk, and resumes them ([the VMM driver interface](/reference/vmm/index.html.md#diskcopier)). The pause lasts only as long as the reflink, so the guest link stays open. A machine in standby, hibernated, or stopped gets no pause. The copy has the action timeout. A lost lease ends it. A copy that fails leaves no file, and the machine runs or stays paused as before. If the resume after the copy failed, the next step resumes the machine. `hopbox_executor_actions_total` counts each copy with the action `copy_disk`. A driver that is no `vmm.DiskCopier` makes no copy, and `CopyDisk` fails with `ErrNoDiskCopy`. An unknown machine fails with `ErrNoMachine`.
+
+| Log message | Level | Fields |
+| --- | --- | --- |
+| `copied the disk for a backup` | info | `file`, `paused`, `bytes` |
+| `the copy of the disk for a backup failed` | warn | `err` |
+| `the guest agent did not sync its disk in time, so the backup is crash-consistent` | warn | `err` |
+| `cannot remove the copy of a disk that nobody waits for` | warn | `file`, `err` |
+
 ## Node-local state
 
 The executor keeps one file per machine in its state dir, `<dir>/<machine ID>.json`, with mode `0600`. The file exists only so that a restarted `hopboxd` can attach to its microVMs again and clean up after them. The control store stays the source of truth. The file holds no secret.
@@ -452,3 +465,5 @@ For the cold moves, the node role calls these methods ([Cold move](/reference/co
 | `Forget(ids)` | Removes the files of the machines that left the node, once their executor holds no valid lease and their microVM does not run. A machine that a later call names no more keeps its files. |
 | `Removed()` | Returns the machines whose files `Forget` removed, for the heartbeats. |
 | `Moving(ids)` | Records that the disk transfers of the node name the machines, to serve or to remove. The end of the grant of such a machine does not count as a lost lease ([Metrics](#metrics)). |
+
+The backups of the node call `CopyDisk(ctx, id, dst)` for the copy of a disk ([The copy of a disk](#the-copy-of-a-disk)).

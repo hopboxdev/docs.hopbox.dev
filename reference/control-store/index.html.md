@@ -616,8 +616,9 @@ Migration `0017_org_limits_and_suspension.sql`. A view with one row per org: wha
 | `stored_state_bytes` | `bigint` | The `bytes` of the memory files of the machines whose target state is not `deleted`, from [machine_memory_states](#machine_memory_states). Migration `0074`. |
 | `pending_save_bytes` | `bigint` | The RAM of the machines with the target `hibernated` and no memory file yet, whose saves wait or run on their nodes. The check of a save counts them at this worst size (Q211). Migration `0074`. |
 | `saved_bytes_last_day` | `bigint` | The `bytes` of the saves of the org in the last 24 hours, from [saved_state_writes](#saved_state_writes). Migration `0074`. |
+| `backup_bytes` | `bigint` | The `stored_bytes` of each [backup set](#backup_sets) of the org that no purge removes. It adds the `worst_bytes` of each [backup](#backups) of the org that copies or uploads, and that no user deleted. Migration `0078`. |
 
-Migration `0028_machines.sql` replaces the view with `CREATE OR REPLACE VIEW`. The view sums the rows of `machines` of each org, as the table says. A machine counts with the numbers of its size that it copied at its create. An org without machines gets 0 for each column. `CREATE OR REPLACE VIEW` refuses a column of another type, and `sum` of an `integer` gives a `bigint`. So the view casts each sum back to the type of its column, such as `coalesce(sum(m.vcpus), 0)::integer`, and keeps the columns of migration `0017`. Migration `0074_saved_state_limits.sql` replaces the view in the same way, and adds its two columns after the older ones.
+Migration `0028_machines.sql` replaces the view with `CREATE OR REPLACE VIEW`. The view sums the rows of `machines` of each org, as the table says. A machine counts with the numbers of its size that it copied at its create. An org without machines gets 0 for each column. `CREATE OR REPLACE VIEW` refuses a column of another type, and `sum` of an `integer` gives a `bigint`. So the view casts each sum back to the type of its column, such as `coalesce(sum(m.vcpus), 0)::integer`, and keeps the columns of migration `0017`. Migration `0074_saved_state_limits.sql` replaces the view in the same way, and adds its two columns after the older ones. Migrations `0077_disks.sql` and `0078_backups.sql` replace it in the same way. Migration `0078` adds `backup_bytes` at the end.
 
 ## org_invitations
 
@@ -1363,6 +1364,9 @@ Migration `0028_machines.sql`. One row per machine ([the machine API](/reference
 | `auto_standby_seconds` | `bigint` | `0` | Migration `0076_idle_timers.sql`, with `oldest_schema_version` 57. The auto-standby timeout in seconds ([the machine API](/reference/machine-api/index.html.md#idle-timers)). 0 is off. 0 or more. |
 | `auto_hibernate_seconds` | `bigint` | `0` | Migration `0076`. The auto-hibernate timeout in seconds. 0 is off. 0 or more. The default 0 gives no timer to a machine that exists at the upgrade, as Q182 decided. A create of this release writes 14400, 4 hours. A create of a `hopboxd` of schema version 57 to 75 takes the default 0, because it never reads the two columns. |
 | `slept_by` | `text` | empty | Migration `0076`. The idle timer that set the target `standby` or `hibernated`: `auto-standby` or `auto-hibernate`. Empty for a target that another actor set. A `PauseMachine` or a `HibernateMachine` of another actor that finds that target already also clears it, in the same transaction. A heartbeat of an edge brings back only a machine with a timer here, so a pause or a hibernate by hand stays with an open connection, as the owner decided in Q233. The trigger `machines_slept_by_reset` clears it ([Triggers of machines](#triggers-of-machines)). |
+| `backup_period_seconds` | `bigint` | `0` | Migration `0078`. The time between two scheduled backups, in seconds ([the machine API](/reference/machine-api/index.html.md#backups)). 0 is off. Otherwise at least 900. A create of a `hopboxd` of schema version 57 to 77 takes the default, so a machine that it makes has no backup schedule. |
+| `backup_retention_seconds` | `bigint` | `604800` | Migration `0078`. How long hopbox keeps each backup of the machine, in seconds. At least 3600. The default is 7 days. |
+| `backup_scheduled_at` | `timestamptz` | the time of the insert | Migration `0078`. The last change of `backup_period_seconds`. The count of an overdue schedule starts from it ([Metrics](/reference/metrics/index.html.md#metrics-of-the-leader-jobs)). |
 | `url_port` | `integer` | `8000` | The port in the machine that its URL reaches, 1 to 65535. |
 | `url_visibility` | `text` | `private` | `private` or `public`. |
 | `ssh_port` | `integer` | none | The SSH port of the machine, 10000 to 30000. `ssh_ports` holds it. |
@@ -1395,6 +1399,7 @@ The table has three checks across its columns:
 | `machines_server` | `server_id`, where it is set | What a node uses ([Placement](/reference/placement/index.html.md#what-a-node-uses)). |
 | `machines_auto_delete` | `last_activity_at`, where `auto_delete_seconds` is more than 0 and the target is not `deleted` | The auto-delete job. |
 | `machines_idle_timers` | `last_activity_at`, where `auto_standby_seconds` or `auto_hibernate_seconds` is more than 0 and the target is `running` or `standby`. Migration `0076`. | The idle timers. |
+| `machines_backup_schedule` | `id`, where `backup_period_seconds` is more than 0 and the target is not `deleted`. Migration `0078`. | The backup period. |
 | `machines_purge` | `delete_requested_at`, where `current_state` is `deleted` | The sweep that drops the rows of deleted machines. |
 
 ### Triggers of machines
@@ -1444,6 +1449,64 @@ Migration `0074_saved_state_limits.sql`, with `oldest_schema_version` 57. One ro
 The primary key is `(machine_id, saved_at)`. A repeated report of one save names the same machine and time, so it adds no row. The index `saved_state_writes_org` on `(org_id, recorded_at)` serves the sum of an org, and the index `saved_state_writes_recorded_at` serves the sweep. The sweep of machines deletes the rows recorded more than 48 hours ago, twice the window of the budget ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)).
 
 Example: a machine of `org1` hibernates twice, with saves recorded at 10:00 and at 16:00 by the clock of the control store, and each save holds 8 GiB. At 20:00 the org has 16 GiB in `saved_bytes_last_day`. At 10:01 the next day, only the save of 16:00 counts, so it has 8 GiB.
+
+## backup_sets
+
+Migration `0078_backups.sql`, with `oldest_schema_version` 57. One row for each machine with backups ([Object storage](/reference/object-storage/index.html.md#backups)): the facts that outlive the row of the machine. The row has no foreign key to its machine or its org. A delete by a user keeps the backups of the machine until their retention ends (Q189). A delete of the org must leave the prefix for the purge of its objects. A `hopboxd` of schema version 57 to 77 never reads the table.
+
+| Column | Type | Default | Description |
+| --- | --- | --- | --- |
+| `machine_id` | `uuid`, primary key | none | The machine. |
+| `org_id` | `uuid` | none | The org of the machine. |
+| `machine_name` | `text` | none | The name of the machine at its last backup, its delete, or its last share or unshare. |
+| `creator_account_id`, `creator_key_id` | `uuid`, can be null | none | The creator of the machine. The rights of the backups of a machine without a row come from them. At most one is set. |
+| `shared` | `boolean` | `false` | The share of the machine, kept up to date by `ShareMachine`, `UnshareMachine`, and the delete of the machine. |
+| `prefix` | `text`, unique | none | The prefix of the objects of the set in the bucket: `backups/<org>/<machine>/`. |
+| `sealed_key` | `bytea`, can be null | none | The data key of the machine, sealed with the place `backup-key` ([Sealing](/reference/sealing/index.html.md#places)). A removal of Q189 sets it to null. |
+| `stored_bytes` | `bigint` | `0` | The bytes of the objects of the set in the bucket. A done backup adds its uploaded bytes. Each prune counts the bucket again. |
+| `prune_needed` | `boolean` | `false` | True after a delete, a failed backup, or another change that can leave objects for the prune. |
+| `pruning_until` | `timestamptz`, can be null | null | The lease of a prune of the set. An upload of the set starts only without it. |
+| `pruned_at` | `timestamptz`, can be null | null | The end of the last prune. The prune takes the oldest first. |
+| `purge_after` | `timestamptz`, can be null | null | The time from which the leader deletes the objects of the set and its row, after a removal of Q189. A check keeps `sealed_key` null exactly while this column is set. |
+| `created_at`, `updated_at` | `timestamptz` | the time of the insert | The times of the row. |
+
+The index `backup_sets_org` lists the sets of an org, and `backup_sets_purge` the sets to purge.
+
+## backups
+
+Migration `0078_backups.sql`. One row for each backup. A delete of its set deletes it. A removal of Q189 deletes the rows of the set at once.
+
+| Column | Type | Default | Description |
+| --- | --- | --- | --- |
+| `id` | `uuid`, primary key | none | A UUIDv7. |
+| `machine_id` | `uuid` | none | The set of the backup, a row of `backup_sets`. |
+| `org_id` | `uuid` | none | The org of the machine. |
+| `server_id` | `uuid`, can be null | none | The node that copies and uploads the backup: the node of the machine at the create. |
+| `kind` | `text` | none | `manual` or `scheduled`. |
+| `state` | `text` | none | `pending`, `copied`, `uploading`, `done`, or `failed` ([Object storage](/reference/object-storage/index.html.md#the-steps-of-a-backup)). |
+| `error` | `text` | empty | Why a failed backup failed. |
+| `worst_bytes` | `bigint` | `0` | The worst size of a backup that copies or uploads, for the backup usage. 0 once it ends. |
+| `disk_bytes` | `bigint` | `0` | The size of the disk. |
+| `chunks`, `chunks_done`, `new_chunks` | `integer` | `0` | The chunks of data of the copy, the chunks that the upload went through, and the chunks that it sent. |
+| `data_bytes`, `uploaded_bytes` | `bigint` | `0` | The bytes of the disk in the chunks, and the bytes that the upload sent. |
+| `chunks_recorded` | `boolean` | `false` | True once the leader recorded the chunks of the done backup in `backup_chunks`. |
+| `copied_at`, `finished_at` | `timestamptz`, can be null | null | The copy of the disk, and the end of the backup. |
+| `expires_at` | `timestamptz` | none | The end of the retention. A change of the retention of the machine moves it by the change. The unsuspend of the org adds the time of the suspension to it. |
+| `deleted_at` | `timestamptz`, can be null | null | The delete by a user. Such a backup leaves the list, and waits for the prune. |
+| `created_at`, `updated_at` | `timestamptz` | the time of the insert | The times of the row. `updated_at` moves only with the progress of a backup, so a backup that stalls grows old. |
+
+The indexes `backups_machine` and `backups_org` list the backups. `backups_server` and `backups_active` list the ones that copy or upload. `backups_unrecorded` lists the done ones to record, and `backups_expires` the ones for the prune.
+
+## backup_chunks
+
+Migration `0078_backups.sql`. One row for each chunk object of a set that a done backup names ([Object storage](/reference/object-storage/index.html.md#the-prune)). A delete of its set deletes it.
+
+| Column | Type | Default | Description |
+| --- | --- | --- | --- |
+| `machine_id` | `uuid` | none | The set, a row of `backup_sets`. |
+| `name` | `text` | none | The name of the chunk. The primary key is `(machine_id, name)`. |
+| `bytes` | `bigint` | none | The size of the sealed object. |
+| `last_used_at` | `timestamptz` | none | The creation time of the newest done backup that names the chunk. The prune deletes a chunk older than each kept backup. |
 
 ## disks
 

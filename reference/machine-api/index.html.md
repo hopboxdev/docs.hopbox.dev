@@ -56,6 +56,9 @@ The creator of a machine is the account that made it, or the org key that made i
 | `StartMachine`, `ResumeMachine`, `WakeMachine`, `RebootMachine`, `RenameMachine`, `UpdateMachine` | yes | yes | no, `not_found` | no, `permission_denied` |
 | `ShareMachine`, `UnshareMachine`, `SetMachineURLPort`, `SetMachineURLVisibility`, `DiscardMemory` | yes | no, `permission_denied` | no, `not_found` | no, `permission_denied` |
 | `Exec`, `Upload`, `Download`, `StreamMachineLogs`, and the WebSocket of exec (action `machine.exec`) | yes | yes | no, `not_found` | no, `permission_denied` |
+| `CreateBackup`, with the rights of `machine.exec` | yes | yes | no, `not_found` | no, `permission_denied` |
+| `ListBackups`, metadata only, as `GetMachine` | yes | yes | no, `not_found` | yes |
+| `DeleteBackup`, as `DeleteMachine` | yes | yes | no, `not_found` | yes |
 
 These rules hold for each caller that acts in the org of the machine:
 
@@ -99,6 +102,8 @@ The API listener resolves session cookies, CLI tokens, and API keys ([the API se
 | `memory_saved` | bool | `true` while the node of the machine keeps a memory file of it: after a hibernate, and after a wake that failed. The control store records the file ([Control store tables](/reference/control-store/index.html.md#machine_memory_states)). A wake that works and `DiscardMemory` end it. |
 | `auto_standby_timeout` | `google.protobuf.Duration` | The time without inbound traffic after which a running machine goes to standby. Unset means off ([Idle timers](#idle-timers)). |
 | `auto_hibernate_timeout` | `google.protobuf.Duration` | The time without inbound traffic after which the machine hibernates, from running or from standby. Unset means off ([Idle timers](#idle-timers)). |
+| `backup_period` | `google.protobuf.Duration` | The time between two scheduled backups of the machine. Unset means off, the default ([Backups](#backups)). |
+| `backup_retention` | `google.protobuf.Duration` | How long hopbox keeps each backup of the machine. The default is 7 days. |
 | `last_activity_time` | `google.protobuf.Timestamp` | The last use of the machine, for the auto-delete timeout and the idle timers ([Auto-delete](#auto-delete)). |
 | `state_change_time` | `google.protobuf.Timestamp` | The time of the last change of the current state. |
 | `delete_request_time` | `google.protobuf.Timestamp` | The time of the delete request. Unset for a machine whose target is not `deleted`. |
@@ -689,7 +694,7 @@ The delete detaches each extra disk of the machine, and keeps it ([Extra disks](
 
 A delete is allowed from any target but `deleted`. A delete and [DiscardMemory](#discardmemory) are the only calls that drop the memory file of a hibernated machine ([Domain rules](/reference/domain-rules/index.html.md#hibernated-machines-keep-their-memory-file)). The leader drops the row of the machine 7 days after the delete request, once its executor deleted it ([hopboxd](/reference/hopboxd/index.html.md#leader-jobs)).
 
-Milestone T21 of phase 3 adds backups. A delete by a user then keeps the backups of the machine until the end of their retention. The same org gets an undo, which milestones T21 and T22 build. The owner decided this on 2026-11-06, in Q189.
+A delete by a user keeps the backups of the machine until the end of their retention. `ListBackups` with the ID of the machine lists them, also after the leader dropped the row of the machine ([ListBackups](#listbackups)). The restore of such a backup, the undo of the delete, comes in milestone T22. The owner decided this on 2026-11-06, in Q189.
 
 | Error | Code |
 | --- | --- |
@@ -1000,14 +1005,14 @@ A machine that an org key made has no creator account, so no account can own it 
 
 ### UpdateMachine
 
-Changes the restart policy, the start command, or a timeout of a machine: auto-delete, auto-standby, or auto-hibernate. A field that the request leaves out keeps its value. The executor applies a new restart policy at once, and a new start command at the next boot ([the node executor](/reference/executor/index.html.md#the-guest-link)).
+Changes the restart policy, the start command, a timeout of a machine (auto-delete, auto-standby, or auto-hibernate), or its backup schedule. A field that the request leaves out keeps its value. The executor applies a new restart policy at once, and a new start command at the next boot ([the node executor](/reference/executor/index.html.md#the-guest-link)).
 
 | Item | Value |
 | --- | --- |
 | Procedure | `/hopbox.v1.MachineService/UpdateMachine` |
 | Policy action | `machine.update`: those who use the machine |
 | Idempotent option | no. A second call with the same request changes nothing. |
-| Audit entry | action `machine.update`, target kind `machine`, details `name` and one detail for each field of the request. `restart_policy` is the new policy. `start_command_changed` is `true` or `false`. `auto_delete_timeout`, `auto_standby_timeout`, and `auto_hibernate_timeout` are the new timeouts as Go writes a duration, for example `1h0m0s`, or `0s` for off. The entry never holds the start command. |
+| Audit entry | action `machine.update`, target kind `machine`, details `name` and one detail for each field of the request. `restart_policy` is the new policy. `start_command_changed` is `true` or `false`. `auto_delete_timeout`, `auto_standby_timeout`, and `auto_hibernate_timeout` are the new timeouts as Go writes a duration, for example `1h0m0s`, or `0s` for off. `backup_period` and `backup_retention` are the new backup schedule, in the same form. The entry never holds the start command. |
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -1017,6 +1022,8 @@ Changes the restart policy, the start command, or a timeout of a machine: auto-d
 | `auto_delete_timeout` | `google.protobuf.Duration` | The new auto-delete timeout. Leave it out to keep it. A zero duration turns it off. |
 | `auto_standby_timeout` | `google.protobuf.Duration` | The new auto-standby timeout. Leave it out to keep it. A zero duration turns it off. |
 | `auto_hibernate_timeout` | `google.protobuf.Duration` | The new auto-hibernate timeout. Leave it out to keep it. A zero duration turns it off. |
+| `backup_period` | `google.protobuf.Duration` | The new backup period: 15 minutes to 365 days, in whole seconds. Leave it out to keep it. A zero duration turns the schedule off. |
+| `backup_retention` | `google.protobuf.Duration` | The new backup retention: 1 hour to 365 days, in whole seconds. Leave it out to keep it. A new retention also moves the end of the retention of each backup of the machine by the change. |
 | `expected_version` | optional int64 | The `version` of the machine that the caller read. If the machine has another version now, the call fails with `aborted` and changes nothing. The version also grows without a request, for example at each report of the executor or after an env change. So a call can fail with `aborted` although no other request came in between. Read the machine again and retry. |
 
 The response `UpdateMachineResponse` has the field `machine`. A new timeout counts from the time of the update: the call sets `last_activity_time` to now. So a new timeout never deletes a machine, or puts it to sleep, at once for its idle time before the update. The owner decided this on 2026-11-11, in Q232. All three timeouts count from `last_activity_time`, so a new idle timer also starts the count of the auto-delete timeout again. An update is allowed in a suspended org.
@@ -1024,7 +1031,7 @@ The response `UpdateMachineResponse` has the field `machine`. A new timeout coun
 | Error | Code |
 | --- | --- |
 | A request that sets no field: `invalid argument: the update sets no field` | `invalid_argument` |
-| A start command or a timeout that breaks its rule ([Domain rules](/reference/domain-rules/index.html.md#start-command)) | `invalid_argument` |
+| A start command, a timeout, a backup period, or a backup retention that breaks its rule ([Domain rules](/reference/domain-rules/index.html.md#start-command)), such as `invalid argument: invalid machine config: the backup period 1m0s is not 0 and not 15m0s to 8760h0m0s` | `invalid_argument` |
 | A stale `expected_version`: `conflict: the machine is at version <n>, not <m>. Read it again` | `aborted` |
 | The target is `deleted`: `failed precondition: machine action not allowed: cannot update a machine that is being deleted` | `failed_precondition` |
 
@@ -1075,6 +1082,127 @@ The response `SetMachineURLVisibilityResponse` has the field `machine`. `URL_VIS
 
 A change to public needs the limit `public_urls` of the org ([the org API](/reference/org-api/index.html.md#usage-limits)). The personal org of a limited account has `public_urls` `false`, unless an instance admin set an override. Such a change fails with `permission_denied` and the message `permission denied: the org cannot make a machine URL public. Ask an instance admin to allow public URLs for the org`, and counts in `hopbox_limit_refusals_total` with the limit `public_urls`. A URL that is public already stays public, and a change to private always works.
 
+## Backups
+
+A backup copies the main disk of a machine to the object storage of the install, without its memory and without its extra disks. The node of the machine makes a reflink copy of the disk. A running machine pauses for the copy, and the upload runs after the resume. The upload sends only the chunks that no earlier backup of the machine holds, encrypted with the data key of the machine. [Object storage](/reference/object-storage/index.html.md#backups) describes the objects, the steps, and the prune.
+
+A backup period turns on the scheduled backups of a machine: the leader starts a backup once the period passed since the last backup of the machine. Each backup has an end of its retention, `expire_time`: its create time plus the backup retention of its machine. After that time, the prune removes it ([Object storage](/reference/object-storage/index.html.md#the-prune)).
+
+### Backup
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | string | The UUID of the backup. |
+| `machine_id` | string | The UUID of the machine. |
+| `machine_name` | string | The name of the machine at its last backup, its delete, or its last share or unshare. |
+| `kind` | `BackupKind` | Who asked for the backup. |
+| `state` | `BackupState` | The state of the backup. |
+| `error` | string | Why a failed backup failed. |
+| `create_time` | `google.protobuf.Timestamp` | The time of the request. |
+| `copy_time` | `google.protobuf.Timestamp` | The time of the copy of the disk: the moment that the backup holds. Unset while pending. |
+| `finish_time` | `google.protobuf.Timestamp` | The end of the backup, done or failed. |
+| `expire_time` | `google.protobuf.Timestamp` | The end of the retention of the backup. |
+| `disk_bytes` | int64 | The size of the disk. |
+| `chunks` | int32 | The chunks of 4 MiB of the copy that a region of data covers. |
+| `chunks_done` | int32 | The chunks that the upload went through so far. |
+| `new_chunks` | int32 | The chunks that the upload sent, because no earlier backup of the machine held them. |
+| `data_bytes` | int64 | The bytes of the disk in the chunks of data so far. |
+| `uploaded_bytes` | int64 | The bytes that the upload sent to the bucket, after the encryption. |
+
+`BackupState`:
+
+| Value | Meaning |
+| --- | --- |
+| `BACKUP_STATE_PENDING` | The node did not copy the disk yet. |
+| `BACKUP_STATE_COPIED` | The node copied the disk, and the upload waits to start. |
+| `BACKUP_STATE_UPLOADING` | The node uploads the copy. |
+| `BACKUP_STATE_DONE` | The backup is whole in the bucket. |
+| `BACKUP_STATE_FAILED` | The backup failed, and `error` says why. |
+
+`BackupKind`:
+
+| Value | Meaning |
+| --- | --- |
+| `BACKUP_KIND_MANUAL` | A caller asked for it with `CreateBackup`. |
+| `BACKUP_KIND_SCHEDULED` | The backup period of the machine asked for it. Its audit entry has the actor `system`. |
+
+`BACKUP_STATE_UNSPECIFIED` and `BACKUP_KIND_UNSPECIFIED` are never in a response.
+
+### CreateBackup
+
+Starts a backup of the main disk of a machine, and returns it at once, pending. A running machine first gets a sync of its guest agent, then pauses for the copy of its disk. A machine in standby, hibernated, or stopped needs no pause.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.v1.MachineService/CreateBackup` |
+| Policy action | `backup.create`: the rights of `machine.exec`, because a backup puts the disk in reach of whoever restores it |
+| Idempotent option | yes. A retry with the same key returns the same backup. |
+| Audit entry | action `backup.create`, target kind `backup`, and target ID the backup. Details: `name` (the name of the machine), `machine` (its ID), and `kind`. |
+
+The request `CreateBackupRequest` names the machine by `id` or `name`. The response `CreateBackupResponse` has the field `backup`, with the state `BACKUP_STATE_PENDING`. The call locks the org row for an update, so two backups of one org never pass the backup limit together. A backup is allowed in a suspended org, because it removes no data.
+
+| Error | Code |
+| --- | --- |
+| The target is `deleted`: `failed precondition: machine action not allowed: cannot back up a machine that is being deleted` | `failed_precondition` |
+| The machine is not running, in standby, hibernated, or stopped: `failed precondition: the machine box1 is pending. A backup needs a machine that is running, in standby, hibernated, or stopped` | `failed_precondition` |
+| A live control process knows the migrations before 78: `failed precondition: the control process <process> knows the migrations up to <n>, and only a hopboxd that knows migration 78 backs up machines. Upgrade it first` | `failed_precondition` |
+| A cold move of the machine runs: `failed precondition: the machine box1 moves to another node. Back up it after the move` | `failed_precondition` |
+| The node names no feature `backups`, or its VMM driver cannot `pause`: `failed precondition: the node of the machine box1 runs hopboxd <version>, whose heartbeats name no feature backups. An instance admin must upgrade the node first` | `failed_precondition` |
+| The install has no object storage: `failed precondition: this install has no object storage, so it makes no backups. An instance admin sets it with hopboxd admin config object-storage set, or on the page Config of the Admin area` | `failed_precondition` |
+| A backup of the machine copies or uploads: `failed precondition: the backup <id> of the machine box1 runs. Wait for its end` | `failed_precondition` |
+| The backups of the org reach its limit: `usage limit exceeded: the backups of the org use <bytes> bytes, and its limit is <limit>` | `resource_exhausted` |
+| A removal of Q189 purges the old backups of the machine: `unavailable: hopbox removes the old backups of the machine box1 now. Try again in a few minutes` | `unavailable` |
+
+The size of a backup is known only after the copy. If the copy holds more data than the limit of the org has room for, the backup fails with `usage limit exceeded: the backups of the org would use <bytes> bytes, and its limit is <limit>` ([Domain rules](/reference/domain-rules/index.html.md#limits-of-saved-state)).
+
+```sh
+browser -d '{"name":"box1"}' $API/hopbox.v1.MachineService/CreateBackup
+```
+
+### ListBackups
+
+Returns the backups of a machine that no user deleted, the newest first. A failed backup stays in the list until the end of its retention.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.v1.MachineService/ListBackups` |
+| Policy action | `backup.list`: as `GetMachine` |
+| Idempotent option | read only |
+| Audit entry | none |
+
+The request `ListBackupsRequest` names the machine by `id` or `name`. An ID also names a deleted machine whose backups stay (Q189 of the phase 3 plan). After the leader dropped the row of such a machine, the rights come from the machine at its delete: its org, its creator, and its share. The response `ListBackupsResponse` has the field `backups`. A machine without backups gets an empty list.
+
+| Error | Code |
+| --- | --- |
+| No machine and no backups have the ID or the name, or the caller cannot read the machine: `not found: no machine has the ID <id>` | `not_found` |
+
+```sh
+browser -d '{"name":"box1"}' $API/hopbox.v1.MachineService/ListBackups
+```
+
+### DeleteBackup
+
+Deletes one backup. The backup leaves the list at once. Its objects leave the bucket at the next prune, within 10 minutes ([Object storage](/reference/object-storage/index.html.md#the-prune)). A backup that copies or uploads ends on its node within a heartbeat.
+
+| Item | Value |
+| --- | --- |
+| Procedure | `/hopbox.v1.MachineService/DeleteBackup` |
+| Policy action | `backup.delete`: as `DeleteMachine` |
+| Idempotent option | no. A second call fails with `not_found`. |
+| Audit entry | action `backup.delete`, target kind `backup`, and target ID the backup. Details: `name` (the name of the machine), `machine` (its ID), and `state` (the state of the backup). |
+
+The request `DeleteBackupRequest` has the field `id`, the UUID of the backup. The response `DeleteBackupResponse` has no fields.
+
+| Error | Code |
+| --- | --- |
+| The ID is not a UUID: `invalid argument: the backup ID "<id>" is not a UUID` | `invalid_argument` |
+| No backup has the ID, a user deleted it already, or the caller cannot read its machine: `not found: no backup has the ID <id>` | `not_found` |
+| A suspended org: `failed precondition: org suspended: an instance admin suspended the org, so it cannot delete a backup` | `failed_precondition` |
+
+```sh
+browser -d '{"id":"01a1d722-d8ed-7a6e-b058-365cdfc60315"}' $API/hopbox.v1.MachineService/DeleteBackup
+```
+
 ## Suspension
 
 An instance admin can suspend an org ([the org API](/reference/org-api/index.html.md#suspension)). The suspension stops the machines of the org, and leaves a hibernated machine hibernated. The rule of each lifecycle action comes from `Action.CheckSuspended()` ([Domain rules](/reference/domain-rules/index.html.md#org-suspension)):
@@ -1084,7 +1212,8 @@ An instance admin can suspend an org ([the org API](/reference/org-api/index.htm
 | `CreateMachine`, `StartMachine`, `ResumeMachine`, `WakeMachine`, `RebootMachine` | blocked, with `failed_precondition` and the message `failed precondition: org suspended: an instance admin suspended the org, so it cannot <action> a machine` |
 | `DeleteMachine`, `DiscardMemory` | blocked, because a suspension keeps the data of the org |
 | `StopMachine`, `PauseMachine`, `HibernateMachine`, `RenameMachine` | allowed |
-| `GetMachine`, `ListMachines`, `WatchMachines`, `ListMachineSizes`, `ShareMachine`, `UnshareMachine`, `UpdateMachine`, `SetMachineURLPort`, `SetMachineURLVisibility`, `StreamMachineLogs` | allowed |
+| `GetMachine`, `ListMachines`, `WatchMachines`, `ListMachineSizes`, `ShareMachine`, `UnshareMachine`, `UpdateMachine`, `SetMachineURLPort`, `SetMachineURLVisibility`, `StreamMachineLogs`, `CreateBackup`, `ListBackups` | allowed |
+| `DeleteBackup` | blocked, with `failed_precondition` and the message `failed precondition: org suspended: an instance admin suspended the org, so it cannot delete a backup`. The prune skips the org, and the retention clock of its backups stops ([Domain rules](/reference/domain-rules/index.html.md#org-suspension)). |
 | `Exec`, `Upload`, `Download` | blocked, with `failed_precondition` and the message `failed precondition: org suspended: an instance admin suspended the org of the machine`. A suspension also ends the open ones ([How a stream ends](#how-a-stream-ends)). |
 
 The machine URLs of a suspended org are blocked too: the edge answers `403`, and `GET /auth/machine` gives no code ([the edge role](/reference/edge/index.html.md#routing)).
@@ -1103,6 +1232,7 @@ A machine counts in the usage of its org ([the org API](/reference/org-api/index
 | vCPUs and RAM | the machines whose target is `running` or `standby` |
 | Stored state | the memory files of the machines whose target is not `deleted` |
 | Saves in 24 hours | the saves of the last 24 hours, also those of a deleted machine |
+| Backups | the objects of the backups in the bucket, and the worst size of each backup that copies or uploads. The backups of a deleted machine count until the prune removes them ([Domain rules](/reference/domain-rules/index.html.md#limits-of-saved-state)). |
 
 `CreateMachine`, the start of a stopped machine, and `WakeMachine` check the limits under the lock of the org row. A hibernated machine holds no vCPUs and no RAM, so a hibernate checks only the daily budget of saves, under the same lock ([HibernateMachine](#hibernatemachine)). The other calls do not add to the usage, so they take only a shared lock of the org row ([Control store tables](/reference/control-store/index.html.md#orgs)). The limits that apply follow the tier of the org: the personal org of a limited account takes the limited defaults, and every other org the first defaults ([the org API](/reference/org-api/index.html.md#usage-limits)).
 
@@ -1152,9 +1282,11 @@ The machine calls write these entries in the transaction of the change. Their or
 | `machine.delete` | `DeleteMachine`, the calls of [What a member leaves behind](/reference/org-api/index.html.md#what-a-member-leaves-behind), and the auto-delete | `reason` for a delete by hopbox or by another call. It is `member left` (`LeaveOrg`, `RemoveOrgMember`, `DeleteAccount`), `org deleted` (`DeleteOrg`, `DeleteAccount` for the personal org), or `auto-delete`. The auto-delete adds `auto_delete_timeout` and `last_activity_at` (RFC 3339, UTC). |
 | `machine.share` | `ShareMachine` | `shared` (`true`) |
 | `machine.unshare` | `UnshareMachine` | `shared` (`false`) |
-| `machine.update` | `UpdateMachine` | `restart_policy`, `start_command_changed`, `auto_delete_timeout`, `auto_standby_timeout`, and `auto_hibernate_timeout`, each one only for a field that the request sets |
+| `machine.update` | `UpdateMachine` | `restart_policy`, `start_command_changed`, `auto_delete_timeout`, `auto_standby_timeout`, `auto_hibernate_timeout`, `backup_period`, and `backup_retention`, each one only for a field that the request sets |
 | `machine.set_url_port` | `SetMachineURLPort` | `url_port`, `old_url_port`, `url_visibility`, `old_url_visibility` |
 | `machine.set_url_visibility` | `SetMachineURLVisibility` | the same as `machine.set_url_port` |
+| `backup.create` | `CreateBackup`, and the backup period of a machine with the actor `system` | the target kind is `backup`, and the target ID the backup. `machine` (the ID of the machine) and `kind` (`manual` or `scheduled`) |
+| `backup.delete` | `DeleteBackup` | the target kind is `backup`. `machine` and `state` (the state of the backup at the delete) |
 
 A call that changes nothing writes no entry. The read calls write none. The admin calls on machines write `machine.list_all`, `machine.admin_stop`, `machine.admin_delete`, `machine.move`, `machine.cancel_move`, and `machine.list_moves` ([the admin API](/reference/admin-api/index.html.md#machineservice)). Each sign-in through the SSH front door writes `machine.ssh`, with the actor `ssh_key` ([the SSH front door](/reference/ssh-front-door/index.html.md#audit)). `Exec`, `Upload`, and `Download` write no entry.
 

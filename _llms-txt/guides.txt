@@ -1212,7 +1212,8 @@ The Admin area has no shell and no file access for a machine. It never shows a s
 The row of each org shows its usage against its limits, also its stored state and its saves in 24 hours. To change the limits of one org, click “Limits” in its row. A field that you leave empty takes the default of the install. For the personal org of a limited account, that is the default of the tier `limited`. The row of such an org has the tag “limited”. The dialog shows the limits that apply now. Four fields bound the saved state of the org:
 
 * “Stored state in GiB”: the memory files of hibernated machines, and later checkpoints and snapshots. A hibernate never checks it.
-* “Snapshots” and “Backups in GiB”: no snapshot or backup exists yet.
+* “Snapshots”: no snapshot exists yet.
+* “Backups in GiB”: the backups of the org in the bucket. A backup above it fails ([Back up machines to a bucket](/guide/backups/#back-up-on-a-schedule)). The row of the org does not show the backup usage. Milestone T29 adds it. The owner of the org reads it with `hopbox org usage`.
 * “Saves in 24 hours, in GiB”: the daily budget of saves. A hibernate above it fails, and the machine runs on.
 
 The dialog also has two choices:
@@ -1336,7 +1337,7 @@ The page never shows the password, and the API never returns it. The page says o
 1. Open the page “Config”, section “Object storage”.
 2. Type the endpoint, the region, the bucket, the access key ID, and the secret key, and click “Save the object storage”.
 
-The page first checks the bucket: the control server writes, reads, and deletes one small object. A failed check changes nothing, and the page shows its cause, such as `the signature does not match, so the secret key is wrong`. Leave the field “Secret key” empty to keep the secret key that is set now. The page empties that field after each save, also after a failed one, so type the key again for the next try. For a server with a private CA, paste its PEM certificates in the field “CA certificates”. Click “Check the bucket” to check it again later. [Give an install a bucket for backups](/guide/backups/) sets up the bucket at the provider.
+The page first checks the bucket: the control server writes, reads, and deletes one small object. A failed check changes nothing, and the page shows its cause, such as `the signature does not match, so the secret key is wrong`. Leave the field “Secret key” empty to keep the secret key that is set now. The page empties that field after each save, also after a failed one, so type the key again for the next try. For a server with a private CA, paste its PEM certificates in the field “CA certificates”. Click “Check the bucket” to check it again later. [Back up machines to a bucket](/guide/backups/) sets up the bucket at the provider.
 
 ## Change the domain
 
@@ -1452,13 +1453,13 @@ Some work never goes through the Admin area. Run `sudo hopboxd admin` on a contr
 | The delete of another account                              | `hopboxd admin account delete`                                        |
 | The token of the alert webhook                             | `hopboxd admin config alert-token set` and `clear`                    |
 
-# Give an install a bucket for backups
+# Back up machines to a bucket
 
-> How an operator gives an install an S3 bucket for backups: the bucket and its keys, the lifecycle rule for old versions of deleted objects, the set and the check of the bucket, a private CA, what each failure means, and the backup of the keyring.
+> How an operator gives an install an S3 bucket for backups, and how a user backs up a machine: the bucket and its keys, the lifecycle rule for old versions of deleted objects, the set and the check of the bucket, a private CA, what each failure means, the backup of the keyring, a backup by hand, a backup schedule, and the backups of a deleted machine.
 
-This guide connects an install to a bucket of an S3 server, such as OVHcloud Object Storage. A bucket is a named store of files, called objects, at an object storage provider. Backups need the bucket. Object storage is optional: without it, every other feature of hopbox works.
+A backup is a copy of the main disk of a machine in a bucket of an S3 server, such as OVHcloud Object Storage. A bucket is a named store of files, called objects, at an object storage provider. Backups need the bucket. Object storage is optional: without it, every other feature of hopbox works.
 
-Backups themselves come in a later release. This guide sets the bucket and checks it, so the install is ready for them. [Object storage](/reference/object-storage/) holds every rule and error.
+The first part of this guide is for an instance admin: it connects the install to a bucket, and checks it. The second part is for each user: it backs up a machine, by hand and on a schedule ([Back up a machine](#back-up-a-machine)). [Object storage](/reference/object-storage/) holds every rule and error.
 
 ## What you need
 
@@ -1567,7 +1568,7 @@ The bucket bucket1 at https://s3.gra.io.cloud.ovh.net works: a write, a read, an
 
 ## Keep the keyring safe
 
-hopbox will encrypt each backup with a data key that the key-encryption key of the install seals. If you lose the keyring, you lose the backups too. So back up the keyring dir of each control server, apart from the bucket. [Sealing](/reference/sealing/#key-files) names the dir.
+hopbox encrypts each backup with a data key that the key-encryption key of the install seals ([Object storage](/reference/object-storage/#encryption)). If you lose the keyring, you lose the backups too. So back up the keyring dir of each control server, apart from the bucket. [Sealing](/reference/sealing/#key-files) names the dir.
 
 ## Remove the bucket
 
@@ -1578,6 +1579,73 @@ sudo hopboxd admin config object-storage clear
 ```
 
 The bucket and its objects stay at the provider. Delete them there.
+
+## Back up a machine
+
+A backup copies the main disk of the machine, such as `box1`. It holds no memory and no extra disk. A running machine pauses for a moment while its node makes a copy of the disk. The upload of the copy runs after the resume, so the machine runs on during the upload. Each upload sends only the parts of the disk that no earlier backup of the machine holds. A part of the disk that holds only zeros goes nowhere. So a disk of 100 GB with little data makes a small backup.
+
+To back up `box1` and wait up to 10 minutes for the end:
+
+```sh
+hopbox machine backup create box1 --wait 10m
+```
+
+```text
+The backup 01a1d722-d8ed-7a6e-b058-365cdfc60315 of box1 is done: 12.0 MiB of data, 12.0 MiB sent.
+```
+
+Without `--wait`, the command returns at once, and the backup goes on. A backup needs the rights to open a shell in the machine. So an org admin cannot back up a private machine of another member ([the machine API](/reference/machine-api/#who-can-do-what)).
+
+## List and delete backups
+
+```sh
+hopbox machine backup list box1
+```
+
+```text
+ID                                    CREATED               KIND    STATE  DATA      SENT      EXPIRES
+01a1d722-d8ed-7a6e-b058-365cdfc60315  2026-11-13T10:00:00Z  manual  done   12.0 MiB  12.0 MiB  2026-11-20T10:00:00Z
+```
+
+The column `SENT` holds the bytes that each backup added to the bucket. A second backup of a disk that did not change sends only a small list of its parts, called the manifest. The column `EXPIRES` is the end of the retention of the backup. After it, hopbox deletes the backup from the bucket.
+
+To delete a backup before the end of its retention:
+
+```sh
+hopbox machine backup delete 01a1d722-d8ed-7a6e-b058-365cdfc60315
+```
+
+The backup leaves the list at once. Its objects leave the bucket within 10 minutes.
+
+## Back up on a schedule
+
+A machine has no backup schedule by default. To back up `box1` every hour, and keep each backup for 7 days:
+
+```sh
+hopbox machine update box1 --backup-period 1h --backup-retention 7d
+```
+
+The shortest period is 15 minutes. The retention is 1 hour to 365 days, and the default is 7 days. A new retention also changes the end of the retention of each backup of the machine. To turn the schedule off, run `hopbox machine update box1 --backup-period off`. `hopbox machine show box1` shows the schedule in the row `backups`.
+
+The backups of an org count in its limit `backup_bytes` ([the org API](/reference/org-api/#usage-limits)). Read the usage with `hopbox org usage`. A backup above the limit fails, and its error names the limit.
+
+## Backups of a deleted machine
+
+A delete of a machine keeps its backups until the end of their retention. List them with the UUID of the machine, such as `hopbox machine backup list 01a1d716-8aad-7a87-af38-80506cd5787b`. A restore of such a backup comes in a later release. When the creator of a machine leaves the org, or the org or the account goes, hopbox removes the backups of its machines at once. A shared machine that stays in the org keeps its backups.
+
+While an instance admin suspends the org, its backups stay, also past their retention. A delete of a backup then fails. After the suspension, each backup keeps the retention that it had left.
+
+## When a backup fails
+
+`hopbox machine backup list box1` shows a failed backup with the state `failed`. The JSON output, with `--json`, holds its error. These are common errors:
+
+| Error                                                                                                       | What to do                                                                                                                                                     |
+| ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `this install has no object storage, so it makes no backups`                                                | An instance admin sets the bucket ([Set the bucket](#set-the-bucket)).                                                                                         |
+| `the machine box1 is pending. A backup needs a machine that is running, in standby, hibernated, or stopped` | Wait until the machine runs or stops.                                                                                                                          |
+| `usage limit exceeded: the backups of the org would use ...`                                                | Delete old backups, set a shorter retention, or ask an instance admin for a higher limit.                                                                      |
+| `the node of the machine moved no part of the backup for 1h0m0s`                                            | The node of the machine cannot reach the bucket, or is down. An instance admin checks the node and the bucket ([What a failure means](#what-a-failure-means)). |
+| `the upload failed: ...`                                                                                    | The rest names the error of the bucket, as in [What a failure means](#what-a-failure-means).                                                                   |
 
 # Use the console
 
@@ -6144,11 +6212,11 @@ Warning. A control process took the leader lease 4 or more times in the last hou
 
 ### HopboxLeaderJobFailing
 
-Warning. A leader job failed 3 or more times in a row, and no run of it worked. The label `exported_job` names the job, such as `sweep` or `moves`. Prometheus names the label `exported_job`, because the label `job` of the scrape wins. The window is 5 minutes for the jobs that run every minute or more often, and 35 minutes for `sweep` and `pending_expiry`, which run every 10 minutes ([Metrics](/reference/metrics/#metrics-of-the-leader-jobs)). Read the log of `hopboxd` on the leader for the errors of that job.
+Warning. A leader job failed 3 or more times in a row, and no run of it worked. The label `exported_job` names the job, such as `sweep` or `moves`. Prometheus names the label `exported_job`, because the label `job` of the scrape wins. The window is 5 minutes for the jobs that run every minute or more often, and 35 minutes for `sweep`, `pending_expiry`, and `backup_prune`, which run every 10 minutes ([Metrics](/reference/metrics/#metrics-of-the-leader-jobs)). Read the log of `hopboxd` on the leader for the errors of that job.
 
 ### HopboxLeaderJobStale
 
-Warning. A leader job had no run that worked for 3 of its periods. The label `exported_job` names the job. The jobs of the sweep get 30 minutes and `acme` gets 3 hours. The other jobs get 3 minutes, also the jobs that run every few seconds, because Prometheus reads the time of the last success only every 15 seconds. Look at HopboxLeaderJobFailing for the same job, and read the log of `hopboxd` on the leader.
+Warning. A leader job had no run that worked for 3 of its periods. The label `exported_job` names the job. The jobs of the sweep and `backup_prune` get 30 minutes, and `acme` gets 3 hours. The other jobs get 3 minutes, also the jobs that run every few seconds, because Prometheus reads the time of the last success only every 15 seconds. Look at HopboxLeaderJobFailing for the same job, and read the log of `hopboxd` on the leader.
 
 ### HopboxACMEFailing
 
@@ -6287,6 +6355,14 @@ Warning. Wakes or resumes of machines failed on a node for 10 minutes. Each mach
 ### HopboxSavedStateDiskLow
 
 Warning. A node refused a save of the memory of a machine in the last 10 minutes. The save would leave less free disk than the floor of the node, `vmm.save_free_percent` and `vmm.save_free_bytes` ([the bootstrap config of hopboxd](/reference/hopboxd-config/#keys)). The machine runs on, and its hibernate fails with `resource_exhausted`. The alert ends 10 minutes after the last refusal. Read the log of `hopboxd` on the node for `refused the save of a hibernate, because the node has too little free disk`, which names the free bytes and the floor ([the node executor](/reference/executor/#the-gate-of-a-save)). Check the free disk of `<data_dir>/machines` with `df -h /var/lib/hopbox/machines`, and the panel “Saved state by kind” of D9. Free disk on the node, or move machines to another node. Lower the floor only on a small node whose disk holds less than the default of 50 GiB.
+
+### HopboxBackupsOverdue
+
+Warning. For 30 minutes, some machines with a backup schedule had no done backup in twice their backup period. The value is the count of such machines, from the leader. List the backups of a machine with `hopbox machine backup list box1`: a failed backup names its error. A bucket that refuses the requests is a common cause: look at HopboxObjectStorageErrors. Other causes are a node without the feature `backups`, a node that is down, and the backup limit of the org. A backup whose node moved no part of it for an hour fails. Read the log of `hopboxd` on the leader for `a check refused the scheduled backup of a machine, so it fails`, and on the node for `the upload of a backup failed for good` ([Object storage](/reference/object-storage/#logs)). See the panel “Overdue machines” of D9.
+
+### HopboxObjectStorageErrors
+
+Warning. For 10 minutes, more than 10% of the requests of a server to object storage failed. The label `instance` names the server. A missing object counts as no error. Backups wait, and an upload goes on from its last chunk once the requests work again. Check the bucket with `sudo hopboxd admin config object-storage check` on a control server. Its message names the cause ([Back up machines to a bucket](/guide/backups/#what-a-failure-means)). On a node, the series `hopbox_object_storage_requests_total` names the kind of each error in its label `result`. A node reaches the bucket from its own public address, so check the firewall of the provider for each node too.
 
 ### HopboxGuestLinkProofFailed
 

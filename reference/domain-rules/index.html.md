@@ -24,7 +24,7 @@ A machine is always in one current state. It also has a target state, which is t
 
 A new machine starts with the current state `pending` and the target state `running`.
 
-Milestone T21 of phase 3 changes the meaning of `deleted` for backups. While the org lives, a delete by a user keeps the backups of the machine until the end of their retention. The same org gets an undo, which milestones T21 and T22 build. A leave of the creator, and the delete of an org or an account, remove them at once. The owner decided this on 2026-11-06, in Q189.
+The state `deleted` keeps the backups of the machine in object storage. While the org lives, a delete by a user keeps them until the end of their retention. `ListBackups` with the ID of the machine lists them ([the machine API](/reference/machine-api/index.html.md#listbackups)). The restore of such a backup, the undo of the delete, comes in milestone T22. A leave of the creator, and the delete of an org or an account, remove the backups at once ([Object storage](/reference/object-storage/index.html.md#backups-after-a-delete)). The owner decided this on 2026-11-06, in Q189.
 
 ## Steps between current states
 
@@ -134,6 +134,17 @@ The extra disks of a suspended org keep their data too by Q223 of the phase 3 pl
 | `CreateDisk`, `AttachDisk`, `ShareDisk` | blocked |
 | `DeleteDisk` | blocked, because a suspension keeps the data of the org |
 | `GetDisk`, `ListDisks`, `DetachDisk` | allowed. A detach deletes no data and runs nothing. |
+
+The backups of a suspended org keep their data too ([Object storage](/reference/object-storage/index.html.md#the-prune)):
+
+| Call or job | In a suspended org |
+| --- | --- |
+| `CreateBackup`, `ListBackups` | allowed. A backup removes no data. |
+| `DeleteBackup` | blocked with `failed_precondition` and `org suspended: an instance admin suspended the org, so it cannot delete a backup` |
+| The backup period | stops: the job of the leader starts no scheduled backup in the org. |
+| The prune | skips the org, so no backup goes at the end of its retention. |
+
+The retention clock of each backup of the org stops. The unsuspend adds the time of the suspension to the end of the retention of each backup of the org. A backup from the time of the suspension gets the time since its creation. So each backup keeps the retention that it had left.
 
 The env vars and secrets of a suspended org do not change either. `SetVar` and `DeleteVar` fail with `failed_precondition` and `org suspended: an instance admin suspended the org, so its env vars and secrets do not change until the suspension ends` ([the env var API](/reference/vars-api/index.html.md#suspension)).
 
@@ -465,7 +476,7 @@ Each org has usage limits on its machines, its vCPUs, its RAM, and its disk. Fou
 | --- | --- |
 | `StoredStateBytes` | The memory files of the machines of the org that are not deleted: the sum of `bytes` in [machine_memory_states](/reference/control-store/index.html.md#machine_memory_states). |
 | `Snapshots` | 0. Snapshots come in milestone T13. |
-| `BackupBytes` | 0. Backups come in milestone T21. |
+| `BackupBytes` | The objects of the backups of the org in the bucket, and the worst size of each backup that copies or uploads ([Object storage](/reference/object-storage/index.html.md#the-steps-of-a-backup)). The backups of a machine that a user deleted stay in this sum until the prune removes them. A purge of Q189 takes them out at once. |
 | `SavedBytesLastDay` | The bytes of the saves of the org in the last 24 hours, from [saved_state_writes](/reference/control-store/index.html.md#saved_state_writes). The saves of a deleted machine stay in this sum. |
 
 `DefaultLimits` holds the two sets of an install, `Full` and `Limited`. `For(tier)` returns `Limited` for the tier `limited`, and `Full` otherwise. The tier of an org is the tier of the account of a personal org, and `full` for every other org. `DefaultMaxOrgsPerAccount` is 3: the most orgs that a full account owns besides its personal org on a fresh install.
@@ -490,7 +501,7 @@ The first defaults fit three machines of the size `default`, and the limited def
 
 ### Limits of saved state
 
-`CheckSave(usage, save)` checks a save before it starts. A `Save` has a kind and `WorstBytes`, its size at worst: the RAM of the machine, plus its written disk for a kind that copies the disk. The kinds are `hibernate`, `checkpoint`, `snapshot`, and `backup`. Only `hibernate` saves now. Milestones T13, T18, and T21 add the saves of the other kinds. Each kind checks these limits, in this order:
+`CheckSave(usage, save)` checks a save before it starts. A `Save` has a kind and `WorstBytes`, its size at worst: the RAM of the machine, plus its written disk for a kind that copies the disk. The kinds are `hibernate`, `checkpoint`, `snapshot`, and `backup`. A hibernate and a backup save now. Milestones T13 and T18 add the saves of the other kinds. Each kind checks these limits, in this order:
 
 | Kind | Limits that it checks |
 | --- | --- |
@@ -507,6 +518,7 @@ The rules:
 - A save that the node refuses for its free-space floor puts the target back, `running` or `standby`, and the compute of the machine back in the usage, with no check of a limit ([the executor protocol](/reference/executor-protocol/index.html.md#machinereport)). The machine never stopped, so no limit can refuse it. Its usage can then pass the limits of vCPUs or RAM, for example after a lower limit of an instance admin, and the org starts no other machine until it fits.
 - A limited org has the limits 0 for stored state, snapshots, and backups. So it makes no checkpoint, snapshot, or backup. It still hibernates within its daily budget.
 - `HibernateMachine` checks a hibernate with `WorstBytes` the RAM of the machine ([the machine API](/reference/machine-api/index.html.md#lifecycle-calls)).
+- The size of a backup is known only after the copy of its disk. So `CreateBackup` checks `CheckBackupRoom(usage)`: it refuses an org whose backups reach its limit already, with `usage limit exceeded: the backups of the org use <bytes> bytes, and its limit is <limit>`. After the copy, the backup counts at its worst size in the usage, and the control role checks `CheckSave` with the kind `backup` ([Object storage](/reference/object-storage/index.html.md#the-steps-of-a-backup)). A refusal fails the backup with the error of the table below.
 
 The errors:
 

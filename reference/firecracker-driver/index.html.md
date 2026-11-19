@@ -8,7 +8,7 @@ The Firecracker driver is the VMM driver of the node role ([the VMM driver inter
 
 ## Capabilities
 
-The driver declares the capabilities `pause`, `snapshot`, and `restore`. It boots, stops, attaches to, pauses, resumes, hibernates, wakes, and deletes machines ([Hibernate and wake](#hibernate-and-wake)). It also saves a running machine without a stop, as a `vmm.Saver` ([Save without a stop](#save-without-a-stop)). Fork and migrate come in later milestones of phase 3. Standby needs Firecracker 1.17.0, or 1.16.2 and later, because 1.16.0 and 1.16.1 can block vsock traffic after a pause. The release bundle holds 1.17.0, and the driver does not read the version.
+The driver declares the capabilities `pause`, `snapshot`, and `restore`. It boots, stops, attaches to, pauses, resumes, hibernates, wakes, and deletes machines ([Hibernate and wake](#hibernate-and-wake)). It also saves a running machine without a stop, as a `vmm.Saver` ([Save without a stop](#save-without-a-stop)). It copies the disk of a machine for a backup, as a `vmm.DiskCopier` ([Copy of a disk](#copy-of-a-disk)). Fork and migrate come in later milestones of phase 3. Standby needs Firecracker 1.17.0, or 1.16.2 and later, because 1.16.0 and 1.16.1 can block vsock traffic after a pause. The release bundle holds 1.17.0, and the driver does not read the version.
 
 `SnapshotFormat` runs `firecracker --snapshot-version` once, with at most 5 s, and returns the version that it prints, such as `v12.0.0`. The compatibility class of the node holds it ([the control channel](/reference/control-channel/index.html.md#compatibility-class)).
 
@@ -245,6 +245,10 @@ Each machine has a tap device, a virtual network device of Linux, in the network
 
 Firecracker can apply a call whose answer gets lost. So after a failed `Pause` or `Resume`, the driver reads the state with `GET /`, and `Instance.Paused` gives that state. A state that the driver cannot read counts as paused. A resume of a running microVM succeeds, but a guest link to a paused guest never comes up. The error of the call then wraps `vmm.ErrStateUnknown`, and the executor pauses again before it reports `standby` ([the node executor](/reference/executor/index.html.md#standby)).
 
+## Copy of a disk
+
+`CopyDisk` makes a reflink copy of `<data_dir>/machines/<id>/disk.raw` for a backup ([the VMM driver interface](/reference/vmm/index.html.md#diskcopier)). `hopboxd run` puts the copy in `<data_dir>/backups/<backup>/disk.raw`, on the same file system. The driver first checks that the copy does not exist, and that its dir is on the device of the disk. A refused target pauses nothing. For a running microVM, it sends `PATCH /vm` with `{"state": "Paused"}`. Firecracker serves each request of the guest before the API answers the pause. So the file then holds each write that the guest finished. The driver flushes the disk file with an `fsync`, makes the copy with `FICLONE`, and sends `PATCH /vm` with `{"state": "Resumed"}`. The pause lasts as long as the flush and the reflink. The guest link stays open, and the guest agent sees no reset. A microVM in standby stays paused, and a machine that does not run gets no API call. A failed copy leaves no file, and resumes the microVM. If the resume fails, the driver removes the copy and logs `cannot resume a microVM after the copy of its disk` at level error. The microVM then stays paused, and `Instance.Paused` says so.
+
 ## Hibernate and wake
 
 A hibernate saves the RAM of the guest to the memory file of the machine, and ends its microVM. A wake loads that file into a new microVM. Both run in the jail of the machine, with its jail user. The memory file holds the secrets of the machine in plain bytes. Only root and the jail user can read it, through the dirs of mode 0700 and the files of mode 0600. An operator puts `<data_dir>` on an encrypted block device for more ([Standby and hibernate](/guide/standby-and-hibernate/index.html.md#the-memory-file-on-the-node)).
@@ -473,6 +477,8 @@ Every record has `component=firecracker`.
 | `attached to a microVM whose save is whole` | info | `machine`, `unit`, `saved_at` |
 | `stopping a microVM that never started` | warn | `machine`, `unit` |
 | `made the disk of a machine as a reflink copy of its image` | info | `machine`, `image` |
+| `copied the disk of a machine` | info | `machine`, `dst`, `paused`, `running` |
+| `cannot resume a microVM after the copy of its disk` | error | `machine`, `err` |
 | `put the extra disks of the save back before the discard of its memory file` | info | `machine`, `disks` |
 | `unpacked the disk of an image` | info | `digest`, `duration` |
 | `downloaded the disk of an image` | info | `digest`, `url`, `duration` |
